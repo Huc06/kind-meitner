@@ -413,7 +413,8 @@ import {
   type PhoneSecretContext,
 } from "./phone-secret.ts";
 
-const PORT = Number(process.env.KIND_MEITNER_PORT || 8799);
+const PORT = Number(process.env.KIND_MEITNER_PORT || process.env.PORT || 8799);
+const HOST = process.env.KIND_MEITNER_HOST || (process.env.RAILWAY_ENVIRONMENT ? "0.0.0.0" : "127.0.0.1");
 const WEBHOOK_PORT = Number(process.env.KIND_MEITNER_WEBHOOK_PORT || PORT + 1);
 // Behind a proxy or tunnel, the base URL senders should use (docs/self-hosting.md).
 const WEBHOOK_PUBLIC_URL = process.env.KIND_MEITNER_WEBHOOK_PUBLIC_URL || undefined;
@@ -16175,8 +16176,8 @@ for (const row of chatFollowups()) {
 restoreSteeredMessages();
 restoreChannelMessages();
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`kind-meitner server on http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`kind-meitner server on http://${HOST}:${PORT}`);
   followupsReady = true;
   drainQueuedSends();
   drainQueuedChannelSends();
