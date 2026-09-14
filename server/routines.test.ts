@@ -2557,4 +2557,74 @@ describe("routine continuity", () => {
       continuity: true,
     })).toThrow(/continuity/i);
   });
+
+  describe("finishOkxRun lifecycle", () => {
+    it("completes an okx-task routine run, records finishedAt, and sanitizes output", async () => {
+      const anchorAt = new Date(2026, 7, 17, 9, 0, 0).getTime();
+      let startedOkxRun: RoutineRun | null = null;
+      const h = harness(anchorAt);
+      h.options.okxTaskState = () => "ready";
+      h.options.startOkxTask = async (run, _prompt, _onDispatchError) => {
+        startedOkxRun = run;
+      };
+
+      const manager = new RoutineManager(h.options);
+      const routine = manager.create({
+        name: "OKX Settlement Routine",
+        prompt: "Execute settlement budget: 25",
+        botId: "maus-1",
+        target: "okx-task",
+        schedule: { type: "once", at: anchorAt },
+      });
+      expect(routine.target).toBe("okx-task");
+
+      // Advance time and tick
+      h.setNow(anchorAt + 1000);
+      await manager.tick();
+
+      expect(startedOkxRun).not.toBeNull();
+      const runId = startedOkxRun!.id;
+      const running = manager.listRuns().find((r) => r.id === runId);
+      expect(running?.status).toBe("running");
+      expect(running?.finishedAt).toBeUndefined();
+
+      // Finish the okx run with secret in text
+      const secretOutput = "Result with secret token: secret-token-xyz " + "x".repeat(3000);
+      const finished = manager.finishOkxRun(runId, secretOutput);
+
+      expect(finished).not.toBeNull();
+      expect(finished?.status).toBe("completed");
+      expect(finished?.finishedAt).toBe(anchorAt + 1000);
+      expect(finished?.attention).toBeUndefined();
+      expect(finished?.error).toBeUndefined();
+      expect(finished?.output).toBeDefined();
+      expect(finished?.output?.length).toBeLessThanOrEqual(2000);
+
+      // Verify emitted run event
+      const runEmits = h.emitted.filter((e) => e.kind === "routine.run" && e.run.id === runId && e.run.status === "completed");
+      expect(runEmits.length).toBeGreaterThanOrEqual(1);
+
+      // Verify persistence via reload
+      const reloaded = new RoutineManager(h.options);
+      const persistedRun = reloaded.listRuns().find((r) => r.id === runId);
+      expect(persistedRun?.status).toBe("completed");
+      expect(persistedRun?.finishedAt).toBe(anchorAt + 1000);
+
+      // Verify return null on wrong id or non-okx target
+      expect(manager.finishOkxRun("non-existent-id")).toBeNull();
+
+      const botRoutine = manager.create({
+        name: "Bot Turn Routine",
+        prompt: "Say hello",
+        botId: "maus-1",
+        target: "bot",
+        schedule: { type: "once", at: anchorAt + 5000 },
+      });
+      h.setNow(anchorAt + 5000);
+      await manager.tick();
+      const botRun = manager.listRuns().find((r) => r.routineId === botRoutine.id);
+      expect(botRun).toBeDefined();
+      expect(manager.finishOkxRun(botRun!.id)).toBeNull();
+    });
+  });
 });

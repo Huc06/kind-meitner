@@ -1599,6 +1599,24 @@ export class RoutineManager {
     return cloneRun(run);
   }
 
+  finishOkxRun(runId: string, output?: string): RoutineRun | null {
+    const run = this.runs.find(
+      (candidate) => candidate.id === runId && candidate.target === "okx-task",
+    );
+    if (!run) return null;
+    run.status = "completed";
+    run.attention = undefined;
+    run.error = undefined;
+    run.finishedAt = this.now();
+    if (output !== undefined) {
+      run.output = redactSecretsInText(output).trim().slice(0, 2_000) || undefined;
+    }
+    this.save();
+    this.emitRun(run);
+    queueMicrotask(() => void this.tick());
+    return cloneRun(run);
+  }
+
   private failRun(run: RoutineRun, message: string) {
     run.status = "failed";
     run.attention = undefined;

@@ -4,8 +4,11 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   OkxMarketplaceIntelligence,
+  verifyEip3009Payment,
+  calculateHhi,
   type AspProfile,
 } from "./intelligence.ts";
+import { OkxGateway } from "./gateway.ts";
 
 const dirs: string[] = [];
 
@@ -464,5 +467,228 @@ describe("OKX Marketplace Intelligence ('Bloomberg for Agents')", () => {
     const res3 = await intel.handleMcpToolCall("another_bogus_tool", {});
     expect(res3.isError).toBe(true);
     expect(intel.getQueryUsage()).toHaveLength(1);
+  });
+
+  describe("EIP-3009 Payment Verification & Nonce Replay Defense", () => {
+    it("rejects missing payment authorization headers with 402 Payment Required", () => {
+      const res = verifyEip3009Payment({});
+      expect(res.valid).toBe(false);
+      expect(res.status).toBe(402);
+      expect(res.error).toContain("Payment required");
+    });
+
+    it("rejects malformed address and signature formats with 400 Bad Request", () => {
+      const validSig = "0x" + "aa".repeat(65);
+      // Malformed EVM address
+      const resBadAddr = verifyEip3009Payment({
+        "x-payment-from": "invalid-address",
+        "x-payment-signature": validSig,
+        "x-payment-nonce": "nonce-1",
+        "x-payment-valid-before": "2000000000",
+      });
+      expect(resBadAddr.valid).toBe(false);
+      expect(resBadAddr.status).toBe(400);
+      expect(resBadAddr.error).toContain("Invalid x-payment-from address format");
+
+      // Short signature
+      const resBadSig = verifyEip3009Payment({
+        "x-payment-from": "0x1234567890123456789012345678901234567890",
+        "x-payment-signature": "0x1234",
+        "x-payment-nonce": "nonce-1",
+        "x-payment-valid-before": "2000000000",
+      });
+      expect(resBadSig.valid).toBe(false);
+      expect(resBadSig.status).toBe(400);
+      expect(resBadSig.error).toContain("Invalid x-payment-signature format");
+    });
+
+    it("enforces timestamp validity windows (expiration and future validity)", () => {
+      const validSig = "0x" + "aa".repeat(65);
+      const addr = "0x1234567890123456789012345678901234567890";
+
+      // Expired timestamp
+      const resExpired = verifyEip3009Payment(
+        {
+          "x-payment-from": addr,
+          "x-payment-signature": validSig,
+          "x-payment-nonce": "nonce-1",
+          "x-payment-valid-before": "1000",
+        },
+        { nowSec: 2000 },
+      );
+      expect(resExpired.valid).toBe(false);
+      expect(resExpired.status).toBe(400);
+      expect(resExpired.error).toContain("expired");
+
+      // Not yet valid (validAfter in future)
+      const resFuture = verifyEip3009Payment(
+        {
+          "x-payment-from": addr,
+          "x-payment-signature": validSig,
+          "x-payment-nonce": "nonce-1",
+          "x-payment-valid-before": "5000",
+          "x-payment-valid-after": "3000",
+        },
+        { nowSec: 2000 },
+      );
+      expect(resFuture.valid).toBe(false);
+      expect(resFuture.status).toBe(400);
+      expect(resFuture.error).toContain("not yet valid");
+
+      // Valid window
+      const resValid = verifyEip3009Payment(
+        {
+          "x-payment-from": addr,
+          "x-payment-signature": validSig,
+          "x-payment-nonce": "nonce-1",
+          "x-payment-valid-before": "5000",
+          "x-payment-valid-after": "1000",
+        },
+        { nowSec: 2000 },
+      );
+      expect(resValid.valid).toBe(true);
+      expect(resValid.payment?.from).toBe(addr);
+      expect(resValid.payment?.nonce).toBe("nonce-1");
+    });
+
+    it("prevents nonce replay attacks and persists nonces durably across instances", () => {
+      const dir = tempDir();
+      const storageFile = join(dir, "nonces.json");
+      const intel1 = new OkxMarketplaceIntelligence({ storageFile });
+
+      expect(intel1.isNonceRedeemed("nonce-unique-1")).toBe(false);
+      expect(intel1.redeemNonce("nonce-unique-1")).toBe(true);
+      expect(intel1.isNonceRedeemed("nonce-unique-1")).toBe(true);
+
+      // Duplicate attempt on same instance
+      expect(intel1.redeemNonce("nonce-unique-1")).toBe(false);
+
+      // Reloading from disk confirms persistence
+      const intel2 = new OkxMarketplaceIntelligence({ storageFile });
+      expect(intel2.isNonceRedeemed("nonce-unique-1")).toBe(true);
+      expect(intel2.redeemNonce("nonce-unique-1")).toBe(false);
+      expect(intel2.redeemNonce("nonce-unique-2")).toBe(true);
+    });
+  });
+
+  describe("Herfindahl-Hirschman Index (HHI) Concentration & Anti-Sybil Defense", () => {
+    it("computes mathematical HHI score across counterparty distribution", () => {
+      // Empty buyers
+      expect(calculateHhi({})).toBe(0);
+
+      // Single buyer monopoly: 100% volume -> (100)^2 = 10,000
+      expect(calculateHhi({ soleBuyer: 500 })).toBe(10000);
+
+      // Equal 4-way split: 25% each -> 4 * 25^2 = 2,500
+      expect(calculateHhi({ a: 25, b: 25, c: 25, d: 25 })).toBe(2500);
+
+      // Wash trading concentration: 85% volume from one whale
+      const wash = { whale: 850, small1: 50, small2: 50, small3: 50 };
+      expect(calculateHhi(wash)).toBeGreaterThan(6000);
+    });
+
+    it("clamps trustTier to high_risk when HHI > 6000 even with pristine reputation score", () => {
+      const intel = new OkxMarketplaceIntelligence();
+      intel.indexAsps([
+        {
+          id: "asp-wash-traded",
+          name: "Wash Traded Elite Candidate",
+          category: "audit",
+          reputationScore: 99,
+          medianPrice: 150,
+          averageTurnaroundMinutes: 30,
+          tasksCompleted: 100,
+          disputesCount: 0,
+          rejectionsCount: 0,
+          disputesWon: 0,
+          rejectRate: 0,
+          disputeRate: 0,
+          recentVolume7d: 50,
+          trustTier: "neutral",
+          buyerVolumes: {
+            sybilAccount: 900,
+            retailAccount: 100,
+          },
+          updatedAt: Date.now(),
+        },
+      ]);
+
+      const asp = intel.getAsp("asp-wash-traded");
+      expect(asp).toBeDefined();
+      expect(asp?.hhiScore).toBeGreaterThan(6000);
+      // Clamped to high_risk despite reputationScore = 99 and zero rejections/disputes
+      expect(asp?.trustTier).toBe("high_risk");
+    });
+  });
+
+  describe("Zero-Slow-UX Gateway: 429 Retry-After Backoff & 90s RPC Cap", () => {
+    it("OkxGateway.request retries on 429 using Retry-After header and tracks handshakeErrorCount", async () => {
+      let callCount = 0;
+      const mockFetch = async () => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            ok: false,
+            status: 429,
+            headers: new Headers({ "retry-after": "0" }),
+            text: async () => "Rate limit exceeded",
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, count: callCount }),
+        } as unknown as Response;
+      };
+
+      const gateway = new OkxGateway({
+        credentials: { apiKey: "key", secretKey: "sec", passphrase: "pass" },
+        fetchFn: mockFetch as unknown as typeof fetch,
+      });
+
+      const res = await gateway.request<{ success: boolean; count: number }>("GET", "/api/v5/test");
+      expect(res.success).toBe(true);
+      expect(res.count).toBe(2);
+      expect(gateway.handshakeErrorCount).toBe(1);
+    });
+
+    it("OkxGateway.request aborts and throws on exceeding 90s RPC timeout limit", async () => {
+      const hangingFetch = async (_url: unknown, options?: { signal?: AbortSignal }) => {
+        return new Promise<Response>((_, reject) => {
+          options?.signal?.addEventListener("abort", () => {
+            reject(new Error("RPC timeout exceeded 90s limit"));
+          });
+        });
+      };
+
+      const gateway = new OkxGateway({
+        credentials: { apiKey: "key", secretKey: "sec", passphrase: "pass" },
+        fetchFn: hangingFetch as unknown as typeof fetch,
+      });
+
+      await expect(
+        gateway.request("GET", "/api/v5/slow", undefined, { timeoutMs: 50 }),
+      ).rejects.toThrow(/RPC timeout/);
+    });
+
+    it("OkxGateway.request attaches x-connect-id header to outgoing requests", async () => {
+      let capturedHeaders: Record<string, string> = {};
+      const mockFetch = async (_url: unknown, init?: RequestInit) => {
+        capturedHeaders = init?.headers as Record<string, string>;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        } as unknown as Response;
+      };
+
+      const gateway = new OkxGateway({
+        credentials: { apiKey: "key", secretKey: "sec", passphrase: "pass" },
+        fetchFn: mockFetch as unknown as typeof fetch,
+      });
+
+      await gateway.request("GET", "/api/v5/test", undefined, { connectId: "test-tracing-uuid" });
+      expect(capturedHeaders["x-connect-id"]).toBe("test-tracing-uuid");
+    });
   });
 });

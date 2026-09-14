@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic.ts";
@@ -323,8 +324,11 @@ export class OkxCliSigner {
       // Parse plain text output if CLI returns formatted strings
       const idMatch = res.stdout.match(/agent\s*id[:=]\s*([a-zA-Z0-9_-]+)/i);
       const addrMatch = res.stdout.match(/address[:=]\s*(0x[a-fA-F0-9]{40})/i);
-      agentId = idMatch?.[1] ?? `agent-${randomUUID().slice(0, 8)}`;
-      address = addrMatch?.[1] ?? "0x0000000000000000000000000000000000000000";
+      agentId = idMatch?.[1] ?? "";
+      address = addrMatch?.[1] ?? "";
+    }
+    if (!agentId || !address) {
+      throw new Error(`Failed to create agent: could not parse agentId or address from output: ${res.stdout}`);
     }
     return { agentId, address, stdout: res.stdout };
   }
@@ -334,6 +338,26 @@ export class OkxCliSigner {
     const res = await this.runner(this.cliPath, args);
     if (res.exitCode !== 0) {
       throw new Error(`Failed to activate agent ${agentId}: ${res.stderr || res.stdout}`);
+    }
+    const txMatch = res.stdout.match(/tx[:=]\s*(0x[a-fA-F0-9]{64})/i);
+    return { success: true, txHash: txMatch?.[1] };
+  }
+
+  async agentAccept(taskId: string): Promise<{ success: boolean; txHash?: string }> {
+    const args = ["agent", "accept", "--task-id", taskId];
+    const res = await this.runner(this.cliPath, args);
+    if (res.exitCode !== 0) {
+      throw new Error(`Failed to accept agent task ${taskId}: ${res.stderr || res.stdout}`);
+    }
+    const txMatch = res.stdout.match(/tx[:=]\s*(0x[a-fA-F0-9]{64})/i);
+    return { success: true, txHash: txMatch?.[1] };
+  }
+
+  async agentReject(taskId: string, reason: string): Promise<{ success: boolean; txHash?: string }> {
+    const args = ["agent", "reject", "--task-id", taskId, "--reason", reason];
+    const res = await this.runner(this.cliPath, args);
+    if (res.exitCode !== 0) {
+      throw new Error(`Failed to reject agent task ${taskId}: ${res.stderr || res.stdout}`);
     }
     const txMatch = res.stdout.match(/tx[:=]\s*(0x[a-fA-F0-9]{64})/i);
     return { success: true, txHash: txMatch?.[1] };
@@ -372,7 +396,10 @@ export class OkxCliSigner {
       throw new Error(`Payment for invoice ${invoiceId} failed: ${res.stderr || res.stdout}`);
     }
     const txMatch = res.stdout.match(/tx[:=]\s*(0x[a-fA-F0-9]{64})/i);
-    const txHash = txMatch?.[1] ?? `0x${randomUUID().replace(/-/g, "")}${randomUUID().replace(/-/g, "")}`;
+    const txHash = txMatch?.[1];
+    if (!txHash) {
+      throw new Error(`Payment for invoice ${invoiceId} failed: no valid transaction hash found in CLI output: ${res.stdout}`);
+    }
     return { success: true, txHash };
   }
 
@@ -398,22 +425,84 @@ export class OkxCliSigner {
     const txMatch = res.stdout.match(/tx[:=]\s*(0x[a-fA-F0-9]{40,64})/i);
     return { success: true, txHash: txMatch?.[1] };
   }
+
+  async evaluatorClaim(disputeId: string): Promise<{ success: boolean; txHash?: string; amount?: number }> {
+    const args = ["evaluator", "claim", "--dispute-id", disputeId];
+    const res = await this.runner(this.cliPath, args);
+    if (res.exitCode !== 0) {
+      throw new Error(`Failed to claim evaluator fee for dispute ${disputeId}: ${res.stderr || res.stdout}`);
+    }
+    let txHash: string | undefined;
+    let amount: number | undefined;
+    try {
+      const parsed = JSON.parse(res.stdout);
+      if (parsed.txHash) txHash = parsed.txHash;
+      if (typeof parsed.amount === "number") amount = parsed.amount;
+      else if (typeof parsed.amount === "string") amount = parseFloat(parsed.amount);
+    } catch {
+      // Fallback to text parsing
+    }
+    if (!txHash) {
+      const txMatch = res.stdout.match(/tx[:=]\s*(0x[a-fA-F0-9]{64})/i);
+      txHash = txMatch?.[1];
+    }
+    if (amount === undefined) {
+      const amountMatch = res.stdout.match(/(?:amount|reward|fee)[:=]\s*(\d+(?:\.\d+)?)/i);
+      if (amountMatch) amount = parseFloat(amountMatch[1]);
+    }
+    return { success: true, txHash, amount };
+  }
+
+  async walletBalance(address?: string): Promise<{ okb: number; usdt: number }> {
+    const args = ["wallet", "balance", ...(address ? ["--address", address] : [])];
+    const res = await this.runner(this.cliPath, args);
+    if (res.exitCode !== 0) {
+      throw new Error(`Failed to fetch wallet balance${address ? ` for ${address}` : ""}: ${res.stderr || res.stdout}`);
+    }
+    let okb = 0;
+    let usdt = 0;
+    try {
+      const parsed = JSON.parse(res.stdout);
+      if (typeof parsed.okb === "number") okb = parsed.okb;
+      else if (typeof parsed.OKB === "number") okb = parsed.OKB;
+      else if (parsed.balances) {
+        if (typeof parsed.balances.okb === "number") okb = parsed.balances.okb;
+        if (typeof parsed.balances.OKB === "number") okb = parsed.balances.OKB;
+      }
+
+      if (typeof parsed.usdt === "number") usdt = parsed.usdt;
+      else if (typeof parsed.USDT === "number") usdt = parsed.USDT;
+      else if (parsed.balances) {
+        if (typeof parsed.balances.usdt === "number") usdt = parsed.balances.usdt;
+        if (typeof parsed.balances.USDT === "number") usdt = parsed.balances.USDT;
+      }
+      return { okb, usdt };
+    } catch {
+      const okbMatch = res.stdout.match(/okb[:=\s]+(\d+(?:\.\d+)?)/i);
+      const usdtMatch = res.stdout.match(/usdt[:=\s]+(\d+(?:\.\d+)?)/i);
+      if (okbMatch) okb = parseFloat(okbMatch[1]);
+      if (usdtMatch) usdt = parseFloat(usdtMatch[1]);
+      return { okb, usdt };
+    }
+  }
 }
 
 /**
  * OKX Developer Portal Gateway Client.
  * Bridges authenticated API interactions, webhooks, and ledger tracking.
  */
-export class OkxGateway {
+export class OkxGateway extends EventEmitter {
   readonly credentials?: OkxCredentials;
   readonly ledger: OkxLedger;
   readonly cli: OkxCliSigner;
+  public handshakeErrorCount = 0;
   private readonly webhookSecret?: string;
   private readonly requireWebhookSecret: boolean;
   private readonly baseUrl: string;
   private readonly fetchFn: typeof fetch;
 
   constructor(config: OkxSignerConfig = {}) {
+    super();
     this.credentials = config.credentials;
     this.webhookSecret = config.webhookSecret;
     this.requireWebhookSecret = config.requireWebhookSecret ?? false;
@@ -448,29 +537,87 @@ export class OkxGateway {
   }
 
   /**
-   * Authenticated API request execution.
+   * Authenticated API request execution with 90s timeout cap and 429 Retry-After backoff.
    */
   async request<T = unknown>(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
     bodyData?: unknown,
+    options?: { timeoutMs?: number; connectId?: string; maxRetries?: number },
   ): Promise<T> {
+    const timeoutMs = options?.timeoutMs ?? 90_000;
+    const maxRetries = options?.maxRetries ?? 3;
+    const connectId = options?.connectId ?? randomUUID();
+    const deadline = Date.now() + timeoutMs;
     const bodyStr = bodyData ? JSON.stringify(bodyData) : "";
-    const headers = this.getAuthHeaders(method, path, bodyStr);
     const url = `${this.baseUrl}${path}`;
 
-    const res = await this.fetchFn(url, {
-      method,
-      headers,
-      body: method !== "GET" ? bodyStr : undefined,
-    });
+    let attempt = 0;
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`OKX API error ${res.status} on ${path}: ${errText}`);
+    while (true) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        throw new Error("RPC timeout exceeded 90s limit");
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort(new Error("RPC timeout exceeded 90s limit"));
+      }, remainingMs);
+
+      try {
+        const headers = {
+          ...this.getAuthHeaders(method, path, bodyStr),
+          "x-connect-id": connectId,
+        };
+
+        const res = await this.fetchFn(url, {
+          method,
+          headers,
+          body: method !== "GET" ? bodyStr : undefined,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (res.status === 429 || res.status === 503) {
+          this.handshakeErrorCount++;
+          attempt++;
+          if (attempt > maxRetries || Date.now() >= deadline) {
+            throw new Error(`OKX RPC rate limited (${res.status}) after ${attempt} retries`);
+          }
+
+          const retryAfter = res.headers?.get?.("retry-after");
+          let delayMs = retryAfter ? Number.parseInt(retryAfter, 10) * 1000 : 0;
+          if (!delayMs || Number.isNaN(delayMs)) {
+            delayMs = Math.min(10_000, 500 * Math.pow(2, attempt) + Math.random() * 200);
+          }
+
+          if (Date.now() + delayMs >= deadline) {
+            throw new Error("RPC timeout exceeded 90s limit during 429 backoff");
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          throw new Error(`OKX API error ${res.status} on ${path}: ${errText}`);
+        }
+
+        return (await res.json()) as T;
+      } catch (err) {
+        clearTimeout(timer);
+        if (
+          (err instanceof Error && (err.name === "AbortError" || err.message.includes("RPC timeout"))) ||
+          controller.signal.aborted
+        ) {
+          throw new Error("RPC timeout exceeded 90s limit");
+        }
+        throw err;
+      }
     }
-
-    return (await res.json()) as T;
   }
 
   /**
@@ -607,6 +754,10 @@ export class OkxGateway {
         } else if (event.type === "delivery_submitted") {
           this.ledger.updateTaskStatus(existing.id, "delivered", {
             deliverable: event.data.deliverable,
+            metadata: {
+              ...existing.metadata,
+              deliveredAt: event.timestamp || Date.now(),
+            },
           });
         } else if (event.type === "delivery_rejected") {
           this.ledger.updateTaskStatus(existing.id, "rejected", {
@@ -621,6 +772,9 @@ export class OkxGateway {
         }
       }
     }
+
+    this.emit(event.type, event);
+    this.emit("webhook_event", event);
 
     return event;
   }

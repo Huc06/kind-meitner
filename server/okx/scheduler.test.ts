@@ -1,10 +1,11 @@
+import { createHmac } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { RoutineManager, type RoutineRun } from "../routines.ts";
 import { OkxGateway } from "./gateway.ts";
-import { OkxRecurringEngine, OkxTreasuryManager } from "./scheduler.ts";
+import { OkbGasMonitor, OkxRecurringEngine, OkxTreasuryManager, OkxWebhookJournal } from "./scheduler.ts";
 
 const dirs: string[] = [];
 
@@ -681,6 +682,338 @@ asp: asp-auditor-sec`;
       expect(dispatchErrors).toHaveLength(1);
       expect(dispatchErrors[0]).toContain("Autonomous Treasury check failed");
       expect(treasury.getBalance()).toBe(110); // Balance preserved
+    });
+
+    describe("OkbGasMonitor & Gas Sufficiency Verification", () => {
+      it("enforces minimum 0.05 OKB threshold and rejects insufficient gas", async () => {
+        let currentGas = 0.02;
+        const monitor = new OkbGasMonitor({
+          minGasThreshold: 0.05,
+          balanceProvider: async () => currentGas,
+        });
+
+        expect(monitor.minGasThreshold).toBe(0.05);
+
+        // Under-threshold check
+        const underCheck = await monitor.checkGasSufficiency();
+        expect(underCheck.sufficient).toBe(false);
+        expect(underCheck.balance).toBe(0.02);
+        expect(underCheck.minThreshold).toBe(0.05);
+
+        await expect(monitor.assertGasSufficiency()).rejects.toThrow(
+          /Insufficient OKB gas balance: required >= 0.05 OKB on X Layer/,
+        );
+
+        // Meet threshold check
+        currentGas = 0.05;
+        const exactCheck = await monitor.checkGasSufficiency();
+        expect(exactCheck.sufficient).toBe(true);
+        expect(exactCheck.balance).toBe(0.05);
+        await expect(monitor.assertGasSufficiency()).resolves.toEqual({ balance: 0.05 });
+
+        // Above threshold check
+        currentGas = 0.12;
+        const aboveCheck = await monitor.checkGasSufficiency();
+        expect(aboveCheck.sufficient).toBe(true);
+        await expect(monitor.assertGasSufficiency()).resolves.toEqual({ balance: 0.12 });
+      });
+
+      it("OkxTreasuryManager integrates OkbGasMonitor and exposes gas methods", async () => {
+        let gas = 0.01;
+        const treasury = new OkxTreasuryManager({
+          balance: 100,
+          token: "USDT",
+          maxPerRunSpend: 50,
+          monthlyBudgetCap: 200,
+          walletAddress: "0x1234567890123456789012345678901234567890",
+          gasBalanceProvider: async () => gas,
+        });
+
+        expect(treasury.gasMonitor).toBeInstanceOf(OkbGasMonitor);
+        expect(treasury.walletAddress).toBe("0x1234567890123456789012345678901234567890");
+
+        const check = await treasury.checkGasSufficiency();
+        expect(check.sufficient).toBe(false);
+        await expect(treasury.assertGasSufficiency()).rejects.toThrow(/Insufficient OKB gas balance/);
+
+        gas = 0.08;
+        const checkPassed = await treasury.checkGasSufficiency();
+        expect(checkPassed.sufficient).toBe(true);
+        await expect(treasury.assertGasSufficiency()).resolves.toEqual({ balance: 0.08 });
+      });
+
+      it("OkxRecurringEngine.executeScheduledRun rolls back reservation and rejects when gas < 0.05 OKB", async () => {
+        const dir = tempDir();
+        const gateway = new OkxGateway({ ledgerFile: join(dir, "tasks.json") });
+        let gasBalance = 0.03; // < 0.05 OKB
+
+        const treasury = new OkxTreasuryManager({
+          balance: 100,
+          maxPerRunSpend: 50,
+          monthlyBudgetCap: 200,
+          file: join(dir, "treasury.json"),
+          gasBalanceProvider: async () => gasBalance,
+        });
+
+        const engine = new OkxRecurringEngine({ gateway, treasury });
+        const mockRun: RoutineRun = {
+          id: "run-gas-test",
+          routineId: "routine-gas-test",
+          routineName: "Gas Test Routine",
+          target: "okx-task",
+          botId: "bot-1",
+          runOn: "maus",
+          scheduledFor: Date.now(),
+          status: "running",
+          manual: true,
+          createdAt: Date.now(),
+        };
+
+        const res = await engine.executeScheduledRun(mockRun, "Run task budget: 20");
+        expect(res.ok).toBe(false);
+        expect(res.error).toBe("Insufficient OKB gas balance: required >= 0.05 OKB on X Layer");
+
+        // Reservation rolled back: balance preserved, zero reserved
+        expect(treasury.getBalance()).toBe(100);
+        expect(treasury.getReservedAmount()).toBe(0);
+        expect(treasury.getAvailableBalance()).toBe(100);
+
+        // Ledger task marked failed
+        const tasks = gateway.ledger.listTasks();
+        expect(tasks.length).toBe(1);
+        expect(tasks[0].status).toBe("failed");
+
+        // When gas is restored >= 0.05 OKB, executeScheduledRun succeeds
+        gasBalance = 0.08;
+        const resSuccess = await engine.executeScheduledRun(mockRun, "Run task budget: 20");
+        expect(resSuccess.ok).toBe(true);
+        expect(treasury.getBalance()).toBe(80);
+      });
+    });
+
+    describe("Non-hanging Routine Execution with Activity Card & finishOkxRun", () => {
+      it("transitions okx-task routine run to completed, sets finishedAt, and appends activity card", async () => {
+        const dir = tempDir();
+        const routineFile = join(dir, "prod-routines.json");
+        const gateway = new OkxGateway({ ledgerFile: join(dir, "tasks.json") });
+        const treasury = new OkxTreasuryManager({
+          balance: 150,
+          token: "USDT",
+          maxPerRunSpend: 50,
+          monthlyBudgetCap: 300,
+          file: join(dir, "treasury.json"),
+        });
+        const okxRecurringEngine = new OkxRecurringEngine({ gateway, treasury });
+
+        let now = new Date(2026, 8, 14, 10, 0, 0).getTime();
+        let createdTaskCount = 0;
+        const messages: Array<{ threadId: string; msg: any }> = [];
+
+        // Simulated store
+        const mockStore = {
+          appendMessage: (threadId: string, msg: any) => {
+            messages.push({ threadId, msg });
+            return msg;
+          },
+        };
+
+        let routines!: RoutineManager;
+        routines = new RoutineManager({
+          file: routineFile,
+          now: () => now,
+          botState: () => "ready",
+          createTask: (_botId, _title) => ({ threadId: `thread-prod-${++createdTaskCount}` }),
+          startTurn: async () => {},
+          okxTaskState: () => "ready",
+          startOkxTask: async (run, prompt, onDispatchError) => {
+            const startTime = Date.now();
+            const traceId = "trace-test-123";
+            const res = await okxRecurringEngine.executeScheduledRun(run, prompt);
+            const timeToSessionMs = Date.now() - startTime;
+            if (res.ok) {
+              if (run.threadId) {
+                mockStore.appendMessage(run.threadId, {
+                  role: "bot",
+                  kind: "activity",
+                  text: res.output,
+                  tool: {
+                    name: "okx_task_dispatched",
+                    ok: true,
+                    summary: `OKX Task ${res.task?.id ?? ""}`,
+                    input: JSON.stringify({ prompt, runId: run.id, traceId }),
+                    output: JSON.stringify({
+                      taskId: res.task?.id,
+                      txHash: res.task?.txHash,
+                      timeToSessionMs,
+                      status: "in_progress",
+                    }),
+                  },
+                });
+              }
+              routines.finishOkxRun(run.id, res.output);
+            } else {
+              onDispatchError(res.error ?? "OKX execution failed");
+            }
+          },
+        });
+
+        routines.create({
+          name: "Autonomous Treasury Auditor",
+          prompt: "Run audit budget: 40 asp: asp-sec-bot",
+          target: "okx-task",
+          botId: "bot-sec",
+          schedule: {
+            type: "once",
+            at: now + 2000,
+          },
+        });
+
+        now += 3000;
+        await routines.tick();
+
+        // Check run is completed, not hanging in running
+        const runs = routines.listRuns();
+        expect(runs).toHaveLength(1);
+        const completedRun = runs[0];
+        expect(completedRun.status).toBe("completed");
+        expect(completedRun.finishedAt).toBe(now);
+        expect(completedRun.output).toContain("OKX Recurring Task Dispatched");
+        expect(completedRun.output).toContain("40 USDT");
+
+        // Check structured activity card posted to thread
+        expect(messages).toHaveLength(1);
+        expect(messages[0].threadId).toBe("thread-prod-1");
+        expect(messages[0].msg.role).toBe("bot");
+        expect(messages[0].msg.kind).toBe("activity");
+        expect(messages[0].msg.tool.name).toBe("okx_task_dispatched");
+        expect(messages[0].msg.tool.ok).toBe(true);
+
+        const toolOutput = JSON.parse(messages[0].msg.tool.output);
+        expect(toolOutput.status).toBe("in_progress");
+        expect(toolOutput.taskId).toBeDefined();
+        expect(toolOutput.txHash).toBeDefined();
+        expect(toolOutput.timeToSessionMs).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    describe("OkxWebhookJournal Atomic Deduplication", () => {
+      it("persists event IDs atomically with POSIX 0o600 and detects duplicates", () => {
+        const dir = tempDir();
+        const journalFile = join(dir, "okx-webhook-journal.json");
+
+        const journal = new OkxWebhookJournal(journalFile);
+        expect(journal.size).toBe(0);
+
+        // Record event 1
+        const r1 = journal.record({
+          id: "evt-001",
+          type: "task_accepted",
+          timestamp: 1726300000000,
+        });
+        expect(r1).toBe(true);
+        expect(journal.has("evt-001")).toBe(true);
+        expect(journal.has("evt-non-existent")).toBe(false);
+        expect(journal.size).toBe(1);
+
+        // Duplicate rejection
+        const r1Dup = journal.record({
+          id: "evt-001",
+          type: "task_accepted",
+          timestamp: 1726300000000,
+        });
+        expect(r1Dup).toBe(false);
+        expect(journal.size).toBe(1);
+
+        // Record event 2
+        const r2 = journal.record({
+          id: "evt-002",
+          type: "delivery_submitted",
+          timestamp: 1726300001000,
+        });
+        expect(r2).toBe(true);
+        expect(journal.size).toBe(2);
+
+        // Durable persistence across reloads
+        const reloadedJournal = new OkxWebhookJournal(journalFile);
+        expect(reloadedJournal.size).toBe(2);
+        expect(reloadedJournal.has("evt-001")).toBe(true);
+        expect(reloadedJournal.has("evt-002")).toBe(true);
+        expect(reloadedJournal.has("evt-003")).toBe(false);
+
+        // Duplicate on reloaded instance returns false
+        expect(reloadedJournal.record({ id: "evt-002" })).toBe(false);
+
+        // Clear works
+        reloadedJournal.clear();
+        expect(reloadedJournal.size).toBe(0);
+        expect(reloadedJournal.has("evt-001")).toBe(false);
+      });
+
+      it("handles missing or unreadable files gracefully", () => {
+        const dir = tempDir();
+        const missingFile = join(dir, "does-not-exist.json");
+        const journal = new OkxWebhookJournal(missingFile);
+        expect(journal.size).toBe(0);
+        expect(journal.has("any")).toBe(false);
+
+        // Recording to missing file creates parent and file
+        expect(journal.record({ id: "evt-new" })).toBe(true);
+        expect(journal.has("evt-new")).toBe(true);
+
+        const inMemory = new OkxWebhookJournal();
+        expect(inMemory.size).toBe(0);
+        expect(inMemory.record({ id: "evt-mem" })).toBe(true);
+        expect(inMemory.has("evt-mem")).toBe(true);
+      });
+
+      it("integrates with OkxGateway to verify signatures and deduplicate redelivered webhooks", () => {
+        const dir = tempDir();
+        const secret = "test-webhook-hmac-secret";
+        const gateway = new OkxGateway({
+          ledgerFile: join(dir, "tasks.json"),
+          webhookSecret: secret,
+        });
+        const journal = new OkxWebhookJournal(join(dir, "journal.json"));
+
+        const eventId = "evt-hmac-dedup-100";
+        const ts = Date.now().toString();
+        const rawBody = JSON.stringify({
+          id: eventId,
+          type: "task_accepted",
+          data: { taskId: "task-test-456" },
+        });
+        const sig = createHmac("sha256", secret).update(`${ts}${rawBody}`).digest("hex");
+        const headers = {
+          "x-okx-signature": sig,
+          "x-okx-timestamp": ts,
+        };
+
+        // First delivery: valid signature, not in journal
+        const event1 = gateway.handleWebhook(rawBody, headers, { requireSecret: true });
+        expect(event1.id).toBe(eventId);
+        expect(journal.has(event1.id)).toBe(false);
+
+        // Record in journal
+        const recorded = journal.record(event1);
+        expect(recorded).toBe(true);
+        expect(journal.has(eventId)).toBe(true);
+
+        // Second delivery (redelivery of identical event): signature passes, but journal detects duplicate
+        const event2 = gateway.handleWebhook(rawBody, headers, { requireSecret: true });
+        expect(event2.id).toBe(eventId);
+        expect(journal.has(event2.id)).toBe(true);
+        const secondRecord = journal.record(event2);
+        expect(secondRecord).toBe(false); // suppressed!
+
+        // Invalid signature throws
+        const badHeaders = {
+          "x-okx-signature": "0xbad_signature",
+          "x-okx-timestamp": ts,
+        };
+        expect(() => gateway.handleWebhook(rawBody, badHeaders, { requireSecret: true })).toThrow(
+          "Invalid webhook signature",
+        );
+      });
     });
   });
 });

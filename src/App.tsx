@@ -28,6 +28,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { LocalVmWorkspace } from "@/components/LocalVmWorkspace";
 import { TeamMapPage } from "@/components/TeamMapPage";
+import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { setLocale } from "@/lib/i18n";
 import { shouldOpenKeyboardShortcuts } from "@/lib/keyboard-shortcuts";
 
@@ -77,7 +78,7 @@ function Shell() {
   // the panel hands off to this and back)
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const previousViewRef = useRef(state.activeView);
-  const calendarOriginRef = useRef<"chat" | "team-map">("chat");
+  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator">("chat");
   const group = state.groups.find((g) => g.id === state.selectedId);
   const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
   const calendarFocus = state.activeView === "routines";
@@ -181,6 +182,14 @@ function Shell() {
       dispatch({ type: "showTeamMap" });
       return;
     }
+    if (calendarOriginRef.current === "okx-bloomberg") {
+      dispatch({ type: "showBloomberg" });
+      return;
+    }
+    if (calendarOriginRef.current === "okx-evaluator") {
+      dispatch({ type: "showEvaluator" });
+      return;
+    }
     dispatch({ type: "select", id: state.selectedId });
   }, [dispatch, state.selectedId]);
   const openCalendarRoom = useCallback((id: string) => {
@@ -261,6 +270,10 @@ function Shell() {
         <TeamMapPage />
       ) : state.activeView === "routines" ? (
         <RoutinesPage onBack={closeCalendar} onOpenRoom={openCalendarRoom} />
+      ) : state.activeView === "okx-bloomberg" ? (
+        <BloombergView />
+      ) : state.activeView === "okx-evaluator" ? (
+        <EvaluatorView />
       ) : !remoteClient && localVmWorkspaceBotId ? (
         <LocalVmWorkspace
           primaryBotId={localVmWorkspaceBotId}
@@ -307,6 +320,19 @@ function Shell() {
       {state.appSettingsOpen && <SettingsModal />}
       {state.pluginsOpen && <PluginsPanel />}
       {state.newBotOpen && <NewBotDialog />}
+      {state.okxSettingsOpen && (
+        <OkxSettingsModal
+          open={state.okxSettingsOpen}
+          onClose={() => dispatch({ type: "toggleOkxSettings", open: false })}
+          onSave={async (settings) => {
+            await fetch("/api/okx/settings", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(settings),
+            }).catch(() => {});
+          }}
+        />
+      )}
       {state.shortcutsOpen && (
         <KeyboardShortcutsModal
           open={state.shortcutsOpen}

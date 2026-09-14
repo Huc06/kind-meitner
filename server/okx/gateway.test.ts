@@ -295,6 +295,167 @@ describe("OKX Gateway & Identity Bridge", () => {
       expect(payment.success).toBe(true);
       expect(payment.txHash).toContain("0x9999");
     });
+
+    it("executes agentAccept and parses transaction hash correctly", async () => {
+      const executed: string[] = [];
+      const runner = async (cmd: string, args: string[]) => {
+        executed.push(`${cmd} ${args.join(" ")}`);
+        return {
+          exitCode: 0,
+          stdout: "Agent task accepted tx: 0x1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffff",
+          stderr: "",
+        };
+      };
+
+      const signer = new OkxCliSigner("onchainos", runner);
+      const res = await signer.agentAccept("task-accept-1");
+      expect(res.success).toBe(true);
+      expect(res.txHash).toBe("0x1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffff");
+      expect(executed[0]).toBe("onchainos agent accept --task-id task-accept-1");
+    });
+
+    it("executes agentReject with reason and parses transaction hash correctly", async () => {
+      const executed: string[] = [];
+      const runner = async (cmd: string, args: string[]) => {
+        executed.push(`${cmd} ${args.join(" ")}`);
+        return {
+          exitCode: 0,
+          stdout: "Agent task rejected tx=0x2222333344445555666677778888999900001111aaaabbbbccccddddeeeeffff",
+          stderr: "",
+        };
+      };
+
+      const signer = new OkxCliSigner("onchainos", runner);
+      const res = await signer.agentReject("task-reject-1", "BUILD FAILED: SyntaxError");
+      expect(res.success).toBe(true);
+      expect(res.txHash).toBe("0x2222333344445555666677778888999900001111aaaabbbbccccddddeeeeffff");
+      expect(executed[0]).toBe("onchainos agent reject --task-id task-reject-1 --reason BUILD FAILED: SyntaxError");
+    });
+
+    it("executes evaluatorClaim and parses txHash and claimed reward amount", async () => {
+      // Test 1: Plain text CLI output
+      const runnerText = async (cmd: string, args: string[]) => {
+        expect(cmd).toBe("onchainos");
+        expect(args).toEqual(["evaluator", "claim", "--dispute-id", "disp-456"]);
+        return {
+          exitCode: 0,
+          stdout: "Arbitration fee claimed tx: 0x3333444455556666777788889999000011112222aaaabbbbccccddddeeeeffff reward: 12.5 USDT",
+          stderr: "",
+        };
+      };
+      const signerText = new OkxCliSigner("onchainos", runnerText);
+      const resText = await signerText.evaluatorClaim("disp-456");
+      expect(resText.success).toBe(true);
+      expect(resText.txHash).toBe("0x3333444455556666777788889999000011112222aaaabbbbccccddddeeeeffff");
+      expect(resText.amount).toBe(12.5);
+
+      // Test 2: JSON CLI output
+      const runnerJson = async () => ({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          txHash: "0x4444555566667777888899990000111122223333aaaabbbbccccddddeeeeffff",
+          amount: 25.0,
+        }),
+        stderr: "",
+      });
+      const signerJson = new OkxCliSigner("onchainos", runnerJson);
+      const resJson = await signerJson.evaluatorClaim("disp-789");
+      expect(resJson.success).toBe(true);
+      expect(resJson.txHash).toBe("0x4444555566667777888899990000111122223333aaaabbbbccccddddeeeeffff");
+      expect(resJson.amount).toBe(25.0);
+    });
+
+    it("executes walletBalance and parses OKB and USDT balances correctly", async () => {
+      // Test 1: JSON balances
+      const runnerJson = async (cmd: string, args: string[]) => {
+        expect(cmd).toBe("onchainos");
+        expect(args).toEqual(["wallet", "balance", "--address", "0x0123456789012345678901234567890123456789"]);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({ okb: 0.15, usdt: 250.75 }),
+          stderr: "",
+        };
+      };
+      const signerJson = new OkxCliSigner("onchainos", runnerJson);
+      const balJson = await signerJson.walletBalance("0x0123456789012345678901234567890123456789");
+      expect(balJson.okb).toBe(0.15);
+      expect(balJson.usdt).toBe(250.75);
+
+      // Test 2: Plain text balances without explicit address
+      const runnerText = async (cmd: string, args: string[]) => {
+        expect(cmd).toBe("onchainos");
+        expect(args).toEqual(["wallet", "balance"]);
+        return {
+          exitCode: 0,
+          stdout: "OKB: 1.25\nUSDT: 500.00",
+          stderr: "",
+        };
+      };
+      const signerText = new OkxCliSigner("onchainos", runnerText);
+      const balText = await signerText.walletBalance();
+      expect(balText.okb).toBe(1.25);
+      expect(balText.usdt).toBe(500.0);
+    });
+
+    it("strictly throws errors when CLI fails without generating fake mock UUID fallbacks", async () => {
+      // 1. agentPayment throws when CLI exits with non-zero code
+      const failingRunner = async () => ({
+        exitCode: 1,
+        stdout: "",
+        stderr: "Insufficient funds in signer account",
+      });
+      const failingSigner = new OkxCliSigner("onchainos", failingRunner);
+      await expect(failingSigner.agentPayment("inv-err", 50)).rejects.toThrow(
+        "Payment for invoice inv-err failed: Insufficient funds in signer account",
+      );
+
+      // 2. agentPayment throws when stdout contains no valid tx hash (no silent randomUUID fallback!)
+      const noHashRunner = async () => ({
+        exitCode: 0,
+        stdout: "Payment attempted but no transaction hash emitted",
+        stderr: "",
+      });
+      const noHashSigner = new OkxCliSigner("onchainos", noHashRunner);
+      await expect(noHashSigner.agentPayment("inv-nohash", 50)).rejects.toThrow(
+        "no valid transaction hash found in CLI output",
+      );
+
+      // 3. agentCreate throws on non-zero exit code without 0x000 fallback
+      await expect(failingSigner.agentCreate("AgentFail", "Desc")).rejects.toThrow(
+        "Failed to create agent: Insufficient funds in signer account",
+      );
+
+      // 4. agentCreate throws when stdout cannot be parsed into agentId and address
+      const unparseableRunner = async () => ({
+        exitCode: 0,
+        stdout: "Unformatted unexpected garbage output",
+        stderr: "",
+      });
+      const unparseableSigner = new OkxCliSigner("onchainos", unparseableRunner);
+      await expect(unparseableSigner.agentCreate("AgentUnparseable", "Desc")).rejects.toThrow(
+        "could not parse agentId or address",
+      );
+
+      // 5. agentAccept throws on non-zero exit code
+      await expect(failingSigner.agentAccept("task-fail")).rejects.toThrow(
+        "Failed to accept agent task task-fail",
+      );
+
+      // 6. agentReject throws on non-zero exit code
+      await expect(failingSigner.agentReject("task-fail", "Reason")).rejects.toThrow(
+        "Failed to reject agent task task-fail",
+      );
+
+      // 7. evaluatorClaim throws on non-zero exit code
+      await expect(failingSigner.evaluatorClaim("disp-fail")).rejects.toThrow(
+        "Failed to claim evaluator fee for dispute disp-fail",
+      );
+
+      // 8. walletBalance throws on non-zero exit code
+      await expect(failingSigner.walletBalance()).rejects.toThrow(
+        "Failed to fetch wallet balance",
+      );
+    });
   });
 
   describe("Gateway Client & Webhooks", () => {
@@ -478,6 +639,44 @@ describe("OKX Gateway & Identity Bridge", () => {
       });
       expect(dispRes.success).toBe(true);
       expect(dispRes.txHash).toContain("0x88887777");
+    });
+
+    it("emits domain events and records delivery metadata via EventEmitter", () => {
+      const gateway = new OkxGateway();
+      gateway.ledger.recordTask({
+        id: "task-evt-1",
+        title: "Event Test",
+        spec: "Spec",
+        status: "in_progress",
+        createdAt: 1000,
+        updatedAt: 1000,
+      });
+
+      const eventsReceived: any[] = [];
+      gateway.on("delivery_submitted", (evt) => {
+        eventsReceived.push(evt);
+      });
+
+      const webhookTs = 1789365123000;
+      gateway.handleWebhook(
+        JSON.stringify({
+          type: "delivery_submitted",
+          timestamp: webhookTs,
+          data: {
+            taskId: "task-evt-1",
+            deliverable: "https://github.com/org/repo/pull/1",
+          },
+        }),
+      );
+
+      expect(eventsReceived).toHaveLength(1);
+      expect(eventsReceived[0].type).toBe("delivery_submitted");
+      expect(eventsReceived[0].data.taskId).toBe("task-evt-1");
+
+      const task = gateway.ledger.getTask("task-evt-1");
+      expect(task?.status).toBe("delivered");
+      expect(task?.deliverable).toBe("https://github.com/org/repo/pull/1");
+      expect(task?.metadata?.deliveredAt).toBe(webhookTs);
     });
   });
 });

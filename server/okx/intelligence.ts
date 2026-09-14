@@ -21,7 +21,119 @@ export interface AspProfile {
   recentVolume7d: number;
   trendingRank?: number;
   trustTier: TrustTier;
+  buyerVolumes?: Record<string, number>;
+  hhiScore?: number;
   updatedAt: number;
+}
+
+export interface Eip3009PaymentHeaders {
+  from: string;
+  signature: string;
+  nonce: string;
+  validBefore: number;
+  validAfter?: number;
+}
+
+export interface Eip3009VerificationResult {
+  valid: boolean;
+  status?: 400 | 402;
+  error?: string;
+  payment?: Eip3009PaymentHeaders;
+}
+
+export interface McpJsonRpcRequest {
+  jsonrpc: "2.0";
+  id?: string | number | null;
+  method: string;
+  params?: Record<string, unknown>;
+}
+
+export interface McpJsonRpcResponse {
+  jsonrpc: "2.0";
+  id: string | number | null;
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
+}
+
+/**
+ * Validates EIP-3009 gasless micro-payment authorization headers.
+ * Requirements:
+ * - Missing from/signature/nonce/validBefore -> 402 Payment Required
+ * - Invalid from (not 0x + 40 hex chars) -> 400 Bad Request
+ * - Invalid signature (not 0x hex, length < 130) -> 400 Bad Request
+ * - Invalid validBefore (not a number) -> 400 Bad Request
+ * - Expired (validBefore <= nowSec) -> 400 Bad Request
+ * - Not yet valid (validAfter > nowSec) -> 400 Bad Request
+ */
+export function verifyEip3009Payment(
+  headers: Record<string, string | string[] | undefined>,
+  options: { nowSec?: number; expectedFee?: number } = {},
+): Eip3009VerificationResult {
+  const get = (key: string) => {
+    const v = headers[key] ?? headers[key.toLowerCase()];
+    return Array.isArray(v) ? v[0] : v;
+  };
+
+  const from = get("x-payment-from");
+  const signature = get("x-payment-signature");
+  const nonce = get("x-payment-nonce");
+  const validBeforeStr = get("x-payment-valid-before");
+  const validAfterStr = get("x-payment-valid-after");
+
+  if (!from || !signature || !nonce || !validBeforeStr) {
+    return {
+      valid: false,
+      status: 402,
+      error: "Payment required: EIP-3009 transfer authorization headers missing",
+    };
+  }
+
+  if (!/^0x[0-9a-fA-F]{40}$/.test(from)) {
+    return { valid: false, status: 400, error: "Invalid x-payment-from address format" };
+  }
+
+  if (!/^0x[0-9a-fA-F]+$/.test(signature) || signature.length < 130) {
+    return { valid: false, status: 400, error: "Invalid x-payment-signature format" };
+  }
+
+  const validBefore = Number.parseInt(validBeforeStr, 10);
+  if (Number.isNaN(validBefore)) {
+    return { valid: false, status: 400, error: "Invalid x-payment-valid-before timestamp" };
+  }
+
+  const nowSec = options.nowSec ?? Math.floor(Date.now() / 1000);
+  if (validBefore <= nowSec) {
+    return { valid: false, status: 400, error: "Payment authorization has expired (validBefore <= now)" };
+  }
+
+  let validAfter: number | undefined;
+  if (validAfterStr) {
+    validAfter = Number.parseInt(validAfterStr, 10);
+    if (!Number.isNaN(validAfter) && validAfter > nowSec) {
+      return { valid: false, status: 400, error: "Payment authorization not yet valid (validAfter > now)" };
+    }
+  }
+
+  return {
+    valid: true,
+    payment: { from, signature, nonce, validBefore, validAfter },
+  };
+}
+
+/**
+ * Calculates Herfindahl-Hirschman Index (HHI) for counterparty concentration.
+ * Formula: sum of squared percentage market shares. Range: [0, 10000].
+ * HHI > 6000 flags excessive wash-trading or single counterparty dominance.
+ */
+export function calculateHhi(buyerVolumes: Record<string, number>): number {
+  const total = Object.values(buyerVolumes).reduce((s, v) => s + v, 0);
+  if (total <= 0) return 0;
+  let hhi = 0;
+  for (const vol of Object.values(buyerVolumes)) {
+    const share = (vol / total) * 100;
+    hhi += share * share;
+  }
+  return Math.round(hhi);
 }
 
 export interface CategoryBenchmark {
@@ -75,6 +187,7 @@ export class OkxMarketplaceIntelligence {
   private readonly queryFeeUsdt: number;
   private readonly asps = new Map<string, AspProfile>();
   private readonly queryUsage: QueryUsageRecord[] = [];
+  private readonly redeemedNonces = new Set<string>();
 
   constructor(options: MarketplaceIntelligenceOptions = {}) {
     this.storageFile = options.storageFile;
@@ -94,6 +207,11 @@ export class OkxMarketplaceIntelligence {
             if (q && typeof q.id === "string") this.queryUsage.push(q);
           }
         }
+        if (Array.isArray(parsed.redeemedNonces)) {
+          for (const n of parsed.redeemedNonces) {
+            if (typeof n === "string") this.redeemedNonces.add(n);
+          }
+        }
       } catch {
         // Fallback to fresh store
       }
@@ -110,12 +228,24 @@ export class OkxMarketplaceIntelligence {
       {
         asps: [...this.asps.values()],
         queryUsage: this.queryUsage,
+        redeemedNonces: [...this.redeemedNonces],
         updatedAt: Date.now(),
       },
       null,
       2,
     );
     writeFileAtomic(this.storageFile, data, { mode: 0o600 });
+  }
+
+  isNonceRedeemed(nonce: string): boolean {
+    return this.redeemedNonces.has(nonce);
+  }
+
+  redeemNonce(nonce: string): boolean {
+    if (this.redeemedNonces.has(nonce)) return false;
+    this.redeemedNonces.add(nonce);
+    this.save();
+    return true;
   }
 
   /**
@@ -129,8 +259,13 @@ export class OkxMarketplaceIntelligence {
       const disputeRate = Math.min(1, Math.max(0, Math.round((p.disputesCount / total) * 1000) / 1000));
       const reputationScore = Math.min(100, Math.max(0, p.reputationScore));
 
+      let hhiScore = p.hhiScore;
+      if (p.buyerVolumes) {
+        hhiScore = calculateHhi(p.buyerVolumes);
+      }
+
       let trustTier: TrustTier = "neutral";
-      if (rejectRate > 0.25 || disputeRate > 0.15) {
+      if (rejectRate > 0.25 || disputeRate > 0.15 || (hhiScore !== undefined && hhiScore > 6000)) {
         trustTier = "high_risk";
       } else if (
         reputationScore >= 90 &&
@@ -153,6 +288,7 @@ export class OkxMarketplaceIntelligence {
         rejectRate,
         disputeRate,
         trustTier,
+        hhiScore,
         updatedAt: Date.now(),
       });
     }

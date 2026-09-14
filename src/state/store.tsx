@@ -652,7 +652,9 @@ export interface AppState {
   config: ConfigStatus | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines";
+  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator";
+  okxSettingsOpen?: boolean;
+  activeDisputesCount?: number;
   routines: Routine[];
   routineRuns: RoutineRun[];
   routinesLoadState: "loading" | "ready" | "error";
@@ -807,6 +809,10 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string }
   | { type: "showTeamMap" }
   | { type: "showChat" }
+  | { type: "showBloomberg" }
+  | { type: "showEvaluator" }
+  | { type: "toggleOkxSettings"; open?: boolean }
+  | { type: "setActiveDisputesCount"; count: number }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[] }
   | { type: "routinesLoadFailed" }
   | { type: "routinePatched"; routine: Routine }
@@ -1159,6 +1165,38 @@ export function reducer(state: AppState, action: Action): AppState {
         inspectorOpen: false,
         appSettingsOpen: false,
         pluginsOpen: false,
+      };
+    case "showBloomberg":
+      return {
+        ...state,
+        activeView: "okx-bloomberg",
+        settingsOpen: false,
+        computerOpen: false,
+        inspectorOpen: false,
+        appSettingsOpen: false,
+        pluginsOpen: false,
+        okxSettingsOpen: false,
+      };
+    case "showEvaluator":
+      return {
+        ...state,
+        activeView: "okx-evaluator",
+        settingsOpen: false,
+        computerOpen: false,
+        inspectorOpen: false,
+        appSettingsOpen: false,
+        pluginsOpen: false,
+        okxSettingsOpen: false,
+      };
+    case "toggleOkxSettings":
+      return {
+        ...state,
+        okxSettingsOpen: action.open ?? !state.okxSettingsOpen,
+      };
+    case "setActiveDisputesCount":
+      return {
+        ...state,
+        activeDisputesCount: action.count,
       };
     case "routinesHydrated":
       return { ...state, routines: action.routines, routineRuns: trimRoutineRuns(action.runs), routinesLoadState: "ready" };
@@ -1898,6 +1936,8 @@ export const initialState: AppState = {
   webhookIngress: null,
   settingsOpen: false,
   pluginsOpen: false,
+  okxSettingsOpen: false,
+  activeDisputesCount: 0,
   pluginsSurface: "apps",
   newBotOpen: false,
   botCreationPending: false,

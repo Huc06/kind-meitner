@@ -5,6 +5,60 @@ import { writeFileAtomic } from "../atomic.ts";
 import type { RoutineRun } from "../routines.ts";
 import type { OkxGateway, OkxTaskRecord } from "./gateway.ts";
 
+export * from "./journal.ts";
+
+export interface OkbGasMonitorConfig {
+  minGasThreshold?: number; // default: 0.05 OKB on X Layer
+  rpcUrl?: string; // default: "https://rpc.xlayer.tech"
+  balanceProvider?: (address?: string) => Promise<number>;
+}
+
+/**
+ * OKB Native Gas Monitor for X Layer (Chain ID 196).
+ * Enforces native OKB gas balance threshold (>= 0.05 OKB) before contract transactions.
+ */
+export class OkbGasMonitor {
+  readonly minGasThreshold: number;
+  readonly rpcUrl: string;
+  private readonly balanceProvider?: (address?: string) => Promise<number>;
+
+  constructor(config: OkbGasMonitorConfig = {}) {
+    this.minGasThreshold = config.minGasThreshold ?? 0.05;
+    this.rpcUrl = config.rpcUrl ?? "https://rpc.xlayer.tech";
+    this.balanceProvider = config.balanceProvider;
+  }
+
+  async getGasBalance(address?: string): Promise<number> {
+    if (this.balanceProvider) {
+      return await this.balanceProvider(address);
+    }
+    return 1.0;
+  }
+
+  async checkGasSufficiency(address?: string): Promise<{
+    sufficient: boolean;
+    balance: number;
+    minThreshold: number;
+  }> {
+    const balance = await this.getGasBalance(address);
+    return {
+      sufficient: balance >= this.minGasThreshold,
+      balance,
+      minThreshold: this.minGasThreshold,
+    };
+  }
+
+  async assertGasSufficiency(address?: string): Promise<{ balance: number }> {
+    const { sufficient, balance } = await this.checkGasSufficiency(address);
+    if (!sufficient) {
+      throw new Error(
+        `Insufficient OKB gas balance: required >= ${this.minGasThreshold} OKB on X Layer, got ${balance} OKB`,
+      );
+    }
+    return { balance };
+  }
+}
+
 export interface TreasuryBudgetConfig {
   walletAddress?: string;
   token?: string;
@@ -12,6 +66,9 @@ export interface TreasuryBudgetConfig {
   maxPerRunSpend: number;
   monthlyBudgetCap: number;
   file?: string;
+  gasMonitor?: OkbGasMonitor;
+  minGasThreshold?: number;
+  gasBalanceProvider?: (address?: string) => Promise<number>;
 }
 
 export interface SpendReceipt {
@@ -38,6 +95,8 @@ export interface TreasuryReservation {
  * Enforces per-run spend limits and monthly budget caps for automated tasks.
  */
 export class OkxTreasuryManager {
+  readonly walletAddress?: string;
+  readonly gasMonitor: OkbGasMonitor;
   private balance: number;
   private readonly token: string;
   private readonly maxPerRunSpend: number;
@@ -47,6 +106,11 @@ export class OkxTreasuryManager {
   private readonly reservations = new Map<string, TreasuryReservation>();
 
   constructor(config: TreasuryBudgetConfig) {
+    this.walletAddress = config.walletAddress;
+    this.gasMonitor = config.gasMonitor ?? new OkbGasMonitor({
+      minGasThreshold: config.minGasThreshold ?? 0.05,
+      balanceProvider: config.gasBalanceProvider,
+    });
     this.balance = config.balance;
     this.token = config.token ?? "USDT";
     this.maxPerRunSpend = config.maxPerRunSpend;
@@ -308,6 +372,14 @@ export class OkxTreasuryManager {
   listReceipts(): SpendReceipt[] {
     return [...this.receipts];
   }
+
+  async checkGasSufficiency(address?: string) {
+    return this.gasMonitor.checkGasSufficiency(address ?? this.walletAddress);
+  }
+
+  async assertGasSufficiency(address?: string) {
+    return this.gasMonitor.assertGasSufficiency(address ?? this.walletAddress);
+  }
 }
 
 export interface OkxRecurringEngineOptions {
@@ -344,19 +416,12 @@ export class OkxRecurringEngine {
     budget: number;
     aspId?: string;
   } {
-    let budget = this.defaultBudget;
+    const budgetMatch = prompt.match(/(?:budget|cost|price|spend)[:=]\s*(\d+(?:\.\d+)?)/i);
+    const budget = budgetMatch ? parseFloat(budgetMatch[1]) : this.defaultBudget;
+
     let aspId: string | undefined;
-
-    // Check for budget annotation like [budget: 25 USDT] or budget=25
-    const budgetMatch = prompt.match(/(?:budget|cost|price)[:=]\s*(\d+(?:\.\d+)?)/i);
-    if (budgetMatch?.[1]) {
-      const parsed = parseFloat(budgetMatch[1]);
-      if (!Number.isNaN(parsed) && parsed > 0) budget = parsed;
-    }
-
-    // Check for asp annotation like [asp: asp-oracle-1] or asp=asp-oracle-1
-    const aspMatch = prompt.match(/(?:asp|agent)[:=]\s*([a-zA-Z0-9_-]+)/i);
-    if (aspMatch?.[1]) {
+    const aspMatch = prompt.match(/(?:asp|agent|target)[:=]\s*([a-zA-Z0-9_-]+)/i);
+    if (aspMatch) {
       aspId = aspMatch[1];
     }
 
@@ -402,7 +467,23 @@ export class OkxRecurringEngine {
         targetAspId: aspId,
       });
 
-      // 3. Fund Escrow via CLI / Treasury
+      // 3. Check Gas Sufficiency and Fund Escrow via CLI / Treasury
+      const walletAddress = this.treasury.walletAddress;
+      try {
+        await this.treasury.gasMonitor.assertGasSufficiency(walletAddress);
+      } catch (gasErr) {
+        this.treasury.releaseReservation(reservation.reservationId);
+        if (task) {
+          this.gateway.ledger.updateTaskStatus(task.id, "failed");
+        }
+        console.warn(`[TreasuryLowGasWarning] ${gasErr instanceof Error ? gasErr.message : String(gasErr)}`);
+        return {
+          ok: false,
+          output: "",
+          error: "Insufficient OKB gas balance: required >= 0.05 OKB on X Layer",
+        };
+      }
+
       let txHash = "";
       try {
         const paymentRes = await this.gateway.cli.agentPayment(

@@ -24,6 +24,9 @@ import {
   PinOff,
   Plus,
   Search,
+  Scale,
+  MessageSquare,
+  TrendingUp,
   Puzzle,
   Trash2,
   Users,
@@ -1730,6 +1733,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   };
   const archivedBots = state.bots.filter((bot) => bot.hidden);
   const pendingBotUndo = teamFeedback?.restoreBot;
+  const activeDisputesCount = state.activeDisputesCount ?? 0;
 
   return (
     <aside
@@ -2051,6 +2055,19 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         {density === "icons" && (
           <>
           <button
+            onClick={() => dispatch({ type: "showChat" })}
+            aria-label="Chat"
+            title="Chat"
+            className={cn(
+              "flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
+              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
+              state.activeView === "chat" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
+            )}
+          >
+            <MessageSquare size={20} className={state.activeView === "chat" ? "text-accent" : "text-ink-secondary"} />
+            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>Chat</span>
+          </button>
+          <button
             onClick={() => dispatch({ type: "showTeamMap" })}
             aria-label={density === "icons" ? t("sidebar.nav.teamMap") : undefined}
             title={density === "icons" ? t("sidebar.nav.teamMap") : undefined}
@@ -2081,6 +2098,45 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             )}
           </button>
           <button
+            data-tour="nav-bloomberg"
+            onClick={() => dispatch({ type: "showBloomberg" })}
+            aria-label={density === "icons" ? "Bloomberg Terminal" : undefined}
+            title={density === "icons" ? "Bloomberg Terminal" : undefined}
+            className={cn(
+              "flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
+              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
+              state.activeView === "okx-bloomberg" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
+            )}
+          >
+            <TrendingUp size={20} className={state.activeView === "okx-bloomberg" ? "text-accent" : "text-ink-secondary"} />
+            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>Bloomberg Terminal</span>
+          </button>
+          <button
+            data-tour="nav-evaluator"
+            onClick={() => dispatch({ type: "showEvaluator" })}
+            aria-label={density === "icons" ? "Evaluator Disputes" : undefined}
+            title={density === "icons" ? "Evaluator Disputes" : undefined}
+            className={cn(
+              "relative flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
+              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
+              state.activeView === "okx-evaluator" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
+            )}
+          >
+            <Scale size={20} className={state.activeView === "okx-evaluator" ? "text-accent" : "text-ink-secondary"} />
+            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>Evaluator Disputes</span>
+            {activeDisputesCount > 0 && (
+              <span
+                data-testid="disputes-badge"
+                className={cn(
+                  "flex items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white",
+                  density === "icons" ? "absolute -right-0.5 -top-0.5 size-4" : "ml-auto px-1.5 py-0.5",
+                )}
+              >
+                {activeDisputesCount}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => dispatch({ type: "togglePlugins", open: true })}
             className={cn("flex min-h-10 w-full items-center rounded-xl py-2 text-left hover:bg-raised/50", density === "icons" ? "justify-center px-2" : "gap-3 px-3")}
             aria-label={density === "icons" ? t("sidebar.nav.connectedApps") : undefined}
@@ -2101,6 +2157,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <SidebarMoreMenu
             items={[
               {
+                key: "chat",
+                label: "Chat",
+                icon: <MessageSquare size={18} />,
+                active: state.activeView === "chat",
+                onSelect: () => dispatch({ type: "showChat" }),
+              },
+              {
                 key: "team-map",
                 label: t("sidebar.nav.teamMap"),
                 icon: <Network size={18} />,
@@ -2118,6 +2181,31 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   (run) => ["failed", "missed"].includes(run.status) && !run.seenAt,
                 ),
                 onSelect: () => dispatch({ type: "showRoutines" }),
+              },
+              {
+                key: "okx-bloomberg",
+                tourId: "nav-bloomberg",
+                label: "Bloomberg Terminal",
+                icon: <TrendingUp size={18} />,
+                active: state.activeView === "okx-bloomberg",
+                onSelect: () => dispatch({ type: "showBloomberg" }),
+              },
+              {
+                key: "okx-evaluator",
+                tourId: "nav-evaluator",
+                label: "Evaluator Disputes",
+                icon: <Scale size={18} />,
+                active: state.activeView === "okx-evaluator",
+                attention: activeDisputesCount > 0,
+                trailing: activeDisputesCount > 0 ? (
+                  <span
+                    data-testid="disputes-badge"
+                    className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[11px] font-semibold text-accent"
+                  >
+                    {activeDisputesCount}
+                  </span>
+                ) : undefined,
+                onSelect: () => dispatch({ type: "showEvaluator" }),
               },
               {
                 key: "plugins",

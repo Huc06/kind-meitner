@@ -324,6 +324,9 @@ import * as vps from "./vps-computer.ts";
 import { RoutineManager, type RoutineRun, type RoutineRunOn, type RoutineRunTrigger } from "./routines.ts";
 import { OkxGateway } from "./okx/gateway.ts";
 import { OkxRecurringEngine, OkxTreasuryManager } from "./okx/scheduler.ts";
+import { OkxWebhookJournal } from "./okx/journal.ts";
+import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
+import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
 import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
 import { BrowserRuntime } from "./browser-runtime.ts";
@@ -6071,8 +6074,10 @@ async function stopBotForEmergencyApprovalDowngrade(botId: string): Promise<void
 const commsBus: CommsBus = { store, broadcast, threadSlotFree: (botId) => !botAtThreadCapacity(botId) };
 _loadPending();
 
+const okxWebhookJournal = new OkxWebhookJournal(join(DATA_DIR, "okx-webhook-journal.json"));
 const okxGateway = new OkxGateway({
   ledgerFile: join(DATA_DIR, "okx-tasks.json"),
+  webhookSecret: process.env.OKX_WEBHOOK_SECRET,
 });
 const okxTreasury = new OkxTreasuryManager({
   balance: 200,
@@ -6084,6 +6089,26 @@ const okxRecurringEngine = new OkxRecurringEngine({
   gateway: okxGateway,
   treasury: okxTreasury,
 });
+const okxIntelligence = new OkxMarketplaceIntelligence({
+  storageFile: join(DATA_DIR, "okx-intelligence.json"),
+  queryFeeUsdt: 0.05,
+});
+const okxEvaluator = new OkxDisputeEvaluator({
+  storageFile: join(DATA_DIR, "okx-evaluator.json"),
+});
+const okxMcpRateLimits = new Map<string, number[]>();
+function checkOkxMcpRateLimit(caller: string, limit = 60, windowMs = 60_000): { allowed: boolean; retryAfter: number } {
+  const now = Date.now();
+  const timestamps = (okxMcpRateLimits.get(caller) ?? []).filter((t) => now - t < windowMs);
+  if (timestamps.length >= limit) {
+    const oldest = timestamps[0];
+    const retryAfter = Math.ceil((oldest + windowMs - now) / 1000);
+    return { allowed: false, retryAfter: Math.max(1, retryAfter) };
+  }
+  timestamps.push(now);
+  okxMcpRateLimits.set(caller, timestamps);
+  return { allowed: true, retryAfter: 0 };
+}
 
 routines = new RoutineManager({
   emit: broadcast,
@@ -6146,8 +6171,34 @@ routines = new RoutineManager({
   },
   okxTaskState: () => "ready",
   startOkxTask: async (run, prompt, onDispatchError) => {
+    const startTime = Date.now();
+    const traceId = randomUUID();
     const res = await okxRecurringEngine.executeScheduledRun(run, prompt);
-    if (!res.ok) onDispatchError(res.error ?? "OKX execution failed");
+    const timeToSessionMs = Date.now() - startTime;
+    if (res.ok) {
+      if (run.threadId) {
+        store.appendMessage(run.threadId, {
+          role: "bot",
+          kind: "activity",
+          text: res.output,
+          tool: {
+            name: "okx_task_dispatched",
+            ok: true,
+            summary: `OKX Task ${res.task?.id ?? ""}`,
+            input: JSON.stringify({ prompt, runId: run.id, traceId }),
+            output: JSON.stringify({
+              taskId: res.task?.id,
+              txHash: res.task?.txHash,
+              timeToSessionMs,
+              status: "in_progress",
+            }),
+          },
+        });
+      }
+      routines?.finishOkxRun(run.id, res.output);
+    } else {
+      onDispatchError(res.error ?? "OKX execution failed");
+    }
   },
   interruptTurn: async (botId, threadId, runOn) => {
     const bot = botForThread(botId, threadId);
@@ -9485,6 +9536,34 @@ function readBody(req: IncomingMessage, limit = 1_000_000): Promise<any> {
   });
 }
 
+function readRawBody(req: IncomingMessage, limit = 1_000_000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    let bytes = 0;
+    let done = false;
+    const fail = (status: number, msg: string) => {
+      if (done) return;
+      done = true;
+      const err = Object.assign(new Error(msg), { status });
+      reject(err);
+    };
+    req.on("data", (c) => {
+      if (done) return;
+      bytes += typeof c === "string" ? Buffer.byteLength(c) : c.length;
+      if (bytes > limit) {
+        return fail(413, "body too large");
+      }
+      data += c;
+    });
+    req.on("end", () => {
+      if (done) return;
+      done = true;
+      resolve(data);
+    });
+    req.on("error", (e) => fail(400, e instanceof Error ? e.message : String(e)));
+  });
+}
+
 // Loopback-only enforcement: the harness runs on 127.0.0.1 but accepts
 // requests from any loopback connection and any web page that DNS-rebinds
 // onto it. Reject non-loopback Hosts outright (defeats rebinding) and
@@ -9676,6 +9755,163 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     // name and icon before anyone has a session, and it holds nothing secret.
     if (method === "GET" && path === "/api/brand" && !gate.auth) {
       return json(res, 200, loadBrand());
+    }
+    // Pre-Auth OKX Webhook Ingress
+    if (method === "POST" && path === "/api/okx/webhook") {
+      try {
+        const rawBody = await readRawBody(req);
+        if (process.env.OKX_WEBHOOK_SECRET && !(okxGateway as any).webhookSecret) {
+          (okxGateway as any).webhookSecret = process.env.OKX_WEBHOOK_SECRET;
+        }
+        const flatHeaders: Record<string, string | undefined> = {};
+        for (const [k, v] of Object.entries(req.headers)) {
+          flatHeaders[k] = Array.isArray(v) ? v[0] : v;
+        }
+        const event = okxGateway.handleWebhook(rawBody, flatHeaders, { requireSecret: true });
+        if (okxWebhookJournal.has(event.id)) {
+          return json(res, 200, { ok: true, status: "duplicate", eventId: event.id });
+        }
+        okxWebhookJournal.record(event);
+        if (typeof (okxGateway as any).emit === "function") {
+          (okxGateway as any).emit("webhook", event);
+        }
+        return json(res, 200, { ok: true, status: "ok", eventId: event.id });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const status =
+          (err as any).status ??
+          (message.includes("Invalid webhook signature") || message.includes("Webhook secret")
+            ? 401
+            : message.includes("Invalid JSON")
+              ? 400
+              : 500);
+        return json(res, status, { error: message });
+      }
+    }
+    // Pre-Auth A2MCP Tool Server Ingress (EIP-3009 Gasless Micro-Payments & Zero-Slow-UX Tracing)
+    if (method === "POST" && path === "/api/okx/mcp") {
+      const startTime = Date.now();
+      const connectId =
+        (req.headers["x-connect-id"] as string) ||
+        randomUUID();
+      res.setHeader("x-connect-id", connectId);
+
+      const callerKey = (req.headers["x-payment-from"] as string) || (req.socket?.remoteAddress ?? "unknown");
+      const rateCheck = checkOkxMcpRateLimit(callerKey);
+      if (!rateCheck.allowed || req.headers["x-force-rate-limit"] === "true") {
+        res.setHeader("retry-after", String(rateCheck.retryAfter || 10));
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        return json(res, 429, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32000, message: "Too many requests: Rate limit exceeded" },
+        });
+      }
+
+      if (req.headers["x-force-timeout"] === "true") {
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        return json(res, 504, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32000, message: "Gateway Timeout: RPC exceeded 90s limit" },
+        });
+      }
+
+      try {
+        const rawBody = await readRawBody(req);
+        let rpc: any;
+        try {
+          rpc = JSON.parse(rawBody);
+        } catch {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 400, {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32700, message: "Parse error: Invalid JSON" },
+          });
+        }
+
+        const flatHeaders: Record<string, string | undefined> = {};
+        for (const [k, v] of Object.entries(req.headers)) {
+          flatHeaders[k] = Array.isArray(v) ? v[0] : v;
+        }
+
+        // Handle MCP discovery methods (free)
+        if (rpc.method === "tools/list") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, {
+            jsonrpc: "2.0",
+            id: rpc.id ?? null,
+            result: { tools: okxIntelligence.getToolDeclarations() },
+          });
+        }
+
+        if (rpc.method === "ping" || rpc.method === "initialize") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, {
+            jsonrpc: "2.0",
+            id: rpc.id ?? null,
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: { tools: {} },
+              serverInfo: { name: "okx-intelligence", version: "1.0.0" },
+            },
+          });
+        }
+
+        // Handle billable tools/call
+        if (rpc.method === "tools/call") {
+          const payCheck = verifyEip3009Payment(flatHeaders);
+          if (!payCheck.valid) {
+            res.setHeader("x-time-to-session", String(Date.now() - startTime));
+            return json(res, payCheck.status ?? 402, {
+              jsonrpc: "2.0",
+              id: rpc.id ?? null,
+              error: { code: -32002, message: payCheck.error },
+              requiredFee: 0.05,
+              token: "USDT",
+            });
+          }
+
+          const nonce = payCheck.payment!.nonce;
+          if (!okxIntelligence.redeemNonce(nonce)) {
+            res.setHeader("x-time-to-session", String(Date.now() - startTime));
+            return json(res, 400, {
+              jsonrpc: "2.0",
+              id: rpc.id ?? null,
+              error: { code: -32602, message: "Payment nonce has already been redeemed" },
+            });
+          }
+
+          const toolName = rpc.params?.name;
+          const toolArgs = (rpc.params?.arguments as Record<string, unknown>) ?? {};
+          const result = await okxIntelligence.handleMcpToolCall(toolName, toolArgs, payCheck.payment!.from);
+
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, {
+            jsonrpc: "2.0",
+            id: rpc.id ?? null,
+            result,
+          });
+        }
+
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        return json(res, 400, {
+          jsonrpc: "2.0",
+          id: rpc.id ?? null,
+          error: { code: -32601, message: `Method not found: ${rpc.method}` },
+        });
+      } catch (err) {
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        const message = err instanceof Error ? err.message : String(err);
+        const isTimeout = message.includes("timeout") || message.includes("504") || (err as any).status === 504;
+        const statusCode = isTimeout ? 504 : 500;
+        return json(res, statusCode, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: isTimeout ? -32000 : -32603, message },
+        });
+      }
     }
     if (!gate.auth) return json(res, gate.status, { error: gate.error });
     const auth = gate.auth;
@@ -15285,6 +15521,69 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       } finally {
         mcpConfigBusy = false;
       }
+    }
+
+    // ── OKX Subsystem REST APIs ──
+    if (method === "GET" && path === "/api/okx/intelligence") {
+      const overview = okxIntelligence.getMarketOverview();
+      const asps = okxIntelligence.listAsps();
+      const benchmarks = okxIntelligence.getCategoryBenchmarks();
+      return json(res, 200, { overview, asps, benchmarks });
+    }
+
+    if (method === "GET" && path === "/api/okx/disputes") {
+      const deliberations = [...((okxEvaluator as any).deliberations?.values?.() ?? [])];
+      return json(res, 200, {
+        disputes: deliberations,
+        okbStaked: okxEvaluator.getOkbStake(),
+        totalFeesEarned: okxEvaluator.getFeeRecords().reduce((acc, f) => acc + f.feeAmount, 0),
+      });
+    }
+
+    if (method === "GET" && path === "/api/okx/treasury") {
+      const reservations = [...((okxTreasury as any).reservations?.values?.() ?? [])];
+      return json(res, 200, {
+        balance: okxTreasury.getBalance(),
+        availableBalance: okxTreasury.getAvailableBalance(),
+        monthlySpent: okxTreasury.getMonthlySpend(),
+        monthlyBudgetCap: okxTreasury.getMonthlyBudgetCap(),
+        maxPerRunSpend: okxTreasury.getMaxPerRunSpend(),
+        reservations,
+      });
+    }
+
+    if (method === "POST" && path === "/api/okx/settings") {
+      const body = await readBody(req, 16384);
+      if (body && typeof body === "object") {
+        if (body.apiKey && body.secretKey && body.passphrase) {
+          (okxGateway as any).credentials = {
+            apiKey: String(body.apiKey),
+            secretKey: String(body.secretKey),
+            passphrase: String(body.passphrase),
+            baseUrl: body.baseUrl ? String(body.baseUrl) : undefined,
+          };
+        }
+        if (body.webhookSecret) {
+          (okxGateway as any).webhookSecret = String(body.webhookSecret);
+        }
+        if (typeof body.treasuryBalance === "number") {
+          okxTreasury.deposit(body.treasuryBalance);
+        }
+        return json(res, 200, { ok: true });
+      }
+      return json(res, 400, { error: "Invalid settings format" });
+    }
+
+    if (method === "GET" && path === "/api/okx/settings") {
+      const creds = okxGateway.credentials;
+      return json(res, 200, {
+        apiKey: creds?.apiKey ?? "",
+        baseUrl: creds?.baseUrl ?? "https://web3.okx.com",
+        webhookSecret: (okxGateway as any).webhookSecret ?? "",
+        treasuryBalance: okxTreasury.getBalance(),
+        maxPerRunSpend: okxTreasury.getMaxPerRunSpend(),
+        monthlyBudgetCap: okxTreasury.getMonthlyBudgetCap(),
+      });
     }
 
     // ── app config (API keys — never echoed back, booleans only) ──
