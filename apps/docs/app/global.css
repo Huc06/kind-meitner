@@ -1,0 +1,200 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --kind-meitner-bg: #ffffff;
+  --kind-meitner-raised: #f7f8f8;
+  --kind-meitner-ink: #0a0a0b;
+  --kind-meitner-muted: #5f6570;
+  --kind-meitner-line: #e5e7ea;
+  --kind-meitner-accent: #009957;
+  --kind-meitner-accent-soft: #eaf8f1;
+
+  --color-fd-background: var(--kind-meitner-bg);
+  --color-fd-foreground: var(--kind-meitner-ink);
+  --color-fd-muted: var(--kind-meitner-raised);
+  --color-fd-muted-foreground: var(--kind-meitner-muted);
+  --color-fd-border: var(--kind-meitner-line);
+  --color-fd-primary: var(--kind-meitner-accent);
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-card: var(--kind-meitner-bg);
+  --color-fd-card-foreground: var(--kind-meitner-ink);
+  --color-fd-secondary: var(--kind-meitner-raised);
+  --color-fd-secondary-foreground: var(--kind-meitner-ink);
+  --color-fd-accent: var(--kind-meitner-accent-soft);
+  --color-fd-accent-foreground: #006b3d;
+}
+
+.dark {
+  --kind-meitner-bg: #070708;
+  --kind-meitner-raised: #131315;
+  --kind-meitner-ink: #f4f4f5;
+  --kind-meitner-muted: #9a9aa4;
+  --kind-meitner-line: #232327;
+  --kind-meitner-accent: #3fae6e;
+  --kind-meitner-accent-soft: #10271a;
+
+  --color-fd-primary-foreground: #07130c;
+  --color-fd-accent-foreground: #7bd69e;
+}
+
+html {
+  scrollbar-gutter: stable;
+  background: var(--kind-meitner-bg);
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0 !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+body {
+  background:
+    radial-gradient(circle at 75% -20%, color-mix(in srgb, var(--kind-meitner-accent) 8%, transparent), transparent 32rem),
+    var(--kind-meitner-bg);
+  color: var(--kind-meitner-ink);
+  letter-spacing: -0.012em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--kind-meitner-accent) 24%, transparent);
+}
+
+.kind-meitner-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 660;
+  letter-spacing: -0.02em;
+}
+
+.kind-meitner-brand img {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 0.5rem;
+}
+
+.kind-meitner-brand-docs {
+  border-left: 1px solid var(--kind-meitner-line);
+  color: var(--kind-meitner-muted);
+  font-size: 0.78rem;
+  font-weight: 520;
+  letter-spacing: 0;
+  margin-left: 0.1rem;
+  padding-left: 0.7rem;
+}
+
+.kind-meitner-product-shot {
+  margin: 2rem 0;
+}
+
+.kind-meitner-product-shot-frame {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--kind-meitner-line) 88%, transparent);
+  border-radius: 1.25rem;
+  background: #0a0a0b;
+  box-shadow:
+    0 1px 1px color-mix(in srgb, var(--kind-meitner-ink) 5%, transparent),
+    0 22px 60px color-mix(in srgb, var(--kind-meitner-ink) 10%, transparent);
+}
+
+.kind-meitner-product-shot img {
+  display: block;
+  width: 100%;
+  max-height: 38rem;
+  object-fit: cover;
+}
+
+.kind-meitner-product-shot figcaption {
+  color: var(--kind-meitner-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin-top: 0.65rem;
+  text-align: center;
+}
+
+.kind-meitner-kicker {
+  color: var(--kind-meitner-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.kind-meitner-lede {
+  color: var(--kind-meitner-muted);
+  font-size: 1.08rem;
+  line-height: 1.75;
+  max-width: 44rem;
+}
+
+.kind-meitner-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.75rem 0;
+}
+
+.kind-meitner-stat {
+  border: 1px solid var(--kind-meitner-line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--kind-meitner-raised) 78%, transparent);
+  padding: 1rem;
+}
+
+.kind-meitner-stat strong,
+.kind-meitner-stat span {
+  display: block;
+}
+
+.kind-meitner-stat strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.kind-meitner-stat span {
+  color: var(--kind-meitner-muted);
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+
+#nd-sidebar,
+#nd-subnav {
+  background: color-mix(in srgb, var(--kind-meitner-bg) 92%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+#nd-sidebar {
+  border-right-color: var(--kind-meitner-line);
+}
+
+#nd-subnav {
+  border-bottom-color: var(--kind-meitner-line);
+}
+
+.prose :where(h2, h3, h4) {
+  letter-spacing: -0.035em;
+}
+
+.prose :where(a:not([data-card])) {
+  text-decoration-color: color-mix(in srgb, var(--kind-meitner-accent) 45%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+.prose :where(table) {
+  overflow: hidden;
+  border: 1px solid var(--kind-meitner-line);
+  border-radius: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .kind-meitner-stat-row {
+    grid-template-columns: 1fr;
+  }
+
+  .kind-meitner-product-shot-frame {
+    border-radius: 0.9rem;
+  }
+}

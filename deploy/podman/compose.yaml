@@ -1,0 +1,53 @@
+name: ${COMPOSE_PROJECT_NAME:-kind-meitner-podman}
+services:
+  kind-meitner:
+    build:
+      context: ../..
+      dockerfile: deploy/podman/Containerfile
+      args:
+        ENGINES: ${ENGINES:-}
+    image: localhost/kind-meitner-podman:${KIND_MEITNER_IMAGE_TAG:-local}
+    init: true
+    userns_mode: keep-id:uid=1001,gid=1001
+    user: "1001:1001"
+    restart: unless-stopped
+    # On Windows this is the Linux Podman machine. The app must reach the
+    # dynamically allocated, loopback-only desktop ports on that same host.
+    network_mode: host
+    volumes:
+      - ${KIND_MEITNER_DATA_ROOT:?Run setup.sh first}:${KIND_MEITNER_DATA_ROOT}
+      - ${PODMAN_SOCKET:?Run setup.sh first}:/run/kind-meitner-podman.sock
+    environment:
+      HOME: ${KIND_MEITNER_DATA_ROOT}
+      KIND_MEITNER_DATA_DIR: ${KIND_MEITNER_DATA_ROOT}/.kind-meitner
+      KIND_MEITNER_STATIC_DIR: /app/dist
+      CONTAINER_HOST: unix:///run/kind-meitner-podman.sock
+      KIND_MEITNER_PORT: ${KIND_MEITNER_PORT:-8799}
+      KIND_MEITNER_WEBHOOK_PORT: ${KIND_MEITNER_WEBHOOK_PORT:-8800}
+      KIND_MEITNER_PUBLIC_URL: ${KIND_MEITNER_PUBLIC_URL:-http://localhost:8080}
+      KIND_MEITNER_WEBHOOK_PUBLIC_URL: ${KIND_MEITNER_PUBLIC_URL:-http://localhost:8080}
+    healthcheck:
+      test: [CMD-SHELL, 'curl -fsS http://127.0.0.1:$$KIND_MEITNER_PORT/api/health | grep -q kind-meitner']
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+  caddy:
+    image: docker.io/library/caddy:2.11.4
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      kind-meitner:
+        condition: service_healthy
+    environment:
+      KIND_MEITNER_HTTP_PORT: ${KIND_MEITNER_HTTP_PORT:-8080}
+      KIND_MEITNER_PORT: ${KIND_MEITNER_PORT:-8799}
+      KIND_MEITNER_WEBHOOK_PORT: ${KIND_MEITNER_WEBHOOK_PORT:-8800}
+      KIND_MEITNER_HTTPS_HOST: ${KIND_MEITNER_HTTPS_HOST:-https-disabled.invalid}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:

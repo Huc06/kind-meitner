@@ -1,0 +1,54 @@
+---
+title: Installation
+description: Install kind-meitner on macOS, Windows, or Ubuntu.
+icon: Download
+---
+
+## Download a released build
+
+Choose your computer below. Each link always downloads the latest published build.
+
+| Platform | Recommended package | Notes |
+|---|---|---|
+| macOS Apple silicon | [Download `.dmg`](https://github.com/harrymove-ctrl/kind-meitner/releases/latest/download/kind-meitner.dmg) | Signed and notarized. Drag to Applications. |
+| macOS Intel | [Download `.dmg`](https://github.com/harrymove-ctrl/kind-meitner/releases/latest/download/kind-meitner-intel.dmg) | Signed and notarized. |
+| Windows x64 | [Download installer](https://github.com/harrymove-ctrl/kind-meitner/releases/latest/download/kind-meitner-setup.exe) | Per-user installer; Windows signing is not yet available. |
+| Ubuntu 24.04 x64 | [Download `.deb`](https://github.com/harrymove-ctrl/kind-meitner/releases/latest/download/kind-meitner-amd64.deb) · [AppImage](https://github.com/harrymove-ctrl/kind-meitner/releases/latest/download/kind-meitner.AppImage) | The `.deb` is recommended; the AppImage is portable. |
+
+<Callout type="warn" title="Windows SmartScreen">
+  The Windows installer is not code-signed yet. Windows may show “Unknown publisher.” Verify that you downloaded it from the official kind-meitner releases repository before choosing **More info → Run anyway**.
+</Callout>
+
+## Install an agent CLI
+
+kind-meitner needs at least one supported agent engine installed and signed in. Claude and Codex are the most common starting points.
+
+1. Install the CLI from its official provider.
+2. Run it once in a terminal and complete sign-in.
+3. Restart kind-meitner.
+4. Open the model picker. Available engines appear normally; unavailable engines explain what is missing.
+
+See [Agent engines](../providers/index.mdx) for the complete list and explicit path overrides.
+
+## Build from source
+
+Requirements: Node.js 24 or newer, pnpm 10.33.0, and at least one authenticated agent CLI.
+
+```bash
+git clone https://github.com/harrymove-ctrl/kind-meitner.git
+cd kind-meitner
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+Run the harness, web UI, and Electron shell in separate terminals:
+
+```bash
+pnpm dev:server
+pnpm dev
+pnpm dev:desktop
+```
+
+## Where data lives
+
+kind-meitner stores its application data under `~/.kind-meitner`. Electron window and browser data use the normal per-platform application data directory.

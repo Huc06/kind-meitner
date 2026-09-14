@@ -1,0 +1,63 @@
+name: ${COMPOSE_PROJECT_NAME:-kind-meitner}
+services:
+  kind-meitner:
+    init: true
+    build:
+      context: ./deploy/local
+      args:
+        BASE_IMAGE: ${KIND_MEITNER_BASE_IMAGE:-ghcr.io/harrymove-ctrl/kind-meitner:latest}
+        ENGINES: ${ENGINES-@anthropic-ai/claude-code @openai/codex}
+    image: ${KIND_MEITNER_LOCAL_IMAGE:-kind-meitner-local:latest}
+    restart: unless-stopped
+    volumes:
+      - data:/data
+    ports:
+      - "${KIND_MEITNER_BIND_ADDRESS:-127.0.0.1}:${KIND_MEITNER_HTTP_PORT:-8080}:80"
+    environment:
+      KIND_MEITNER_PORT: "8799"
+      KIND_MEITNER_WEBHOOK_PORT: "8800"
+      KIND_MEITNER_PUBLIC_URL: ${KIND_MEITNER_PUBLIC_URL:-http://localhost:${KIND_MEITNER_HTTP_PORT:-8080}}
+      KIND_MEITNER_WEBHOOK_PUBLIC_URL: ${KIND_MEITNER_WEBHOOK_PUBLIC_URL:-${KIND_MEITNER_PUBLIC_URL:-http://localhost:${KIND_MEITNER_HTTP_PORT:-8080}}}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8799/api/health', { signal: AbortSignal.timeout(4000) }).then(async r => { if (!r.ok || !(await r.text()).includes('kind-meitner')) process.exit(1); }).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2}
+    restart: unless-stopped
+    network_mode: service:kind-meitner
+    environment:
+      KIND_MEITNER_HTTPS_HOST: ${KIND_MEITNER_HTTPS_HOST:-}
+      KIND_MEITNER_BIND_ADDRESS: ${KIND_MEITNER_BIND_ADDRESS:-127.0.0.1}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        export KIND_MEITNER_UPSTREAM_SCHEME=http
+        if [ -n "$$KIND_MEITNER_HTTPS_HOST" ] && [ "$$KIND_MEITNER_BIND_ADDRESS" != "127.0.0.1" ]; then
+          echo "KIND_MEITNER_HTTPS_HOST requires KIND_MEITNER_BIND_ADDRESS=127.0.0.1; forward HTTPS through a trusted local proxy." >&2
+          exit 1
+        fi
+        if [ -n "$$KIND_MEITNER_HTTPS_HOST" ]; then
+          export KIND_MEITNER_UPSTREAM_SCHEME=https
+        fi
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    depends_on:
+      kind-meitner:
+        condition: service_healthy
+    volumes:
+      - ./deploy/local/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  data:
+    external: ${KIND_MEITNER_DATA_EXTERNAL:-false}
+    name: ${KIND_MEITNER_DATA_VOLUME:-${COMPOSE_PROJECT_NAME:-kind-meitner}_data}
+  caddy_data:
+  caddy_config:
