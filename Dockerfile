@@ -64,7 +64,11 @@ ENV HOME=/data \
     KIND_MEITNER_STATIC_DIR=/app/dist \
     KIND_MEITNER_WEBHOOK_PORT=8800 \
     NODE_ENV=production
-USER maus
+# Railway mounts persistent Volumes as root. The entrypoint initializes only
+# /data and its app state before dropping privileges to maus for Node.
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/kind-meitner-entrypoint
+USER root
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -sf "http://127.0.0.1:${PORT:-8799}/api/health" | grep -q kind-meitner || exit 1
+ENTRYPOINT ["/usr/local/bin/kind-meitner-entrypoint"]
 CMD ["node", "dist-server/index.js"]
