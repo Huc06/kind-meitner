@@ -327,7 +327,7 @@ import { OkxRecurringEngine, OkxTreasuryManager } from "./okx/scheduler.ts";
 import { OkxWebhookJournal } from "./okx/journal.ts";
 import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
-import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource } from "./okx/x402-testnet.ts";
+import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
 import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
 import { BrowserRuntime } from "./browser-runtime.ts";
@@ -10039,12 +10039,25 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     // This route cannot construct a facilitator client or issue a payment
     // challenge unless all server-only settings and the explicit flag exist.
     if (method === "POST" && path === X402_TESTNET_RESOURCE_PATH) {
+      const startTime = Date.now();
+      const connectId = (req.headers["x-connect-id"] as string) || randomUUID();
+      res.setHeader("x-connect-id", connectId);
+      const respond = (statusCode: number, body: unknown) => {
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        return json(res, statusCode, body);
+      };
       const status = okxX402Testnet.status();
       if (!status.enabled) {
-        return json(res, 404, { error: "x402 testnet is disabled" });
+        return respond(404, { error: "x402 testnet is disabled", traceId: connectId });
       }
       if (!status.ready) {
-        return json(res, 503, { error: status.reason });
+        console.warn("x402 testnet configuration is incomplete", { traceId: connectId });
+        return respond(503, { error: "x402 testnet is unavailable", traceId: connectId });
+      }
+      const rateCheck = checkOkxMcpRateLimit(`x402:${requestSource(req)}`, 60, 60_000);
+      if (!rateCheck.allowed) {
+        res.setHeader("retry-after", String(rateCheck.retryAfter));
+        return respond(429, { error: "Too many requests: Rate limit exceeded", traceId: connectId });
       }
 
       try {
@@ -10054,7 +10067,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           try {
             parsedBody = JSON.parse(rawBody);
           } catch {
-            return json(res, 400, { error: "x402 testnet resource expects a JSON request body" });
+            return respond(400, { error: "x402 testnet resource expects a JSON request body", traceId: connectId });
           }
         }
         const adapter = {
@@ -10064,7 +10077,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           },
           getMethod: () => method,
           getPath: () => path,
-          getUrl: () => process.env.OKX_X402_TESTNET_RESOURCE_URL?.trim() || path,
+          getUrl: () => okxX402Testnet.resourceUrl() || path,
           getAcceptHeader: () => String(req.headers.accept ?? ""),
           getUserAgent: () => String(req.headers["user-agent"] ?? ""),
           getBody: () => parsedBody,
@@ -10072,10 +10085,11 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         const processed = await okxX402Testnet.process(adapter);
         if (processed.type === "payment-error") {
           for (const [name, value] of Object.entries(processed.response.headers)) res.setHeader(name, value);
-          return json(res, processed.response.status, processed.response.body ?? {});
+          return respond(processed.response.status, processed.response.body ?? {});
         }
         if (processed.type !== "payment-verified") {
-          return json(res, 500, { error: "x402 testnet route did not require payment" });
+          console.warn("x402 testnet route unexpectedly skipped payment", { traceId: connectId });
+          return respond(500, x402PublicFailure(connectId));
         }
 
         const resource = {
@@ -10087,10 +10101,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         const settlement = await okxX402Testnet.settle(adapter, processed, Buffer.from(JSON.stringify(resource)));
         if (!settlement.success) {
           for (const [name, value] of Object.entries(settlement.response.headers)) res.setHeader(name, value);
-          return json(res, settlement.response.status, settlement.response.body ?? {});
+          return respond(settlement.response.status, settlement.response.body ?? {});
         }
         for (const [name, value] of Object.entries(settlement.headers)) res.setHeader(name, value);
-        return json(res, 200, {
+        return respond(200, {
           ...resource,
           settlement: {
             status: settlement.status,
@@ -10100,7 +10114,11 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           },
         });
       } catch (err) {
-        return json(res, 502, { error: `x402 testnet processing failed: ${String(err)}` });
+        console.warn("x402 testnet processing failed", {
+          traceId: connectId,
+          errorType: err instanceof Error ? err.name : typeof err,
+        });
+        return respond(502, x402PublicFailure(connectId));
       }
     }
 

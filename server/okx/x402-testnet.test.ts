@@ -5,6 +5,7 @@ import {
   X402_TESTNET_NETWORK,
   X402_TESTNET_RESOURCE_PATH,
   X402TestnetResource,
+  x402PublicFailure,
 } from "./x402-testnet.ts";
 
 describe("official x402 testnet boundary", () => {
@@ -29,6 +30,35 @@ describe("official x402 testnet boundary", () => {
     });
   });
 
+  it("does not cache a failed initialization and retries on the next request", async () => {
+    const readyConfig = {
+      enabled: true,
+      apiKey: "k",
+      secretKey: "s",
+      passphrase: "p",
+      payTo: "0x1111222233334444555566667777888899990000",
+      resourceUrl: "https://example.test/api/okx/x402-testnet/market-intelligence",
+    };
+    let attempts = 0;
+    const initializer = async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("transient facilitator failure");
+      return {} as never;
+    };
+    const resource = new X402TestnetResource(readyConfig, initializer);
+
+    await expect(resource.ensureInitializedForTest()).rejects.toThrow("transient facilitator failure");
+    await expect(resource.ensureInitializedForTest()).resolves.toBeUndefined();
+    expect(attempts).toBe(2);
+  });
+
+  it("returns a stable public failure with trace correlation instead of provider details", () => {
+    expect(x402PublicFailure("trace-review-1")).toEqual({
+      error: "x402 testnet processing failed",
+      traceId: "trace-review-1",
+    });
+  });
+
   describe("disabled public route", () => {
     let fixture: VerificationServer;
     let baseUrl: string;
@@ -50,8 +80,11 @@ describe("official x402 testnet boundary", () => {
       });
       expect(res.status).toBe(404);
       expect(res.headers.get("payment-required")).toBeNull();
-      const body = await res.json();
-      expect(body).toEqual({ error: "x402 testnet is disabled" });
+      expect(res.headers.get("x-connect-id")).toBeTruthy();
+      expect(res.headers.get("x-time-to-session")).toBeTruthy();
+      const body = await res.json() as { error?: unknown; traceId?: unknown };
+      expect(body).toMatchObject({ error: "x402 testnet is disabled" });
+      expect(typeof body.traceId).toBe("string");
     });
   });
 });

@@ -24,6 +24,43 @@ export interface X402TestnetStatus {
   reason?: string;
 }
 
+export function x402PublicFailure(traceId: string) {
+  return { error: "x402 testnet processing failed", traceId };
+}
+
+/** Builds the initialized official x402 HTTP resource server. Injectable so
+ * tests can exercise retry semantics without a real facilitator or network. */
+export type X402HttpServerInitializer = (config: X402TestnetConfiguration) => Promise<x402HTTPResourceServer>;
+
+async function defaultX402HttpServerInitializer(config: X402TestnetConfiguration): Promise<x402HTTPResourceServer> {
+  const facilitator = new OKXFacilitatorClient({
+    apiKey: config.apiKey!,
+    secretKey: config.secretKey!,
+    passphrase: config.passphrase!,
+    // A successful test must include a real settlement proof, rather than
+    // accepting a pending/local fallback result.
+    syncSettle: true,
+  });
+  const resourceServer = new x402ResourceServer(facilitator)
+    .register(X402_TESTNET_NETWORK, new ExactEvmScheme());
+  const httpServer = new x402HTTPResourceServer(resourceServer, {
+    [`POST ${X402_TESTNET_RESOURCE_PATH}`]: {
+      accepts: [{
+        scheme: "exact",
+        network: X402_TESTNET_NETWORK,
+        payTo: config.payTo!,
+        price: config.price || "$0.01",
+        maxTimeoutSeconds: 300,
+      }],
+      resource: config.resourceUrl!,
+      description: "Kind Meitner market intelligence — X Layer testnet only",
+      mimeType: "application/json",
+    },
+  });
+  await httpServer.initialize();
+  return httpServer;
+}
+
 /**
  * A testnet-only adapter around the official OKX x402 server SDK. It constructs
  * no facilitator client and performs no network operation until the explicit
@@ -32,9 +69,11 @@ export interface X402TestnetStatus {
 export class X402TestnetResource {
   private initialization?: Promise<x402HTTPResourceServer>;
   private readonly config: X402TestnetConfiguration;
+  private readonly initializer: X402HttpServerInitializer;
 
-  constructor(config: X402TestnetConfiguration) {
+  constructor(config: X402TestnetConfiguration, initializer: X402HttpServerInitializer = defaultX402HttpServerInitializer) {
     this.config = config;
+    this.initializer = initializer;
   }
 
   status(): X402TestnetStatus {
@@ -63,6 +102,16 @@ export class X402TestnetResource {
       resourcePath: X402_TESTNET_RESOURCE_PATH,
       ...(missing.length ? { reason: `Missing server-only testnet configuration: ${missing.join(", ")}` } : {}),
     };
+  }
+
+  resourceUrl(): string | undefined {
+    return this.config.resourceUrl;
+  }
+
+  /** Test-only: force initialization so retry-after-failure can be verified
+   * without issuing a real payment request. */
+  async ensureInitializedForTest(): Promise<void> {
+    await this.getHttpServer();
   }
 
   async process(adapter: HTTPAdapter): Promise<HTTPProcessResult> {
@@ -99,32 +148,14 @@ export class X402TestnetResource {
     if (!status.ready) throw new Error(status.reason ?? "x402 testnet is unavailable");
     if (!this.initialization) {
       this.initialization = (async () => {
-        const facilitator = new OKXFacilitatorClient({
-          apiKey: this.config.apiKey!,
-          secretKey: this.config.secretKey!,
-          passphrase: this.config.passphrase!,
-          // A successful test must include a real settlement proof, rather than
-          // accepting a pending/local fallback result.
-          syncSettle: true,
-        });
-        const resourceServer = new x402ResourceServer(facilitator)
-          .register(X402_TESTNET_NETWORK, new ExactEvmScheme());
-        const httpServer = new x402HTTPResourceServer(resourceServer, {
-          [`POST ${X402_TESTNET_RESOURCE_PATH}`]: {
-            accepts: [{
-              scheme: "exact",
-              network: X402_TESTNET_NETWORK,
-              payTo: this.config.payTo!,
-              price: this.config.price || "$0.01",
-              maxTimeoutSeconds: 300,
-            }],
-            resource: this.config.resourceUrl!,
-            description: "Kind Meitner market intelligence — X Layer testnet only",
-            mimeType: "application/json",
-          },
-        });
-        await httpServer.initialize();
-        return httpServer;
+        try {
+          return await this.initializer(this.config);
+        } catch (err) {
+          // A transient facilitator/network failure must not become a cached
+          // rejection: clear it so the next request re-attempts initialization.
+          this.initialization = undefined;
+          throw err;
+        }
       })();
     }
     return this.initialization;
