@@ -419,6 +419,11 @@ export async function launchVerificationServer(
     // FAKE_CLAUDE_DUMP stays the launcher's: assertions read fixtureDumpPath.
     if (key.startsWith("FAKE_CLAUDE_") && key !== "FAKE_CLAUDE_DUMP" && value) childEnv[key] = value;
   }
+  // The unsafe legacy EIP-3009 path is disabled by default. Only its explicit,
+  // non-secret fixture flag may cross this hermetic boundary for regression tests.
+  if (parentEnv.OKX_LEGACY_EIP3009_ENABLED === "true") {
+    childEnv.OKX_LEGACY_EIP3009_ENABLED = "true";
+  }
   // Opt-in live Local VM fixture: keep the temporary home and fake engine,
   // granting only the explicitly selected machine connection and static UI.
   if (localVm) Object.assign(childEnv, {
