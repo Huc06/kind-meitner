@@ -1,10 +1,11 @@
+# Static Kind Meitner landing service. The backend service keeps its own
+# manifest on main; this branch builds only deploy/landing/Dockerfile.
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "deploy/landing/Dockerfile"
 
 [deploy]
-startCommand = "node dist-server/index.js"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 120
+healthcheckPath = "/"
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
