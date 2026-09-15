@@ -9,8 +9,9 @@
 #   docker build -t kind-meitner .
 #   docker build --build-arg ENGINES="@anthropic-ai/claude-code @openai/codex" -t kind-meitner .
 #
-# HOME is the /data volume, so engine CLI logins (~/.claude, ~/.codex, ...) and
-# kind-meitner's own state (~/.kind-meitner) persist across container restarts.
+# HOME is /data. Mount persistent storage at /data (for example, a Railway
+# Volume) so engine CLI logins (~/.claude, ~/.codex, ...) and kind-meitner's
+# own state (~/.kind-meitner) persist across container restarts.
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /src
@@ -61,11 +62,9 @@ ENV HOME=/data \
     AGENT_BROWSER_EXECUTABLE_PATH=/opt/kind-meitner-browser/chrome \
     KIND_MEITNER_DATA_DIR=/data/.kind-meitner \
     KIND_MEITNER_STATIC_DIR=/app/dist \
-    KIND_MEITNER_PORT=8799 \
     KIND_MEITNER_WEBHOOK_PORT=8800 \
     NODE_ENV=production
-VOLUME ["/data"]
 USER maus
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -sf http://127.0.0.1:8799/api/health | grep -q kind-meitner || exit 1
+  CMD curl -sf "http://127.0.0.1:${PORT:-8799}/api/health" | grep -q kind-meitner || exit 1
 CMD ["node", "dist-server/index.js"]
