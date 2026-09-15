@@ -16,7 +16,12 @@ describe("OKX A2MCP Phase 1.5 security hardening", () => {
   let baseUrl: string;
 
   beforeAll(async () => {
-    fixture = await launchVerificationServer();
+    fixture = await launchVerificationServer({
+      OKX_TEST_API_KEY: "fixture-api-key-must-not-leak",
+      OKX_TEST_SECRET_KEY: "fixture-secret-key-must-not-leak",
+      OKX_TEST_PASSPHRASE: "fixture-passphrase-must-not-leak",
+      OKX_TEST_WEBHOOK_SECRET: "fixture-webhook-secret-must-not-leak",
+    });
     baseUrl = fixture.info.url;
   }, 30_000);
 
@@ -60,9 +65,18 @@ describe("OKX A2MCP Phase 1.5 security hardening", () => {
     expect(read.status).toBe(200);
     const body = await read.json();
     expect(body).toMatchObject({
-      credentialsConfigured: false,
-      webhookSecretConfigured: false,
+      credentialsConfigured: true,
+      webhookSecretConfigured: true,
     });
+    const serialized = JSON.stringify(body);
+    for (const secret of [
+      "fixture-api-key-must-not-leak",
+      "fixture-secret-key-must-not-leak",
+      "fixture-passphrase-must-not-leak",
+      "fixture-webhook-secret-must-not-leak",
+    ]) {
+      expect(serialized).not.toContain(secret);
+    }
     expect(body).not.toHaveProperty("apiKey");
     expect(body).not.toHaveProperty("secretKey");
     expect(body).not.toHaveProperty("passphrase");
