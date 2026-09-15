@@ -1,14 +1,18 @@
 # Reference Flow: Radio (Plasma AI) Channel Onboarding & Activity Feed Architecture
 
-> **Reference URL:** [https://radio.plasma.ai/activity](https://radio.plasma.ai/activity)  
-> **Source Platform:** Radio by Plasma AI  
-> **Target Project Integration:** [kind-meitner](file:///Users/harryphan/Documents/antigravity/kind-meitner/README.md)
+> **Reference Source:** [https://radio.plasma.ai/activity](https://radio.plasma.ai/activity) (Radio by Plasma AI)  
+> **Status:** 📚 **External Reference & Future Architectural Case Study (Non-Blocking / Optional)**  
+> **Project Core Priority:** 🚀 **[OKX.ai Autonomous Commerce Operating System](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/kind-meitner.md)** — Active development is currently 100% focused on running and hardening the OKX Onchain OS techstack (Evaluator ASP, Recurring Scheduler, Marketplace Intelligence, Onchain OS Gateway).
+
+> [!NOTE]
+> **Context & Roadmap Scope:**  
+> This document serves exclusively as an architectural case study and design reference for potential future multi-agent group collaboration features. It is **not** an immediate implementation requirement. kind-meitner's running techstack prioritizes the OKX.ai engine and test suite under [`server/okx/`](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/okx/).
 
 ---
 
 ## 1. Executive Summary & Objective
 
-This document analyzes the design patterns, user onboarding flow, agent participation protocol, and activity stream of **Radio by Plasma AI** ([`radio.plasma.ai`](https://radio.plasma.ai)), and maps them directly to the architecture and components of **[`kind-meitner`](file:///Users/harryphan/Documents/antigravity/kind-meitner/README.md)**.
+This document analyzes the design patterns, user onboarding flow, agent participation protocol, and activity stream of **Radio by Plasma AI** ([`radio.plasma.ai`](https://radio.plasma.ai)), and maps them directly as an external reference to the architecture and components of **[`kind-meitner`](file:///Users/harryphan/Documents/antigravity/kind-meitner/README.md)**.
 
 Radio demonstrates a streamlined **Agent-to-Human (A2H)** and **Agent-to-Agent (A2A)** collaborative workspace with four key design characteristics:
 1. **Frictionless Zero-Step Onboarding**: First-time users are not gated by mandatory registration; opening the app automatically provisions an anonymous identity and a starter channel (`# Channel 1`).
@@ -136,9 +140,17 @@ The architecture of `radio.plasma.ai` closely parallels and complements key subs
 
 ---
 
-## 4. Implementation Blueprint for kind-meitner
+## 4. Potential Future Evolution (Post-OKX.ai)
 
-To adopt the zero-friction channel creation and activity tracking demonstrated by Radio:
+> [!IMPORTANT]
+> **Active Techstack Priority Notice:**  
+> Before considering any external OpenAPI channel gateways or dedicated `/activity` views, ensure kind-meitner's core OKX AI engine remains fully operational:
+> - **Primary System Design:** [`docs/design-okx-ai.md`](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/design-okx-ai.md)
+> - **Product Requirements (PRD):** [`docs/prd-okx-ai.md`](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/prd-okx-ai.md)
+> - **Roadmap & Delivery Plan:** [`docs/okx-ai-plan.md`](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/okx-ai-plan.md)
+> - **Core OKX Engine Implementation:** [`server/okx/`](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/okx/)
+>
+> The flow below represents an optional future evolution blueprint if kind-meitner ever expands its Room Handoffs into a standalone open web channel like Radio.
 
 ```mermaid
 sequenceDiagram
@@ -171,7 +183,7 @@ sequenceDiagram
     WebApp->>User: Badge on Activity icon & notification card
 ```
 
-### Key Deliverables:
+### Optional Future Exploration Items (Non-Blocking):
 1. **Default Channel Initialization**:
    - In [`src/lib/onboarding.ts`](file:///Users/harryphan/Documents/antigravity/kind-meitner/src/lib/onboarding.ts) and [`src/components/onboarding/WelcomeFlow.tsx`](file:///Users/harryphan/Documents/antigravity/kind-meitner/src/components/onboarding/WelcomeFlow.tsx), after the `MeetYourBotBeat` or when skipping onboarding, ensure an initial room (`# Channel 1`) exists in local state so the user lands immediately in an interactive conversation.
 2. **Activity Feed View (`/activity`)**:
@@ -183,9 +195,16 @@ sequenceDiagram
 
 ## 5. Related Project Documentation
 
+### Primary OKX.ai Core Documentation (Active Roadmap)
 - [kind-meitner Architecture & Overview](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/kind-meitner.md)
+- [OKX.ai System Design](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/design-okx-ai.md)
+- [OKX.ai Product Requirements Document (PRD)](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/prd-okx-ai.md)
+- [OKX.ai Architectural Delivery Plan](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/okx-ai-plan.md)
+- [OKX Dispute Evaluator ASP](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/okx/evaluator.ts)
+- [OKX Engine Implementation](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/okx/)
+
+### Auxiliary Internal Architecture
 - [New-User Onboarding Design Plan](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/plans/2026-09-09-onboarding.md)
 - [Independent Threads & Groups Product Model](file:///Users/harryphan/Documents/antigravity/kind-meitner/docs/plans/2026-09-09-independent-threads.md)
 - [Room Handoffs Implementation](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/room-handoffs.ts)
 - [Meta-Agent Orchestration](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/okx/meta-agent.ts)
-- [OKX Dispute Evaluator ASP](file:///Users/harryphan/Documents/antigravity/kind-meitner/server/okx/evaluator.ts)
