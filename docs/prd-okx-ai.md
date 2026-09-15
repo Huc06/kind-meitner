@@ -5,6 +5,8 @@
 **Target Platform**: OKX Onchain OS, X Layer (Polygon CDK zkEVM, Chain ID 196/195)  
 **Author**: Antigravity System Architect  
 
+> **A2MCP re-baseline — 2026-09-15:** This PRD's EIP-3009 monetization, production payment, mainnet, A2A, and Evaluator assumptions are not current requirements. The authoritative staged scope is [Free A2MCP → x402](plans/2026-09-15-okx-a2mcp-roadmap.md): free/read-only `HTTP 200` resources first; official x402 on X Layer testnet only after hardening; mainnet only after a separately approved readiness review. The legacy paid route must not be advertised as settled service.
+
 ---
 
 ## 1. Executive Summary & Problem Statement

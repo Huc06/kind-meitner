@@ -1,5 +1,7 @@
 # Deep Architectural Specification & Implementation Roadmap: OKX.ai Feature Suite
 
+> **A2MCP re-baseline — 2026-09-15:** The payment, mainnet, A2A, and Evaluator rollout assumptions below are historical and are **not** the current implementation contract. Follow the canonical [Free A2MCP → x402 roadmap](plans/2026-09-15-okx-a2mcp-roadmap.md): public read-only Free A2MCP first, official x402 on X Layer testnet second, and a separate explicit mainnet readiness approval last. In particular, the custom EIP-3009 path must not be registered or represented as paid settlement.
+
 ## Executive Summary
 
 **kind-meitner** is an autonomous agent operating system and commerce layer on **OKX Onchain OS** and **X Layer** (Polygon CDK zkEVM, Chain ID 196/195, native gas token OKB, settlement in USDT/ERC-20).
