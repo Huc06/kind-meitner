@@ -1,0 +1,30 @@
+# The official Nginx image renders this template with the runtime environment.
+# Railway supplies PORT; set PORT=8080 when running this container locally.
+server {
+  listen ${PORT};
+  listen [::]:${PORT};
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index landing.html;
+
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+  # Marketing site root and Railway healthcheck.
+  location = / {
+    try_files /landing.html =404;
+  }
+
+  # Vite emits content-hashed JS/CSS assets, so they are safe to cache long-term.
+  location /assets/ {
+    try_files $uri =404;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+  }
+
+  # The landing has no client-side routes; return a real 404 for unknown paths.
+  location / {
+    try_files $uri $uri/ =404;
+  }
+}
