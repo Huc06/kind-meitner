@@ -9912,6 +9912,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           error: { code: isTimeout ? -32000 : -32603, message },
         });
       }
+    }
     // Pre-Auth Free A2MCP resource server. This is deliberately separate from
     // the legacy paid endpoint: no wallet, payment header, nonce, key, or
     // mainnet operation is accepted here.
@@ -9992,7 +9993,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         });
       } catch (err) {
         res.setHeader("x-time-to-session", String(Date.now() - startTime));
-        const message = err instanceof Error ? err.message : String(err);
+        const message = String(err);
         return json(res, 500, {
           jsonrpc: "2.0",
           id: null,
@@ -10001,7 +10002,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       }
     }
 
-    }
     if (!gate.auth) return json(res, gate.status, { error: gate.error });
     const auth = gate.auth;
     if (HOSTED_WORKSPACE && auth.kind === "session") {
