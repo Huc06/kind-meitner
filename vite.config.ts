@@ -16,14 +16,6 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
-  build: {
-    rollupOptions: {
-      input: {
-        app: fileURLToPath(new URL("./index.html", import.meta.url)),
-        landing: fileURLToPath(new URL("./landing.html", import.meta.url)),
-      },
-    },
-  },
   test: {
     environment: "node",
     include: [

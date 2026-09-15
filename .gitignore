@@ -45,3 +45,6 @@ deploy/podman/.env.*
 
 # Teamwork agent scratch files
 .agents/
+
+# Isolated Next landing build output
+**/.next
