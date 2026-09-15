@@ -420,7 +420,159 @@ export class OkxMarketplaceIntelligence {
     };
   }
 
-  // --- A2MCP Tool Handlers ---
+  // --- Free A2MCP Resources ---
+
+  /**
+   * Public, read-only resources for the OKX.AI Free A2MCP listing.
+   * These declarations intentionally use the MCP `inputSchema` field and make
+   * no claim of payment, wallet, chain, or live-marketplace settlement.
+   */
+  getFreeToolDeclarations(): Array<{
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+    annotations: { readOnlyHint: true; destructiveHint: false; openWorldHint: false };
+  }> {
+    const readOnly = { readOnlyHint: true as const, destructiveHint: false as const, openWorldHint: false as const };
+    return [
+      {
+        name: "list_okx_ai_use_cases",
+        description: "Free resource: browse safe, read-only OKX.AI agent-service use cases. No wallet, payment, key, or mainnet access.",
+        inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        annotations: readOnly,
+      },
+      {
+        name: "get_free_a2mcp_launch_checklist",
+        description: "Free resource: get a practical checklist for publishing a read-only A2MCP service without payments or mainnet dependencies.",
+        inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        annotations: readOnly,
+      },
+      {
+        name: "query_market_benchmarks",
+        description: "Free resource: inspect locally indexed marketplace benchmark data with provenance metadata. It never claims live OKX marketplace data.",
+        inputSchema: {
+          type: "object",
+          properties: { category: { type: "string", maxLength: 80 } },
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+      },
+      {
+        name: "get_asp_reputation",
+        description: "Free resource: inspect a locally indexed ASP reputation record with provenance metadata. No payment or chain action occurs.",
+        inputSchema: {
+          type: "object",
+          properties: { aspId: { type: "string", minLength: 1, maxLength: 200 } },
+          required: ["aspId"],
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+      },
+      {
+        name: "get_trending_asps",
+        description: "Free resource: inspect locally indexed ASP momentum rankings with provenance metadata. No payment or chain action occurs.",
+        inputSchema: {
+          type: "object",
+          properties: { limit: { type: "integer", minimum: 1, maximum: 20, default: 5 } },
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+      },
+    ];
+  }
+
+  /** Executes only free, read-only resources. It neither records usage nor
+   * redeems a nonce, so callers cannot trigger a payment-like durable action. */
+  handleFreeMcpToolCall(toolName: string, args: Record<string, unknown>): McpToolCallResult {
+    const resource = {
+      access: "free",
+      paymentRequired: false,
+      walletRequired: false,
+      mainnet: false,
+      provenance: "kind-meitner local registry and public OKX.AI setup guidance",
+    };
+    const success = (data: unknown): McpToolCallResult => ({
+      content: [{ type: "text", text: JSON.stringify({ resource, data }, null, 2) }],
+    });
+    const invalid = (message: string): McpToolCallResult => ({
+      isError: true,
+      content: [{ type: "text", text: message }],
+    });
+
+    if (toolName === "list_okx_ai_use_cases") {
+      return success({
+        useCases: [
+          {
+            id: "market-intelligence",
+            title: "Marketplace intelligence",
+            impact: "Give agents a read-only way to compare locally indexed pricing, reliability, and concentration signals before choosing a provider.",
+          },
+          {
+            id: "agent-service-discovery",
+            title: "Agent-service discovery",
+            impact: "Expose structured service capabilities to agents through MCP without requiring a wallet or user account.",
+          },
+          {
+            id: "recurring-research",
+            title: "Recurring research workflows",
+            impact: "Use market snapshots as inputs to recurring planning and reporting workflows; this resource itself performs no scheduling or payment.",
+          },
+          {
+            id: "responsible-launch",
+            title: "Responsible A2MCP launch",
+            impact: "Start with a transparent free resource, validate utility and provenance, then consider an official x402 testnet integration separately.",
+          },
+        ],
+      });
+    }
+
+    if (toolName === "get_free_a2mcp_launch_checklist") {
+      return success({
+        checklist: [
+          "Publish a public HTTPS endpoint that returns a direct HTTP 200 result for free calls.",
+          "Keep resources read-only, rate-limited, and explicit about data provenance.",
+          "Do not request wallet credentials, API keys, payment headers, or mainnet access for the free service.",
+          "Register the endpoint as a free A2MCP ASP only after endpoint self-checks pass.",
+          "Treat x402 testnet support as a separate, reviewed follow-up rather than a hidden fallback.",
+        ],
+        officialDocs: [
+          "https://web3.okx.com/onchainos/dev-docs/okxai/howtomcp",
+          "https://web3.okx.com/onchainos/dev-docs/okxai/registerasp",
+        ],
+      });
+    }
+
+    if (toolName === "query_market_benchmarks") {
+      const category = args.category;
+      if (category !== undefined && (typeof category !== "string" || category.trim().length === 0 || category.length > 80)) {
+        return invalid("category must be a non-empty string of at most 80 characters when provided");
+      }
+      return success({ categoryFilter: category?.trim() || "all", benchmarks: this.getCategoryBenchmarks(category?.trim()) });
+    }
+
+    if (toolName === "get_asp_reputation") {
+      const aspId = args.aspId;
+      if (typeof aspId !== "string" || aspId.trim().length === 0 || aspId.length > 200) {
+        return invalid("aspId must be a non-empty string of at most 200 characters");
+      }
+      const asp = this.getAsp(aspId.trim());
+      if (!asp) return invalid(`ASP with ID '${aspId.trim()}' was not found in the local intelligence registry.`);
+      return success({ asp });
+    }
+
+    if (toolName === "get_trending_asps") {
+      const limit = args.limit ?? 5;
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 20) {
+        return invalid("limit must be an integer from 1 through 20");
+      }
+      const trending = this.getTrendingAsps(limit);
+      return success({ count: trending.length, trending });
+    }
+
+    return invalid(`Unknown free resource: ${toolName}`);
+  }
+
+  // --- Paid A2MCP Tool Handlers (legacy; not used by Free A2MCP) ---
 
   getToolDeclarations(): Array<{
     name: string;

@@ -9912,6 +9912,95 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           error: { code: isTimeout ? -32000 : -32603, message },
         });
       }
+    // Pre-Auth Free A2MCP resource server. This is deliberately separate from
+    // the legacy paid endpoint: no wallet, payment header, nonce, key, or
+    // mainnet operation is accepted here.
+    if (method === "POST" && path === "/api/okx/free-mcp") {
+      const startTime = Date.now();
+      const connectId = (req.headers["x-connect-id"] as string) || randomUUID();
+      res.setHeader("x-connect-id", connectId);
+      const rateCheck = checkOkxMcpRateLimit(`free:${requestSource(req)}`, 60, 60_000);
+      if (!rateCheck.allowed) {
+        res.setHeader("retry-after", String(rateCheck.retryAfter));
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        return json(res, 429, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32000, message: "Too many requests: Rate limit exceeded" },
+        });
+      }
+
+      try {
+        const rawBody = await readRawBody(req);
+        let rpc: any;
+        try {
+          rpc = JSON.parse(rawBody);
+        } catch {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 400, {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32700, message: "Parse error: Invalid JSON" },
+          });
+        }
+
+        const id = rpc?.id ?? null;
+        if (rpc?.method === "ping" || rpc?.method === "initialize") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: { tools: {} },
+              serverInfo: { name: "kind-meitner-free-okx-ai", version: "1.0.0" },
+              instructions: "Free read-only OKX.AI resources. No payment, wallet, API key, or mainnet access is used.",
+            },
+          });
+        }
+
+        if (rpc?.method === "tools/list") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, {
+            jsonrpc: "2.0",
+            id,
+            result: { tools: okxIntelligence.getFreeToolDeclarations() },
+          });
+        }
+
+        if (rpc?.method === "tools/call") {
+          const toolName = rpc.params?.name;
+          const rawArgs = rpc.params?.arguments ?? {};
+          if (typeof toolName !== "string" || !toolName.trim() || !rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) {
+            res.setHeader("x-time-to-session", String(Date.now() - startTime));
+            return json(res, 400, {
+              jsonrpc: "2.0",
+              id,
+              error: { code: -32602, message: "tools/call requires a tool name and an object arguments value" },
+            });
+          }
+          const result = okxIntelligence.handleFreeMcpToolCall(toolName, rawArgs as Record<string, unknown>);
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, { jsonrpc: "2.0", id, result });
+        }
+
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        return json(res, 400, {
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32601, message: `Method not found: ${String(rpc?.method ?? "")}` },
+        });
+      } catch (err) {
+        res.setHeader("x-time-to-session", String(Date.now() - startTime));
+        const message = err instanceof Error ? err.message : String(err);
+        return json(res, 500, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32603, message },
+        });
+      }
+    }
+
     }
     if (!gate.auth) return json(res, gate.status, { error: gate.error });
     const auth = gate.auth;

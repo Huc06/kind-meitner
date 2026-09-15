@@ -5,6 +5,8 @@
 **Upstream Requirement**: [`docs/prd-okx-ai.md`](docs/prd-okx-ai.md)  
 **Target Platform**: OKX Onchain OS, X Layer (Polygon CDK zkEVM, Chain ID 196), kind-meitner Runtime
 
+> **A2MCP re-baseline — 2026-09-15:** For payment, mainnet, A2A, and Evaluator design, this document is historical context rather than the implementation authority. Follow the canonical [Free A2MCP → x402 roadmap](plans/2026-09-15-okx-a2mcp-roadmap.md): ship the public free/read-only service first, integrate only official x402 on X Layer testnet next, and require a separate approved readiness review before mainnet. Custom EIP-3009 must not be treated as a settled paid endpoint.
+
 ---
 
 ## 1. Executive Summary & Core Design Principles
