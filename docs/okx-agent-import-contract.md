@@ -58,7 +58,7 @@ Success (`201` for a new import):
     "id": "local-bot-id",
     "name": "Market Scout",
     "source": {
-      "kind": "okx-mock",
+      "kind": "okx-catalog",
       "externalAgentId": "okx-market-scout-v1",
       "provider": "OKX.ai",
       "capabilities": ["chat", "market-intelligence"]
@@ -74,10 +74,11 @@ Rules:
 1. `roomId` must name an existing non-DM room; otherwise return `404` or `400`.
 2. Unknown catalog agents return `404`.
 3. Importing the same external agent into the same room is idempotent: return the original local bot, membership, and activity record rather than creating a duplicate.
-4. Imported agents start with no greeting, no enabled external tools, no credentials, no autonomous routine, and no approval elevation.
-5. On first import, add the local bot to the room and append one room activity message:
-   `Market Scout joined #Channel 1 from OKX.ai (mock).`
-6. The response and all event payloads contain no token, wallet, API key, secret, or untrusted remote instruction.
+4. Imported agents start with no greeting, no enabled external credentials, no autonomous routine, and no approval elevation. They retain read-only intelligence tool access (e.g. the local Free A2MCP tools) so they can return real data.
+5. One workspace bot exists per external agent. Importing the same agent into a different room reuses that bot and only adds it to the new room's members; it never creates a duplicate bot.
+6. On first membership, add the local bot to the room and append one room activity message:
+   `Market Scout joined #Channel 1 from OKX.ai.`
+7. The response and all event payloads contain no token, wallet, API key, secret, or untrusted remote instruction.
 
 ## Default room provisioning
 
@@ -95,16 +96,22 @@ Onboarding calls this after the welcome flow is completed or skipped. A fixture/
 
 ## Chat behavior
 
-Milestone 1 does **not** claim a live remote OKX agent transport. The imported mock agent is a local bot with a deterministic mock reply path.
+Milestone 1 does **not** claim a live remote OKX agent transport. The imported
+catalog agent is an ordinary local bot that runs through the workspace turn
+driver — there is no mock or synthetic reply path.
 
 For a user room message that mentions the imported agent or selects it as responder:
 
 1. Persist the user message in the room thread.
-2. Append an activity message indicating the mock agent is working.
-3. Append the agent reply through the existing group/room message path, with `from` identifying the imported bot.
+2. Append an activity message indicating the agent is working.
+3. Route the turn through the configured engine/tools like any other local bot, and append its reply through the existing group/room message path, with `from` identifying the imported bot.
 4. Append or patch terminal activity: completed or failed.
 
-The mock reply demonstrates one supported capability, e.g. `market-intelligence`, and labels itself `OKX.ai mock` so no user mistakes it for a live marketplace execution.
+If no AI engine or OKX Gateway connection is configured, the agent must state its status honestly rather than fabricate a reply, e.g.:
+
+> Market Scout is offline: No AI engine or OKX Gateway connection configured.
+
+Fabricated, synthetic, or hard-coded chat replies are prohibited.
 
 ## Activity feed
 
@@ -121,13 +128,12 @@ The room must visibly contain, in order:
 ## Acceptance criteria
 
 1. A clean isolated fixture can create/get exactly one `Channel 1` room.
-2. The mock catalog exposes `Market Scout` with its capability list.
+2. The catalog exposes `Market Scout` with its capability list.
 3. Import adds Market Scout to Channel 1 exactly once and writes one join activity entry.
 4. Repeating the same request id or the same agent/room import cannot duplicate a local bot, room member, or activity entry.
-5. A user can send a room message and receives a clearly attributed mock OKX agent reply plus activity state.
-6. The existing non-DM group message and room-handoff invariants remain green.
-7. Contract-focused tests use an isolated harness/fixture only; no live OKX credential, chain, or wallet is used.
-8. The show-off video records the full flow from onboarding/default room through import, message, reply and activity history.
+5. The existing non-DM group message and room-handoff invariants remain green.
+6. Contract-focused tests use an isolated harness/fixture only; no live OKX credential, chain, or wallet is used.
+7. The show-off video records the full flow from onboarding/default room through import, message, reply and activity history.
 
 ## Deferred to Milestone 2+
 

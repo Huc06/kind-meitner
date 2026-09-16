@@ -327,7 +327,7 @@ import { OkxRecurringEngine, OkxTreasuryManager } from "./okx/scheduler.ts";
 import { OkxWebhookJournal } from "./okx/journal.ts";
 import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
-import { findMockOkxAgent, listMockOkxAgents, mockOkxImportDescriptor } from "./okx/agent-import.ts";
+import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor } from "./okx/agent-import.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
 import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
 import { BrowserRuntime } from "./browser-runtime.ts";
@@ -2273,7 +2273,7 @@ function migrateSystemRoomActivities(): void {
     if (room.name === DEFAULT_ROOM_NAME) lifecycleNames.add(defaultRoomWelcome);
     for (const bot of store.bots) {
       if (!bot.okxImport || !room.memberIds.includes(bot.id)) continue;
-      lifecycleNames.add(`${bot.name} joined #${room.name} from ${bot.okxImport.provider} (mock).`);
+      lifecycleNames.add(`${bot.name} joined #${room.name} from ${bot.okxImport.provider}.`);
     }
     for (const message of store.messagesFor(room.threadId)) {
       if (message.kind !== "activity" || !message.tool || message.tool.system === true || !lifecycleNames.has(message.tool.name)) continue;
@@ -2283,7 +2283,7 @@ function migrateSystemRoomActivities(): void {
 }
 
 /** One workspace onboarding room. Local bots are trusted only as local
- * workspace records; imported mock agents never become the seed member. */
+ * workspace records; imported catalog agents never become the seed member. */
 function ensureDefaultRoom(): { room: GroupRecord; welcome: Message } {
   const seed = store.bots.find((bot) => !bot.hidden && !bot.okxImport);
   let room = store.groups.find((group) => !group.dm && group.name === DEFAULT_ROOM_NAME);
@@ -2315,7 +2315,7 @@ function okxImportResult(bot: BotRecord, room: GroupRecord, activity: Message) {
 
 /** Import is keyed by durable external-agent provenance plus room membership,
  * not the client request id, so it remains idempotent after a restart. */
-function importMockOkxAgent(value: unknown): { created: boolean; result: ReturnType<typeof okxImportResult> } {
+function importCatalogOkxAgent(value: unknown): { created: boolean; result: ReturnType<typeof okxImportResult> } {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw Object.assign(new Error("import body must be a JSON object"), { status: 400 });
   }
@@ -2329,36 +2329,38 @@ function importMockOkxAgent(value: unknown): { created: boolean; result: ReturnT
   if (typeof body.requestId !== "string" || !body.requestId.trim() || body.requestId.length > 200) {
     throw Object.assign(new Error("requestId is required"), { status: 400 });
   }
-  const agent = findMockOkxAgent(body.agentId.trim());
+  const agent = findCatalogOkxAgent(body.agentId.trim());
   if (!agent) throw Object.assign(new Error("unknown OKX agent"), { status: 404 });
   let room = store.group(body.roomId.trim());
   if (!room) throw Object.assign(new Error("no such room"), { status: 404 });
   if (room.dm) throw Object.assign(new Error("OKX agents can only join non-DM rooms"), { status: 400 });
 
-  let bot = store.bots.find(
-    (candidate) => candidate.okxImport?.externalAgentId === agent.id && room!.memberIds.includes(candidate.id),
-  );
+  // One workspace bot per external agent. Reuse it across rooms instead of
+  // creating duplicate bot entities; only room membership changes per room.
+  let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
   let created = false;
   if (!bot) {
     bot = store.createBot(
-      { name: agent.name, title: "OKX.ai mock", description: agent.description },
+      { name: agent.name, title: "OKX.ai Agent", description: agent.description },
       { seedMessages: false },
     );
     store.patchBot(bot.id, {
-      okxImport: mockOkxImportDescriptor(agent),
+      okxImport: okxImportDescriptor(agent),
       composio: false,
       approvalMode: "ask",
       autoApprove: false,
       alwaysAllow: [],
-      mcpServers: [],
       browser: false,
       computer: "off",
       peers: [],
     });
+    created = true;
+  }
+  if (!room.memberIds.includes(bot.id)) {
     room = store.patchGroup(room.id, { memberIds: [...room.memberIds, bot.id] }) ?? room;
     created = true;
   }
-  const activity = roomActivity(room, `${agent.name} joined #${room.name} from ${agent.provider} (mock).`, bot);
+  const activity = roomActivity(room, `${agent.name} joined #${room.name} from ${agent.provider}.`, bot);
   return { created, result: okxImportResult(bot, room, activity) };
 }
 
@@ -12562,9 +12564,9 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       return res.end(lines.join("\n"));
     }
 
-    // ── OKX mock onboarding (local-only; no wallet or live Portal calls) ──
+    // ── OKX agent onboarding (local-only; no wallet or live Portal calls) ──
     if (method === "GET" && path === "/api/okx/agents") {
-      return json(res, 200, { source: "mock", agents: listMockOkxAgents() });
+      return json(res, 200, { source: "catalog", agents: listCatalogOkxAgents() });
     }
     if (method === "POST" && path === "/api/rooms/default") {
       const { room, welcome } = ensureDefaultRoom();
@@ -12574,7 +12576,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       });
     }
     if (method === "POST" && path === "/api/okx/agents/import") {
-      const imported = importMockOkxAgent(await readBody(req));
+      const imported = importCatalogOkxAgent(await readBody(req));
       return json(res, imported.created ? 201 : 200, imported.result);
     }
 

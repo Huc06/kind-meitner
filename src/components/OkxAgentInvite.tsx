@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
-import type { Group } from "@/state/store";
+import { api, ApiError, type Group } from "@/state/store";
 
 export interface OkxCatalogAgent {
   id: string;
@@ -49,11 +49,6 @@ export function canInviteOkxAgent(group: Pick<Group, "dm">, remoteClient: boolea
   return !remoteClient && !group.dm;
 }
 
-function errorMessage(response: Response, body: unknown): string {
-  const record = asRecord(body);
-  return typeof record?.error === "string" ? record.error : `${response.status} ${response.statusText}`;
-}
-
 function importRequestId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `okx-import-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
@@ -71,19 +66,18 @@ export function OkxAgentInvite({
   const [importingId, setImportingId] = useState<string | null>(null);
   const [requestedId, setRequestedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const loadCatalog = useCallback(async () => {
     setLoadingCatalog(true);
     setError(null);
     try {
-      const response = await fetch("/api/okx/agents", { credentials: "same-origin" });
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(errorMessage(response, body));
+      const body = await api("/api/okx/agents");
       const parsed = parseOkxCatalog(body);
       if (!parsed) throw new Error("The OKX agent catalog returned an invalid response.");
       setCatalog(parsed.agents);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load OKX agents.");
+      setError(reason instanceof ApiError || reason instanceof Error ? reason.message : "Could not load OKX agents.");
     } finally {
       setLoadingCatalog(false);
     }
@@ -94,30 +88,44 @@ export function OkxAgentInvite({
     setOpen((wasOpen) => !wasOpen);
   }, [catalog, loadCatalog, loadingCatalog, open]);
 
+  // Dismiss the flyout on an outside click or the Escape key, matching the
+  // app's other popovers. Listeners are attached only while open.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   const importAgent = useCallback(async (agent: OkxCatalogAgent) => {
     setImportingId(agent.id);
     setError(null);
     try {
-      const response = await fetch("/api/okx/agents/import", {
+      await api("/api/okx/agents/import", {
         method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
         body: JSON.stringify({ agentId: agent.id, roomId, requestId: importRequestId() }),
       });
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(errorMessage(response, body));
       // Do not patch the room or bot list here. The normal group/bot stream
       // owns membership and activity updates, including an idempotent import.
       setRequestedId(agent.id);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : `Could not invite ${agent.name}.`);
+      setError(reason instanceof ApiError || reason instanceof Error ? reason.message : `Could not invite ${agent.name}.`);
     } finally {
       setImportingId(null);
     }
   }, [roomId]);
 
   return (
-    <div className="relative" data-testid="okx-agent-invite">
+    <div className="relative" data-testid="okx-agent-invite" ref={containerRef}>
       <button
         type="button"
         onClick={toggleOpen}
@@ -133,7 +141,7 @@ export function OkxAgentInvite({
           aria-label="Invite an OKX agent"
           className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-hairline/60 bg-card p-3 shadow-xl"
         >
-          <p className="text-[12px] leading-relaxed text-ink-secondary">Add a local OKX.ai mock agent to this room.</p>
+          <p className="text-[12px] leading-relaxed text-ink-secondary">Invite an OKX.ai intelligence agent to this room.</p>
           {loadingCatalog ? (
             <p role="status" aria-live="polite" className="mt-3 flex items-center gap-2 text-[12px] text-ink-secondary">
               <Loader2 size={14} className="animate-spin" /> Loading OKX agents…

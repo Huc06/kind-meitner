@@ -305,7 +305,7 @@ export interface TaskUsage {
 }
 
 export interface OkxImportMetadata {
-  kind: "okx-mock";
+  kind: "okx-catalog";
   externalAgentId: string;
   provider: "OKX.ai";
   capabilities: Array<"chat" | "market-intelligence">;

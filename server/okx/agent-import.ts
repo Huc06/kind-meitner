@@ -1,27 +1,27 @@
-// Mock-first discovery data for the OKX onboarding demo. This module must stay
-// free of network, credential and wallet dependencies; a live Portal adapter
-// can replace the lookup behind the same shape in a later milestone.
+// Catalog discovery data for the OKX onboarding flow. This module stays free of
+// network, credential and wallet dependencies; a live Portal adapter can
+// replace the lookup behind the same shape in a later milestone.
 
-export type MockOkxAgentCapability = "chat" | "market-intelligence";
+export type OkxAgentCapability = "chat" | "market-intelligence";
 
-export interface MockOkxAgent {
+export interface OkxCatalogAgent {
   id: string;
   name: string;
   description: string;
   provider: "OKX.ai";
   avatar: "chart";
-  capabilities: MockOkxAgentCapability[];
+  capabilities: OkxAgentCapability[];
   status: "available";
 }
 
 export interface OkxImportDescriptor {
-  kind: "okx-mock";
+  kind: "okx-catalog";
   externalAgentId: string;
   provider: "OKX.ai";
-  capabilities: MockOkxAgentCapability[];
+  capabilities: OkxAgentCapability[];
 }
 
-export const MOCK_OKX_AGENTS: readonly MockOkxAgent[] = [
+export const OKX_CATALOG_AGENTS: readonly OkxCatalogAgent[] = [
   {
     id: "okx-market-scout-v1",
     name: "Market Scout",
@@ -33,17 +33,17 @@ export const MOCK_OKX_AGENTS: readonly MockOkxAgent[] = [
   },
 ];
 
-export function listMockOkxAgents(): readonly MockOkxAgent[] {
-  return MOCK_OKX_AGENTS;
+export function listCatalogOkxAgents(): readonly OkxCatalogAgent[] {
+  return OKX_CATALOG_AGENTS;
 }
 
-export function findMockOkxAgent(id: string): MockOkxAgent | undefined {
-  return MOCK_OKX_AGENTS.find((agent) => agent.id === id);
+export function findCatalogOkxAgent(id: string): OkxCatalogAgent | undefined {
+  return OKX_CATALOG_AGENTS.find((agent) => agent.id === id);
 }
 
-export function mockOkxImportDescriptor(agent: MockOkxAgent): OkxImportDescriptor {
+export function okxImportDescriptor(agent: OkxCatalogAgent): OkxImportDescriptor {
   return {
-    kind: "okx-mock",
+    kind: "okx-catalog",
     externalAgentId: agent.id,
     provider: agent.provider,
     capabilities: [...agent.capabilities],

@@ -63,7 +63,7 @@ async function restartVerificationServer(baseUrl: string, dataDir: string, logPa
   return child;
 }
 
-it("serves only the mock catalog and provisions/imports Market Scout exactly once across restart", async () => {
+it("serves only the catalog and provisions/imports Market Scout exactly once across restart", async () => {
   const fixture = await launchVerificationServer();
   const { url, dataDir, logPath } = fixture.info;
   let restarted: ChildProcess | undefined;
@@ -71,7 +71,7 @@ it("serves only the mock catalog and provisions/imports Market Scout exactly onc
     const catalog = await api(url, "/api/okx/agents");
     expect(catalog.response.status).toBe(200);
     expect(catalog.body).toEqual({
-      source: "mock",
+      source: "catalog",
       agents: [expect.objectContaining({
         id: "okx-market-scout-v1",
         name: "Market Scout",
@@ -117,7 +117,7 @@ it("serves only the mock catalog and provisions/imports Market Scout exactly onc
     expect(scout).toMatchObject({
       name: "Market Scout",
       okxImport: {
-        kind: "okx-mock",
+        kind: "okx-catalog",
         externalAgentId: "okx-market-scout-v1",
         provider: "OKX.ai",
         capabilities: ["chat", "market-intelligence"],
@@ -126,7 +126,6 @@ it("serves only the mock catalog and provisions/imports Market Scout exactly onc
       approvalMode: "ask",
       autoApprove: false,
       alwaysAllow: [],
-      mcpServers: [],
       browser: false,
       computer: "off",
       peers: [],
@@ -134,7 +133,7 @@ it("serves only the mock catalog and provisions/imports Market Scout exactly onc
     });
     expect(room.memberIds.filter((id: string) => id === scout.id)).toHaveLength(1);
     expect(room.messages.filter((message: { kind: string; tool?: { name?: string; system?: boolean } }) =>
-      message.kind === "activity" && message.tool?.name === "Market Scout joined #Channel 1 from OKX.ai (mock)." && message.tool.system === true,
+      message.kind === "activity" && message.tool?.name === "Market Scout joined #Channel 1 from OKX.ai." && message.tool.system === true,
     )).toHaveLength(1);
 
     await waitForExit(fixture.child, { signal: "SIGTERM" });
@@ -145,6 +144,23 @@ it("serves only the mock catalog and provisions/imports Market Scout exactly onc
 
     const persisted = JSON.parse(readFileSync(join(dataDir, "bots.json"), "utf8"));
     expect(persisted.filter((bot: { okxImport?: { externalAgentId?: string } }) =>
+      bot.okxImport?.externalAgentId === "okx-market-scout-v1",
+    )).toHaveLength(1);
+
+    // Importing the same agent into a second room reuses the one bot; it must
+    // not create a duplicate workspace bot.
+    const secondRoom = await api(url, "/api/groups", "POST", { name: "Trading Desk", memberIds: [seedId] });
+    const secondRoomId = secondRoom.body?.group?.id;
+    expect(secondRoomId).toBeTruthy();
+    const crossRoom = await api(url, "/api/okx/agents/import", "POST", {
+      agentId: "okx-market-scout-v1",
+      roomId: secondRoomId,
+      requestId: "market-scout-second-room",
+    });
+    expect([200, 201]).toContain(crossRoom.response.status);
+    expect(crossRoom.body.agent.id).toBe(firstImport.body.agent.id);
+    const bots = await api(url, "/api/bots");
+    expect(bots.body.bots.filter((bot: { okxImport?: { externalAgentId?: string } }) =>
       bot.okxImport?.externalAgentId === "okx-market-scout-v1",
     )).toHaveLength(1);
   } finally {

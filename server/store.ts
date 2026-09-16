@@ -51,15 +51,17 @@ export type MausExpression = string;
 function isOkxImportDescriptor(value: unknown): value is OkxImportDescriptor {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const source = value as Partial<OkxImportDescriptor>;
-  return source.kind === "okx-mock" &&
+  return source.kind === "okx-catalog" &&
     typeof source.externalAgentId === "string" && source.externalAgentId.length > 0 && source.externalAgentId.length <= 120 &&
     source.provider === "OKX.ai" &&
     Array.isArray(source.capabilities) && source.capabilities.length > 0 && source.capabilities.length <= 2 &&
     source.capabilities.every((capability) => capability === "chat" || capability === "market-intelligence");
 }
 
-/** Imported marketplace personas are deliberately inert. This runs on load
- * too, so a process crash or hand-edited bots.json cannot revive access. */
+/** Imported catalog agents keep credential/elevation guards but retain tool
+ * access so they can inspect real market data (e.g. the local Free A2MCP
+ * intelligence tools). This runs on load too, so a crash or hand-edited
+ * bots.json cannot silently elevate credentials or approvals. */
 function lockOkxImportedBot(bot: BotRecord): boolean {
   if (!isOkxImportDescriptor(bot.okxImport)) {
     if (bot.okxImport !== undefined) {
@@ -75,11 +77,13 @@ function lockOkxImportedBot(bot: BotRecord): boolean {
       changed = true;
     }
   };
+  // Guard credentials, autonomy, and elevation — but do NOT strip mcpServers:
+  // Market Scout needs its tools to return real intelligence rather than
+  // nothing. Tool access is not a credential/approval elevation.
   set("composio", false);
   set("approvalMode", "ask");
   set("autoApprove", false);
   set("alwaysAllow", []);
-  set("mcpServers", []);
   set("browser", false);
   set("computer", "off");
   set("peers", []);
