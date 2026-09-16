@@ -263,7 +263,6 @@
   "sidebar.menu.settings": "設定",
   "sidebar.menu.about": "關於",
   "sidebar.menu.help": "說明中心",
-  "sidebar.menu.feedback": "傳送意見回饋",
   "sidebar.update.available": "有 {version} 版可用 — 下載",
   "sidebar.update.startingDownload": "正在開始下載…",
   "sidebar.update.downloading": "正在下載… {percent}%",

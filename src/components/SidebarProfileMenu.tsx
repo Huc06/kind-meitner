@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 import { InitialsAvatar } from "./Avatar";
-import { DiscordIcon } from "./DiscordIcon";
 import { AboutDialog } from "./AboutDialog";
 import { SidebarPopoverMenu, type SidebarMenuItem } from "./SidebarPopoverMenu";
 import { ShortcutHint } from "./ShortcutHint";
@@ -31,7 +30,7 @@ import { useStore } from "@/state/store";
 import { useUpdaterState, type UpdaterState } from "@/lib/updater";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import { FEEDBACK_URL, HELP_CENTER_URL, openExternalLink } from "@/lib/app-links";
+import { HELP_CENTER_URL, openExternalLink } from "@/lib/app-links";
 
 /** "Milind Soni" → "MS", "milind" → "M", "you@x.dev" → "Y", unset → "?" */
 export function profileInitials(profile?: { name?: string; email?: string }): string {
@@ -238,12 +237,6 @@ export function SidebarProfileMenu() {
       label: t("sidebar.menu.help"),
       icon: <HelpCircle size={18} />,
       onSelect: () => void openExternalLink(HELP_CENTER_URL),
-    },
-    {
-      key: "feedback",
-      label: t("sidebar.menu.feedback"),
-      icon: <DiscordIcon size={17} />,
-      onSelect: () => void openExternalLink(FEEDBACK_URL),
     },
   ];
 

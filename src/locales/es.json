@@ -175,7 +175,6 @@
   "sidebar.menu.settings": "Ajustes",
   "sidebar.menu.about": "Acerca de",
   "sidebar.menu.help": "Centro de ayuda",
-  "sidebar.menu.feedback": "Enviar comentarios",
   "sidebar.update.available": "Versión {version} disponible: descargar",
   "sidebar.update.startingDownload": "Iniciando la descarga…",
   "sidebar.update.downloading": "Descargando… {percent}%",
