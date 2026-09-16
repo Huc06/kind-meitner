@@ -8,7 +8,7 @@ import {
   updateLabel,
   updatePhase,
 } from "./SidebarProfileMenu";
-import { DOCS_URL, FEEDBACK_URL, HELP_CENTER_URL, platformLabel } from "@/lib/app-links";
+import { DOCS_URL, HELP_CENTER_URL, platformLabel } from "@/lib/app-links";
 import type { UpdaterState } from "@/lib/updater";
 
 const state = (patch: Partial<UpdaterState>): UpdaterState => ({ status: "idle", ...patch }) as UpdaterState;
@@ -156,14 +156,10 @@ describe("updateNoteworthy", () => {
 });
 
 describe("outward links", () => {
-  // both were pointed somewhere else once; pin them so a future tidy-up of
+  // was pointed somewhere else once; pin it so a future tidy-up of
   // app-links does not quietly send Help back to the README
   it("sends Help Center to the docs the website also links to", () => {
     expect(HELP_CENTER_URL).toBe(DOCS_URL);
     expect(DOCS_URL).toBe("https://github.com/harrymove-ctrl/kind-meitner/tree/main/docs");
-  });
-
-  it("sends Send Feedback to the Discord community", () => {
-    expect(FEEDBACK_URL).toBe("https://discord.gg/9Wb8MEpXRs");
   });
 });
