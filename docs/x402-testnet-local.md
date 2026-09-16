@@ -77,6 +77,18 @@ Expected: HTTP `200` plus a decoded `PAYMENT-RESPONSE` settlement receipt with a
 
 Do not use a mainnet key. The sample refuses anything that is not a 0x 32-byte key and never logs it.
 
+### Verified testnet run (evidence)
+
+A local X Layer testnet run has completed the full flow with a real on-chain settlement:
+
+- Self-check: `HTTP 402` with `PAYMENT-REQUIRED` present.
+- Buyer sample: `HTTP 200` with a decoded `PAYMENT-RESPONSE` receipt:
+  - `status: success`, `success: true`
+  - `network: eip155:1952`
+  - `transaction: 0xe059043a5c61673610b4a0b82ba2b458a8217b9f2e4ddae042a78956337bb527`
+
+The response body carried the resource plus `settlement.status: "success"`. No credentials or private keys are recorded here; only the public transaction hash and network are kept as evidence.
+
 ## 5. Promote to Railway (after local passes)
 
 Only after the local `402 → payment → settlement` succeeds:

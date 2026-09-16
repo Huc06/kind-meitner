@@ -20,6 +20,9 @@ importers:
       '@okxweb3/x402-evm':
         specifier: 0.2.1
         version: 0.2.1(typescript@5.9.3)
+      '@okxweb3/x402-fetch':
+        specifier: 0.1.0
+        version: 0.1.0(typescript@5.9.3)
       '@trycua/cua-driver':
         specifier: 0.22.1
         version: 0.22.1
@@ -65,6 +68,9 @@ importers:
       tar:
         specifier: 7.5.22
         version: 7.5.22
+      viem:
+        specifier: 2.56.5
+        version: 2.56.5(typescript@5.9.3)(zod@4.4.3)
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -1381,6 +1387,9 @@ packages:
 
   '@okxweb3/x402-evm@0.2.1':
     resolution: {integrity: sha512-wdkMaoQS3dy06vQQB+a6PzBoBb5nIXTZKEYLYzmq+xtRjc+F/QzQ9dBM2+FnI31TDwN/CdI1teaPWwrcy/7LxA==}
+
+  '@okxweb3/x402-fetch@0.1.0':
+    resolution: {integrity: sha512-gwKpevwH98DOqlF0gepxtPBxf/HE177jyCDs6DGHqTf0FvtiwpVGPc/pPEr++Rc60PtYvE04frJBScPw/4qe6w==}
 
   '@opentelemetry/semantic-conventions@1.43.0':
     resolution: {integrity: sha512-eSYWTm620tTk45EKSedaUL8MFYI8hW164hIXsgIHyxu3VobUB3fFCu5t0hQby6OoWRPsG1KkKUG2M5UadiLiVg==}
@@ -5344,6 +5353,16 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@okxweb3/x402-fetch@0.1.0(typescript@5.9.3)':
+    dependencies:
+      '@okxweb3/x402-core': 0.1.0
+      viem: 2.56.5(typescript@5.9.3)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+
   '@opentelemetry/semantic-conventions@1.43.0': {}
 
   '@oxlint/binding-android-arm-eabi@1.80.0':
@@ -5934,6 +5953,11 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
       zod: 3.25.76
+
+  abitype@1.2.3(typescript@5.9.3)(zod@4.4.3):
+    optionalDependencies:
+      typescript: 5.9.3
+      zod: 4.4.3
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:
@@ -7739,6 +7763,21 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
+  ox@0.14.44(typescript@5.9.3)(zod@4.4.3):
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.1
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      eventemitter3: 5.0.1
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - zod
+
   oxlint@1.80.0:
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.80.0
@@ -8511,6 +8550,23 @@ snapshots:
       abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
       isows: 1.0.7(ws@8.21.0)
       ox: 0.14.44(typescript@5.9.3)(zod@3.25.76)
+      ws: 8.21.0
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
+  viem@2.56.5(typescript@5.9.3)(zod@4.4.3):
+    dependencies:
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      isows: 1.0.7(ws@8.21.0)
+      ox: 0.14.44(typescript@5.9.3)(zod@4.4.3)
       ws: 8.21.0
     optionalDependencies:
       typescript: 5.9.3

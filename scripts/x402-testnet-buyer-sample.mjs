@@ -33,12 +33,12 @@ const url =
 const rpcUrl = process.env.X402_BUYER_RPC_URL || "https://testrpc.xlayer.tech";
 
 let wrapFetchWithPaymentFromConfig, decodePaymentResponseHeader, ExactEvmScheme, toClientEvmSigner;
-let createWalletClient, http, privateKeyToAccount;
+let createPublicClient, http, privateKeyToAccount;
 try {
   ({ wrapFetchWithPaymentFromConfig } = await import("@okxweb3/x402-fetch"));
   ({ decodePaymentResponseHeader } = await import("@okxweb3/x402-core/http"));
   ({ ExactEvmScheme, toClientEvmSigner } = await import("@okxweb3/x402-evm"));
-  ({ createWalletClient, http } = await import("viem"));
+  ({ createPublicClient, http } = await import("viem"));
   ({ privateKeyToAccount } = await import("viem/accounts"));
 } catch {
   console.error("Missing buyer dependencies. Install them once:");
@@ -48,14 +48,11 @@ try {
 
 const X402_TESTNET_NETWORK = "eip155:1952";
 
-const signer = toClientEvmSigner(
-  createWalletClient({
-    account: privateKeyToAccount(privateKey),
-    // Chain object is minimal on purpose; the RPC transport does the work.
-    chain: { id: 1952, name: "X Layer Testnet", nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 }, rpcUrls: { default: { http: [rpcUrl] } } },
-    transport: http(rpcUrl),
-  }),
-);
+// The account signs EIP-712 payment authorizations; the public client provides
+// optional on-chain reads. This matches the official toClientEvmSigner shape.
+const account = privateKeyToAccount(privateKey);
+const publicClient = createPublicClient({ transport: http(rpcUrl) });
+const signer = toClientEvmSigner(account, publicClient);
 
 const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
   schemes: [{ network: X402_TESTNET_NETWORK, client: new ExactEvmScheme(signer) }],
