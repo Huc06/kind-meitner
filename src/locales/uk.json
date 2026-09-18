@@ -291,7 +291,6 @@
   "sidebar.menu.settings": "Налаштування",
   "sidebar.menu.about": "Про застосунок",
   "sidebar.menu.help": "Довідковий центр",
-  "sidebar.menu.feedback": "Надіслати відгук",
   "sidebar.update.available": "Доступна версія {version} — завантажити",
   "sidebar.update.startingDownload": "Починаємо завантаження…",
   "sidebar.update.downloading": "Завантаження… {percent}%",

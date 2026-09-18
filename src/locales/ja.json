@@ -175,7 +175,6 @@
   "sidebar.menu.settings": "設定",
   "sidebar.menu.about": "このアプリについて",
   "sidebar.menu.help": "ヘルプセンター",
-  "sidebar.menu.feedback": "フィードバックを送る",
   "sidebar.update.available": "バージョン {version} が利用できます — ダウンロード",
   "sidebar.update.startingDownload": "ダウンロードを開始中…",
   "sidebar.update.downloading": "ダウンロード中… {percent}%",

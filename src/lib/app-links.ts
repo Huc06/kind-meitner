@@ -8,10 +8,6 @@ export const APP_REPOSITORY = "https://github.com/harrymove-ctrl/kind-meitner";
 export const DOCS_URL = `${APP_REPOSITORY}/tree/main/docs`;
 export const HELP_CENTER_URL = DOCS_URL;
 export const APPROVAL_LEVELS_URL = `${APP_REPOSITORY}/blob/main/docs/approval-levels.md`;
-/** Feedback goes to the community rather than the issue tracker: most of it
- * is a question or a "does anyone else see this", and those get an answer in
- * Discord in minutes instead of sitting open as an issue. */
-export const FEEDBACK_URL = "https://discord.gg/9Wb8MEpXRs";
 export const RELEASES_URL = `${APP_REPOSITORY}/releases`;
 export const LICENSE_URL = `${APP_REPOSITORY}/blob/main/LICENSE`;
 

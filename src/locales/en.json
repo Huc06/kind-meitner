@@ -360,7 +360,6 @@
   "sidebar.menu.settings": "Settings",
   "sidebar.menu.about": "About",
   "sidebar.menu.help": "Help Center",
-  "sidebar.menu.feedback": "Send Feedback",
   "sidebar.update.available": "Version {version} available — download",
   "sidebar.update.startingDownload": "Starting download…",
   "sidebar.update.downloading": "Downloading… {percent}%",

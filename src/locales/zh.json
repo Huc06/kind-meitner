@@ -175,7 +175,6 @@
   "sidebar.menu.settings": "设置",
   "sidebar.menu.about": "关于",
   "sidebar.menu.help": "帮助中心",
-  "sidebar.menu.feedback": "发送反馈",
   "sidebar.update.available": "版本 {version} 可用——下载",
   "sidebar.update.startingDownload": "开始下载…",
   "sidebar.update.downloading": "正在下载… {percent}%",
