@@ -10,7 +10,7 @@
 ![OKX Onchain OS](https://img.shields.io/badge/OKX-Onchain_OS-000000?logo=okx&logoColor=white)
 ![X Layer](https://img.shields.io/badge/X_Layer-EVM-blue)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Tests](https://img.shields.io/badge/tests-62%20passed-success)
+[![CI](https://github.com/harrymove-ctrl/kind-meitner/actions/workflows/ci.yml/badge.svg)](https://github.com/harrymove-ctrl/kind-meitner/actions/workflows/ci.yml)
 
 </div>
 
@@ -122,10 +122,10 @@ OKX_EVALUATOR_OKB_STAKE=100
 
 ### 4. Running Tests
 ```bash
-# Run OKX subsystem tests (62 passing)
+# Run OKX subsystem tests
 pnpm vitest run server/okx/ src/okx/
 
-# Run routines regression tests (110 passing)
+# Run routines regression tests
 pnpm vitest run server/routines.test.ts
 
 # Typecheck and lint
@@ -144,10 +144,22 @@ pnpm dev
 
 All verification follows isolated fixture guidelines from `AGENTS.md` and `docs/verification/README.md`. No operations perform live mainnet mutations during automated testing.
 
-- **OKX Subsystem Tests**: 62 / 62 passed
-- **Regression Suite**: 110 / 110 passed
-- **TypeScript**: 0 errors
-- **Linter**: 0 warnings, 0 errors
+CI is the source of truth for suite results — see the badge above. Pass counts are
+not reproduced here, because a hardcoded number goes stale on the next commit and
+then quietly misreports the project's health.
+
+To reproduce locally:
+
+```bash
+pnpm test        # full gate: vitest + broker + electron + packaged-server smoke
+pnpm typecheck
+pnpm lint
+```
+
+> **Note:** the suite spawns real harness servers, fake provider CLIs and loopback
+> sockets, so it must run in an environment that permits binding local ports and
+> writing to the system temp directory. A restricted sandbox will report large
+> numbers of `EPERM` failures that are environmental, not defects.
 
 ---
 

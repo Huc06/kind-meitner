@@ -11,7 +11,7 @@ Per the roadmap, Phase 3 work is only meaningful after Phase 2 exit criteria are
 - `OKX_X402_TESTNET_ENABLED` remains off by default in production configuration.
 - PR #7 is rebased, CI-green, and merged.
 
-**As of this draft, Phase 2 is not complete**: PR #7 is open with failing CI, and no testnet `402`/payment/settlement evidence has been captured. This draft exists so Phase 3 scaffolding is ready to fill in with real evidence — it must not be treated as progress toward enabling mainnet.
+**As of this revision, Phase 2 is still not complete.** PR #7 has since merged (`7b528bd3`), which satisfies the third bullet only. The first bullet remains unmet: no testnet `402`/payment/settlement evidence has been captured, and no manual testnet receipt exists. Merging the route is not evidence that the protocol sequence works — the route ships disabled by default and has never been exercised against X Layer testnet. This draft exists so Phase 3 scaffolding is ready to fill in with real evidence — it must not be treated as progress toward enabling mainnet.
 
 ## 1. Purpose
 
@@ -117,6 +117,6 @@ This form must be completed and signed by a named human approver — not generat
 
 ## 4. Suggested next steps (still Phase 2, not Phase 3)
 
-1. Fix CI on PR #7 and merge it.
-2. Run the local and Railway testnet exercises described in `docs/x402-testnet-local.md` and record the resulting receipts/trace IDs as Phase 2 evidence (tracked in issue #8).
+1. ~~Fix CI on PR #7 and merge it.~~ Done — merged as `7b528bd3`.
+2. Run the local and Railway testnet exercises described in `docs/x402-testnet-local.md` and record the resulting receipts/trace IDs as Phase 2 evidence (tracked in issue #8). **This is the current blocker** — it has not been started, and nothing downstream may proceed without it.
 3. Only after step 2 produces real evidence, begin populating section 2 of this draft with actual artifacts rather than checklist items.
