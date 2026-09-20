@@ -94,6 +94,12 @@ const USER_COLLAPSE_CHARS = 600;
 const USER_COLLAPSE_LINES = 8;
 const noop = () => {};
 
+export const STARTER_PROMPTS = [
+  "Draft a test plan",
+  "Analyze project structure",
+  "Review git diff",
+] as const;
+
 /** "Today" / "Yesterday" / "Mon, Aug 11" — real dates, not a hardcoded label. */
 function dayLabel(at: number): string {
   const d = new Date(at);
@@ -107,8 +113,12 @@ function dayLabel(at: number): string {
 
 function DaySeparator({ at }: { at: number }) {
   return (
-    <div className="py-3 text-center text-[13px] text-ink-secondary">
-      {dayLabel(at)} {formatTime(at)}
+    <div className="my-4 flex items-center gap-3">
+      <div className="h-px flex-1 bg-hairline/30" />
+      <span className="text-[12px] font-medium text-ink-secondary/70">
+        {dayLabel(at)} {formatTime(at)}
+      </span>
+      <div className="h-px flex-1 bg-hairline/30" />
     </div>
   );
 }
@@ -118,6 +128,7 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
+      type="button"
       onClick={() => {
         void navigator.clipboard?.writeText(text);
         setCopied(true);
@@ -126,11 +137,11 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
       aria-label={t("chat.copyMessage")}
       title={t("chat.copyMessage")}
       className={cn(
-        "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
+        "rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink",
         className,
       )}
     >
-      {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+      {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
     </button>
   );
 }
@@ -324,54 +335,11 @@ function Bubble({
   return (
     <div className={cn("group flex w-full flex-col", user ? "animate-msg-in items-end" : "items-start")}>
       {peer && <PeerLabel peer={peer} />}
-      <div className={cn("flex w-full items-center gap-1.5", user ? "justify-end" : "justify-start")}>
-        {/* editing rewinds the thread, so it waits for the turn to end —
-            same rule as the version switcher below */}
-        {user && message.kind === "text" && !webhookView && !hasAttachments && !bot.busy && (
-          <button
-            onClick={onStartEdit}
-            aria-label={t("chat.editMessage")}
-            className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-            title={t("chat.editMessage")}
-          >
-            <Pencil size={14} />
-          </button>
-        )}
-        {user && Boolean(visibleText.trim()) && <CopyButton text={visibleText} />}
-        {user && (
-          <>
-            <button
-              type="button"
-              onClick={onReply}
-              aria-label={t("chat.replyToMessage")}
-              className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-              title={t("chat.reply")}
-            >
-              <MessageSquareReply size={14} />
-            </button>
-            <button
-              onClick={() =>
-                dispatch({
-                  type: "updateTask",
-                  botId: bot.id,
-                  threadId: bot.threadId,
-                  patch: { pinnedMessageId: bot.pinnedMessageId === message.id ? "" : message.id },
-                })
-              }
-              aria-label={bot.pinnedMessageId === message.id ? t("chat.unpinMessage") : t("chat.pinMessage")}
-              className={cn(
-                "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
-                remoteClient && "hidden",
-              )}
-              title={bot.pinnedMessageId === message.id ? t("chat.unpinHint") : t("chat.pinHint")}
-            >
-              {bot.pinnedMessageId === message.id ? <PinOff size={14} /> : <Pin size={14} />}
-            </button>
-          </>
-        )}
+      <div className={cn("flex w-full", user ? "justify-end" : "justify-start")}>
         <div
           className={cn(
-            "w-fit max-w-[min(42rem,78%)] rounded-2xl text-[15px] leading-relaxed",
+            "w-fit max-w-[min(42rem,85%)] rounded-2xl text-[15px] leading-relaxed",
+            user ? "rounded-tr-sm" : "rounded-tl-sm",
             emerging && "turn-answer",
             user && webhookView
               ? "overflow-hidden border border-accent/25 bg-card text-ink shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
@@ -444,63 +412,100 @@ function Bubble({
             </MessageBoundary>
           )}
         </div>
-        {!user && (
-          <>
-            <div className="flex flex-col gap-0.5 self-end pb-0.5">
-              {text && <CopyButton text={text} />}
-              {text && <RawToggleAction active={viewRaw} onToggle={() => setViewRaw((r) => !r)} />}
-              {message.kind === "text" && text && !peer && (
-                <SpeakButton text={text} botId={bot.id} messageId={message.id} voiceId={bot.voice} />
-              )}
-              {isLastBotText && !bot.busy && onRegenerate && (
-                <button
-                  onClick={onRegenerate}
-                  aria-label={t("chat.regenerate")}
-                  title={t("chat.regenerate")}
-                  className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={onReply}
-              aria-label={t("chat.replyToMessage")}
-              className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-              title={t("chat.reply")}
-            >
-              <MessageSquareReply size={14} />
-            </button>
-            <button
-              onClick={() =>
-                dispatch({
-                  type: "updateTask",
-                  botId: bot.id,
-                  threadId: bot.threadId,
-                  patch: { pinnedMessageId: bot.pinnedMessageId === message.id ? "" : message.id },
-                })
-              }
-              aria-label={bot.pinnedMessageId === message.id ? t("chat.unpinMessage") : t("chat.pinMessage")}
-              className={cn(
-                "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
-                remoteClient && "hidden",
-              )}
-              title={bot.pinnedMessageId === message.id ? t("chat.unpinHint") : t("chat.pinHint")}
-            >
-              {bot.pinnedMessageId === message.id ? <PinOff size={14} /> : <Pin size={14} />}
-            </button>
-          </>
-        )}
-        <span
-          className={cn(
-            "self-end pb-1 text-[11px] tabular-nums text-ink-secondary/70 opacity-0 transition-opacity group-hover:opacity-100",
-            user ? "order-first mr-1" : "ml-1",
-          )}
-        >
-          {formatTime(message.at)}
-        </span>
       </div>
+      {user ? (
+        <div className="mt-1.5 flex items-center justify-end gap-1 text-ink-secondary opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <span className="mr-1 text-[11px] tabular-nums text-ink-secondary/60">
+            {formatTime(message.at)}
+          </span>
+          {message.kind === "text" && !webhookView && !hasAttachments && !bot.busy && (
+            <button
+              onClick={onStartEdit}
+              aria-label={t("chat.editMessage")}
+              className="rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink"
+              title={t("chat.editMessage")}
+            >
+              <Pencil size={13} />
+            </button>
+          )}
+          {Boolean(visibleText.trim()) && <CopyButton text={visibleText} />}
+          <button
+            type="button"
+            onClick={onReply}
+            aria-label={t("chat.replyToMessage")}
+            className="rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink"
+            title={t("chat.reply")}
+          >
+            <MessageSquareReply size={13} />
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "updateTask",
+                botId: bot.id,
+                threadId: bot.threadId,
+                patch: { pinnedMessageId: bot.pinnedMessageId === message.id ? "" : message.id },
+              })
+            }
+            aria-label={bot.pinnedMessageId === message.id ? t("chat.unpinMessage") : t("chat.pinMessage")}
+            className={cn(
+              "rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink",
+              remoteClient && "hidden",
+            )}
+            title={bot.pinnedMessageId === message.id ? t("chat.unpinHint") : t("chat.pinHint")}
+          >
+            {bot.pinnedMessageId === message.id ? <PinOff size={13} /> : <Pin size={13} />}
+          </button>
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-center gap-1 text-ink-secondary opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          {text && <CopyButton text={text} />}
+          {text && <RawToggleAction active={viewRaw} onToggle={() => setViewRaw((r) => !r)} />}
+          {message.kind === "text" && text && !peer && (
+            <SpeakButton text={text} botId={bot.id} messageId={message.id} voiceId={bot.voice} />
+          )}
+          {isLastBotText && !bot.busy && onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              aria-label={t("chat.regenerate")}
+              title={t("chat.regenerate")}
+              className="rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink"
+            >
+              <RefreshCw size={13} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onReply}
+            aria-label={t("chat.replyToMessage")}
+            className="rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink"
+            title={t("chat.reply")}
+          >
+            <MessageSquareReply size={13} />
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "updateTask",
+                botId: bot.id,
+                threadId: bot.threadId,
+                patch: { pinnedMessageId: bot.pinnedMessageId === message.id ? "" : message.id },
+              })
+            }
+            aria-label={bot.pinnedMessageId === message.id ? t("chat.unpinMessage") : t("chat.pinMessage")}
+            className={cn(
+              "rounded-md p-1.5 text-ink-secondary transition-colors hover:bg-raised hover:text-ink",
+              remoteClient && "hidden",
+            )}
+            title={bot.pinnedMessageId === message.id ? t("chat.unpinHint") : t("chat.pinHint")}
+          >
+            {bot.pinnedMessageId === message.id ? <PinOff size={13} /> : <Pin size={13} />}
+          </button>
+          <span className="ml-1.5 text-[11px] tabular-nums text-ink-secondary/60">
+            {formatTime(message.at)}
+          </span>
+        </div>
+      )}
       {versions.length > 1 && (
         <div className="mt-1 flex items-center gap-0.5 pr-1 text-[12px] text-ink-secondary">
           <button
@@ -652,7 +657,7 @@ const MessagesList = memo(function MessagesList({
   return (
     <>
       {messages.length === 0 && !bot.busy && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
+        <div className="flex min-h-[50vh] flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
           <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} />
           <RenameTitle
             value={bot.name}
@@ -670,6 +675,22 @@ const MessagesList = memo(function MessagesList({
           />
           <div className="max-w-[360px] text-[14px] text-ink-secondary">
             {bot.description || t("chat.emptyPrompt")}
+          </div>
+          <div className="mt-4 flex max-w-lg flex-wrap items-center justify-center gap-2">
+            {STARTER_PROMPTS.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => {
+                  appendComposerDraft(`bot:${bot.id}:${bot.threadId}`, prompt);
+                  const textarea = typeof document !== "undefined" ? document.querySelector<HTMLTextAreaElement>("textarea") : null;
+                  textarea?.focus();
+                }}
+                className="rounded-full border border-hairline/60 bg-raised/50 px-3.5 py-1.5 text-[13px] text-ink-secondary transition-colors hover:border-hairline hover:bg-raised hover:text-ink focus-visible:border-accent focus-visible:outline-none"
+              >
+                {prompt}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -1135,12 +1156,12 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         className={cn(
           // @container so the chips on the right can fold to icon bubbles
           // when the column is narrow (side panel open, small window)
-          "@container/chathead flex items-center justify-between px-5 py-3",
+          "@container/chathead sticky top-0 z-20 flex items-center justify-between border-b border-hairline/40 bg-app/90 px-5 py-2.5 backdrop-blur-sm",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
         )}
       >
-        <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1" style={headerNoDragStyle}>
+        <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-0.5" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
             className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-raised/50"
@@ -1155,31 +1176,55 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
               motionKey={mascotMotion?.nonce ?? 0}
             />
           </button>
-          <RenameTitle
-            value={bot.name}
-            onCommit={(name) => {
-              if (window.ogb?.remoteClient?.active) {
-                void api(`/api/bots/${bot.id}/profile`, { method: "PATCH", body: JSON.stringify({ name }) })
-                  .then(({ bot: updated }) => dispatch({ type: "botPatched", bot: updated }))
-                  .catch((cause) => dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }));
-              } else {
-                dispatch({ type: "updateBot", botId: bot.id, patch: { name } });
-              }
-            }}
-            onActivate={() => dispatch({ type: "toggleSettings", open: true })}
-            showEditButton
-            className="truncate text-[15px] font-semibold text-ink"
-            inputClassName="max-w-[220px] rounded bg-inset px-1.5 py-0.5 text-[15px] font-semibold"
-          />
-          {bot.chiefOfStaff && (
-            <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-medium text-accent">
-              <Crown size={11} /> {t("chat.chiefOfStaff")}
-            </span>
-          )}
-          {bot.busy && <WorkingDots className="text-ink-secondary" />}
+          <div className="flex min-w-0 flex-col justify-center">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <RenameTitle
+                value={bot.name}
+                onCommit={(name) => {
+                  if (window.ogb?.remoteClient?.active) {
+                    void api(`/api/bots/${bot.id}/profile`, { method: "PATCH", body: JSON.stringify({ name }) })
+                      .then(({ bot: updated }) => dispatch({ type: "botPatched", bot: updated }))
+                      .catch((cause) => dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }));
+                  } else {
+                    dispatch({ type: "updateBot", botId: bot.id, patch: { name } });
+                  }
+                }}
+                onActivate={() => dispatch({ type: "toggleSettings", open: true })}
+                showEditButton
+                className="truncate text-[15px] font-semibold text-ink"
+                inputClassName="max-w-[220px] rounded bg-inset px-1.5 py-0.5 text-[15px] font-semibold"
+              />
+              {bot.chiefOfStaff && (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-medium text-accent">
+                  <Crown size={11} /> {t("chat.chiefOfStaff")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11.5px] leading-tight">
+              {bot.busy ? (
+                <span className="flex items-center gap-1 font-medium text-accent">
+                  <WorkingDots className="text-accent" size={2.5} />
+                  <span>Working...</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-ink-secondary/75">
+                  <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
+                  <span>Online</span>
+                </span>
+              )}
+              {!remoteClient && bot.modelSelection?.model && (
+                <>
+                  <span className="text-ink-secondary/40">·</span>
+                  <span className="max-w-[140px] truncate rounded bg-raised/80 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-secondary">
+                    {bot.modelSelection.model}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
         <div
-          className="flex shrink-0 items-center gap-2"
+          className="flex shrink-0 items-center gap-1 sm:gap-1.5"
           // The caption buttons sit over the header's right end; drop this
           // icon row 16px (visual only — the header keeps its height) so the
           // buttons clear the 26px overlay while the rest of the layout stays.
@@ -1195,13 +1240,15 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             )}
             title={t("chat.findShortcut")}
           >
-            <Search size={18} />
+            <Search size={17} />
           </button>
-          <ExportTranscriptMenu
-            title={bot.name}
-            messages={messages}
-            botName={bot.name}
-          />
+          <div className="@max-2xl/chathead:hidden">
+            <ExportTranscriptMenu
+              title={bot.name}
+              messages={messages}
+              botName={bot.name}
+            />
+          </div>
           {bot.busy && (
             <button
               onClick={() => dispatch({ type: "interrupt", botId: bot.id, threadId: bot.threadId })}
@@ -1223,25 +1270,27 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             data-tour="computer"
             onClick={() => dispatch({ type: "toggleComputer" })}
             className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
+              "rounded-md p-1.5 hover:bg-raised @max-xl/chathead:hidden",
               state.computerOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
             )}
             title={t("chat.computer")}
           >
-            <Monitor size={18} />
+            <Monitor size={17} />
           </button>
-          {!remoteClient && <button
-            onClick={() => dispatch({ type: "toggleInspector" })}
-            aria-label={t("chat.inspector")}
-            aria-pressed={state.inspectorOpen}
-            className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
-              state.inspectorOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
-            )}
-            title={t("chat.inspectorHint")}
-          >
-            <Bug size={18} />
-          </button>}
+          {!remoteClient && (
+            <button
+              onClick={() => dispatch({ type: "toggleInspector" })}
+              aria-label={t("chat.inspector")}
+              aria-pressed={state.inspectorOpen}
+              className={cn(
+                "rounded-md p-1.5 hover:bg-raised @max-3xl/chathead:hidden",
+                state.inspectorOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
+              )}
+              title={t("chat.inspectorHint")}
+            >
+              <Bug size={17} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1288,7 +1337,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       <div className="relative min-h-0 flex-1">
       <div
         ref={scrollRef}
-        className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-5 [overflow-anchor:none]"
+        className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain [overflow-anchor:none]"
         onPointerDown={(e) => {
           // grabbing the scrollbar is a scroll gesture too — the lane lives
           // past the content box (clientWidth excludes it)
@@ -1321,74 +1370,76 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       >
         <div
           ref={transcriptRef}
-          className="flex w-full flex-col gap-3"
+          className="flex w-full flex-col"
           style={{ paddingBottom: composerDock.pad }}
           role="log"
           aria-live="polite"
           aria-label={t("chat.conversationWith", { name: bot.name })}
         >
-          {hiddenCount > 0 && (
-            <div className="flex justify-center pt-2">
-              <button
-                onClick={showEarlier}
-                className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
-              >
-                {t("chat.showEarlier", { count: hiddenCount })}
-              </button>
-            </div>
-          )}
-          <MessagesList
-            bot={bot}
-            locale={activeLocale()}
-            messages={windowedMessages}
-            transcript={messages}
-            editingId={editingId}
-            lastBotTextId={lastBotTextId}
-            emergingId={popping}
-            canRetryLast={!bot.busy && Boolean(lastUserMessage)}
-            engine={state.instances.find((i) => i.instanceId === bot.modelSelection.instanceId)}
-            onStartEdit={startEdit}
-            onCancelEdit={cancelEdit}
-            onSubmitEdit={submitEdit}
-            onRegenerate={regenerate}
-            onReply={selectReply}
-          />
-          {laterCount > 0 && (
-            <div className="flex justify-center">
-              <button
-                onClick={showLater}
-                className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
-              >
-                {t("chat.showLater", { count: laterCount })}
-              </button>
-            </div>
-          )}
-          {provisioning && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary">
-                <WorkingDots size={3.5} />
-                {t("chat.provisioning")}
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-5">
+            {hiddenCount > 0 && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={showEarlier}
+                  className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
+                >
+                  {t("chat.showEarlier", { count: hiddenCount })}
+                </button>
               </div>
-            </div>
-          )}
-          <TurnPresence
-            avatar={
-              // BotAvatar, not a bare MausAvatar: an uploaded profile image
-              // (and a chosen mascot body) must match the sidebar row.
-              <BotAvatar
-                bot={bot}
-                state={toolInFlight ? "working" : "thinking"}
-                size={36}
-                forward={false}
-                lookAround={1}
-                trackPointer={false}
-              />
-            }
-            visible={presenceVisible}
-            label={activityLabel}
-            answering={popping !== null}
-            since={busySince}
-          />
+            )}
+            <MessagesList
+              bot={bot}
+              locale={activeLocale()}
+              messages={windowedMessages}
+              transcript={messages}
+              editingId={editingId}
+              lastBotTextId={lastBotTextId}
+              emergingId={popping}
+              canRetryLast={!bot.busy && Boolean(lastUserMessage)}
+              engine={state.instances.find((i) => i.instanceId === bot.modelSelection.instanceId)}
+              onStartEdit={startEdit}
+              onCancelEdit={cancelEdit}
+              onSubmitEdit={submitEdit}
+              onRegenerate={regenerate}
+              onReply={selectReply}
+            />
+            {laterCount > 0 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={showLater}
+                  className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
+                >
+                  {t("chat.showLater", { count: laterCount })}
+                </button>
+              </div>
+            )}
+            {provisioning && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary">
+                  <WorkingDots size={3.5} />
+                  {t("chat.provisioning")}
+                </div>
+              </div>
+            )}
+            <TurnPresence
+              avatar={
+                // BotAvatar, not a bare MausAvatar: an uploaded profile image
+                // (and a chosen mascot body) must match the sidebar row.
+                <BotAvatar
+                  bot={bot}
+                  state={toolInFlight ? "working" : "thinking"}
+                  size={36}
+                  forward={false}
+                  lookAround={1}
+                  trackPointer={false}
+                />
+              }
+              visible={presenceVisible}
+              label={activityLabel}
+              answering={popping !== null}
+              since={busySince}
+            />
+          </div>
         </div>
       </div>
 
@@ -1417,7 +1468,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           the transcript pad, the jump pill and bottom-follow all move with
           it. */}
       {lastRunStep && showRun(recordedRun) && runDismissed.get(transcriptKey) !== lastRunStep.id && (
-        <div className="flex justify-end px-5 pb-2">
+        <div className="mx-auto flex w-full max-w-3xl justify-end px-5 pb-2">
           <VerifyCard
             key={transcriptKey}
             steps={recordedRun}

@@ -24,9 +24,7 @@ import {
   PinOff,
   Plus,
   Search,
-  Scale,
   MessageSquare,
-  TrendingUp,
   Puzzle,
   Trash2,
   Users,
@@ -227,12 +225,12 @@ export function GroupListItem({
       <StackedMauses members={members} density={density} />
       <div className={cn("min-w-0 flex-1", density === "icons" && "hidden")}>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-[14px] font-semibold text-ink">{group.name}</span>
+          <span className="whitespace-nowrap truncate text-[14px] font-semibold text-ink">{group.name}</span>
           {selected && last && !expanded && <span className="shrink-0 text-[10px] text-ink-secondary">{formatTime(last.at)}</span>}
           {expanded && group.unread && <span className="size-1.5 shrink-0 rounded-full bg-accent" aria-label={t("task.unreadMany")} />}
         </div>
         {!expanded && <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-[11px] text-ink-secondary">{groupPreview(group, state.bots)}</span>
+          <span className="whitespace-nowrap truncate text-[11px] text-ink-secondary">{groupPreview(group, state.bots)}</span>
           {group.unread && <span className="size-2 shrink-0 rounded-full bg-accent" />}
         </div>}
       </div>
@@ -1098,10 +1096,10 @@ export function BotListItem({
           // (#866, #871) always traded the name's width against the title's —
           // stacking the two removes the competition entirely, so both can
           // truncate independently against the full row width.
-          <div className="truncate text-[11px] font-medium leading-4 text-ink-secondary">{title}</div>
+          <div className="truncate text-[11px] font-medium leading-4 text-ink-secondary whitespace-nowrap">{title}</div>
         )}
         <div className="flex items-baseline justify-between gap-2">
-          <span className="flex min-w-0 grow items-center gap-1.5 truncate text-[14px] font-semibold text-ink">
+          <span className="flex min-w-0 grow items-center gap-1.5 whitespace-nowrap truncate text-[14px] font-semibold text-ink">
             {bot.pinned && <Pin size={12} className="shrink-0 text-ink-secondary" />}
             <RenameTitle
               key={iconOnly ? "icons" : "expanded"}
@@ -1116,7 +1114,7 @@ export function BotListItem({
                 }
               }}
               onEditingChange={setRenaming}
-              className="truncate"
+              className="whitespace-nowrap truncate"
               inputClassName="w-full rounded bg-inset px-1 py-0.5 text-[14px] font-semibold"
             />
           </span>
@@ -1130,18 +1128,18 @@ export function BotListItem({
         {bot.chiefOfStaff && !renaming && (
           // Chief of Staff gets its own line under the name so a long name
           // and the title badge keep the full width of the name line.
-          <span className="flex items-center gap-1 text-[11.5px] font-medium leading-4 text-accent">
+          <span className="flex items-center gap-1 whitespace-nowrap truncate text-[11.5px] font-medium leading-4 text-accent">
             <Crown size={11} className="shrink-0" /> {t("sidebar.bot.chiefOfStaff")}
           </span>
         )}
         {(!expanded || deleting) && <div className="flex items-center justify-between gap-2">
           {deleting ? (
-            <span role="status" className="flex min-w-0 items-center gap-1.5 truncate text-[11px] text-ink-secondary">
+            <span role="status" className="flex min-w-0 items-center gap-1.5 whitespace-nowrap truncate text-[11px] text-ink-secondary">
               <Loader2 size={12} className="shrink-0 animate-spin" />
               {t("sidebar.bot.deletingRow")}
             </span>
           ) : (
-            <span className="flex min-w-0 items-center gap-1.5 truncate text-[11px] text-ink-secondary">
+            <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap truncate text-[11px] text-ink-secondary">
               {working ? (
                 // the same typing dots as the chat header; sized to the text's
                 // line box so the row does not jump when work starts or ends
@@ -1451,7 +1449,15 @@ function ArchivedBotsPanel({
   );
 }
 
-export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Sidebar({
+  open,
+  onClose,
+  initialDensity,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialDensity?: SidebarDensity;
+}) {
   const { state, dispatch } = useStore();
   const showThreads = useShowThreads();
   const remoteClient = window.ogb?.remoteClient?.active === true;
@@ -1478,8 +1484,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     restoreBot?: { id: string; name: string };
   } | null>(null);
   const [query, setQuery] = useState("");
-  const [density, setDensityState] = useState<SidebarDensity>(() => loadSidebarDensity());
+  const [density, setDensityState] = useState<SidebarDensity>(() => {
+    if (initialDensity) return initialDensity;
+    const saved = loadSidebarDensity();
+    return saved === "icons" ? "comfortable" : saved;
+  });
   const [lastExpandedDensity, setLastExpandedDensity] = useState<Exclude<SidebarDensity, "icons">>(() => {
+    if (initialDensity && initialDensity !== "icons") return initialDensity;
     const saved = loadSidebarDensity();
     return saved === "icons" ? "comfortable" : saved;
   });
@@ -1733,7 +1744,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   };
   const archivedBots = state.bots.filter((bot) => bot.hidden);
   const pendingBotUndo = teamFeedback?.restoreBot;
-  const activeDisputesCount = state.activeDisputesCount ?? 0;
 
   return (
     <aside
@@ -1743,8 +1753,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       data-native-view-overlay
       data-sidebar
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-hairline/40 bg-panel transition-[width] duration-200",
+        "flex h-full shrink-0 flex-col overflow-hidden border-r border-hairline/40 bg-panel transition-[width] duration-200",
         density === "icons" ? "w-[80px]" : density === "compact" ? "w-[272px]" : "w-[320px]",
+        "max-md:w-[288px]",
         // Below md only: the sidebar leaves the flow and slides in over the chat.
         // Scoped with max-md: rather than cancelled with md: on purpose — Tailwind
         // v4 emits the native `translate` property, and any value other than
@@ -1778,8 +1789,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <button
             type="button"
             onClick={toggleCollapsed}
-            aria-label={density === "icons" ? t("sidebar.density.expand") : t("sidebar.density.collapseAria")}
-            className="flex size-10 items-center justify-center rounded-md text-ink-secondary hover:bg-raised hover:text-ink"
+            aria-label={density === "icons" ? (t("sidebar.density.expand") || "Expand sidebar") : t("sidebar.density.collapseAria")}
+            className={cn(
+              "flex size-10 items-center justify-center rounded-md transition-colors",
+              density === "icons"
+                ? "border border-hairline/60 bg-raised/80 text-ink shadow-xs hover:bg-raised hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
+                : "text-ink-secondary hover:bg-raised hover:text-ink",
+            )}
             title={density === "icons" ? t("sidebar.density.expand") : t("sidebar.density.collapse")}
           >
             {density === "icons" ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
@@ -2098,45 +2114,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             )}
           </button>
           <button
-            data-tour="nav-bloomberg"
-            onClick={() => dispatch({ type: "showBloomberg" })}
-            aria-label={density === "icons" ? "Bloomberg Terminal" : undefined}
-            title={density === "icons" ? "Bloomberg Terminal" : undefined}
-            className={cn(
-              "flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "okx-bloomberg" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
-            )}
-          >
-            <TrendingUp size={20} className={state.activeView === "okx-bloomberg" ? "text-accent" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>Bloomberg Terminal</span>
-          </button>
-          <button
-            data-tour="nav-evaluator"
-            onClick={() => dispatch({ type: "showEvaluator" })}
-            aria-label={density === "icons" ? "Evaluator Disputes" : undefined}
-            title={density === "icons" ? "Evaluator Disputes" : undefined}
-            className={cn(
-              "relative flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "okx-evaluator" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
-            )}
-          >
-            <Scale size={20} className={state.activeView === "okx-evaluator" ? "text-accent" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>Evaluator Disputes</span>
-            {activeDisputesCount > 0 && (
-              <span
-                data-testid="disputes-badge"
-                className={cn(
-                  "flex items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white",
-                  density === "icons" ? "absolute -right-0.5 -top-0.5 size-4" : "ml-auto px-1.5 py-0.5",
-                )}
-              >
-                {activeDisputesCount}
-              </span>
-            )}
-          </button>
-          <button
             onClick={() => dispatch({ type: "togglePlugins", open: true })}
             className={cn("flex min-h-10 w-full items-center rounded-xl py-2 text-left hover:bg-raised/50", density === "icons" ? "justify-center px-2" : "gap-3 px-3")}
             aria-label={density === "icons" ? t("sidebar.nav.connectedApps") : undefined}
@@ -2181,31 +2158,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   (run) => ["failed", "missed"].includes(run.status) && !run.seenAt,
                 ),
                 onSelect: () => dispatch({ type: "showRoutines" }),
-              },
-              {
-                key: "okx-bloomberg",
-                tourId: "nav-bloomberg",
-                label: "Bloomberg Terminal",
-                icon: <TrendingUp size={18} />,
-                active: state.activeView === "okx-bloomberg",
-                onSelect: () => dispatch({ type: "showBloomberg" }),
-              },
-              {
-                key: "okx-evaluator",
-                tourId: "nav-evaluator",
-                label: "Evaluator Disputes",
-                icon: <Scale size={18} />,
-                active: state.activeView === "okx-evaluator",
-                attention: activeDisputesCount > 0,
-                trailing: activeDisputesCount > 0 ? (
-                  <span
-                    data-testid="disputes-badge"
-                    className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[11px] font-semibold text-accent"
-                  >
-                    {activeDisputesCount}
-                  </span>
-                ) : undefined,
-                onSelect: () => dispatch({ type: "showEvaluator" }),
               },
               {
                 key: "plugins",

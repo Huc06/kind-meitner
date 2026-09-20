@@ -20,7 +20,8 @@ export function parseSidebarDensity(value: string | null): SidebarDensity {
 export function loadSidebarDensity(storage?: Pick<Storage, "getItem"> | null): SidebarDensity {
   try {
     const target = storage === undefined ? (globalThis.localStorage ?? null) : storage;
-    return parseSidebarDensity(target?.getItem(SIDEBAR_DENSITY_KEY) ?? null);
+    const parsed = parseSidebarDensity(target?.getItem(SIDEBAR_DENSITY_KEY) ?? null);
+    return parsed === "icons" ? "comfortable" : parsed;
   } catch {
     return "comfortable";
   }

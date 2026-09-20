@@ -12,7 +12,6 @@ import {
   type Action,
   type AppState,
 } from "@/state/store";
-import { SidebarPopoverMenu } from "@/components/SidebarPopoverMenu";
 
 // Mock dependencies for Sidebar component testing
 const fixture = vi.hoisted(() => ({
@@ -112,7 +111,7 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
      * Replicates the exact state machine & hook mechanics in src/App.tsx:80-84, 153-158, 180-194.
      */
     function simulateAppNavigationLifecycle(
-      originView: "chat" | "team-map" | "okx-bloomberg" | "okx-evaluator",
+      originView: "chat" | "team-map",
       botId = "bot-default",
     ) {
       let state: AppState = {
@@ -122,12 +121,12 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
       };
 
       const previousViewRef = { current: state.activeView };
-      const calendarOriginRef = { current: "chat" as "chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" };
+      const calendarOriginRef = { current: "chat" as "chat" | "team-map" };
 
       const runActiveViewEffect = (newView: AppState["activeView"]) => {
         state = { ...state, activeView: newView };
         if (state.activeView === "routines" && previousViewRef.current !== "routines") {
-          calendarOriginRef.current = previousViewRef.current as any;
+          calendarOriginRef.current = previousViewRef.current;
         }
         previousViewRef.current = state.activeView;
       };
@@ -136,10 +135,6 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         let action: Action;
         if (calendarOriginRef.current === "team-map") {
           action = { type: "showTeamMap" };
-        } else if (calendarOriginRef.current === "okx-bloomberg") {
-          action = { type: "showBloomberg" };
-        } else if (calendarOriginRef.current === "okx-evaluator") {
-          action = { type: "showEvaluator" };
         } else {
           action = { type: "select", id: state.selectedId };
         }
@@ -155,10 +150,8 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
           state = reducer(state, { type: "showRoutines" });
           runActiveViewEffect("routines");
         },
-        navigateToView: (view: "okx-bloomberg" | "okx-evaluator" | "team-map" | "chat") => {
+        navigateToView: (view: "team-map" | "chat") => {
           const actionMap: Record<string, Action> = {
-            "okx-bloomberg": { type: "showBloomberg" },
-            "okx-evaluator": { type: "showEvaluator" },
             "team-map": { type: "showTeamMap" },
             chat: { type: "showChat" },
           };
@@ -168,36 +161,6 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         closeCalendar,
       };
     }
-
-    it("navigates from okx-bloomberg to routines and closeCalendar restores okx-bloomberg", () => {
-      const nav = simulateAppNavigationLifecycle("okx-bloomberg");
-      expect(nav.getState().activeView).toBe("okx-bloomberg");
-
-      // Navigate to routines
-      nav.navigateToRoutines();
-      expect(nav.getState().activeView).toBe("routines");
-      expect(nav.getOrigin()).toBe("okx-bloomberg");
-
-      // Close calendar
-      const dispatched = nav.closeCalendar();
-      expect(dispatched).toEqual({ type: "showBloomberg" });
-      expect(nav.getState().activeView).toBe("okx-bloomberg");
-    });
-
-    it("navigates from okx-evaluator to routines and closeCalendar restores okx-evaluator", () => {
-      const nav = simulateAppNavigationLifecycle("okx-evaluator");
-      expect(nav.getState().activeView).toBe("okx-evaluator");
-
-      // Navigate to routines
-      nav.navigateToRoutines();
-      expect(nav.getState().activeView).toBe("routines");
-      expect(nav.getOrigin()).toBe("okx-evaluator");
-
-      // Close calendar
-      const dispatched = nav.closeCalendar();
-      expect(dispatched).toEqual({ type: "showEvaluator" });
-      expect(nav.getState().activeView).toBe("okx-evaluator");
-    });
 
     it("navigates from team-map to routines and closeCalendar restores team-map", () => {
       const nav = simulateAppNavigationLifecycle("team-map");
@@ -230,42 +193,42 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
     });
 
     it("handles complex multi-view transitions without clobbering origin", () => {
-      // Start in chat -> switch to Bloomberg -> switch to Evaluator -> open routines -> close routines
+      // Start in chat -> switch to team-map -> open routines -> close routines
       const nav = simulateAppNavigationLifecycle("chat");
-      nav.navigateToView("okx-bloomberg");
-      expect(nav.getState().activeView).toBe("okx-bloomberg");
-
-      nav.navigateToView("okx-evaluator");
-      expect(nav.getState().activeView).toBe("okx-evaluator");
+      nav.navigateToView("team-map");
+      expect(nav.getState().activeView).toBe("team-map");
 
       nav.navigateToRoutines();
       expect(nav.getState().activeView).toBe("routines");
-      expect(nav.getOrigin()).toBe("okx-evaluator");
-
-      nav.closeCalendar();
-      expect(nav.getState().activeView).toBe("okx-evaluator");
-
-      // Switch to team-map -> open routines -> close routines
-      nav.navigateToView("team-map");
-      nav.navigateToRoutines();
       expect(nav.getOrigin()).toBe("team-map");
 
       nav.closeCalendar();
       expect(nav.getState().activeView).toBe("team-map");
+
+      // Switch to chat -> open routines -> close routines
+      nav.navigateToView("chat");
+      expect(nav.getState().activeView).toBe("chat");
+
+      nav.navigateToRoutines();
+      expect(nav.getState().activeView).toBe("routines");
+      expect(nav.getOrigin()).toBe("chat");
+
+      nav.closeCalendar();
+      expect(nav.getState().activeView).toBe("chat");
     });
 
     it("does not corrupt calendarOriginRef if showRoutines is dispatched consecutively while already in routines", () => {
-      const nav = simulateAppNavigationLifecycle("okx-bloomberg");
+      const nav = simulateAppNavigationLifecycle("team-map");
       nav.navigateToRoutines();
-      expect(nav.getOrigin()).toBe("okx-bloomberg");
+      expect(nav.getOrigin()).toBe("team-map");
 
       // Redundant navigation to routines
       nav.navigateToRoutines();
-      // Should STILL remember okx-bloomberg, NOT "routines"
-      expect(nav.getOrigin()).toBe("okx-bloomberg");
+      // Should STILL remember team-map, NOT "routines"
+      expect(nav.getOrigin()).toBe("team-map");
 
       nav.closeCalendar();
-      expect(nav.getState().activeView).toBe("okx-bloomberg");
+      expect(nav.getState().activeView).toBe("team-map");
     });
 
     it("executes the React hook lifecycle inside a rendered component", () => {
@@ -275,10 +238,10 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
       function Harness({
         view,
       }: {
-        view: "chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "routines";
+        view: "chat" | "team-map" | "routines";
       }) {
-        const previousViewRef = useRef<AppState["activeView"]>("okx-bloomberg");
-        const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator">("chat");
+        const previousViewRef = useRef<AppState["activeView"]>("team-map");
+        const calendarOriginRef = useRef<"chat" | "team-map">("chat");
 
         if (view === "routines" && previousViewRef.current !== "routines") {
           calendarOriginRef.current = previousViewRef.current;
@@ -289,10 +252,6 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         const closeCalendar = useCallback(() => {
           if (calendarOriginRef.current === "team-map") {
             returnedAction = { type: "showTeamMap" };
-          } else if (calendarOriginRef.current === "okx-bloomberg") {
-            returnedAction = { type: "showBloomberg" };
-          } else if (calendarOriginRef.current === "okx-evaluator") {
-            returnedAction = { type: "showEvaluator" };
           } else {
             returnedAction = { type: "select", id: "bot-default" };
           }
@@ -302,18 +261,18 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         return createElement("div", null, `view:${view}`);
       }
 
-      // Initial render in okx-bloomberg
-      renderToStaticMarkup(createElement(Harness, { view: "okx-bloomberg" }));
+      // Initial render in team-map
+      renderToStaticMarkup(createElement(Harness, { view: "team-map" }));
       // Transition to routines
       renderToStaticMarkup(createElement(Harness, { view: "routines" }));
 
-      expect(hookOrigin).toBe("okx-bloomberg");
-      expect(returnedAction).toEqual({ type: "showBloomberg" });
+      expect(hookOrigin).toBe("team-map");
+      expect(returnedAction).toEqual({ type: "showTeamMap" });
     });
   });
 
-  describe("2. Dispute Badge Counter Rendering & Suppression", () => {
-    it("renders <span data-testid=\"disputes-badge\"> with count when activeDisputesCount > 0 in icons mode", () => {
+  describe("2. Mock Surface Removal & Dispute Badge Counter Suppression", () => {
+    it("strictly does not render Evaluator Disputes or Bloomberg Terminal buttons in icons mode", () => {
       fixture.density = "icons";
       fixture.state = {
         activeDisputesCount: 5,
@@ -324,14 +283,31 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         createElement(Sidebar, { open: true, onClose: vi.fn() }),
       );
 
-      // Badge must exist
-      expect(html).toContain('data-testid="disputes-badge"');
-      // Badge must contain the number 5
-      expect(html).toMatch(/<span[^>]*data-testid="disputes-badge"[^>]*>\s*5\s*<\/span>/);
-      expect(html).toContain('aria-label="Evaluator Disputes"');
+      // Must not render Bloomberg or Evaluator buttons or labels
+      expect(html).not.toContain('aria-label="Bloomberg Terminal"');
+      expect(html).not.toContain('aria-label="Evaluator Disputes"');
+      expect(html).not.toContain("Bloomberg Terminal");
+      expect(html).not.toContain("Evaluator Disputes");
+      expect(html).not.toContain('data-tour="nav-bloomberg"');
+      expect(html).not.toContain('data-tour="nav-evaluator"');
     });
 
-    it("renders single dispute count 1 accurately", () => {
+    it('strictly suppresses and does NOT render <span data-testid="disputes-badge"> even when activeDisputesCount > 0', () => {
+      fixture.density = "icons";
+      fixture.state = {
+        activeDisputesCount: 5,
+        activeView: "chat",
+      };
+
+      const html = renderToStaticMarkup(
+        createElement(Sidebar, { open: true, onClose: vi.fn() }),
+      );
+
+      // Badge must NOT exist in the DOM
+      expect(html).not.toContain('data-testid="disputes-badge"');
+    });
+
+    it("does not render dispute badge or mock triggers when activeDisputesCount is 1", () => {
       fixture.density = "icons";
       fixture.state = {
         activeDisputesCount: 1,
@@ -342,11 +318,12 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         createElement(Sidebar, { open: true, onClose: vi.fn() }),
       );
 
-      expect(html).toContain('data-testid="disputes-badge"');
-      expect(html).toMatch(/<span[^>]*data-testid="disputes-badge"[^>]*>\s*1\s*<\/span>/);
+      expect(html).not.toContain('data-testid="disputes-badge"');
+      expect(html).not.toContain('aria-label="Evaluator Disputes"');
+      expect(html).not.toContain('aria-label="Bloomberg Terminal"');
     });
 
-    it("strictly suppresses and hides dispute badge when activeDisputesCount === 0", () => {
+    it("strictly suppresses and hides dispute badge and mock surfaces when activeDisputesCount === 0", () => {
       fixture.density = "icons";
       fixture.state = {
         activeDisputesCount: 0,
@@ -357,9 +334,9 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         createElement(Sidebar, { open: true, onClose: vi.fn() }),
       );
 
-      // Must be completely absent from DOM output
       expect(html).not.toContain('data-testid="disputes-badge"');
-      expect(html).toContain('aria-label="Evaluator Disputes"');
+      expect(html).not.toContain('aria-label="Evaluator Disputes"');
+      expect(html).not.toContain('aria-label="Bloomberg Terminal"');
     });
 
     it("strictly suppresses dispute badge when activeDisputesCount is undefined", () => {
@@ -374,66 +351,34 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
       );
 
       expect(html).not.toContain('data-testid="disputes-badge"');
+      expect(html).not.toContain('aria-label="Evaluator Disputes"');
+      expect(html).not.toContain('aria-label="Bloomberg Terminal"');
     });
 
-    it("renders popover menu trailing badge when activeDisputesCount > 0 and suppresses when 0", () => {
-      // Test popover menu item trailing badge rendering directly
-      const count = 4;
-      const disputeItem = {
-        key: "okx-evaluator",
-        label: "Evaluator Disputes",
-        active: false,
-        attention: count > 0,
-        trailing: count > 0 ? (
-          createElement(
-            "span",
-            { "data-testid": "disputes-badge", className: "badge" },
-            count,
-          )
-        ) : undefined,
-        onSelect: vi.fn(),
+    it("does not include okx-bloomberg or okx-evaluator items in sidebar popover tools menu in expanded mode", () => {
+      fixture.density = "comfortable";
+      fixture.state = {
+        activeDisputesCount: 4,
+        activeView: "chat",
       };
 
-      function OpenPopover({ activeCount }: { activeCount: number }) {
-        return createElement(SidebarPopoverMenu, {
-          tourId: "tools",
-          ariaLabel: "Tools",
-          items: [
-            {
-              ...disputeItem,
-              attention: activeCount > 0,
-              trailing: activeCount > 0 ? (
-                createElement(
-                  "span",
-                  { "data-testid": "disputes-badge" },
-                  activeCount,
-                )
-              ) : undefined,
-            },
-          ],
-          renderTrigger: () => createElement("button", null, "Tools"),
-        });
-      }
+      const html = renderToStaticMarkup(
+        createElement(Sidebar, { open: true, onClose: vi.fn() }),
+      );
 
-      // Initial closed popover does not render items
-      const closedHtml = renderToStaticMarkup(createElement(OpenPopover, { activeCount: 4 }));
-      expect(closedHtml).toContain("Tools");
-
-      // Verify that when activeDisputesCount is 0, trailing is undefined and badge is suppressed
-      const zeroDisputeItem = {
-        ...disputeItem,
-        trailing: undefined,
-      };
-      expect(zeroDisputeItem.trailing).toBeUndefined();
+      // Popover trigger and comfortable menu must not contain mock views
+      expect(html).not.toContain("Bloomberg Terminal");
+      expect(html).not.toContain("Evaluator Disputes");
+      expect(html).not.toContain('data-testid="disputes-badge"');
     });
 
-    it("updates dispute badge reactively through setActiveDisputesCount action", () => {
+    it("maintains state predictability for setActiveDisputesCount without leaking to UI", () => {
       let state: AppState = {
         ...initialState,
         activeDisputesCount: 0,
       };
 
-      // 1. Initial 0 count -> no badge
+      // 1. Initial 0 count
       expect(state.activeDisputesCount).toBe(0);
 
       // 2. Dispatch setActiveDisputesCount = 4

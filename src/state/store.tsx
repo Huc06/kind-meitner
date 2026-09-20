@@ -661,7 +661,7 @@ export interface AppState {
   config: ConfigStatus | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator";
+  activeView: "chat" | "team-map" | "routines";
   okxSettingsOpen?: boolean;
   activeDisputesCount?: number;
   routines: Routine[];
@@ -818,8 +818,6 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string }
   | { type: "showTeamMap" }
   | { type: "showChat" }
-  | { type: "showBloomberg" }
-  | { type: "showEvaluator" }
   | { type: "toggleOkxSettings"; open?: boolean }
   | { type: "setActiveDisputesCount"; count: number }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[] }
@@ -1174,28 +1172,6 @@ export function reducer(state: AppState, action: Action): AppState {
         inspectorOpen: false,
         appSettingsOpen: false,
         pluginsOpen: false,
-      };
-    case "showBloomberg":
-      return {
-        ...state,
-        activeView: "okx-bloomberg",
-        settingsOpen: false,
-        computerOpen: false,
-        inspectorOpen: false,
-        appSettingsOpen: false,
-        pluginsOpen: false,
-        okxSettingsOpen: false,
-      };
-    case "showEvaluator":
-      return {
-        ...state,
-        activeView: "okx-evaluator",
-        settingsOpen: false,
-        computerOpen: false,
-        inspectorOpen: false,
-        appSettingsOpen: false,
-        pluginsOpen: false,
-        okxSettingsOpen: false,
       };
     case "toggleOkxSettings":
       return {
