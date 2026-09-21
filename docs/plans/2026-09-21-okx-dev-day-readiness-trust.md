@@ -173,3 +173,7 @@ Implementers: follow **[`2026-09-21-okx-dev-day-build-brief.md`](2026-09-21-okx-
 ## 16. Interaction UX + winner-style demo
 
 See **[`2026-09-21-okx-dev-day-interaction-ux-demo.md`](2026-09-21-okx-dev-day-interaction-ux-demo.md)** — two-agent scenes, Run/Trust cards, video acts, anti-scoreboard rules.
+
+## 17. Multichat is the stage
+
+Hero surface: **group room**, not A/B tool tour. See **[`2026-09-21-okx-dev-day-multichat-demo.md`](2026-09-21-okx-dev-day-multichat-demo.md)** + issue for `#dev-day-gate` seed.
