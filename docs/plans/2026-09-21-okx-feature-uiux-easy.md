@@ -287,6 +287,30 @@ Copy into the PR:
 Keep field level detail in the older long docs if needed. For day to day reading and review, use this easy file first. When CI rules conflict with a short note elsewhere, this file wins for tests and anti fake rules.
 
 
+
+
+## Locked decisions (from recommendations review)
+
+These are now product rules, not optional ideas.
+
+1. Ship readiness and trust tools with CI before polishing cards.
+2. One shared parser for tool JSON. Bad JSON means no pretty card.
+3. Continue with free tools is enabled only on GO. Not on CAUTION. Not on NO_GO.
+4. Apply suggested host pastes the real production Free MCP https URL when the fail was vercel.
+5. Listing Coach and Spend Scout only ask Markets to run tools. They never invent PASS FAIL GO.
+6. Vercel FAIL is decided by hostname before any network call so CI stays stable.
+7. While Markets has a tool in flight, disable Run scan again and Re check.
+8. Do not merge PR 15 (drops OKX views) into this show path.
+9. ASP 13837 listing text should name readiness and trust when you can edit it.
+10. Under each card show a one line last run hint (age, latency, tool count) from the payload when present.
+11. Dev Day Gate uses mentions routing.
+12. Trending and invite flows are not the hero. Gate loops are.
+13. After each Railway deploy, save curl outputs under docs/evidence/dev-day.
+14. When both room loops work, freeze new features. Avatars and README only after that.
+
+Production Free MCP URL to paste on Apply host:
+https://kind-meitner-production.up.railway.app/api/okx/free-mcp
+
 ## Want more detail and recommendations?
 
 Open `docs/plans/2026-09-21-okx-recommendations-and-linked-plan.md` for links across docs and issues plus planning recommendations.
