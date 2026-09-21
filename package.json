@@ -34,6 +34,7 @@
     "pair": "node --experimental-strip-types server/kind-meitner.ts pair",
     "dev:server": "node --experimental-strip-types server/index.ts",
     "okx-serve": "node --experimental-strip-types server/okx-local-server.ts",
+    "okx-setup": "node --experimental-strip-types server/okx-setup.ts",
     "start": "node dist-server/index.js",
     "mcp": "node --experimental-strip-types scripts/mcp-server.ts",
     "control:kind-meitner": "node --experimental-strip-types scripts/control-kind-meitner.ts",

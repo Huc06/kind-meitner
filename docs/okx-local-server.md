@@ -9,6 +9,35 @@ locally and never sends them to any hosted UI. See
 [`docs/plans/okx-local-server-hosted-ui-split.md`](plans/okx-local-server-hosted-ui-split.md)
 for the full design. This page is the quick terminal-facing reference.
 
+## Setting up credentials once, instead of every run
+
+```sh
+pnpm okx-setup
+```
+
+Prompts for `OKX_API_KEY`, `OKX_SECRET_KEY`, `OKX_PASSPHRASE`, and an optional
+base URL, then writes them to `okx-credentials.json` in this server's data
+directory at file mode `0600` (readable and writable only by you). Every
+`pnpm okx-serve` run after that picks them up automatically — no need to
+`export` anything each time.
+
+An explicit `OKX_API_KEY` / `OKX_SECRET_KEY` / `OKX_PASSPHRASE` environment
+variable still takes precedence over the stored file when set, matching
+every other `OKX_*` override in this codebase. The banner shows exactly
+which source is in effect:
+
+```text
+✓ POST /api/okx/webhook   ready (credentials from OKX_API_KEY/SECRET/PASSPHRASE env vars)
+```
+or
+```text
+✓ POST /api/okx/webhook   ready (credentials from /home/you/.kind-meitner/okx-credentials.json (run `pnpm okx-setup` to change))
+```
+
+The stored file is read only by this process at startup. It is never
+returned through any HTTP route — `GET /api/okx/settings` only ever
+reports whether credentials are configured, as a boolean.
+
 ## What you'll see
 
 On startup it prints a banner with the URL to open, where its data lives,
@@ -29,7 +58,7 @@ right now, based on what you've configured:
     ✓ GET  /api/okx/intelligence                      always available (read-only)
     ✓ GET  /api/okx/disputes                          always available (read-only)
     ✓ GET  /api/okx/treasury                          always available (read-only)
-    ✗ POST /api/okx/webhook                           NOT ready — set OKX_API_KEY, OKX_SECRET_KEY, OKX_PASSPHRASE
+    ✗ POST /api/okx/webhook                           NOT ready — credentials not set — run `pnpm okx-setup` or export OKX_API_KEY/OKX_SECRET_KEY/OKX_PASSPHRASE
     ✓ POST /api/okx/mcp (legacy)                      off by default — this is expected, not an error
     ✓ POST /api/okx/x402-testnet/market-intelligence off by default — this is expected, not an error
     ✓ POST /api/okx/settings                          requires the pairing token below
@@ -55,7 +84,7 @@ These respond immediately, no environment variables needed:
 
 | Route | Requires |
 | --- | --- |
-| `POST /api/okx/webhook` | `OKX_API_KEY`, `OKX_SECRET_KEY`, `OKX_PASSPHRASE` (and, to verify signatures, `OKX_WEBHOOK_SECRET`). Without these it still runs, but the gateway has no credentials to act on. |
+| `POST /api/okx/webhook` | `OKX_API_KEY`, `OKX_SECRET_KEY`, `OKX_PASSPHRASE` — via `pnpm okx-setup` (recommended) or the equivalent environment variables (and, to verify signatures, `OKX_WEBHOOK_SECRET`). Without these it still runs, but the gateway has no credentials to act on. |
 | `POST /api/okx/mcp` (legacy paid MCP) | `OKX_LEGACY_EIP3009_ENABLED=true`. Off by default on purpose — this is not the official x402 path, and enabling it is a deliberate, reviewed choice, not a default. |
 | `POST /api/okx/x402-testnet/market-intelligence` | `OKX_X402_TESTNET_ENABLED=true` plus the full credential trio, `OKX_X402_TESTNET_PAY_TO`, and `OKX_X402_TESTNET_RESOURCE_URL`. Off by default — see the OKX A2MCP roadmap's Phase 2 exit criteria before enabling this outside a reviewed testnet exercise. |
 

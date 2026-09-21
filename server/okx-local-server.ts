@@ -26,6 +26,7 @@ import { OkxWebhookJournal } from "./okx/journal.ts";
 import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
 import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
+import { okxCredentialsStorePath, readStoredOkxCredentials } from "./okx-credentials-store.ts";
 
 const LOCAL_HOST = "127.0.0.1";
 const DEFAULT_PORT = Number(process.env.OKX_LOCAL_SERVER_PORT ?? 8899);
@@ -134,19 +135,31 @@ function requestSource(req: IncomingMessage): string {
 
 // ── OKX domain state, same shape as server/index.ts ──
 
-function okxCredentialsFromEnvironment() {
+export type OkxCredentialSource = "env" | "stored" | "missing";
+
+/** Env vars win when set (matches every other OKX_* override in this repo);
+ * otherwise falls back to the 0600 file written by `pnpm okx-serve setup`.
+ * Returns the source alongside the credentials so the startup banner can
+ * say exactly where they came from instead of just "configured or not". */
+function resolveOkxCredentials(): { credentials: ReturnType<typeof readStoredOkxCredentials>; source: OkxCredentialSource } {
   const apiKey = process.env.OKX_API_KEY?.trim();
   const secretKey = process.env.OKX_SECRET_KEY?.trim();
   const passphrase = process.env.OKX_PASSPHRASE?.trim();
-  if (!apiKey || !secretKey || !passphrase) return undefined;
-  const baseUrl = process.env.OKX_API_BASE_URL?.trim();
-  return { apiKey, secretKey, passphrase, ...(baseUrl ? { baseUrl } : {}) };
+  if (apiKey && secretKey && passphrase) {
+    const baseUrl = process.env.OKX_API_BASE_URL?.trim();
+    return { credentials: { apiKey, secretKey, passphrase, ...(baseUrl ? { baseUrl } : {}) }, source: "env" };
+  }
+  const stored = readStoredOkxCredentials();
+  if (stored) return { credentials: stored, source: "stored" };
+  return { credentials: undefined, source: "missing" };
 }
+
+const { credentials: resolvedOkxCredentials, source: okxCredentialSource } = resolveOkxCredentials();
 
 const okxWebhookJournal = new OkxWebhookJournal(join(DATA_DIR, "okx-webhook-journal.json"));
 const okxGateway = new OkxGateway({
   ledgerFile: join(DATA_DIR, "okx-tasks.json"),
-  credentials: okxCredentialsFromEnvironment(),
+  credentials: resolvedOkxCredentials,
   webhookSecret: process.env.OKX_WEBHOOK_SECRET,
 });
 const okxTreasury = new OkxTreasuryManager({
@@ -164,9 +177,9 @@ const okxEvaluator = new OkxDisputeEvaluator({
 });
 const okxX402Testnet = new X402TestnetResource({
   enabled: process.env.OKX_X402_TESTNET_ENABLED === "true",
-  apiKey: process.env.OKX_API_KEY?.trim(),
-  secretKey: process.env.OKX_SECRET_KEY?.trim(),
-  passphrase: process.env.OKX_PASSPHRASE?.trim(),
+  apiKey: resolvedOkxCredentials?.apiKey,
+  secretKey: resolvedOkxCredentials?.secretKey,
+  passphrase: resolvedOkxCredentials?.passphrase,
   payTo: process.env.OKX_X402_TESTNET_PAY_TO?.trim(),
   resourceUrl: process.env.OKX_X402_TESTNET_RESOURCE_URL?.trim(),
   price: process.env.OKX_X402_TESTNET_PRICE?.trim(),
@@ -531,8 +544,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
  * X work" has an immediate, honest answer instead of a silent 404/503
  * discovered later through the browser. */
 function describeRouteReadiness(): { line: string; ready: boolean }[] {
-  const creds = okxCredentialsFromEnvironment();
-  const hasCreds = Boolean(creds);
+  const hasCreds = okxCredentialSource !== "missing";
+  const credentialSourceLabel =
+    okxCredentialSource === "env" ? "from OKX_API_KEY/SECRET/PASSPHRASE env vars" :
+    okxCredentialSource === "stored" ? `from ${okxCredentialsStorePath()} (run \`pnpm okx-setup\` to change)` :
+    "not set — run `pnpm okx-setup` or export OKX_API_KEY/OKX_SECRET_KEY/OKX_PASSPHRASE";
   const x402Status = okxX402Testnet.status();
   return [
     { line: `GET  /api/health                              always available`, ready: true },
@@ -542,8 +558,8 @@ function describeRouteReadiness(): { line: string; ready: boolean }[] {
     { line: `GET  /api/okx/treasury                          always available (read-only)`, ready: true },
     {
       line: hasCreds
-        ? `POST /api/okx/webhook                           ready (OKX_API_KEY/SECRET/PASSPHRASE set)`
-        : `POST /api/okx/webhook                           NOT ready — set OKX_API_KEY, OKX_SECRET_KEY, OKX_PASSPHRASE`,
+        ? `POST /api/okx/webhook                           ready (credentials ${credentialSourceLabel})`
+        : `POST /api/okx/webhook                           NOT ready — credentials ${credentialSourceLabel}`,
       ready: hasCreds,
     },
     {
