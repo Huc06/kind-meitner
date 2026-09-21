@@ -1117,7 +1117,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         className={cn(
           // @container so the chips on the right can fold to icon bubbles
           // when the column is narrow (side panel open, small window)
-          "@container/chathead flex items-center justify-between px-5 py-3",
+          "@container/chathead flex items-center justify-between border-b border-hairline/15 px-5 py-2.5",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
         )}
@@ -1125,7 +1125,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-raised/50"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-raised/35"
             title={t("chat.openProfile")}
             aria-label={t("chat.openProfileAria", { name: bot.name })}
           >
@@ -1303,7 +1303,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       >
         <div
           ref={transcriptRef}
-          className="flex w-full flex-col gap-3"
+          className="mx-auto flex w-full max-w-[52rem] flex-col gap-3 pt-1"
           style={{ paddingBottom: composerDock.pad }}
           role="log"
           aria-live="polite"
@@ -1399,7 +1399,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           the transcript pad, the jump pill and bottom-follow all move with
           it. */}
       {lastRunStep && showRun(recordedRun) && runDismissed.get(transcriptKey) !== lastRunStep.id && (
-        <div className="flex justify-end px-5 pb-2">
+        <div className="mx-auto flex w-full max-w-[52rem] justify-end px-5 pb-2">
           <VerifyCard
             key={transcriptKey}
             steps={recordedRun}

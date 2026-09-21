@@ -88,7 +88,7 @@ export function SidebarThreadRow({ task, current, compact, folders, onSelect, on
     return () => window.removeEventListener("mousedown", outside);
   }, [menu]);
   return <>
-    <div className={cn("group/thread relative flex min-w-0 items-center rounded-md", current ? "bg-raised" : "hover:bg-raised/50")}>
+    <div className={cn("group/thread relative flex min-w-0 items-center rounded-md", current ? "bg-raised/50" : "hover:bg-raised/25")}>
       {renaming ? <input autoFocus value={draft} maxLength={80} aria-label={t("task.renameAria")}
         onFocus={(event) => event.currentTarget.select()} onChange={(event) => setDraft(event.target.value)} onBlur={() => finishRename(true)}
         onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); finishRename(true); } else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishRename(false); } }}

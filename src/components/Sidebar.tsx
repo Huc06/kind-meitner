@@ -219,7 +219,7 @@ export function GroupListItem({
       className={cn(
         "relative flex w-full items-center rounded-md text-left outline-none focus-visible:ring-1 focus-visible:ring-accent/60",
         density === "icons" ? "justify-center px-1 py-1.5" : density === "compact" ? "gap-1.5 py-1 pl-6 pr-2" : "gap-2 py-1.5 pl-6 pr-2",
-        selected && !expanded ? "bg-raised/70" : "hover:bg-raised/40",
+        selected && !expanded ? "bg-raised/45" : "hover:bg-raised/25",
       )}
       title={density === "icons" ? group.name : undefined}
       aria-label={density === "icons" ? group.name : undefined}
@@ -272,7 +272,7 @@ export function GroupThreadList({ group, selected, density = "comfortable", quer
   }));
   const visible = visibleSidebarThreads(tasks, group.threadId, query, [], showAll);
   useRevealedThreadRow(state.revealThread, selected ? group.threadId : null);
-  return <div className="mb-2 ml-5 space-y-0.5 border-l border-hairline/30 pl-2" role="group" aria-label={t("task.namedList", { name: group.name })}>
+  return <div className="mb-2 ml-5 space-y-0.5 border-l border-hairline/20 pl-2" role="group" aria-label={t("task.namedList", { name: group.name })}>
     {visible.map((task) => <SidebarThreadRow key={task.threadId} task={task} current={selected && task.threadId === group.threadId} compact={density === "compact"}
       onSelect={() => { if (task.threadId !== group.threadId) dispatch({ type: "switchGroupTask", groupId: group.id, threadId: task.threadId }); else dispatch({ type: "select", id: group.id }); }}
       onRename={(title) => dispatch({ type: "renameGroupTask", groupId: group.id, threadId: task.threadId, title })}
@@ -918,7 +918,7 @@ export function BotThreadList({ bot, selected, density = "comfortable", query = 
     } finally { setMarkingRead(false); }
   };
   return (
-    <div hidden={hidden} className="mb-2 ml-5 space-y-0.5 border-l border-hairline/30 pl-2" role="group" aria-label={t("task.namedList", { name: bot.name })}
+    <div hidden={hidden} className="mb-2 ml-5 space-y-0.5 border-l border-hairline/20 pl-2" role="group" aria-label={t("task.namedList", { name: bot.name })}
       onDragOver={(event) => { if (event.dataTransfer.types.includes(FOLDER_DRAG_TYPE)) event.stopPropagation(); }}
       onDrop={(event) => { if (event.dataTransfer.types.includes(FOLDER_DRAG_TYPE)) { event.preventDefault(); event.stopPropagation(); resetFolderDrag(); } }}>
       {!hidden && <>
@@ -982,7 +982,7 @@ export function BotThreadList({ bot, selected, density = "comfortable", query = 
               onEdit={() => setEditingProject(project.id)} onMove={(direction, onSaved) => saveOrder(moveFolder(projectIds, project.id, direction), onSaved)}
               onMarkRead={(onSaved) => { void readFolder(project.id, onSaved); }} />
           </div>
-          {open && <div className="ml-3 border-l border-hairline/25 pl-2" role="group" aria-label={t("task.namedList", { name: project.name })}>
+          {open && <div className="ml-3 border-l border-hairline/15 pl-2" role="group" aria-label={t("task.namedList", { name: project.name })}>
             {visible.map(renderThread)}
             {projectTasks.length === 0 && <p className="px-2.5 py-1 text-[11px] text-ink-secondary/70">{t("task.empty")}</p>}
           </div>}
@@ -1051,7 +1051,7 @@ export function BotListItem({
     // Chief of Staff is called out by the crown label below, not by tinting
     // the whole row — an accent border + fill read as "selected" even when
     // another bot was active.
-    selected ? "bg-raised/70" : "hover:bg-raised/40",
+    selected ? "bg-raised/45" : "hover:bg-raised/25",
   );
   const activityTasks = sidebarBotActivityTasks(bot, state.pendingQueued);
   const waiting = bot.activity === "waiting-on-you" || activityTasks.some((task) => task.activity === "waiting-on-you");
@@ -1252,7 +1252,7 @@ export function ArchivedBotRow({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex min-h-[82px] items-center gap-3 border-b border-hairline/35 px-1 py-3">
+    <div className="flex min-h-[82px] items-center gap-3 border-b border-hairline/20 px-1 py-3">
       <BotAvatar bot={bot} state="happy" size={42} animated={false} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-medium text-ink">{bot.name}</div>
@@ -1596,10 +1596,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   const macInset = capabilities.windowChrome === "mac-inset";
-  const browser = capabilities.host.label === "Browser";
   // macOS owns inset traffic lights; Windows hides the native bar and draws
   // caption buttons over the header's right end. Either way this top row is
   // the window's drag handle (ChatView/GroupView headers do the same).
+  // Browser/Linux keep this corner empty — no decorative traffic lights.
   const draggableChrome = macInset || capabilities.windowChrome === "win-caption";
   // SAFETY: Electron's documented -webkit-app-region CSS property is not in
   // React's CSSProperties type, but the renderer accepts it as an inline style.
@@ -1743,7 +1743,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       data-native-view-overlay
       data-sidebar
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-hairline/30 bg-panel transition-[width] duration-200",
+        "flex h-full shrink-0 flex-col border-r border-hairline/20 bg-panel transition-[width] duration-200",
         density === "icons" ? "w-[80px]" : density === "compact" ? "w-[272px]" : "w-[320px]",
         // Below md only: the sidebar leaves the flow and slides in over the chat.
         // Scoped with max-md: rather than cancelled with md: on purpose — Tailwind
@@ -1757,19 +1757,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         open ? "max-md:translate-x-0" : "max-md:-translate-x-full",
       )}
     >
-      {/* macOS owns inset traffic lights; Linux/Windows use native chrome. */}
+      {/* macOS owns inset traffic lights; Linux/Windows/browser use native chrome
+          with no decorative dead buttons in this corner. */}
       <div
         className={cn("flex items-center pt-3.5 pb-1", density === "icons" ? "flex-col gap-1 px-2" : "justify-between px-4")}
         style={windowDragStyle}
       >
         {macInset ? (
           <div className={density === "icons" ? "h-5 w-full" : "w-14"} />
-        ) : browser ? (
-          <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-[#ff5f57]" />
-            <span className="size-3 rounded-full bg-[#febc2e]" />
-            <span className="size-3 rounded-full bg-[#28c840]" />
-          </div>
         ) : <div />}
         <div
           className={cn("relative flex items-center", density === "icons" ? "flex-col gap-1" : "gap-1")}
@@ -1905,7 +1900,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       <DesktopWorkspaceSwitcher compact={density === "icons"} />
       {/* Search */}
       <div className={cn("pt-1 pb-3", density === "icons" ? "hidden" : "px-3")}>
-        <div className="flex items-center gap-2 rounded-md border border-hairline/40 bg-inset/40 px-2.5 py-1.5 focus-within:border-accent/50">
+        <div className="flex items-center gap-2 rounded-md border border-hairline/25 bg-inset/30 px-2.5 py-1.5 focus-within:border-accent/40">
           <Search size={14} className="text-ink-secondary" />
           <input
             value={query}

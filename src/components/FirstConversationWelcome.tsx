@@ -133,7 +133,7 @@ export function FirstConversationWelcome({
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 py-16 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-20 text-center">
       <div className="flex flex-col items-center gap-3">
         <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} />
         <RenameTitle
@@ -149,34 +149,34 @@ export function FirstConversationWelcome({
 
       <div
         data-tour="first-conversation-welcome"
-        className="w-full max-w-[520px] rounded-2xl border border-hairline/50 bg-card p-4 text-left shadow-sm shadow-black/5"
+        className="w-full max-w-[520px] rounded-2xl border border-hairline/35 bg-card p-5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.05)]"
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="text-[16px] font-semibold text-ink">{t("chat.welcome.heading")}</div>
+          <div className="text-[15px] font-semibold tracking-tight text-ink">{t("chat.welcome.heading")}</div>
           <button
             type="button"
             onClick={onDismiss}
             aria-label={t("chat.welcome.dismissAria")}
             title={t("chat.welcome.dismiss")}
-            className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink"
+            className="rounded-md p-1 text-ink-secondary hover:bg-control/80 hover:text-ink"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
-        <div className="mt-3 overflow-hidden rounded-lg border border-hairline/40">
+        <div className="mt-3.5 overflow-hidden rounded-xl border border-hairline/30">
           {WELCOME_SUGGESTIONS.map((suggestion, i) => (
             <button
               key={suggestion.id}
               type="button"
               onClick={() => applyWelcomeSuggestion(draftId, suggestion)}
               className={cn(
-                "flex w-full items-center gap-3 px-3 py-3 text-left text-[15px] text-ink",
-                i > 0 && "border-t border-hairline/40",
-                "hover:bg-raised-hover/60",
+                "flex w-full items-center gap-3 px-3.5 py-3 text-left text-[14.5px] leading-snug text-ink",
+                i > 0 && "border-t border-hairline/25",
+                "hover:bg-raised-hover/50",
               )}
             >
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-hairline/50 bg-control text-[12px] font-medium text-ink-secondary">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-hairline/35 bg-control/80 text-[11.5px] font-medium text-ink-secondary">
                 {suggestion.letter}
               </span>
               {welcomeSuggestionLabel(suggestion)}
@@ -193,7 +193,7 @@ export function FirstConversationWelcome({
             sendCustom();
           }}
           placeholder={t("chat.welcome.custom")}
-          className="mt-3 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-secondary focus:outline-none focus:border-hairline"
+          className="mt-3.5 w-full rounded-xl border border-hairline/30 bg-inset/80 px-3.5 py-2.5 text-[14.5px] text-ink placeholder:text-ink-secondary focus:outline-none focus:border-hairline/60"
         />
       </div>
     </div>
