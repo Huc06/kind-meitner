@@ -1,5 +1,7 @@
 # Kind Meitner: detailed plan, links, and recommendations
 
+Status: adopted into the easy plan and GitHub issues (2026-09-21). The recommendations below are locked product rules.
+
 Plain language. No codes like S2 or F1.
 
 This is the file to read when the short easy doc feels too thin. It connects every piece, then adds what I (Grok Bot, planning) recommend you change or add so the show is stronger and less buggy.
