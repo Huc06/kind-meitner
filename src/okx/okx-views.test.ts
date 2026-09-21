@@ -291,7 +291,8 @@ describe("OKX UI Components", () => {
       expect(html).toContain("OKX Onchain OS Gateway Settings");
       expect(html).toContain("Developer Portal Credentials");
       expect(html).toContain("server-only");
-      expect(html).toContain("Railway service-scoped sealed variables");
+      expect(html).toContain("Local OKX Server");
+      expect(html).toContain("own environment");
       for (const secretLabel of [
         "API Key (OK-ACCESS-KEY)",
         "Passphrase",

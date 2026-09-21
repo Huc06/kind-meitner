@@ -1,12 +1,13 @@
 import type { OkxSettingsData } from "./OkxSettingsModal";
+import { okxApiUrl, withOkxPairingHeader } from "./okx-api-base";
 
 export async function saveOkxSettings(
   settings: OkxSettingsData,
   fetcher: typeof fetch = fetch,
 ): Promise<void> {
-  const response = await fetcher("/api/okx/settings", {
+  const response = await fetcher(okxApiUrl("/api/okx/settings"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withOkxPairingHeader({ "Content-Type": "application/json" }),
     body: JSON.stringify(settings),
   });
   if (response.ok) return;

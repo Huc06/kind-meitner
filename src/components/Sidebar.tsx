@@ -25,6 +25,7 @@ import {
   Plus,
   Search,
   Scale,
+  Server,
   MessageSquare,
   TrendingUp,
   Puzzle,
@@ -160,16 +161,18 @@ function StackedMauses({ members, density }: { members: Bot[]; density: SidebarD
       </div>
     );
   }
-  const shown = members.slice(0, 2);
+  const shown = members.slice(0, 3);
   const extra = members.length - shown.length;
   return (
     <div className={cn("flex shrink-0 items-center justify-center", slotSize)}>
       <div className="flex items-center -space-x-2.5">
         {shown.map((b) => (
-          <BotAvatar key={b.id} bot={b} state="happy" size={iconOnly ? 30 : 20} animated={false} />
+          <span key={b.id} className="relative inline-flex rounded-full ring-2 ring-app">
+            <BotAvatar bot={b} state="happy" size={iconOnly ? 30 : 20} animated={false} />
+          </span>
         ))}
         {extra > 0 && (
-          <span className="z-10 flex size-4 items-center justify-center rounded-full border border-hairline/40 bg-raised text-[9px] font-medium text-ink-secondary">
+          <span className="z-10 flex size-4 items-center justify-center rounded-full border-2 border-app bg-raised text-[9px] font-medium text-ink-secondary">
             +{extra}
           </span>
         )}
@@ -2137,6 +2140,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             )}
           </button>
           <button
+            data-tour="nav-okx-settings"
+            onClick={() => dispatch({ type: "toggleOkxSettings", open: true })}
+            aria-label={density === "icons" ? "OKX Server Settings" : undefined}
+            title={density === "icons" ? "OKX Server Settings" : undefined}
+            className={cn(
+              "flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
+              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
+              "text-ink hover:bg-raised/50",
+            )}
+          >
+            <Server size={20} className="text-ink-secondary" />
+            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>OKX Server Settings</span>
+          </button>
+          <button
             onClick={() => dispatch({ type: "togglePlugins", open: true })}
             className={cn("flex min-h-10 w-full items-center rounded-xl py-2 text-left hover:bg-raised/50", density === "icons" ? "justify-center px-2" : "gap-3 px-3")}
             aria-label={density === "icons" ? t("sidebar.nav.connectedApps") : undefined}
@@ -2206,6 +2223,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   </span>
                 ) : undefined,
                 onSelect: () => dispatch({ type: "showEvaluator" }),
+              },
+              {
+                key: "okx-settings",
+                tourId: "nav-okx-settings",
+                label: "OKX Server Settings",
+                icon: <Server size={18} />,
+                onSelect: () => dispatch({ type: "toggleOkxSettings", open: true }),
               },
               {
                 key: "plugins",
