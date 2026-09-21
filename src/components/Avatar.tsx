@@ -12,7 +12,9 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
+import { cn } from "@/lib/cn";
 import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
 import { CursorAvatar, type CursorAvatarHandle } from "./CursorAvatar";
 import { botAvatarProfile, type BotAvatarCrop } from "../../shared/bot-avatar";
@@ -75,8 +77,64 @@ function mix(hex: string, toward: string, t: number): string {
  */
 const gradientFor = (color: MausColor): [string, string, string] => {
   const fill = MAUS_COLORS[color] ?? MAUS_COLORS.green;
-  return [mix(fill, "#ffffff", 0.55), fill, mix(fill, "#000000", 0.42)];
+  // Slightly lifted mid and softened shadow — quieter than a saturated flat fill.
+  return [mix(fill, "#ffffff", 0.62), mix(fill, "#ffffff", 0.06), mix(fill, "#000000", 0.36)];
 };
+
+/**
+ * Soft circular vessel around a bot mark — quiet ring + ambient shadow that
+ * reads on light and dark skins. Keeps sidebar / header / welcome marks aligned
+ * without loud chrome or brand-specific artwork.
+ */
+export type AvatarEmphasis = "quiet" | "hero";
+
+export function SoftAvatarPlate({
+  size,
+  tint,
+  emphasis = "quiet",
+  className,
+  children,
+}: {
+  size: number;
+  /** Optional bot color for a faint wash / hero halo. */
+  tint?: string;
+  emphasis?: AvatarEmphasis;
+  className?: string;
+  children: ReactNode;
+}) {
+  const hero = emphasis === "hero";
+  return (
+    <span
+      data-avatar-plate={emphasis}
+      className={cn(
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full",
+        hero
+          ? "bg-raised/85 ring-1 ring-inset ring-hairline/40 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.08)]"
+          : "bg-raised/55 ring-1 ring-inset ring-hairline/30 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_5px_14px_rgba(0,0,0,0.05)]",
+        className,
+      )}
+      style={{
+        width: size,
+        height: size,
+        ...(tint
+          ? {
+              backgroundImage: hero
+                ? `radial-gradient(circle at 50% 42%, color-mix(in srgb, ${tint} 28%, var(--color-raised)), color-mix(in srgb, var(--color-raised) 92%, transparent) 72%)`
+                : `radial-gradient(circle at 50% 42%, color-mix(in srgb, ${tint} 14%, transparent), transparent 72%)`,
+              backgroundColor: hero
+                ? "var(--color-raised)"
+                : "color-mix(in srgb, var(--color-raised) 70%, transparent)",
+              boxShadow: hero
+                ? `0 0 0 1px color-mix(in srgb, ${tint} 22%, transparent), 0 1px 2px rgba(0,0,0,0.04), 0 14px 36px color-mix(in srgb, ${tint} 20%, transparent)`
+                : undefined,
+            }
+          : undefined),
+      }}
+    >
+      {children}
+    </span>
+  );
+}
 
 export type MausAvatarHandle = CursorAvatarHandle;
 
@@ -110,6 +168,10 @@ export type MausAvatarProps = {
   animated?: boolean;
   /** Which body the bot wears. Unknown values fall back to the cursor. */
   bodyId?: MascotBodyId;
+  /** Soft circular vessel. Default on for quiet chat chrome. */
+  plate?: boolean;
+  /** Hero adds a soft tint wash for empty-state / welcome marks. */
+  emphasis?: AvatarEmphasis;
 };
 
 function MausAvatarComponent(
@@ -132,6 +194,8 @@ function MausAvatarComponent(
     trackPointer = true,
     animated = true,
     bodyId,
+    plate = true,
+    emphasis = "quiet",
   }: MausAvatarProps,
   ref: React.Ref<MausAvatarHandle>,
 ) {
@@ -170,7 +234,12 @@ function MausAvatarComponent(
   };
   const onPointerLeave = () => setPointer({ x: 0, y: 0 });
 
-  return (
+  // Small marks stay quieter without a mouth stroke; callers can still opt in.
+  const quietMouth = showMouth ?? size > 36;
+  const markSize = plate
+    ? Math.max(12, size - (emphasis === "hero" ? Math.max(6, Math.round(size * 0.12)) : Math.max(4, Math.round(size * 0.12))))
+    : size;
+  const mark = (
     <span
       className="inline-flex shrink-0"
       onPointerMove={trackPointer && animated ? onPointerMove : undefined}
@@ -180,7 +249,7 @@ function MausAvatarComponent(
         ref={inner}
         state={motionState ?? state}
         expression={expression}
-        size={size}
+        size={markSize}
         silhouette={silhouette}
         gradient={gradientFor(color)}
         title={label ?? null}
@@ -189,11 +258,17 @@ function MausAvatarComponent(
         turn={turn}
         spring={spring}
         eyeScale={eyeScale}
-        showMouth={showMouth}
+        showMouth={quietMouth}
         mouthStroke={mouthStroke}
         paused={!animated}
       />
     </span>
+  );
+  if (!plate) return mark;
+  return (
+    <SoftAvatarPlate size={size} tint={MAUS_COLORS[color] ?? MAUS_COLORS.green} emphasis={emphasis}>
+      {mark}
+    </SoftAvatarPlate>
   );
 }
 
@@ -240,7 +315,14 @@ export function resolveBotAvatarOutcome(params: {
  * values and images that fail to load both fall back to the animated mascot,
  * so an old/corrupt profile can never leave a broken-image icon in the app.
  */
-export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
+export function BotAvatar({
+  bot,
+  size = 44,
+  label,
+  plate = true,
+  emphasis = "quiet",
+  ...mascotProps
+}: BotAvatarProps) {
   const profile = botAvatarProfile(bot);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -260,6 +342,8 @@ export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarPr
         color={bot.color}
         size={size}
         label={label ?? bot.name}
+        plate={plate}
+        emphasis={emphasis}
       />
     );
   }
@@ -270,17 +354,36 @@ export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarPr
       : profile.avatarCrop === "rounded"
         ? "22%"
         : "0";
-  return (
+  const tint = MAUS_COLORS[bot.color] ?? MAUS_COLORS.green;
+  const markSize = plate
+    ? Math.max(12, size - (emphasis === "hero" ? Math.max(6, Math.round(size * 0.12)) : Math.max(4, Math.round(size * 0.12))))
+    : size;
+  const image = (
     <img
       src={profile.avatarUrl}
       alt={label ?? (bot.name ? `${bot.name} avatar` : "Bot avatar")}
-      width={size}
-      height={size}
+      width={markSize}
+      height={markSize}
       draggable={false}
       onError={() => setImageFailed(true)}
-      className="block shrink-0 bg-raised object-cover"
-      style={{ width: size, height: size, borderRadius: radius }}
+      className={cn(
+        "block shrink-0 bg-raised object-cover",
+        !plate && "ring-1 ring-hairline/25 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05)]",
+      )}
+      style={{
+        width: markSize,
+        height: markSize,
+        borderRadius: plate ? "50%" : radius,
+      }}
     />
+  );
+  if (!plate) return image;
+  // Flat uploads sit in the same soft vessel as the mascot so sidebar / header
+  // / welcome rows share one quiet silhouette.
+  return (
+    <SoftAvatarPlate size={size} tint={tint} emphasis={emphasis}>
+      {image}
+    </SoftAvatarPlate>
   );
 }
 
@@ -293,7 +396,7 @@ export function InitialsAvatar({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-raised text-ink-secondary font-medium"
+      className="flex shrink-0 items-center justify-center rounded-full bg-raised/70 text-ink-secondary font-medium ring-1 ring-inset ring-hairline/30 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05)]"
       style={{ width: size, height: size, fontSize: size * 0.38 }}
     >
       {initials}

@@ -131,6 +131,7 @@ export function BotProfileAvatarCard({
             size={112}
             motion={mascotMotion?.kind ?? "none"}
             motionKey={mascotMotion?.nonce ?? 0}
+            emphasis="hero"
           />
         </div>
 
@@ -208,7 +209,7 @@ export function BotProfileAvatarCard({
                   title={expression}
                   aria-label={`Use ${expression} expression`}
                 >
-                  <MausAvatar color={bot.color} bodyId={bot.mascotBody ?? undefined} state={expression} size={42} animated={false} />
+                  <MausAvatar color={bot.color} bodyId={bot.mascotBody ?? undefined} state={expression} size={42} animated={false} plate={false} />
                 </button>
               ))}
             </div>
@@ -254,7 +255,7 @@ export function BotProfileAvatarCard({
                       : "text-ink-secondary hover:bg-control/60",
                   )}
                 >
-                  <MausAvatar color={bot.color} bodyId={id} size={34} animated={false} trackPointer={false} />
+                  <MausAvatar color={bot.color} bodyId={id} size={34} animated={false} trackPointer={false} plate={false} />
                 </button>
               ))}
             </div>

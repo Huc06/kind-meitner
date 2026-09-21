@@ -1125,14 +1125,14 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-raised/35"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-raised/30"
             title={t("chat.openProfile")}
             aria-label={t("chat.openProfileAria", { name: bot.name })}
           >
             <BotAvatar
               bot={bot}
               state={stateForBot({ ...bot, messages })}
-              size={28}
+              size={30}
               motion={mascotMotion?.kind ?? "none"}
               motionKey={mascotMotion?.nonce ?? 0}
             />
@@ -1303,7 +1303,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       >
         <div
           ref={transcriptRef}
-          className="mx-auto flex w-full max-w-[52rem] flex-col gap-3 pt-1"
+          className="mx-auto flex min-h-full w-full max-w-[52rem] flex-col gap-3 pt-1"
           style={{ paddingBottom: composerDock.pad }}
           role="log"
           aria-live="polite"

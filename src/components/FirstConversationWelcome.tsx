@@ -117,40 +117,44 @@ export function FirstConversationWelcome({
     // thread does not look broken before the first send.
     if (messageCount > 0 || bot.busy) return null;
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
-        <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} />
-        <RenameTitle
-          value={bot.name}
-          onCommit={rename}
-          className="text-[17px] font-semibold text-ink"
-          inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
-        />
-        <div className="max-w-[360px] text-[14px] text-ink-secondary">
-          {bot.description || t("chat.emptyPrompt")}
+      <div className="grid min-h-full flex-1 place-items-center px-4 py-10 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <BotAvatar bot={bot} state="idle" size={72} motion="none" motionKey={0} emphasis="hero" />
+          <RenameTitle
+            value={bot.name}
+            onCommit={rename}
+            className="text-[17px] font-semibold tracking-tight text-ink"
+            inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
+          />
+          <div className="max-w-[360px] text-[14px] text-ink-secondary">
+            {bot.description || t("chat.emptyPrompt")}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-20 text-center">
-      <div className="flex flex-col items-center gap-3">
-        <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} />
-        <RenameTitle
-          value={bot.name}
-          onCommit={rename}
-          className="text-[17px] font-semibold text-ink"
-          inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
-        />
-        <p className="max-w-[420px] text-[14px] leading-relaxed text-ink-secondary">
-          {bot.description || t("chat.welcome.intro")}
-        </p>
-      </div>
-
+    <div className="grid min-h-full flex-1 place-items-center px-4 py-8 text-center">
       <div
         data-tour="first-conversation-welcome"
         className="w-full max-w-[520px] rounded-2xl border border-hairline/35 bg-card p-5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.05)]"
       >
+        <div className="mb-4 flex items-center gap-3.5">
+          <BotAvatar bot={bot} state="idle" size={52} motion="none" motionKey={0} emphasis="hero" />
+          <div className="min-w-0 flex-1 text-left">
+            <RenameTitle
+              value={bot.name}
+              onCommit={rename}
+              className="text-[15.5px] font-semibold tracking-tight text-ink"
+              inputClassName="rounded bg-inset px-1.5 py-0.5 text-[15.5px] font-semibold"
+            />
+            <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary line-clamp-2">
+              {bot.description || t("chat.welcome.intro")}
+            </p>
+          </div>
+        </div>
+
         <div className="flex items-start justify-between gap-4">
           <div className="text-[15px] font-semibold tracking-tight text-ink">{t("chat.welcome.heading")}</div>
           <button
