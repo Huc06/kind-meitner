@@ -19,7 +19,7 @@ describe("roomActivityVisible", () => {
   });
 
   it("always shows a system room lifecycle receipt", () => {
-    expect(roomActivityVisible(chip({ tool: { name: "Market Scout joined #Channel 1 from OKX.ai.", ok: true, system: true } }), false)).toBe(true);
+    expect(roomActivityVisible(chip({ tool: { name: "Markets joined #Channel 1 from OKX.ai.", ok: true, system: true } }), false)).toBe(true);
   });
 
   it("always shows a failure", () => {

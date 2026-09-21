@@ -6,7 +6,7 @@ import { OkxAgentInvite, OkxCatalogInviteDetails, canInviteOkxAgent, parseOkxCat
 
 const marketScout = {
   id: "okx-market-scout-v1",
-  name: "Market Scout",
+  name: "Markets",
   description: "Summarizes OKX marketplace demand, pricing and active task categories.",
   provider: "OKX.ai",
   avatar: "chart",
@@ -29,11 +29,11 @@ describe("OkxAgentInvite", () => {
 
   it("renders the required free, read-only catalog identity without price claims", () => {
     const markup = renderToStaticMarkup(createElement(OkxCatalogInviteDetails, { agent: marketScout }));
-    expect(markup).toContain("Market Scout");
+    expect(markup).toContain("Markets");
     expect(markup).toContain(marketScout.description);
     expect(markup).toContain("Free · read-only");
     expect(markup).toContain("OKX.AI catalog");
-    expect(markup).toContain('aria-label="Market Scout, OKX.AI catalog agent"');
+    expect(markup).toContain('aria-label="Markets, OKX.AI catalog agent"');
     expect(markup).not.toContain("price");
   });
 
@@ -41,6 +41,6 @@ describe("OkxAgentInvite", () => {
     const markup = renderToStaticMarkup(createElement(OkxAgentInvite, { roomId: "room-1" }));
     expect(markup).toContain("Invite OKX agent");
     expect(markup).toContain('aria-expanded="false"');
-    expect(markup).not.toContain("Market Scout");
+    expect(markup).not.toContain("Markets");
   });
 });

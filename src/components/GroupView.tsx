@@ -64,6 +64,8 @@ import {
 } from "@/lib/transcript-window";
 import { OkxGateToolResult } from "./OkxGateToolResult";
 import { useReplyDraft } from "@/lib/drafts";
+import { isDevDayGate } from "@/lib/dev-day-gate";
+import { DevDayGateStarters } from "./DevDayGateStarters";
 
 function dayLabel(at: number): string {
   const d = new Date(at);
@@ -953,6 +955,10 @@ export function GroupView({ group }: { group: Group }) {
     [members],
   );
   const setupPending = !remoteClient && roomNeedsSetup(group);
+  const devDayGate = isDevDayGate(group);
+  // Catalog join receipts establish provenance but are not a conversation.
+  // The starter hero vanishes after the first person or real tool/agent turn.
+  const hasDevDayConversation = group.messages.some((message) => message.kind !== "activity" || message.tool?.system !== true);
 
   // Mascot stays while a member works; the finished reply pops in above it.
   const lastGroupMessage = group.messages.at(-1);
@@ -1314,7 +1320,15 @@ export function GroupView({ group }: { group: Group }) {
           aria-live="polite"
           aria-label={t("room.aria", { name: group.name })}
         >
-          {group.messages.length === 0 && (
+          {devDayGate && hasDevDayConversation && (
+            <details className="self-center rounded-xl border border-hairline/40 bg-panel px-3 py-2">
+              <summary className="cursor-pointer text-[12px] font-medium text-ink-secondary hover:text-ink">Starters</summary>
+              <div className="mt-2">
+                <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} compact />
+              </div>
+            </details>
+          )}
+          {group.messages.length === 0 || (devDayGate && !hasDevDayConversation) ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
               <div className="flex -space-x-2">
                 {members.slice(0, 3).map((b) => (
@@ -1331,10 +1345,11 @@ export function GroupView({ group }: { group: Group }) {
               </div>
               <div className="text-[17px] font-semibold text-ink">{group.name}</div>
               <div className="max-w-[380px] text-[14px] text-ink-secondary">
-                {groupResponseHint(group, members)}
+                {devDayGate ? "Markets, Listing Coach, and Spend Scout gate every listing and spend." : groupResponseHint(group, members)}
               </div>
+              {devDayGate && <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} />}
             </div>
-          )}
+          ) : null}
           {hiddenCount > 0 && (
             <div className="flex justify-center pt-2">
               <button

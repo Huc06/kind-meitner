@@ -1858,6 +1858,21 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 <button
                   onClick={() => {
                     setPlusOpen(false);
+                    void api("/api/okx/dev-day-gate", { method: "POST", body: "{}" })
+                      .then(({ room }) => {
+                        dispatch({ type: "groupPatched", group: room });
+                        dispatch({ type: "select", id: room.id });
+                      })
+                      .catch((cause) => dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }));
+                  }}
+                  className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
+                >
+                  <Network size={16} className="text-ink-secondary" />
+                  Open Dev Day Gate
+                </button>
+                <button
+                  onClick={() => {
+                    setPlusOpen(false);
                     setNewRoom(true);
                   }}
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"

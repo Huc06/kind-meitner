@@ -2314,6 +2314,77 @@ function okxImportResult(bot: BotRecord, room: GroupRecord, activity: Message) {
   };
 }
 
+const DEV_DAY_GATE_NAME = "#dev-day-gate";
+const DEV_DAY_GATE_SECTION = "Dev Day";
+const DEV_DAY_GATE_BULLETIN = "Gate before list. Gate before spend. Free MCP only.";
+const DEV_DAY_GATE_AGENT_IDS = ["okx-market-scout-v1", "okx-listing-coach", "okx-spend-scout"] as const;
+
+function isDevDayGate(room: Pick<GroupRecord, "name" | "section">): boolean {
+  return room.section === DEV_DAY_GATE_SECTION && room.name.trim().replace(/^#/, "").toLowerCase() === "dev-day-gate";
+}
+
+/** Reuses one catalog bot per durable external id and repairs its membership.
+ * The seed and the explicit import endpoint share this path, so neither can
+ * create an orphan or a second local copy after a restart. */
+function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: GroupRecord; bot: BotRecord; activity: Message; created: boolean } {
+  const agent = findCatalogOkxAgent(agentId);
+  if (!agent) throw Object.assign(new Error("unknown OKX agent"), { status: 404 });
+  let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
+  let created = false;
+  if (!bot) {
+    bot = store.createBot(
+      { name: agent.name, title: "OKX.ai Agent", description: agent.description, soul: agent.soul },
+      { seedMessages: false },
+    );
+    bot = store.patchBot(bot.id, {
+      okxImport: okxImportDescriptor(agent),
+      composio: false,
+      approvalMode: "ask",
+      autoApprove: false,
+      alwaysAllow: [],
+      browser: false,
+      computer: "off",
+      peers: [],
+    }) ?? bot;
+    created = true;
+  } else {
+    if (!bot.soul?.trim()) bot = store.setSoul(bot.id, agent.soul) ?? bot;
+    // Keep custom names intact, but migrate the old catalog display name to
+    // the role name used in the Dev Day room roster and @mention prompts.
+    if (bot.name === "Market Scout" && agent.name === "Markets") bot = store.patchBot(bot.id, { name: agent.name }) ?? bot;
+  }
+  if (!room.memberIds.includes(bot.id)) {
+    room = store.patchGroup(room.id, { memberIds: [...room.memberIds, bot.id] }) ?? room;
+    created = true;
+  }
+  const roomLabel = room.name.startsWith("#") ? room.name : `#${room.name}`;
+  return { room, bot, activity: roomActivity(room, `${agent.name} joined ${roomLabel} from ${agent.provider}.`, bot), created };
+}
+
+/** Create the Dev Day workbench once, then repair its catalog roster on every
+ * later request. It intentionally adds only lifecycle receipts, never a fake
+ * completed chat transcript. */
+function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
+  let room = store.groups.find((group) => !group.dm && isDevDayGate(group));
+  let created = false;
+  if (!room) {
+    room = store.createGroup(
+      DEV_DAY_GATE_NAME,
+      [],
+      false,
+      DEV_DAY_GATE_SECTION,
+      { bulletin: DEV_DAY_GATE_BULLETIN, defaultResponder: { kind: "mentions" }, completed: true },
+    );
+    created = true;
+  }
+  for (const agentId of DEV_DAY_GATE_AGENT_IDS) {
+    const ensured = ensureCatalogOkxAgent(room, agentId);
+    room = ensured.room;
+    created ||= ensured.created;
+  }
+  return { room, created };
+}
+
 /** Import is keyed by durable external-agent provenance plus room membership,
  * not the client request id, so it remains idempotent after a restart. */
 function importCatalogOkxAgent(value: unknown): { created: boolean; result: ReturnType<typeof okxImportResult> } {
@@ -2330,43 +2401,11 @@ function importCatalogOkxAgent(value: unknown): { created: boolean; result: Retu
   if (typeof body.requestId !== "string" || !body.requestId.trim() || body.requestId.length > 200) {
     throw Object.assign(new Error("requestId is required"), { status: 400 });
   }
-  const agent = findCatalogOkxAgent(body.agentId.trim());
-  if (!agent) throw Object.assign(new Error("unknown OKX agent"), { status: 404 });
-  let room = store.group(body.roomId.trim());
+  const room = store.group(body.roomId.trim());
   if (!room) throw Object.assign(new Error("no such room"), { status: 404 });
   if (room.dm) throw Object.assign(new Error("OKX agents can only join non-DM rooms"), { status: 400 });
-
-  // One workspace bot per external agent. Reuse it across rooms instead of
-  // creating duplicate bot entities; only room membership changes per room.
-  let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
-  let created = false;
-  if (!bot) {
-    bot = store.createBot(
-      { name: agent.name, title: "OKX.ai Agent", description: agent.description, soul: agent.soul },
-      { seedMessages: false },
-    );
-    store.patchBot(bot.id, {
-      okxImport: okxImportDescriptor(agent),
-      composio: false,
-      approvalMode: "ask",
-      autoApprove: false,
-      alwaysAllow: [],
-      browser: false,
-      computer: "off",
-      peers: [],
-    });
-    created = true;
-  } else if (!bot.soul?.trim()) {
-    // Catalog bots imported before role instructions existed keep any custom
-    // soul, but receive the required contract when their legacy field is empty.
-    bot = store.setSoul(bot.id, agent.soul) ?? bot;
-  }
-  if (!room.memberIds.includes(bot.id)) {
-    room = store.patchGroup(room.id, { memberIds: [...room.memberIds, bot.id] }) ?? room;
-    created = true;
-  }
-  const activity = roomActivity(room, `${agent.name} joined #${room.name} from ${agent.provider}.`, bot);
-  return { created, result: okxImportResult(bot, room, activity) };
+  const ensured = ensureCatalogOkxAgent(room, body.agentId.trim());
+  return { created: ensured.created, result: okxImportResult(ensured.bot, ensured.room, ensured.activity) };
 }
 
 function updateChannel(groupId: string, value: unknown): GroupRecord {
@@ -12674,6 +12713,12 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       return json(res, 200, {
         room: { ...publicGroupState(room), messages: store.messagesFor(room.threadId) },
         activityMessageId: welcome.id,
+      });
+    }
+    if (method === "POST" && path === "/api/okx/dev-day-gate") {
+      const seeded = ensureDevDayGate();
+      return json(res, seeded.created ? 201 : 200, {
+        room: { ...publicGroupState(seeded.room), messages: store.messagesFor(seeded.room.threadId) },
       });
     }
     if (method === "POST" && path === "/api/okx/agents/import") {
