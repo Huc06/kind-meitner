@@ -285,3 +285,8 @@ Copy into the PR:
 ## Older docs
 
 Keep field level detail in the older long docs if needed. For day to day reading and review, use this easy file first. When CI rules conflict with a short note elsewhere, this file wins for tests and anti fake rules.
+
+
+## Want more detail and recommendations?
+
+Open `docs/plans/2026-09-21-okx-recommendations-and-linked-plan.md` for links across docs and issues plus planning recommendations.
