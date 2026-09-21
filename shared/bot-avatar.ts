@@ -3,9 +3,10 @@ import { z } from "zod";
 /**
  * `mascot` draws the animated mascot body, filled with the bot's colour
  * gradient. `circle`, `rounded`, and `square` crop the bot's own image
- * instead, shown as it is, with no mascot at all.
+ * instead, shown as it is, with no mascot at all. `chart` is the fixed,
+ * non-mascot mark for catalog agents.
  */
-export const BOT_AVATAR_CROPS = ["mascot", "circle", "rounded", "square"] as const;
+export const BOT_AVATAR_CROPS = ["mascot", "circle", "rounded", "square", "chart"] as const;
 export const botAvatarCropSchema = z.enum(BOT_AVATAR_CROPS);
 export type BotAvatarCrop = z.infer<typeof botAvatarCropSchema>;
 

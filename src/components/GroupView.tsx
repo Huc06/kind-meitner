@@ -1087,14 +1087,16 @@ export function GroupView({ group }: { group: Group }) {
     }
   };
 
-  // Static profile avatars: one per member, a ring + dot on whoever is working.
-  const memberMauses = members.map((b) => (
+  // Static 24px profile marks overlap with app-background rings; the dot
+  // alone marks the member currently working.
+  const memberMauses = members.map((b, index) => (
     <span
       key={b.id}
       title={`${b.name}${group.busyBotId === b.id ? " — working…" : ""}`}
       className={cn(
-        "relative inline-flex rounded-full",
-        group.busyBotId === b.id && "ring-2 ring-accent/50 ring-offset-1 ring-offset-app",
+        "relative inline-flex rounded-full ring-2 ring-app",
+        index > 0 && "-ml-1.5",
+        group.busyBotId === b.id && "z-10",
       )}
     >
       <BotAvatar bot={b} state={normalizeState(b.mascotExpression) ?? "happy"} size={24} animated={false} />
@@ -1110,7 +1112,7 @@ export function GroupView({ group }: { group: Group }) {
       {membersOpen && !remoteClient && !group.dm && (
         <ManageMembersPanel group={group} onClose={closeMembers} triggerRef={membersTriggerRef} />
       )}
-      {/* Header: static member avatars; a ring + dot marks the working bot. */}
+      {/* Header: static 24px member marks with overlap; a dot marks work. */}
       <div
         style={headerDragStyle}
         className={cn(

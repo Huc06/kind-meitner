@@ -29,7 +29,12 @@ const CROP_LABEL = {
   circle: "Circle",
   rounded: "Rounded",
   square: "Square",
+  chart: "Chart mark",
 } satisfies Record<BotAvatarCrop, string>;
+
+const PICKABLE_AVATAR_CROPS = BOT_AVATAR_CROPS.filter(
+  (crop): crop is Exclude<BotAvatarCrop, "chart"> => crop !== "chart",
+);
 
 export function BotProfileAvatarCard({
   bot,
@@ -170,7 +175,7 @@ export function BotProfileAvatarCard({
           Shape
         </div>
         <div className="grid grid-cols-4 overflow-hidden rounded-lg border border-hairline/40">
-          {BOT_AVATAR_CROPS.map((candidate, index) => (
+          {PICKABLE_AVATAR_CROPS.map((candidate, index) => (
             <button
               key={candidate}
               type="button"

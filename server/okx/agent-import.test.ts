@@ -7,20 +7,39 @@ import {
 } from "./agent-import.ts";
 
 describe("OKX agent catalog", () => {
-  it("exposes the deterministic Market Scout catalog entry", () => {
+  it("exposes the three deterministic chart-marked OKX agents", () => {
     expect(listCatalogOkxAgents()).toEqual([
       expect.objectContaining({
         id: "okx-market-scout-v1",
         name: "Market Scout",
         provider: "OKX.ai",
+        avatar: "chart",
+        capabilities: ["chat", "market-intelligence"],
+        status: "available",
+      }),
+      expect.objectContaining({
+        id: "okx-listing-coach-v1",
+        name: "Listing Coach",
+        provider: "OKX.ai",
+        avatar: "chart",
+        capabilities: ["chat"],
+        status: "available",
+      }),
+      expect.objectContaining({
+        id: "okx-spend-scout-v1",
+        name: "Spend Scout",
+        provider: "OKX.ai",
+        avatar: "chart",
         capabilities: ["chat", "market-intelligence"],
         status: "available",
       }),
     ]);
   });
 
-  it("finds one agent by opaque external id and does not invent unknown agents", () => {
+  it("finds each agent by opaque external id and does not invent unknown agents", () => {
     expect(findCatalogOkxAgent("okx-market-scout-v1")?.name).toBe("Market Scout");
+    expect(findCatalogOkxAgent("okx-listing-coach-v1")?.name).toBe("Listing Coach");
+    expect(findCatalogOkxAgent("okx-spend-scout-v1")?.name).toBe("Spend Scout");
     expect(findCatalogOkxAgent("not-an-okx-agent")).toBeUndefined();
   });
 

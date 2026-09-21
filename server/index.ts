@@ -2346,6 +2346,8 @@ function importCatalogOkxAgent(value: unknown): { created: boolean; result: Retu
       { seedMessages: false },
     );
     store.patchBot(bot.id, {
+      // Catalog agents have a fixed chart mark, never the default mascot.
+      avatarCrop: agent.avatar,
       okxImport: okxImportDescriptor(agent),
       composio: false,
       approvalMode: "ask",

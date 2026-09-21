@@ -206,39 +206,71 @@ export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
     avatarUrl?: string | null;
     avatarCrop?: BotAvatarCrop;
     mascotBody?: MascotBodyId | null;
+    /** Catalog provenance is a fixed identity mark, not a user mascot. */
+    okxImport?: { kind: "okx-catalog" };
   };
 };
 
-export type BotAvatarOutcome = "flatImage" | "gradientMascot";
+export type BotAvatarOutcome = "chart" | "flatImage" | "gradientMascot";
+
+/** A quiet chart plate for catalog agents. It deliberately has no mascot
+ * fallback: catalog provenance must remain recognizable even when a legacy
+ * record has not yet been migrated to `avatarCrop: "chart"`. */
+export function ChartAvatar({
+  color,
+  size,
+  label,
+}: {
+  color: MausColor;
+  size: number;
+  label?: string;
+}) {
+  const [highlight, base, shadow] = gradientFor(color);
+  return (
+    <span
+      data-avatar-kind="chart"
+      className="inline-flex shrink-0 overflow-hidden rounded-full"
+      style={{ width: size, height: size, background: `linear-gradient(145deg, ${highlight}, ${base} 58%, ${shadow})` }}
+    >
+      <svg
+        viewBox="0 0 32 32"
+        width={size}
+        height={size}
+        role={label ? "img" : undefined}
+        aria-label={label ? `${label} chart avatar` : undefined}
+        aria-hidden={label ? undefined : true}
+      >
+        <path d="M6 23.5 12.25 17l4.25 3.25L25.75 9" fill="none" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+        <circle cx="6" cy="23.5" r="1.75" fill="white" />
+        <circle cx="12.25" cy="17" r="1.75" fill="white" />
+        <circle cx="16.5" cy="20.25" r="1.75" fill="white" />
+        <circle cx="25.75" cy="9" r="1.75" fill="white" />
+      </svg>
+    </span>
+  );
+}
 
 /**
- * Pick which of the two ways to render a bot's avatar, given the parsed
- * profile plus whether the image has already failed to load. Kept as a pure
- * function — independent of React state and effects — so both arms can be
- * unit-tested directly: `imageFailed` is set by the `<img>`'s own `onError`,
- * which `renderToStaticMarkup` never fires, so the failure fallback is
- * unreachable from a synchronous render test.
- *
- * The iOS half of this decision is `resolveBotAvatarOutcome` in
- * `ios/Sources/CompanionCore/BotAvatarRendering.swift`, which mirrors this
- * union name for name so the two renderers can be read side by side.
+ * Pick which way to render a bot avatar, given the parsed profile plus
+ * whether its image has failed to load. Kept pure so the chart guarantee and
+ * the image-error fallback can be unit-tested without browser events.
  */
 export function resolveBotAvatarOutcome(params: {
   avatarCrop: BotAvatarCrop;
   hasUrl: boolean;
   imageFailed: boolean;
+  isCatalogAgent?: boolean;
 }): BotAvatarOutcome {
-  const { avatarCrop, hasUrl, imageFailed } = params;
-  if (!hasUrl) return "gradientMascot";
-  if (avatarCrop === "mascot") return "gradientMascot";
-  if (imageFailed) return "gradientMascot";
+  const { avatarCrop, hasUrl, imageFailed, isCatalogAgent = false } = params;
+  if (avatarCrop === "chart" || isCatalogAgent) return "chart";
+  if (!hasUrl || avatarCrop === "mascot" || imageFailed) return "gradientMascot";
   return "flatImage";
 }
 
 /**
- * The one renderer for a bot's chosen profile image. Malformed persisted
- * values and images that fail to load both fall back to the animated mascot,
- * so an old/corrupt profile can never leave a broken-image icon in the app.
+ * The renderer for a bot's selected identity. Malformed persisted images
+ * still fall back to a mascot, but chart catalog identities always render the
+ * fixed chart plate rather than a Cursor/SupaMaus mascot.
  */
 export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
   const profile = botAvatarProfile(bot);
@@ -250,9 +282,14 @@ export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarPr
     avatarCrop: profile.avatarCrop,
     hasUrl: Boolean(profile.avatarUrl),
     imageFailed,
+    isCatalogAgent: bot.okxImport?.kind === "okx-catalog",
   });
 
-  if (outcome !== "flatImage") {
+  if (outcome === "chart") {
+    return <ChartAvatar color={bot.color} size={size} label={label ?? bot.name} />;
+  }
+
+  if (outcome === "gradientMascot") {
     return (
       <MausAvatar
         bodyId={bot.mascotBody ?? undefined}

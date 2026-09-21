@@ -159,6 +159,28 @@ describe("bot-first sidebar", () => {
   });
 });
 
+it("renders three OKX chart marks in a group roster and counts remaining members", () => {
+  const members = ["Atlas", "Juniper", "Nova", "Sage"].map((name, index) => ({
+    ...bot,
+    id: `okx-${index}`,
+    name,
+    avatarCrop: "chart" as const,
+  }));
+  const group: Group = {
+    id: "dev-day-gate", name: "Dev Day Gate", threadId: "dev-day-gate-thread",
+    memberIds: members.map(({ id }) => id), defaultResponder: { kind: "mentions" },
+    bulletin: "", unread: false, createdAt: 0, messages: [],
+  };
+  fixture.state = { bots: members };
+
+  const markup = renderToStaticMarkup(createElement(GroupListItem, {
+    group, density: "comfortable", onMenu: vi.fn(),
+  }));
+
+  expect(markup.match(/data-avatar-kind="chart"/g)).toHaveLength(3);
+  expect(markup).toContain(">+1<");
+});
+
 describe("activity-only escape hatch", () => {
   it("includes waiting approvals even with busy false and never treats aggregate activity as every sibling's status", () => {
     const tasks = sidebarBotActivityTasks({ ...bot, busy: true, activity: "waiting-on-you" }, fixture.state.pendingQueued!);

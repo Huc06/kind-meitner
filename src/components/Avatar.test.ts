@@ -47,7 +47,22 @@ describe("MausAvatar body", () => {
   });
 });
 
-describe("BotAvatar's two avatar outcomes", () => {
+describe("BotAvatar's identity outcomes", () => {
+  it("renders the fixed chart mark for a chart crop, with no mascot fallback", () => {
+    const markup = renderBot({ avatarCrop: "chart" });
+    expect(markup).toContain('data-avatar-kind="chart"');
+    expect(markup).not.toContain(MASCOT_BODIES.cursor.fit);
+  });
+
+  it("renders the fixed chart mark for legacy catalog provenance", () => {
+    const markup = renderBot({
+      avatarCrop: "mascot",
+      okxImport: { kind: "okx-catalog" },
+    });
+    expect(markup).toContain('data-avatar-kind="chart"');
+    expect(markup).not.toContain(MASCOT_BODIES.cursor.fit);
+  });
+
   it("renders a flat cropped image for circle/rounded/square, with no mascot at all", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "circle" });
     expect(markup).toContain("<img");
@@ -75,10 +90,15 @@ describe("BotAvatar's two avatar outcomes", () => {
 });
 
 describe("resolveBotAvatarOutcome", () => {
-  // `imageFailed` is set by the flat <img>'s own onError, which
-  // renderToStaticMarkup never fires — there are no events in a static
-  // render. The decision is a pure function precisely so this branch is
-  // still testable synchronously.
+  it("keeps catalog chart identities out of mascot fallback paths", () => {
+    expect(
+      resolveBotAvatarOutcome({ avatarCrop: "chart", hasUrl: false, imageFailed: false }),
+    ).toBe("chart");
+    expect(
+      resolveBotAvatarOutcome({ avatarCrop: "mascot", hasUrl: false, imageFailed: false, isCatalogAgent: true }),
+    ).toBe("chart");
+  });
+
   it("falls back to the gradient mascot for an image that failed to load", () => {
     expect(
       resolveBotAvatarOutcome({ avatarCrop: "circle", hasUrl: true, imageFailed: true }),

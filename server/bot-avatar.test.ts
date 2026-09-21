@@ -8,8 +8,8 @@ import {
 } from "../shared/bot-avatar.ts";
 
 describe("bot avatar profile schema", () => {
-  it("accepts the four supported display shapes", () => {
-    for (const crop of ["mascot", "circle", "rounded", "square"]) {
+  it("accepts the supported display shapes, including the catalog chart mark", () => {
+    for (const crop of ["mascot", "circle", "rounded", "square", "chart"]) {
       expect(botAvatarCropSchema.parse(crop)).toBe(crop);
     }
     expect(botAvatarCropSchema.safeParse("hexagon").success).toBe(false);
