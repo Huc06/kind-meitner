@@ -81,7 +81,7 @@ One bot monologue          →   Coach + Markets + Scout turns
 | Time ICT | Owner | Task |
 | --- | --- | --- |
 | Done | Grok Bot | Plans on main; #31 tracker; interact-execute intent |
-| Tonight | **You** | Confirm Telegram + ASP #13837 dashboard status → comment #18 |
+| Tonight | **You** | Optional: ASP #13837 dashboard status → comment #18 (Telegram = OKX support only, not product) |
 | Tonight | **Hulk** | Read interact-execute + feature-uiux-spec; branch for #23 |
 
 #### Tue 22 Sep — D1 Ship readiness execution
@@ -202,3 +202,24 @@ All must be true:
 | **You** | ASP #18, Telegram, drive loops, submit #25, calendar |
 | **Grok Bot** | Plans, issue hygiene, schedule/impact docs only |
 
+
+---
+
+## 7. Clarification — Telegram is NOT product work
+
+**What it is:** OKX Dev Day’s *official builder support group* from the [Builder Kit](https://www.okx.com/en-gb/learn/okx-dev-day-builder-kit) (`t.me/+xHT-WekKkuFjYzk9`) — programme updates, deadline reminders, OKX AI / X Layer Q&A for **accepted teams**.
+
+**What it is NOT:**
+- Not a Kind Meitner feature
+- Not part of Free-MCP / room / action cards
+- Not on the Hulk coding critical path
+- Not required to ship Loop A/B
+
+**When you actually need it:** only if OKX emails say “ask in Telegram”, or you want organiser announcements. Otherwise **ignore** for build schedule.
+
+**Ops critical path (you) without Telegram:**
+1. ASP #13837 dashboard status (#18) when you have Agentic Wallet open  
+2. Drive Loop A/B once Hulk ships  
+3. Submit form Fri 25 15:00 ICT (#25)  
+
+Grok Bot will stop listing “join Telegram” as a tonight blocker.
