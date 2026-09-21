@@ -169,3 +169,7 @@ Judging: innovation, completeness, user value, technical execution, meaningful O
 Implementers: follow **[`2026-09-21-okx-dev-day-build-brief.md`](2026-09-21-okx-dev-day-build-brief.md)** — tool schemas, file map, day checklist, non-goals.
 
 **Route locked:** Accepted team · Singapore finale aim · Build a Company.
+
+## 16. Interaction UX + winner-style demo
+
+See **[`2026-09-21-okx-dev-day-interaction-ux-demo.md`](2026-09-21-okx-dev-day-interaction-ux-demo.md)** — two-agent scenes, Run/Trust cards, video acts, anti-scoreboard rules.
