@@ -314,3 +314,10 @@ https://kind-meitner-production.up.railway.app/api/okx/free-mcp
 ## Want more detail and recommendations?
 
 Open `docs/plans/2026-09-21-okx-recommendations-and-linked-plan.md` for links across docs and issues plus planning recommendations.
+
+
+## Extras added (error copy, flag, smoke)
+
+1. Fixed error strings and flag spec: `docs/okx-dev-day-error-copy-and-flag.md`
+2. Feature flag name `devDayGateCards` default on (`!== false`). Cards off, tools still on.
+3. Smoke after Railway: `pnpm dev-day:smoke` or `bash scripts/dev-day-gate-smoke.sh`
