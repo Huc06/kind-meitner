@@ -21,7 +21,8 @@ import { ThreadChip } from "./ThreadChip";
 import { ToolActivity } from "./ToolActivity";
 import { ThreadRefText } from "./ThreadRefs";
 import { TurnPresence } from "./TurnPresence";
-import { showToolCallsEnabled } from "@/lib/feature-flags";
+import { devDayGateCardsEnabled, showToolCallsEnabled } from "@/lib/feature-flags";
+import { isOkxGateTool } from "@/lib/okx-action-cards";
 import { roomActivityVisible } from "@/lib/room-activity";
 import { normalizeState } from "@/lib/mascot";
 import { effectiveDefaultResponder, groupResponseHint } from "@/lib/group-routing";
@@ -61,6 +62,7 @@ import {
   resolveTranscriptWindow,
   tailWindowStart,
 } from "@/lib/transcript-window";
+import { OkxGateToolResult } from "./OkxGateToolResult";
 import { useReplyDraft } from "@/lib/drafts";
 
 function dayLabel(at: number): string {
@@ -186,11 +188,12 @@ const Transcript = memo(function Transcript({
 }) {
   const { state, dispatch } = useStore();
   const showToolCalls = showToolCallsEnabled(state.config);
+  const showGateCards = devDayGateCardsEnabled(state.config);
   const memberOf = (id?: string) => members.find((b) => b.id === id);
   // Several bots working at once turn a room into a wall of chips; fold the
   // finished ones the same way a 1:1 chat does.
   const items = useMemo(() => groupActivityRuns(messages.filter(message =>
-    message.kind !== "activity" || roomActivityVisible(message, showToolCalls))), [messages, showToolCalls]);
+    message.kind !== "activity" || roomActivityVisible(message, showToolCalls) || isOkxGateTool(message.tool?.name))), [messages, showToolCalls]);
   const newestMessageId = messages.at(-1)?.id;
   const newestUserMessageId = [...messages].reverse().find((message) => message.role === "user")?.id;
   const focus = state.focusMessage;
@@ -203,7 +206,9 @@ const Transcript = memo(function Transcript({
         const first = item.kind === "run" ? item.messages[0] : item.message;
         const newDay = !prev || new Date(prev.at).toDateString() !== new Date(first.at).toDateString();
         if (item.kind === "run") {
-          if (!showToolCalls) return null;
+          // Gate cards remain meaningful even when ordinary tool chips are
+          // hidden; an invalid gate payload still exposes its normal result.
+          if (!showToolCalls && !item.messages.some((step) => isOkxGateTool(step.tool?.name))) return null;
           const cluster = !prev || prev.role !== first.role || prev.from?.botId !== first.from?.botId || newDay;
           return (
             <div key={item.id} className="contents">
@@ -215,10 +220,15 @@ const Transcript = memo(function Transcript({
               {first.from && cluster && (
                 <ClusterLabel bot={memberOf(first.from.botId)} name={first.from.name} color={first.from.color} />
               )}
-              <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId)}>
+              <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId || isOkxGateTool(step.tool?.name))}>
                 {item.messages.map((step) => (
                   <div key={step.id} className="contents" data-mid={step.id}>
-                    <RoomToolChip message={step} />
+                    <OkxGateToolResult
+                      message={step}
+                      enabled={showGateCards}
+                      composerDraftId={`group:${group.id}:${group.threadId}`}
+                      fallback={<RoomToolChip message={step} roomId={group.id} />}
+                    />
                   </div>
                 ))}
               </ActivityRun>
@@ -274,8 +284,13 @@ const Transcript = memo(function Transcript({
               />
             </div>
           ) : m.kind === "activity" && m.tool ? (
-            roomActivityVisible(m, showToolCalls) ? (
-              <RoomToolChip message={m} roomId={group.id} />
+            roomActivityVisible(m, showToolCalls) || isOkxGateTool(m.tool.name) ? (
+              <OkxGateToolResult
+                message={m}
+                enabled={showGateCards}
+                composerDraftId={`group:${group.id}:${group.threadId}`}
+                fallback={<RoomToolChip message={m} roomId={group.id} />}
+              />
             ) : null
           ) : m.kind === "text" && (m.text || m.attachments?.length) ? (
             <div className={cn("group flex w-full flex-col", user ? "items-end" : "items-start")}>

@@ -1,7 +1,7 @@
 import { t } from "./i18n";
 
 export interface FeatureFlagConfig {
-  features?: { skillAuthoring?: boolean; showToolCalls?: boolean; browser?: boolean; sharedComputers?: boolean };
+  features?: { skillAuthoring?: boolean; showToolCalls?: boolean; browser?: boolean; sharedComputers?: boolean; devDayGateCards?: boolean };
   browserEngine?: { kind: "engine" | "unavailable"; reason?: string; installable?: boolean; installing?: boolean; installError?: string };
 }
 
@@ -44,4 +44,10 @@ export function showToolCallsEnabled(config: FeatureFlagConfig | null | undefine
  * the controls simply are not offered. */
 export function sharedComputersEnabled(config: FeatureFlagConfig | null | undefined): boolean {
   return config?.features?.sharedComputers === true;
+}
+
+/** Action cards for listing readiness and pre-spend trust. On unless an
+ * operator explicitly turns them off; the underlying free tools stay usable. */
+export function devDayGateCardsEnabled(config: FeatureFlagConfig | null | undefined): boolean {
+  return config?.features?.devDayGateCards !== false;
 }
