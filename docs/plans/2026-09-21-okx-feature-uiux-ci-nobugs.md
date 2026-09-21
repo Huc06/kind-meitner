@@ -1,5 +1,7 @@
 # Feature + UI/UX show — long form: no bugs, CI gates, no mock / fake demo
 
+**Prefer the easy read version for humans:** [`2026-09-21-okx-feature-uiux-easy.md`](2026-09-21-okx-feature-uiux-easy.md) (plain language, no S2/F1 style codes).
+
 **Scope ONLY:** features, UI/UX show, automated + manual verification so production cannot ship mocks or silent bugs.  
 **Not in this doc:** Telegram, submit forms, prize schedule, marketing.
 
