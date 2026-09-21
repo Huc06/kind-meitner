@@ -3,6 +3,53 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic.ts";
 
+export type ReadinessCheckStatus = "pass" | "warn" | "fail";
+
+export interface ReadinessCheck {
+  id: "https_scheme" | "host_pitfall_vercel" | "tools_list_http" | "tools_list_shape" | "no_accidental_402" | "initialize_soft";
+  status: ReadinessCheckStatus;
+  detail: string;
+}
+
+export interface FreeMcpReadinessData {
+  endpointUrl: string;
+  agentId: string | null;
+  verdict: "PASS" | "WARN" | "FAIL";
+  score: number;
+  checks: ReadinessCheck[];
+  remediation: string[];
+  raw: { httpStatus: number | null; toolNames: string[]; truncatedNotes: string };
+}
+
+export const READINESS_CHECK_IDS: ReadinessCheck["id"][] = [
+  "https_scheme",
+  "host_pitfall_vercel",
+  "tools_list_http",
+  "tools_list_shape",
+  "no_accidental_402",
+  "initialize_soft",
+];
+
+export function isPrivateIpAddress(host: string): boolean {
+  const value = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (value === "localhost" || value === "::1") return true;
+  const octets = value.split(".").map(Number);
+  if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+    const [a, b] = octets;
+    return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  return value.startsWith("fe80:") || value.startsWith("fc") || value.startsWith("fd");
+}
+
+export function truncateReadinessDetail(value: string, max = 500): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+}
+
+export function readinessVerdict(checks: ReadinessCheck[]): FreeMcpReadinessData["verdict"] {
+  if (checks.some((check) => ["https_scheme", "host_pitfall_vercel", "tools_list_http", "no_accidental_402"].includes(check.id) && check.status === "fail")) return "FAIL";
+  return checks.some((check) => check.status === "warn") ? "WARN" : "PASS";
+}
+
 export type TrustTier = "elite" | "verified" | "neutral" | "high_risk";
 
 export interface AspProfile {
@@ -10,6 +57,7 @@ export interface AspProfile {
   name: string;
   category: string;
   reputationScore: number; // 0 - 100
+
   medianPrice: number; // in USDT
   averageTurnaroundMinutes: number;
   tasksCompleted: number;
@@ -24,6 +72,84 @@ export interface AspProfile {
   buyerVolumes?: Record<string, number>;
   hhiScore?: number;
   updatedAt: number;
+}
+export interface ReadinessProbeDependencies { fetch?: typeof fetch; }
+
+const readinessResource = {
+  access: "free",
+  paymentRequired: false,
+  walletRequired: false,
+  mainnet: false,
+  provenance: "kind-meitner live HTTPS probes + public listing pitfalls",
+};
+
+export async function scanFreeMcpReadiness(endpointUrl: string, agentId: string | null, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: FreeMcpReadinessData }> {
+  const checks = new Map<ReadinessCheck["id"], ReadinessCheck>(READINESS_CHECK_IDS.map((id) => [id, { id, status: "warn", detail: "not checked" }]));
+  const remediation: string[] = [];
+  const raw: FreeMcpReadinessData["raw"] = { httpStatus: null, toolNames: [], truncatedNotes: "" };
+  const set = (id: ReadinessCheck["id"], status: ReadinessCheckStatus, detail: string) => checks.set(id, { id, status, detail: truncateReadinessDetail(detail) });
+  const result = (url: string) => {
+    const rows = READINESS_CHECK_IDS.map((id) => checks.get(id)!);
+    const score = Math.round(100 * rows.filter((check) => check.status === "pass").length / rows.length);
+    return { resource: readinessResource, data: { endpointUrl: url, agentId, verdict: readinessVerdict(rows), score, checks: rows, remediation: [...new Set(remediation)], raw } };
+  };
+  let parsed: URL;
+  try { parsed = new URL(endpointUrl); }
+  catch { set("https_scheme", "fail", "invalid URL"); remediation.push("Serve the Free A2MCP endpoint on HTTPS only."); return result(endpointUrl); }
+  if (parsed.protocol !== "https:") {
+    set("https_scheme", "fail", `scheme=${parsed.protocol || "missing"}`);
+    remediation.push("Serve the Free A2MCP endpoint on HTTPS only.");
+    return result(parsed.toString());
+  }
+  set("https_scheme", "pass", "https");
+  if (isPrivateIpAddress(parsed.hostname)) {
+    set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+    set("tools_list_http", "fail", "private or loopback target blocked");
+    remediation.push("Use a public HTTPS endpoint; private, loopback, and link-local targets cannot be scanned.");
+    return result(parsed.toString());
+  }
+  if (parsed.hostname === "vercel.app" || parsed.hostname.endsWith(".vercel.app")) {
+    set("host_pitfall_vercel", "fail", `host=${parsed.hostname}`);
+    set("tools_list_http", "warn", "skipped because host pitfall failed");
+    remediation.push("Replace *.vercel.app with a custom domain or Railway/Fly HTTPS host. OKX listing test env rejects vercel.app.");
+    return result(parsed.toString());
+  }
+  set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+  const probeFetch = dependencies.fetch ?? fetch;
+  try {
+    const started = Date.now();
+    const response = await probeFetch(parsed, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: "km-scan", method: "tools/list" }), redirect: "manual", signal: AbortSignal.timeout(8_000) });
+    raw.httpStatus = response.status;
+    const latency = Date.now() - started;
+    if (response.status === 402) {
+      set("tools_list_http", "fail", `status=402 latencyMs=${latency}`);
+      set("no_accidental_402", "fail", "tools/list returned HTTP 402");
+      remediation.push("Do not gate tools/list behind x402. Keep discovery free; put payment only on paid tools if any.");
+    } else {
+      set("tools_list_http", response.status === 200 ? "pass" : response.ok ? "warn" : "fail", `status=${response.status} latencyMs=${latency}`);
+      const paymentHeader = [...response.headers.keys()].some((name) => /(?:payment|x402)/i.test(name));
+      set("no_accidental_402", paymentHeader ? "warn" : "pass", paymentHeader ? "payment-looking response header present" : "no 402");
+      if (!response.ok) remediation.push(response.status === 401 || response.status === 403 ? "Allow unauthenticated tools/list on the free path (or document a public probe token — prefer none)." : "Confirm the process is up, public, and responds to POST tools/list within 8s.");
+    }
+    const text = (await response.text()).slice(0, 10_000);
+    try {
+      const body = JSON.parse(text) as { result?: { tools?: unknown[] } };
+      const tools = Array.isArray(body.result?.tools) ? body.result.tools : null;
+      if (!tools) set("tools_list_shape", "fail", "missing result.tools array");
+      else if (tools.some((tool) => !tool || typeof tool !== "object" || typeof (tool as { name?: unknown }).name !== "string" || !(tool as { name: string }).name)) set("tools_list_shape", "fail", "tool missing non-empty name");
+      else { raw.toolNames = tools.map((tool) => (tool as { name: string }).name).slice(0, 50); set("tools_list_shape", tools.length ? "pass" : "warn", `${tools.length} tools`); }
+    } catch { set("tools_list_shape", "fail", "response was not JSON-RPC tools/list JSON"); }
+    try {
+      const initialize = await probeFetch(parsed, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: "km-init", method: "initialize" }), redirect: "manual", signal: AbortSignal.timeout(8_000) });
+      set("initialize_soft", initialize.status === 200 ? "pass" : "warn", `status=${initialize.status}`);
+    } catch { set("initialize_soft", "warn", "initialize skipped"); }
+  } catch {
+    set("tools_list_http", "fail", "network probe failed or timed out");
+    set("tools_list_shape", "warn", "not checked after network failure");
+    set("no_accidental_402", "warn", "not checked after network failure");
+    remediation.push("Confirm the process is up, public, and responds to POST tools/list within 8s.");
+  }
+  return result(parsed.toString());
 }
 
 export interface Eip3009PaymentHeaders {
@@ -448,6 +574,20 @@ export class OkxMarketplaceIntelligence {
         annotations: readOnly,
       },
       {
+        name: "scan_free_mcp_readiness",
+        description: "Free resource: scan a candidate HTTPS Free A2MCP endpoint for listing-readiness evidence and remediation.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            endpointUrl: { type: "string", minLength: 8, maxLength: 500 },
+            agentId: { type: "string", maxLength: 64 },
+          },
+          required: ["endpointUrl"],
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+      },
+      {
         name: "query_market_benchmarks",
         description: "Free resource: inspect locally indexed marketplace benchmark data with provenance metadata. It never claims live OKX marketplace data.",
         inputSchema: {
@@ -483,7 +623,7 @@ export class OkxMarketplaceIntelligence {
 
   /** Executes only free, read-only resources. It neither records usage nor
    * redeems a nonce, so callers cannot trigger a payment-like durable action. */
-  handleFreeMcpToolCall(toolName: string, args: Record<string, unknown>): McpToolCallResult {
+  async handleFreeMcpToolCall(toolName: string, args: Record<string, unknown>): Promise<McpToolCallResult> {
     const resource = {
       access: "free",
       paymentRequired: false,
@@ -498,6 +638,16 @@ export class OkxMarketplaceIntelligence {
       isError: true,
       content: [{ type: "text", text: message }],
     });
+
+    if (toolName === "scan_free_mcp_readiness") {
+      const endpointUrl = args.endpointUrl;
+      const agentId = args.agentId;
+      if (typeof endpointUrl !== "string" || endpointUrl.trim().length === 0) return invalid("endpointUrl is required");
+      if (endpointUrl.trim().length < 8 || endpointUrl.trim().length > 500) return invalid("endpointUrl must be a string from 8 through 500 characters");
+      if (agentId !== undefined && (typeof agentId !== "string" || agentId.trim().length > 64)) return invalid("agentId must be a string of at most 64 characters when provided");
+      const scanned = await scanFreeMcpReadiness(endpointUrl.trim(), typeof agentId === "string" ? agentId.trim() || null : null);
+      return { content: [{ type: "text", text: JSON.stringify(scanned, null, 2) }] };
+    }
 
     if (toolName === "list_okx_ai_use_cases") {
       return success({
