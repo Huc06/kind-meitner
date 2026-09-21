@@ -96,3 +96,20 @@ One reviewed testnet receipt for judges — **not** the primary demo claim. Keep
 
 Still: Free A2MCP first → x402 testnet second → mainnet only after explicit approval.  
 This plan **narrows** Free A2MCP *content* from “market medians” to **readiness/trust utilities** that match winner economics.
+
+## 10. Field validation (X / #OKXAI sample, 2026-09-21)
+
+Logged-out search is login-walled; sample via public profiles + status pages (~15 threads). Dense Jul–Aug; quieter last 30d.
+
+**Worth paying for:** readiness/release gates (Latch402, Preflight), counterparty risk priced per call (ai_dentity), real-data compute (minara), compliance artifacts (LedgerMind 8949), buyer orchestration with receipts (trybindX).
+
+**Fluff:** per-call signal wrappers, listing-announcement spam, registration-count hype.
+
+**Pain to encode in tools:**
+1. Opaque listing review + useless errors (10 rejects / 9 days stories)
+2. `vercel.app` unsupported by OKX test env — warn/fail in scanner
+3. x402 readiness failures: challenge metadata, binding, replay/cache/signature, settlement, X Layer metadata
+4. Buyer UX hostile (OnchainOS + CLI just to call an agent)
+5. Official: no Revenue Rocket entry met qualified revenue — prove *calls + evidence*, not registration vanity
+
+**Implication:** keep Free-MCP readiness + pre-spend trust as spine; optional later x402 unit pricing for trust tools; never lead with desktop invites or fake signals.
