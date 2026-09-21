@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { OkxAgentInvite, canInviteOkxAgent, parseOkxCatalog } from "./OkxAgentInvite";
+import { OkxAgentInvite, OkxCatalogInviteDetails, canInviteOkxAgent, parseOkxCatalog } from "./OkxAgentInvite";
 
 const marketScout = {
   id: "okx-market-scout-v1",
@@ -25,6 +25,16 @@ describe("OkxAgentInvite", () => {
     expect(parseOkxCatalog({ source: "mock", agents: [marketScout] })).toEqual({ agents: [marketScout] });
     expect(parseOkxCatalog({ agents: [{ ...marketScout, capabilities: ["chat", 4] }] })).toBeNull();
     expect(parseOkxCatalog({ agents: [{ ...marketScout, description: null }] })).toBeNull();
+  });
+
+  it("renders the required free, read-only catalog identity without price claims", () => {
+    const markup = renderToStaticMarkup(createElement(OkxCatalogInviteDetails, { agent: marketScout }));
+    expect(markup).toContain("Market Scout");
+    expect(markup).toContain(marketScout.description);
+    expect(markup).toContain("Free · read-only");
+    expect(markup).toContain("OKX.AI catalog");
+    expect(markup).toContain('aria-label="Market Scout, OKX.AI catalog agent"');
+    expect(markup).not.toContain("price");
   });
 
   it("renders a compact closed control without fetching the catalog", () => {
