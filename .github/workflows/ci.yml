@@ -144,9 +144,12 @@ jobs:
     # docs/verification/chat-ui.md run by a machine. It downloads the pinned
     # agent-browser release (digest verified) and its Chrome, drives the real
     # <App/> against the isolated fake-engine fixture, and keeps the screenshot.
+    # The focused Dev Day visual gate adds three clean fixture launches after
+    # the existing renderer recipes. Keep this advisory job's timeout above
+    # its real-renderer workload; required checks and their timeouts are unchanged.
     name: renderer smoke (control-kind-meitner ui, Ubuntu 24.04)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -167,7 +170,7 @@ jobs:
         env:
           KIND_MEITNER_UI_E2E: "1"
           KIND_MEITNER_UI_EVIDENCE_DIR: .kind-meitner-scratch/verify-evidence
-        run: pnpm exec vitest run scripts/testing/control-kind-meitner-ui.e2e.test.ts scripts/testing/bot-tools-ui.e2e.test.ts
+        run: pnpm exec vitest run scripts/testing/control-kind-meitner-ui.e2e.test.ts scripts/testing/bot-tools-ui.e2e.test.ts scripts/testing/dev-day-gate-visual.e2e.test.ts
       - name: Upload the renderer screenshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -177,6 +180,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Upload Dev Day gate visual evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: dev-day-gate-visual-evidence
+          path: |
+            .kind-meitner-scratch/verify-evidence/dev-day-gate/empty.png
+            .kind-meitner-scratch/verify-evidence/dev-day-gate/readiness.png
+            .kind-meitner-scratch/verify-evidence/dev-day-gate/trust.png
+          if-no-files-found: warn
+          retention-days: 7
   package-linux:
     name: package + smoke (Ubuntu 24.04 x64)
     runs-on: ubuntu-24.04
