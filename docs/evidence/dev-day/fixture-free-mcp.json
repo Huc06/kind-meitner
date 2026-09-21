@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-09-21T18:46:11.569Z",
+  "command": "node --experimental-strip-types scripts/collect-dev-day-fixture-evidence.ts --out docs/evidence/dev-day/fixture-free-mcp.json",
+  "environment": {
+    "kind": "isolated local fixture",
+    "launcher": "launchVerificationServer from scripts/control-kind-meitner.ts",
+    "fixtureDataDisposedAfterCollection": true,
+    "externalNetworkAccess": false
+  },
+  "assertions": {
+    "toolsList": {
+      "httpStatus": 200,
+      "names": [
+        "list_okx_ai_use_cases",
+        "get_free_a2mcp_launch_checklist",
+        "scan_free_mcp_readiness",
+        "get_asp_trust_card",
+        "query_market_benchmarks",
+        "get_asp_reputation",
+        "get_trending_asps"
+      ],
+      "allReadOnly": true
+    },
+    "vercelPitfall": {
+      "httpStatus": 200,
+      "verdict": "FAIL",
+      "check": {
+        "id": "host_pitfall_vercel",
+        "status": "fail",
+        "detail": "host=demo.vercel.app"
+      },
+      "remediation": [
+        "Replace *.vercel.app with a custom domain or Railway/Fly HTTPS host. OKX listing test env rejects vercel.app."
+      ]
+    },
+    "invalidInput": {
+      "readiness": "endpointUrl is required",
+      "trustCard": "agentId is required"
+    },
+    "devDayGate": {
+      "httpStatus": 201,
+      "name": "#dev-day-gate",
+      "section": "Dev Day",
+      "memberCount": 3,
+      "bulletin": "Gate before list. Gate before spend. Free MCP only."
+    }
+  },
+  "limits": [
+    "The disposable fixture is HTTP on loopback; it cannot and does not prove a public HTTPS PASS scan.",
+    "No Railway endpoint, live curl, OKX listing, wallet, payment, screenshot, video, or external agent was contacted.",
+    "Trust-card positive decisions require public listing/endpoint probes and are not claimed by this artifact."
+  ]
+}
