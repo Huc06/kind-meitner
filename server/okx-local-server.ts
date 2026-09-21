@@ -16,7 +16,7 @@
 // from server/okx/*.ts so behavior stays identical to the main server.
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 
 import { DATA_DIR } from "./config.ts";
@@ -44,6 +44,8 @@ const PORT_FALLBACKS = [8899, 8898, 8897, 8896, 8009, 8010];
 // printed in their own terminal.
 export const PAIRING_TOKEN = randomUUID().replace(/-/g, "");
 
+const PAIRING_TOKEN_BUFFER = Buffer.from(PAIRING_TOKEN, "utf8");
+
 function requiresPairingToken(method: string, path: string): boolean {
   if (method === "POST" && path === "/api/okx/settings") return true;
   if (method === "POST" && path === "/api/okx/webhook") return true;
@@ -52,10 +54,22 @@ function requiresPairingToken(method: string, path: string): boolean {
   return false;
 }
 
+/** Constant-time comparison against the pairing token. A plain `===`
+ * short-circuits on the first mismatched byte, and CORS/localhost is not
+ * a real access-control layer for these routes (any non-browser client on
+ * the machine reaches them regardless of Origin) — this token check is
+ * the one gate that actually matters, so it must not leak timing
+ * information about how many leading characters an attacker guessed
+ * correctly. timingSafeEqual requires equal-length buffers; a length
+ * mismatch is rejected immediately, which leaks only "wrong length" —
+ * the same thing an attacker already knows from generating the guess. */
 function hasValidPairingToken(req: IncomingMessage): boolean {
   const provided = req.headers["x-okx-pairing-token"];
   const value = Array.isArray(provided) ? provided[0] : provided;
-  return typeof value === "string" && value === PAIRING_TOKEN;
+  if (typeof value !== "string") return false;
+  const providedBuffer = Buffer.from(value, "utf8");
+  if (providedBuffer.length !== PAIRING_TOKEN_BUFFER.length) return false;
+  return timingSafeEqual(providedBuffer, PAIRING_TOKEN_BUFFER);
 }
 
 // Never a wildcard: this process holds real OKX credentials, so only

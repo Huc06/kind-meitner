@@ -10,7 +10,7 @@
 // that independently by rejecting any credential field in its request
 // body (see server/okx-local-server.ts's /api/okx/settings handler).
 
-import { existsSync, readFileSync, chmodSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { writeFileAtomic } from "./atomic.ts";
@@ -57,18 +57,14 @@ export function readStoredOkxCredentials(dataDir: string = DATA_DIR): StoredOkxC
   }
 }
 
-/** Writes the credential file atomically at mode 0600. Also repairs the
- * mode on an existing file in case it was created (or copied) with wider
- * permissions before this guarantee existed. */
+/** Writes the credential file atomically at mode 0600. `writeFileAtomic`
+ * opens the temp file at that mode before writing anything to it, and
+ * POSIX `rename()` preserves the temp file's mode completely on replace
+ * — there is no window where the final path is briefly wider than 0600,
+ * so no separate chmod is needed here. */
 export function writeStoredOkxCredentials(credentials: StoredOkxCredentials, dataDir: string = DATA_DIR): void {
   const path = okxCredentialsStorePath(dataDir);
   writeFileAtomic(path, JSON.stringify(credentials, null, 2), { mode: 0o600 });
-  try {
-    chmodSync(path, 0o600);
-  } catch {
-    // Best-effort: writeFileAtomic already requested 0600; this only
-    // matters if something else altered the mode between calls.
-  }
 }
 
 /** True only when the file exists, is owner-only (0600 or stricter on

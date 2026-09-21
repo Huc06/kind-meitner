@@ -6203,6 +6203,12 @@ const commsBus: CommsBus = { store, broadcast, threadSlotFree: (botId) => !botAt
 _loadPending();
 
 const okxWebhookJournal = new OkxWebhookJournal(join(DATA_DIR, "okx-webhook-journal.json"));
+// Deliberately env-var-only, unlike server/okx-local-server.ts's
+// resolveOkxCredentials(). This process is meant to run on an operator's
+// own server (e.g. Railway), not an individual's machine, so it must
+// never fall back to reading a local `okx-credentials.json` file — that
+// persistence path exists only for the local server an operator runs on
+// their own hardware. See docs/plans/okx-local-server-hosted-ui-split.md.
 function okxCredentialsFromEnvironment() {
   const apiKey = process.env.OKX_API_KEY?.trim();
   const secretKey = process.env.OKX_SECRET_KEY?.trim();

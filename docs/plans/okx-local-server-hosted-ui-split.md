@@ -117,9 +117,35 @@ non-OKX route.
   outbound registration to any third-party service. The only outbound
   calls it makes are to the OKX API itself, using the user's own
   credentials from their own environment.
-- Configuration is local environment variables or a local `.env`, read
-  the same way `server/index.ts` already reads `OKX_API_KEY` etc. today.
-  No new secret-storage mechanism is introduced.
+- Configuration is an explicit `OKX_API_KEY`/`OKX_SECRET_KEY`/
+  `OKX_PASSPHRASE` environment variable, or a one-time `pnpm okx-setup`
+  (see §5a) that persists them to a local file so they don't need to be
+  exported on every run. Either way, the credential never leaves this
+  process; the settings API refuses any request body containing a
+  credential field regardless of which source configured them.
+
+### 5a. Persistent local credential storage (`pnpm okx-setup`)
+
+Exporting `OKX_API_KEY`/`OKX_SECRET_KEY`/`OKX_PASSPHRASE` before every
+`pnpm okx-serve` run does not scale to daily use — added after the
+initial draft of this document:
+
+- `server/okx-credentials-store.ts` reads/writes
+  `<data-dir>/okx-credentials.json` atomically at file mode `0600`
+  (owner-only). Read only by `server/okx-local-server.ts`'s own startup
+  code; never wired into any HTTP route.
+- `server/okx-setup.ts` (`pnpm okx-setup`) is a terminal-only prompt,
+  in the spirit of `claude login`, for the three values plus an optional
+  base URL. It is the one supported way to set them outside an
+  environment variable — deliberately never an HTTP endpoint.
+- Precedence: an explicit environment variable still wins over the
+  stored file, matching every other `OKX_*` override in this codebase.
+  The startup banner reports which source is actually in effect.
+- This store is exclusive to the local server. `server/index.ts` (the
+  operator-run, cloud-side server) intentionally continues to read
+  credentials from environment variables only — it must never fall back
+  to a local file, since it is not meant to run on an individual's own
+  machine.
 
 ## 6. Explicit scope and non-goals
 
