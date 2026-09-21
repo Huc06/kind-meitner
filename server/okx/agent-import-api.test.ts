@@ -63,7 +63,7 @@ async function restartVerificationServer(baseUrl: string, dataDir: string, logPa
   return child;
 }
 
-it("serves the three-agent chart catalog and provisions/imports Market Scout exactly once across restart", async () => {
+it("serves the chart-marked Market Scout catalog and provisions/imports it exactly once across restart", async () => {
   const fixture = await launchVerificationServer();
   const { url, dataDir, logPath } = fixture.info;
   let restarted: ChildProcess | undefined;
@@ -72,32 +72,14 @@ it("serves the three-agent chart catalog and provisions/imports Market Scout exa
     expect(catalog.response.status).toBe(200);
     expect(catalog.body).toEqual({
       source: "catalog",
-      agents: [
-        expect.objectContaining({
-          id: "okx-market-scout-v1",
-          name: "Market Scout",
-          provider: "OKX.ai",
-          avatar: "chart",
-          capabilities: ["chat", "market-intelligence"],
-          status: "available",
-        }),
-        expect.objectContaining({
-          id: "okx-listing-coach-v1",
-          name: "Listing Coach",
-          provider: "OKX.ai",
-          avatar: "chart",
-          capabilities: ["chat"],
-          status: "available",
-        }),
-        expect.objectContaining({
-          id: "okx-spend-scout-v1",
-          name: "Spend Scout",
-          provider: "OKX.ai",
-          avatar: "chart",
-          capabilities: ["chat", "market-intelligence"],
-          status: "available",
-        }),
-      ],
+      agents: [expect.objectContaining({
+        id: "okx-market-scout-v1",
+        name: "Market Scout",
+        provider: "OKX.ai",
+        avatar: "chart",
+        capabilities: ["chat", "market-intelligence"],
+        status: "available",
+      })],
     });
 
     const local = await api(url, "/api/bots", "POST", { name: "Local seed" });

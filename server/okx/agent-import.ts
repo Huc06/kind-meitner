@@ -31,24 +31,6 @@ export const OKX_CATALOG_AGENTS: readonly OkxCatalogAgent[] = [
     capabilities: ["chat", "market-intelligence"],
     status: "available",
   },
-  {
-    id: "okx-listing-coach-v1",
-    name: "Listing Coach",
-    description: "Helps ASPs shape clear, competitive OKX marketplace listings.",
-    provider: "OKX.ai",
-    avatar: "chart",
-    capabilities: ["chat"],
-    status: "available",
-  },
-  {
-    id: "okx-spend-scout-v1",
-    name: "Spend Scout",
-    description: "Finds efficient marketplace options for an OKX task budget.",
-    provider: "OKX.ai",
-    avatar: "chart",
-    capabilities: ["chat", "market-intelligence"],
-    status: "available",
-  },
 ];
 
 export function listCatalogOkxAgents(): readonly OkxCatalogAgent[] {
