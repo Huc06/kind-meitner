@@ -28,7 +28,11 @@ import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
 import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
 
 const LOCAL_HOST = "127.0.0.1";
-const PORT = Number(process.env.OKX_LOCAL_SERVER_PORT ?? 8899);
+const DEFAULT_PORT = Number(process.env.OKX_LOCAL_SERVER_PORT ?? 8899);
+// Tried in order when the requested port is already in use. Mirrors the
+// idea (not the exact list) of picking from a small set of known-free
+// candidates rather than failing outright on the first busy port.
+const PORT_FALLBACKS = [8899, 8898, 8897, 8896, 8009, 8010];
 
 // Printed once at startup, never logged again. Sensitive routes (anything
 // that can move funds, write server-only configuration, or accept a
@@ -522,33 +526,139 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 }
 
-export function startOkxLocalServer(port = PORT) {
-  const server = createServer((req, res) => {
-    void handleRequest(req, res);
+/** What this specific process can actually do right now, given the
+ * environment it was started with. Printed at startup so "why doesn't
+ * X work" has an immediate, honest answer instead of a silent 404/503
+ * discovered later through the browser. */
+function describeRouteReadiness(): { line: string; ready: boolean }[] {
+  const creds = okxCredentialsFromEnvironment();
+  const hasCreds = Boolean(creds);
+  const x402Status = okxX402Testnet.status();
+  return [
+    { line: `GET  /api/health                              always available`, ready: true },
+    { line: `GET  /api/okx/settings                          always available (read-only)`, ready: true },
+    { line: `GET  /api/okx/intelligence                      always available (read-only)`, ready: true },
+    { line: `GET  /api/okx/disputes                          always available (read-only)`, ready: true },
+    { line: `GET  /api/okx/treasury                          always available (read-only)`, ready: true },
+    {
+      line: hasCreds
+        ? `POST /api/okx/webhook                           ready (OKX_API_KEY/SECRET/PASSPHRASE set)`
+        : `POST /api/okx/webhook                           NOT ready — set OKX_API_KEY, OKX_SECRET_KEY, OKX_PASSPHRASE`,
+      ready: hasCreds,
+    },
+    {
+      line: legacyEip3009PaidMcpEnabled
+        ? `POST /api/okx/mcp (legacy)                      enabled (OKX_LEGACY_EIP3009_ENABLED=true)`
+        : `POST /api/okx/mcp (legacy)                      off by default — this is expected, not an error`,
+      ready: true,
+    },
+    {
+      line: x402Status.enabled
+        ? x402Status.ready
+          ? `POST ${X402_TESTNET_RESOURCE_PATH.padEnd(30)} ready (testnet, all config present)`
+          : `POST ${X402_TESTNET_RESOURCE_PATH.padEnd(30)} enabled but NOT ready — ${x402Status.reason ?? "missing config"}`
+        : `POST ${X402_TESTNET_RESOURCE_PATH.padEnd(30)} off by default — this is expected, not an error`,
+      ready: x402Status.enabled ? x402Status.ready : true,
+    },
+    {
+      line: `POST /api/okx/settings                          requires the pairing token below`,
+      ready: true,
+    },
+  ];
+}
+
+function printBanner(port: number): void {
+  const line = "─".repeat(64);
+  console.log(line);
+  console.log("  OKX local server");
+  console.log(line);
+  console.log("");
+  console.log(`  Open in your browser's hosted UI, or call directly at:`);
+  console.log(`    http://${LOCAL_HOST}:${port}`);
+  console.log("");
+  console.log(`  Data directory: ${DATA_DIR}`);
+  console.log(
+    configuredOrigins.length
+      ? `  Allowed hosted origins: ${configuredOrigins.join(", ")}`
+      : `  Allowed hosted origins: (none configured) — only http(s)://localhost and http(s)://127.0.0.1 origins are accepted.`,
+  );
+  console.log("  Set KIND_MEITNER_OKX_ALLOWED_ORIGINS to add a hosted UI's origin, e.g.:");
+  console.log(`    KIND_MEITNER_OKX_ALLOWED_ORIGINS=https://your-app.example.com pnpm okx-serve`);
+  console.log("");
+  console.log("  What this process can do right now:");
+  for (const { line: routeLine, ready } of describeRouteReadiness()) {
+    console.log(`    ${ready ? "✓" : "✗"} ${routeLine}`);
+  }
+  console.log("");
+  console.log("  Pairing token (required to save settings, receive webhooks, or use paid MCP/x402 routes):");
+  console.log("");
+  console.log(`     ${PAIRING_TOKEN}`);
+  console.log("");
+  console.log("  Paste this into the web UI when prompted. Shown only here, once, and never logged again.");
+  console.log(line);
+}
+
+/** Tries the requested port, then each fallback in order, so a busy
+ * default port fails softly with a clear "used X instead" message
+ * rather than crashing on EADDRINUSE with no guidance. Creates a fresh
+ * server for each attempt — reusing one after a failed listen() risks a
+ * stale "listening" event racing the next attempt and reporting the
+ * wrong port. */
+function listenOnFirstFreePort(
+  candidates: number[],
+  requestHandler: (req: IncomingMessage, res: ServerResponse) => void,
+  onListening: (server: ReturnType<typeof createServer>, port: number) => void,
+  onExhausted: (err: Error) => void,
+): void {
+  const [first, ...rest] = candidates;
+  if (first === undefined) {
+    const message = "No candidate port was free. Set OKX_LOCAL_SERVER_PORT to an explicit free port and try again.";
+    console.error(message);
+    onExhausted(new Error(message));
+    return;
+  }
+  const server = createServer(requestHandler);
+  server.once("error", (err: NodeJS.ErrnoException) => {
+    server.close();
+    if (err.code !== "EADDRINUSE") {
+      onExhausted(err);
+      return;
+    }
+    if (rest.length === 0) {
+      const message = `Port ${first} is in use and no fallback ports were free either. Set OKX_LOCAL_SERVER_PORT to an explicit free port and try again.`;
+      console.error(message);
+      onExhausted(new Error(message));
+      return;
+    }
+    console.log(`Port ${first} is in use — trying ${rest[0]} instead…`);
+    listenOnFirstFreePort(rest, requestHandler, onListening, onExhausted);
   });
+  server.listen(first, LOCAL_HOST, () => onListening(server, first));
+}
+
+export function startOkxLocalServer(port?: number): Promise<ReturnType<typeof createServer>> {
   // Bind loopback only, unconditionally. Unlike server/index.ts, nothing
   // here ever switches to 0.0.0.0 based on an environment variable —
   // this process holds real credentials and must never be reachable from
   // outside this machine.
-  server.listen(port, LOCAL_HOST, () => {
-    console.log(`OKX local server listening on http://${LOCAL_HOST}:${port}`);
-    console.log(`Data directory: ${DATA_DIR}`);
-    if (configuredOrigins.length) {
-      console.log(`Allowed hosted origins: ${configuredOrigins.join(", ")}`);
-    } else {
-      console.log("No KIND_MEITNER_OKX_ALLOWED_ORIGINS set — only localhost origins are allowed to call this server.");
-    }
-    console.log("");
-    console.log("Pairing token (required to save settings, receive webhooks, or use paid MCP/x402 routes):");
-    console.log("");
-    console.log(`   ${PAIRING_TOKEN}`);
-    console.log("");
-    console.log("Paste this into the web UI when prompted. It is shown only here, once, and is never logged again.");
+  const candidates = port !== undefined ? [port] : [DEFAULT_PORT, ...PORT_FALLBACKS.filter((p) => p !== DEFAULT_PORT)];
+  return new Promise((resolve, reject) => {
+    listenOnFirstFreePort(
+      candidates,
+      (req, res) => void handleRequest(req, res),
+      (server, boundPort) => {
+        printBanner(boundPort);
+        resolve(server);
+      },
+      reject,
+    );
   });
-  return server;
 }
 
 const isMainModule = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
-  startOkxLocalServer();
+  startOkxLocalServer().catch((err) => {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  });
 }

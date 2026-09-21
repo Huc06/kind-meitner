@@ -21,8 +21,7 @@ beforeAll(async () => {
 
   const mod = await import("./okx-local-server.ts");
   pairingToken = mod.PAIRING_TOKEN;
-  server = mod.startOkxLocalServer(0);
-  await new Promise<void>((resolve) => server.once("listening", resolve));
+  server = await mod.startOkxLocalServer(0);
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
   baseUrl = `http://127.0.0.1:${port}`;
