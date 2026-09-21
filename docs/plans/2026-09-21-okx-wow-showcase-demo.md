@@ -1,3 +1,5 @@
+> **Superseded as primary Dev Day plan (2026-09-21).** See [`2026-09-21-okx-dev-day-readiness-trust.md`](2026-09-21-okx-dev-day-readiness-trust.md). Invite/trending showcase slices are optional ops-console work only.
+
 # OKX agent “wow” showcase plan (Free A2MCP only)
 
 **Status:** Draft proposal — 2026-09-21 (needs Grok Bot / product owner sign-off before implementation issues)

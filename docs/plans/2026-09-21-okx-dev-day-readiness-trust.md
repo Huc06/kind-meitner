@@ -1,0 +1,98 @@
+# OKX Dev Day plan: Readiness + Trust (not invite theater)
+
+**Status:** Canonical product plan — 2026-09-21  
+**Owner (planning):** Grok Bot  
+**Implementer:** human Hulk (@Huc06)  
+**Supersedes:** `2026-09-21-okx-wow-showcase-demo.md` invite/trending showcase slices as the *primary* demo  
+**Anchors:** Build X 1.0 winners, Free A2MCP ASP #13837, roadmap `2026-09-15-okx-a2mcp-roadmap.md`, Dev Day OKX AI track  
+
+## 1. Why replan
+
+Build X 1.0 winners (@bondoncredit, @ai2humanwork, @soulink_love, @0xVeriAgent, @Civilis_AI, …) won on **rails other agents must call**: credit, proof→settlement, lending, payment verify, risk OS — with Onchain OS + x402 + mainnet/testnet evidence.
+
+Invite-to-room + local “trending” registry is **not worth calling**. Kind Meitner Markets must unblock a real bottleneck or it will not win OKX Dev Day.
+
+## 2. Dev Day constraints (OKX AI track)
+
+Judges care about: innovation, product completeness, **user value**, X Layer and/or **OKX AI** integration, growth, ecosystem contribution.  
+Deliverable: **working product** + GitHub + 3–5 min live demo (finale).  
+Not: pitch deck, desktop-only chatbot, fake settlement.
+
+## 3. USP (one sentence)
+
+> **Kind Meitner is the Free-MCP / listing readiness + pre-spend trust gate for OKX.AI agents** — builders and buyer-agents call it before submit or before pay; the desktop is an ops console, not the product.
+
+## 4. Who feels impact
+
+| Caller | Pain today | Our impact |
+| --- | --- | --- |
+| ASP builders | Rejected listings, vercel.app pitfalls, broken free/x402 shape | Pass/warn/fail scan + remediation before review |
+| Buyer agents | Pay unknown ASP / bad 402 | GO/NO-GO trust card before spend |
+| Judges | Need ecosystem glue | Public A2MCP + Onchain OS proof + #13837 live |
+
+## 5. Product spine (ship order)
+
+### P0 — Free-MCP / listing readiness scanner (Latch402-class for free)
+
+Public A2MCP tools (extend Free endpoint or sibling path still HTTPS 200 free):
+
+- Input: candidate ASP endpoint URL (and optional agent id)
+- Checks: HTTPS reachability, `tools/list` / `initialize`, free path returns 200 (no accidental 402), provenance flags if present, rate-limit headers, known pitfalls (e.g. unsupported host patterns called out in ecosystem posts)
+- Output: pass/warn/fail score, raw evidence, remediation steps
+
+**Done when:** Codex/OpenClaw can `use Agent #13837` (or new service) and get a useful readiness report on a real URL.
+
+### P1 — Pre-spend ASP trust card (AgentShield-lite)
+
+- Input: OKX.ai agent id
+- Output: listing status if knowable, endpoint smoke, free vs paid hint, risk notes, GO/CAUTION/NO-GO
+- Honest about local vs live marketplace limits — never invent on-chain facts
+
+### P2 — Identity polish (#17)
+
+OKX-agent chart marks (not Cursor/SupaMaus). Secondary to P0/P1.
+
+### P3 — x402 testnet evidence slide (#8/#9)
+
+One reviewed testnet receipt for judges — **not** the primary demo claim. Keep Free path default-on.
+
+### Explicit non-goals for Dev Day
+
+- Fake live market prices from local registry as “intel”
+- Desktop invite showcase as the win demo
+- A2A escrow / Evaluator stake theater
+- Mainnet payment collection without readiness review
+
+## 6. Demo script (≤90s / 3–5 min finale)
+
+1. Problem: “Teams lose days to failed ASP review / bad pays.”  
+2. Live: scan our Railway Free-MCP URL → PASS with evidence.  
+3. Live: scan a broken URL → FAIL + fixes.  
+4. Live: external agent calls Kind Meitner Markets tools.  
+5. Optional: x402 testnet receipt explorer link.  
+6. Close: infrastructure other agents install.
+
+## 7. Issue map for Hulk
+
+| Priority | Issue | Action |
+| --- | --- | --- |
+| P0 | **New** Free-MCP readiness scanner | Implement tools + tests + public endpoint |
+| P1 | **New** ASP trust / pre-spend gate | Implement tools + honest limits |
+| P2 | #17 OKX-agent avatars | Keep; not the spine |
+| P2 | #18 ASP #13837 listing follow-up | Still required for live agent id |
+| P3 | #19 PR #16 chat polish | Merge when stable; not Dev Day spine |
+| P3 | #20 catalog/invite UX | Downgrade; optional ops console |
+| Rewrite | #21 wow showcase | Retarget to readiness+trust demo + evidence |
+
+## 8. Exit criteria (“Dev Day ready”)
+
+- [ ] Public HTTPS Free A2MCP tools for readiness (± trust) that an external agent can call
+- [ ] ASP #13837 approved or fixed + resubmitted
+- [ ] Evidence folder: curl transcripts, screenshots, optional x402 testnet receipt
+- [ ] X walkthrough draft (#OKXAI) ≤90s
+- [ ] Zero copy implying live prices, wallet custody, or mainnet revenue
+
+## 9. Relation to Free A2MCP roadmap
+
+Still: Free A2MCP first → x402 testnet second → mainnet only after explicit approval.  
+This plan **narrows** Free A2MCP *content* from “market medians” to **readiness/trust utilities** that match winner economics.
