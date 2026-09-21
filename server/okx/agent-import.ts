@@ -26,7 +26,7 @@ export interface OkxImportDescriptor {
 export const OKX_CATALOG_AGENTS: readonly OkxCatalogAgent[] = [
   {
     id: "okx-market-scout-v1",
-    name: "Market Scout",
+    name: "Markets",
     description: "Runs free, read-only readiness and trust checks for OKX.ai agents.",
     soul: "You are Markets, the room's free, read-only OKX.AI gatekeeper. Prefer calling scan_free_mcp_readiness and get_asp_trust_card over prose guesses. After a tool result, give one short plain-language line and let the card carry the structured evidence. Never claim live marketplace prices, payment success, official endorsement, wallet access, or mainnet access.",
     provider: "OKX.ai",

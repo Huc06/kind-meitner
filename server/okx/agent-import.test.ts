@@ -11,7 +11,7 @@ describe("OKX agent catalog", () => {
     expect(listCatalogOkxAgents()).toEqual([
       expect.objectContaining({
         id: "okx-market-scout-v1",
-        name: "Market Scout",
+        name: "Markets",
         description: "Runs free, read-only readiness and trust checks for OKX.ai agents.",
         avatar: "chart",
         provider: "OKX.ai",
@@ -47,7 +47,7 @@ describe("OKX agent catalog", () => {
   });
 
   it("finds one agent by opaque external id and does not invent unknown agents", () => {
-    expect(findCatalogOkxAgent("okx-market-scout-v1")?.name).toBe("Market Scout");
+    expect(findCatalogOkxAgent("okx-market-scout-v1")?.name).toBe("Markets");
     expect(findCatalogOkxAgent("not-an-okx-agent")).toBeUndefined();
   });
 
