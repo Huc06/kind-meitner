@@ -113,3 +113,53 @@ Logged-out search is login-walled; sample via public profiles + status pages (~1
 5. Official: no Revenue Rocket entry met qualified revenue — prove *calls + evidence*, not registration vanity
 
 **Implication:** keep Free-MCP readiness + pre-spend trust as spine; optional later x402 unit pricing for trust tools; never lead with desktop invites or fake signals.
+
+## 11. Clock — Dev Day 2026 (critical)
+
+| Milestone | When (UTC) | Local Asia/Saigon |
+| --- | --- | --- |
+| Applications closed | 15 Sep 23:59 | already past |
+| Online build | till 25 Sep | **~4 days left from 21 Sep** |
+| **Project submission** | **25 Sep 23:59 UTC** | **26 Sep 06:59 ICT** |
+| Validation / finalists | by 30 Sep | |
+| Singapore finale | 7 Oct | Remote → Best Remote Demo pool |
+
+**Track:** Build a Company (OKX AI) — agent discovery / coordination / transaction tools.  
+**Form:** https://forms.gle/81S2gnFCzqSoeDEA7  
+**Builder kit:** https://www.okx.com/en-gb/learn/okx-dev-day-builder-kit  
+**Telegram:** https://t.me/+xHT-WekKkuFjYzk9  
+
+### Submission package (must-haves)
+
+1. Team + track + participation route (Singapore vs Remote)
+2. Project summary (user + core OKX AI integration)
+3. Public GitHub + README for judges
+4. **Demo video 2–4 min** (working product + integration)
+5. Product / listing / deployment URL
+6. If using existing project: **list of features added during build window** + commit evidence (listing alone ≠ enough)
+
+Judging: innovation, completeness, user value, technical execution, meaningful OKX AI / X Layer integration, growth, ecosystem contribution. Prize: Company $35k + Remote $15k pools.
+
+## 12. Extra win workstreams (beyond #23/#24)
+
+| ID | Work | Why |
+| --- | --- | --- |
+| Sub | Submission package + form dry-run | Hard deadline 25 Sep |
+| Demo | 2–4 min video script + record | Required; ≥90s spine from #21 |
+| Evidence | `docs/evidence/dev-day/` curl, screenshots, PASS/FAIL scans | Judges + validation before 30 Sep |
+| Diff | Positioning vs Latch402 / Preflight | We own **Free-MCP + listing pitfalls**; they own paid x402 deep scan |
+| README | Judge-facing README section | One screen: problem → tools → call Kind Meitner → evidence |
+| Delta | Build-window changelog | Existing project rule: only new work scores |
+| External | Proof external agent calls #13837 | Codex/OpenClaw transcript |
+| Listing | Chase ASP #13837 approval (#18) | Product link for form |
+| X | One #OKXAI walkthrough thread | Growth / ecosystem signal (optional after core) |
+| Scope | Freeze invite/trending as non-submit | Avoid fluff in video |
+
+## 13. Day-by-day (21→25 Sep ICT)
+
+- **D0 (21):** Confirm team accepted + route (SG vs Remote). Freeze USP. Hulk starts #23.
+- **D1 (22):** #23 MVP tools live on Railway; evidence folder started; #18 listing status.
+- **D2 (23):** #24 trust card MVP; external-agent call proof; README judges section.
+- **D3 (24):** Demo video record; form fields draft; build-window delta list.
+- **D4 (25):** Submit form before 23:59 UTC; keep Telegram reply SLA 24h for validation.
+
