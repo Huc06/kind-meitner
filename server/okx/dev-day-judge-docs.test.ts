@@ -47,4 +47,19 @@ describe("Dev Day judge evidence documentation", () => {
     expect(video).toContain("LOCAL FIXTURE · NO EXTERNAL NETWORK");
     expect(video).toContain("## Draft PR and material-decision text (do not post automatically)");
   });
+
+  it("keeps the Issue #25 submission worksheet form-ready and truth-bounded", () => {
+    const submission = read("docs/okx-dev-day-submission-package.md");
+
+    expect(submission).toContain("**Build a Company**");
+    expect(submission).toContain("[CONFIRM_TEAM_NAME]");
+    expect(submission).toContain("2026-09-25 23:59 UTC");
+    expect(submission).toContain("2026-09-26 06:59 ICT");
+    expect(submission).toContain("2–4 minute");
+    expect(submission).toContain("ASP #13837 status");
+    expect(submission).toContain("[FINAL_SUBMISSION_COMMIT]");
+    expect(submission).toContain("## Final human review and receipt checklist");
+    expect(submission).toContain("## Explicit human-only gates");
+    expect(submission).toContain("does **not** open or submit the Google Form");
+  });
 });
