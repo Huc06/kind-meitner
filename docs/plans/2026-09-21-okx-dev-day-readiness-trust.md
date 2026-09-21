@@ -163,3 +163,9 @@ Judging: innovation, completeness, user value, technical execution, meaningful O
 - **D3 (24):** Demo video record; form fields draft; build-window delta list.
 - **D4 (25):** Submit form before 23:59 UTC; keep Telegram reply SLA 24h for validation.
 
+
+## 15. Crystal-clear build brief
+
+Implementers: follow **[`2026-09-21-okx-dev-day-build-brief.md`](2026-09-21-okx-dev-day-build-brief.md)** — tool schemas, file map, day checklist, non-goals.
+
+**Route locked:** Accepted team · Singapore finale aim · Build a Company.
