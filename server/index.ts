@@ -2342,7 +2342,7 @@ function importCatalogOkxAgent(value: unknown): { created: boolean; result: Retu
   let created = false;
   if (!bot) {
     bot = store.createBot(
-      { name: agent.name, title: "OKX.ai Agent", description: agent.description },
+      { name: agent.name, title: "OKX.ai Agent", description: agent.description, soul: agent.soul },
       { seedMessages: false },
     );
     store.patchBot(bot.id, {
@@ -2356,6 +2356,10 @@ function importCatalogOkxAgent(value: unknown): { created: boolean; result: Retu
       peers: [],
     });
     created = true;
+  } else if (!bot.soul?.trim()) {
+    // Catalog bots imported before role instructions existed keep any custom
+    // soul, but receive the required contract when their legacy field is empty.
+    bot = store.setSoul(bot.id, agent.soul) ?? bot;
   }
   if (!room.memberIds.includes(bot.id)) {
     room = store.patchGroup(room.id, { memberIds: [...room.memberIds, bot.id] }) ?? room;
