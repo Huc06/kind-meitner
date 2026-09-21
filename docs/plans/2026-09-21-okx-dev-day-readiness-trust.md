@@ -177,3 +177,7 @@ See **[`2026-09-21-okx-dev-day-interaction-ux-demo.md`](2026-09-21-okx-dev-day-i
 ## 17. Multichat is the stage
 
 Hero surface: **group room**, not A/B tool tour. See **[`2026-09-21-okx-dev-day-multichat-demo.md`](2026-09-21-okx-dev-day-multichat-demo.md)** + issue for `#dev-day-gate` seed.
+
+## 18. Full gap review
+
+See **[`2026-09-21-okx-dev-day-full-gap-review.md`](2026-09-21-okx-dev-day-full-gap-review.md)** — PR matrix, agent/bot matrix, factor checklist, missing ranked PRs.
