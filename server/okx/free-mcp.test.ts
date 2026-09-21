@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { launchVerificationServer, type VerificationServer } from "../../scripts/control-kind-meitner.ts";
-import { scanFreeMcpReadiness } from "./intelligence.ts";
+import { scanFreeMcpReadiness, getAspTrustCard } from "./intelligence.ts";
 
 const rpc = (id: string, method: string, params?: Record<string, unknown>) => ({
   jsonrpc: "2.0",
@@ -140,3 +140,15 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
     expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "no_accidental_402", status: "fail" }));
     expect(scanned.data.remediation.join(" ")).toContain("Do not gate tools/list behind x402");
   });
+
+
+it("returns an honest GO trust card with always-visible limits", async () => {
+  const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {
+    fetch: async (input) => String(input).includes("okx.ai/agents/")
+      ? new Response("<title>Kind Meitner</title>", { status: 200 })
+      : new Response(JSON.stringify({ result: { tools: [{ name: "read_only" }] } }), { status: 200 }),
+  });
+  expect(card.data.decision).toBe("GO");
+  expect(card.data.notChecked.length).toBeGreaterThanOrEqual(3);
+  expect(card.data.safeNextStep).toContain("free read-only tools");
+});
