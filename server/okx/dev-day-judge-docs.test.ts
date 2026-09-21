@@ -33,4 +33,18 @@ describe("Dev Day judge evidence documentation", () => {
     ]));
     expect(fixture.assertions.vercelPitfall.verdict).toBe("FAIL");
   });
+
+  it("keeps the video material complete and explicit about human gates", () => {
+    const video = read("docs/okx-dev-day-video-materials.md");
+
+    expect(video).toContain("## 2:50 multichat room-scroll shot list and narration");
+    expect(video).toContain("## Exact preflight checklist (before the human records)");
+    expect(video).toContain("## Exact recording checklist (human-only execution)");
+    expect(video).toContain("## Capture evidence list");
+    expect(video).toContain("### ASP #13837 under-review fallback");
+    expect(video).toContain("## Human-only gates");
+    expect(video).toContain("https://<verified-public-host>/api/okx/free-mcp");
+    expect(video).toContain("LOCAL FIXTURE · NO EXTERNAL NETWORK");
+    expect(video).toContain("## Draft PR and material-decision text (do not post automatically)");
+  });
 });
