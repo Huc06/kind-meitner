@@ -164,3 +164,27 @@ it("blocks a hostname that resolves to loopback before fetching", async () => {
   expect(scanned.data.verdict).toBe("FAIL");
   expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "tools_list_http", status: "fail", detail: expect.stringContaining("resolves") }));
 });
+
+it("returns CAUTION when listing evidence is unavailable but endpoint readiness passes", async () => {
+  const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {
+    fetch: async (input) => String(input).includes("okx.ai/agents/")
+      ? new Response("temporarily unavailable", { status: 503 })
+      : new Response(JSON.stringify({ result: { tools: [{ name: "read_only" }] } }), { status: 200 }),
+    resolveHostname: async () => ["203.0.113.10"],
+  });
+  expect(card.data.decision).toBe("CAUTION");
+  expect(card.data.safeNextStep).toContain("Free tools only");
+  expect(card.data.notChecked).toContain("OKX official endorsement");
+});
+
+it("returns NO_GO when the endpoint readiness probe fails", async () => {
+  const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {
+    fetch: async (input) => String(input).includes("okx.ai/agents/")
+      ? new Response("<title>Kind Meitner</title>", { status: 200 })
+      : new Response(JSON.stringify({ error: "payment required" }), { status: 402 }),
+    resolveHostname: async () => ["203.0.113.10"],
+  });
+  expect(card.data.decision).toBe("NO_GO");
+  expect(card.data.safeNextStep).toContain("Do not call pay/x402 tools");
+  expect(card.data.notChecked.length).toBeGreaterThanOrEqual(3);
+});
