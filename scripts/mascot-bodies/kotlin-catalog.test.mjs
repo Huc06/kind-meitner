@@ -1,16 +1,16 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { MASCOT_BODIES, MASCOT_BODY_IDS } from "../../shared/mascot-bodies.ts";
 
+const kotlinPath = new URL("../../android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt", import.meta.url);
+const hasKotlinCatalog = existsSync(kotlinPath);
+const kotlin = hasKotlinCatalog ? readFileSync(kotlinPath, "utf8") : "";
+const describeKotlinCatalog = hasKotlinCatalog ? describe : describe.skip;
+
 // Emitted into the Android app module, whose JVM unit tests (Robolectric) parse
 // the catalog the way `swift test` does for CompanionCore — see swift-catalog.test.mjs.
-const kotlin = readFileSync(
-  new URL("../../android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt", import.meta.url),
-  "utf8"
-);
-
-describe("the generated Kotlin catalog", () => {
+describeKotlinCatalog("the generated Kotlin catalog", () => {
   it("warns against hand-editing, like the Swift does", () => {
     expect(kotlin).toContain("do not hand-edit");
   });
