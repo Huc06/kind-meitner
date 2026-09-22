@@ -24,13 +24,26 @@ https://kind-meitner-production.up.railway.app/api/okx/free-mcp
 
 Browser GET on that URL returns 403 by design; use POST JSON-RPC.
 
+## Desktop screenshots (isolated fixture + live envelopes)
+
+Captured 2026-09-22 via `scripts/testing/dev-day-gate-visual.e2e.test.ts` using pinned production envelopes (fake engine emits live Free-MCP JSON; no user app touched).
+
+| File | Proves |
+| --- | --- |
+| `desktop/empty.png` | Seeded `#dev-day-gate` + 4 starters + chart marks |
+| `desktop/readiness.png` | Live vercel FAIL card in room |
+| `desktop/loop-a-fail-apply.png` | Apply host fills Railway URL without auto-send |
+| `desktop/trust.png` | Live trust NO_GO card region |
+| `desktop/loop-b-99999-block.png` | Block spend CTA fill-only from NO_GO |
+| `desktop/loop-b-go-8136-continue.png` | Continue enabled on substitute GO (`8136`) |
+| `desktop/loop-b-13837-nogo.png` | Honest NO_GO for `#13837` listing 404 + endpoint PASS |
+
 ## Pending
 
 | Item | Blocker | Owner |
 | --- | --- | --- |
-| Desktop `#dev-day-gate` screenshots (Loop A Apply→PASS, Loop B Block, Continue-on-GO) | #66 desktop proof dump | Hulk |
 | ASP `#13837` public listing HTTP 200 | #18 ops/listing publish | Ops / owner |
-| Demo video 2–4 min room-scroll | Needs desktop loops | #27 / #68 |
+| Demo video 2–4 min room-scroll | Needs human capture from desktop | #27 / #68 |
 | Submission form package | Needs video + product link | #25 / #68 |
 
 ## Honest limits
