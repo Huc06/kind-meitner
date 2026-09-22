@@ -894,10 +894,12 @@ export function api() {}
       expect(inMemoryCommitment?.salt).toBe(commitRes.salt);
       expect(inMemoryCommitment?.commitmentHash).toBe(commitRes.commitmentHash);
 
-      // Verify persistence on disk with 0o600
+      // Verify persistence on disk; Windows does not expose POSIX mode bits.
       expect(existsSync(storageFile)).toBe(true);
-      const stat = statSync(storageFile);
-      expect(stat.mode & 0o777).toBe(0o600);
+      if (process.platform !== "win32") {
+        const stat = statSync(storageFile);
+        expect(stat.mode & 0o777).toBe(0o600);
+      }
 
       const diskData = JSON.parse(readFileSync(storageFile, "utf8"));
       expect(diskData.commitments).toHaveLength(1);

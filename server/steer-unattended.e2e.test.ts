@@ -56,8 +56,10 @@ function brokerCandidates(threadId: string, botId: string): string[] {
   const dataDir = join(home, ".kind-meitner");
   const prefix = threadId.replace(/[^\w-]/g, "").slice(0, 4);
   const digest = createHash("sha256").update(`${botId}\0${threadId}`).digest("hex").slice(0, 4);
+  const tag = `${prefix}${digest}`;
+  const baseScope = createHash("sha256").update(`${dataDir}\0${tag}`).digest("hex").slice(0, 20);
   const scope = createHash("sha256").update(`${dataDir}\0${child.pid}\0${botId}\0${threadId}`).digest("hex").slice(0, 16);
-  return [join(dataDir, `perm-${prefix}${digest}.sock`), join(tmpdir(), `kind-meitner-perm-${scope}.sock`)];
+  return [join(tmpdir(), `kind-meitner-perm-${baseScope}.sock`), join(tmpdir(), `kind-meitner-perm-${scope}.sock`)];
 }
 
 async function connectBroker(threadId: string, botId: string): Promise<Socket> {
