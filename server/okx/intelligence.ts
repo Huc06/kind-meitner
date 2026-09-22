@@ -51,6 +51,37 @@ export function readinessVerdict(checks: ReadinessCheck[]): FreeMcpReadinessData
   return checks.some((check) => check.status === "warn") ? "WARN" : "PASS";
 }
 
+export interface AspTrustCardData {
+  agentId: string;
+  decision: "GO" | "CAUTION" | "NO_GO";
+  summary: string;
+  signals: Array<{ id: "listing_page" | "endpoint_readiness"; status: "pass" | "warn" | "fail" | "skipped"; detail: string }>;
+  notChecked: string[];
+  remediation: string[];
+  safeNextStep: string;
+}
+
+export async function getAspTrustCard(agentId: string, endpointUrl?: string, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: AspTrustCardData }> {
+  const probeFetch = dependencies.fetch ?? fetch;
+  const signals: AspTrustCardData["signals"] = [];
+  const remediation: string[] = [];
+  try {
+    const response = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(agentId)}`, { signal: AbortSignal.timeout(8_000) });
+    signals.push({ id: "listing_page", status: response.status === 200 ? "pass" : response.status === 404 ? "fail" : "warn", detail: `HTTP ${response.status}` });
+  } catch { signals.push({ id: "listing_page", status: "warn", detail: "listing probe unavailable" }); }
+  if (endpointUrl) {
+    const readiness = await scanFreeMcpReadiness(endpointUrl, agentId, dependencies);
+    const status = readiness.data.verdict === "PASS" ? "pass" : readiness.data.verdict === "FAIL" ? "fail" : "warn";
+    signals.push({ id: "endpoint_readiness", status, detail: `verdict=${readiness.data.verdict}` });
+    remediation.push(...readiness.data.remediation);
+  } else signals.push({ id: "endpoint_readiness", status: "skipped", detail: "no endpointUrl provided" });
+  const failed = signals.some((signal) => signal.status === "fail");
+  const passed = signals.every((signal) => signal.status === "pass");
+  const decision: AspTrustCardData["decision"] = failed ? "NO_GO" : passed ? "GO" : "CAUTION";
+  const safeNextStep = decision === "GO" ? "Caller may use free read-only tools on this endpoint. Do not treat this as payment approval." : decision === "NO_GO" ? "Do not call pay/x402 tools. Fix listing or endpoint first." : "Probe or fix endpoint before paying. Free tools only if readiness is known.";
+  return { resource: { ...readinessResource, provenance: "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement" }, data: { agentId, decision, summary: decision === "GO" ? "Listing page reachable and endpoint readiness PASS." : decision === "NO_GO" ? "Listing or endpoint checks failed." : "Signals are incomplete; use caution before spending.", signals, notChecked: ["on-chain credit score", "historical settlement volume", "OKX official endorsement", "mainnet payment success"], remediation: [...new Set(remediation)], safeNextStep } };
+}
+
 export type TrustTier = "elite" | "verified" | "neutral" | "high_risk";
 
 export interface AspProfile {
@@ -612,6 +643,12 @@ export class OkxMarketplaceIntelligence {
         annotations: readOnly,
       },
       {
+        name: "get_asp_trust_card",
+        description: "Free resource: assess listing reachability and optional endpoint readiness before spend, with explicit limits.",
+        inputSchema: { type: "object", properties: { agentId: { type: "string", minLength: 1, maxLength: 64 }, endpointUrl: { type: "string", maxLength: 500 } }, required: ["agentId"], additionalProperties: false },
+        annotations: readOnly,
+      },
+      {
         name: "query_market_benchmarks",
         description: "Free resource: inspect locally indexed marketplace benchmark data with provenance metadata. It never claims live OKX marketplace data.",
         inputSchema: {
@@ -671,6 +708,15 @@ export class OkxMarketplaceIntelligence {
       if (agentId !== undefined && (typeof agentId !== "string" || agentId.trim().length > 64)) return invalid("agentId must be a string of at most 64 characters when provided");
       const scanned = await scanFreeMcpReadiness(endpointUrl.trim(), typeof agentId === "string" ? agentId.trim() || null : null);
       return { content: [{ type: "text", text: JSON.stringify(scanned, null, 2) }] };
+    }
+
+    if (toolName === "get_asp_trust_card") {
+      const agentId = args.agentId;
+      const endpointUrl = args.endpointUrl;
+      if (typeof agentId !== "string" || agentId.trim().length === 0 || agentId.trim().length > 64) return invalid("agentId is required");
+      if (endpointUrl !== undefined && (typeof endpointUrl !== "string" || endpointUrl.trim().length === 0 || endpointUrl.trim().length > 500)) return invalid("endpointUrl must be a string of at most 500 characters when provided");
+      const card = await getAspTrustCard(agentId.trim(), typeof endpointUrl === "string" ? endpointUrl.trim() : undefined);
+      return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     }
 
     if (toolName === "list_okx_ai_use_cases") {
