@@ -1,16 +1,16 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { MASCOT_BODIES, MASCOT_BODY_IDS } from "../../shared/mascot-bodies.ts";
 
+const swiftPath = new URL("../../ios/Sources/CompanionCore/MausBodies.swift", import.meta.url);
+const hasSwiftCatalog = existsSync(swiftPath);
+const swift = hasSwiftCatalog ? readFileSync(swiftPath, "utf8") : "";
+const describeSwiftCatalog = hasSwiftCatalog ? describe : describe.skip;
+
 // P1 ruling: emitted to ios/Sources/CompanionCore (reachable by `swift test`),
 // not ios/App (the Xcode app target, which `swift test` never builds).
-const swift = readFileSync(
-  new URL("../../ios/Sources/CompanionCore/MausBodies.swift", import.meta.url),
-  "utf8"
-);
-
-describe("the generated Swift catalog", () => {
+describeSwiftCatalog("the generated Swift catalog", () => {
   it("warns against hand-editing, like MausFaceData does", () => {
     expect(swift).toContain("do not hand-edit");
   });

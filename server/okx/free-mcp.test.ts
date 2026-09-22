@@ -126,6 +126,7 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
   it("fails known Vercel hosts without making an outbound probe", async () => {
     const scanned = await scanFreeMcpReadiness("https://demo.vercel.app/api/okx/free-mcp", null, {
       fetch: async () => { throw new Error("must not probe a known pitfall"); },
+      resolveHostname: async () => ["203.0.113.10"],
     });
     expect(scanned.data.verdict).toBe("FAIL");
     expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "host_pitfall_vercel", status: "fail" }));
@@ -135,6 +136,7 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
   it("fails accidental 402 discovery responses", async () => {
     const scanned = await scanFreeMcpReadiness("https://scanner.example/api/okx/free-mcp", null, {
       fetch: async () => new Response(JSON.stringify({ error: "payment required" }), { status: 402 }),
+      resolveHostname: async () => ["203.0.113.10"],
     });
     expect(scanned.data.verdict).toBe("FAIL");
     expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "no_accidental_402", status: "fail" }));
@@ -147,8 +149,18 @@ it("returns an honest GO trust card with always-visible limits", async () => {
     fetch: async (input) => String(input).includes("okx.ai/agents/")
       ? new Response("<title>Kind Meitner</title>", { status: 200 })
       : new Response(JSON.stringify({ result: { tools: [{ name: "read_only" }] } }), { status: 200 }),
+    resolveHostname: async () => ["203.0.113.10"],
   });
   expect(card.data.decision).toBe("GO");
   expect(card.data.notChecked.length).toBeGreaterThanOrEqual(3);
   expect(card.data.safeNextStep).toContain("free read-only tools");
+});
+
+it("blocks a hostname that resolves to loopback before fetching", async () => {
+  const scanned = await scanFreeMcpReadiness("https://public-looking.example/free-mcp", null, {
+    fetch: async () => { throw new Error("must not fetch a private DNS result"); },
+    resolveHostname: async () => ["127.0.0.1"],
+  });
+  expect(scanned.data.verdict).toBe("FAIL");
+  expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "tools_list_http", status: "fail", detail: expect.stringContaining("resolves") }));
 });

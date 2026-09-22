@@ -43,7 +43,7 @@
  * beyond type annotations the stripper can erase.
  */
 
-import { writeFileSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
 import { MOUTH_STROKE } from "../src/components/cursor-face-data.ts"
@@ -614,19 +614,33 @@ function main(): void {
 
   // P1 ruling (task 7): emitted into `ios/Sources/CompanionCore`, not `ios/App` — that is
   // the package `swift test` actually builds, so a later test over this catalog can run.
-  const swiftOut = fileURLToPath(
-    new URL("../ios/Sources/CompanionCore/MausBodies.swift", import.meta.url)
-  )
-  writeFileSync(swiftOut, emitSwift(baked))
-  console.log(`wrote ${swiftOut}`)
+  // A source-less checkout has no iOS catalog to maintain; do not fabricate one.
+  const iosManifest = fileURLToPath(new URL("../ios/Package.swift", import.meta.url))
+  if (existsSync(iosManifest)) {
+    const swiftOut = fileURLToPath(
+      new URL("../ios/Sources/CompanionCore/MausBodies.swift", import.meta.url)
+    )
+    writeFileSync(swiftOut, emitSwift(baked))
+    console.log(`wrote ${swiftOut}`)
+  } else {
+    console.log("skipped iOS mascot catalog: ios/Package.swift is absent")
+  }
 
   // The Android app module: its JVM unit tests (Robolectric) can parse the catalog the
-  // way `swift test` can for CompanionCore, so the same drift guard covers it.
-  const kotlinOut = fileURLToPath(
-    new URL("../android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt", import.meta.url)
-  )
-  writeFileSync(kotlinOut, emitKotlin(baked))
-  console.log(`wrote ${kotlinOut}`)
+  // way `swift test` can for CompanionCore, so the same drift guard covers it. As with
+  // iOS, write it only when this checkout includes an Android Gradle project.
+  const androidGradle = fileURLToPath(new URL("../android/gradlew", import.meta.url))
+  const androidSettings = ["../android/settings.gradle", "../android/settings.gradle.kts"]
+    .map(path => fileURLToPath(new URL(path, import.meta.url)))
+  if (existsSync(androidGradle) && androidSettings.some(existsSync)) {
+    const kotlinOut = fileURLToPath(
+      new URL("../android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt", import.meta.url)
+    )
+    writeFileSync(kotlinOut, emitKotlin(baked))
+    console.log(`wrote ${kotlinOut}`)
+  } else {
+    console.log("skipped Android mascot catalog: Android Gradle manifest is absent")
+  }
 }
 
 try {

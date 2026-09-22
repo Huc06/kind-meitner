@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic.ts";
@@ -104,7 +105,10 @@ export interface AspProfile {
   hhiScore?: number;
   updatedAt: number;
 }
-export interface ReadinessProbeDependencies { fetch?: typeof fetch; }
+export interface ReadinessProbeDependencies {
+  fetch?: typeof fetch;
+  resolveHostname?: (hostname: string) => Promise<string[]>;
+}
 
 const readinessResource = {
   access: "free",
@@ -113,6 +117,12 @@ const readinessResource = {
   mainnet: false,
   provenance: "kind-meitner live HTTPS probes + public listing pitfalls",
 };
+
+async function resolvedAddresses(hostname: string, dependency?: ReadinessProbeDependencies["resolveHostname"]): Promise<string[]> {
+  if (dependency) return dependency(hostname);
+  const rows = await lookup(hostname, { all: true, verbatim: true });
+  return rows.map((row) => row.address);
+}
 
 export async function scanFreeMcpReadiness(endpointUrl: string, agentId: string | null, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: FreeMcpReadinessData }> {
   const checks = new Map<ReadinessCheck["id"], ReadinessCheck>(READINESS_CHECK_IDS.map((id) => [id, { id, status: "warn", detail: "not checked" }]));
@@ -137,6 +147,20 @@ export async function scanFreeMcpReadiness(endpointUrl: string, agentId: string 
     set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
     set("tools_list_http", "fail", "private or loopback target blocked");
     remediation.push("Use a public HTTPS endpoint; private, loopback, and link-local targets cannot be scanned.");
+    return result(parsed.toString());
+  }
+  try {
+    const addresses = await resolvedAddresses(parsed.hostname, dependencies.resolveHostname);
+    if (!addresses.length || addresses.some(isPrivateIpAddress)) {
+      set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+      set("tools_list_http", "fail", "hostname resolves to a private or loopback address");
+      remediation.push("Use a public HTTPS endpoint; private, loopback, and link-local targets cannot be scanned.");
+      return result(parsed.toString());
+    }
+  } catch {
+    set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+    set("tools_list_http", "fail", "hostname could not be resolved safely");
+    remediation.push("Confirm the endpoint hostname resolves publicly before scanning it.");
     return result(parsed.toString());
   }
   if (parsed.hostname === "vercel.app" || parsed.hostname.endsWith(".vercel.app")) {
