@@ -103,3 +103,15 @@ describe("resolveBotAvatarOutcome", () => {
     ).toBe("gradientMascot");
   });
 });
+
+describe("catalog chart avatars", () => {
+  it("renders an imported OKX catalog agent as a chart mark, never as a mascot", () => {
+    const markup = renderBot({
+      name: "Listing Coach",
+      okxImport: { kind: "okx-catalog" },
+    });
+    expect(markup).toContain('aria-label="Listing Coach, OKX.AI catalog agent"');
+    expect(markup).toContain('viewBox="0 0 24 24"');
+    expect(markup).not.toContain(MASCOT_BODIES.cursor.fit);
+  });
+});

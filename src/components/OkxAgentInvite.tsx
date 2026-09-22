@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { api, ApiError, type Group } from "@/state/store";
+import { ChartAvatar } from "./Avatar";
 
 export interface OkxCatalogAgent {
   id: string;
@@ -51,6 +52,22 @@ export function canInviteOkxAgent(group: Pick<Group, "dm">, remoteClient: boolea
 
 function importRequestId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `okx-import-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function OkxCatalogInviteDetails({ agent }: { agent: OkxCatalogAgent }) {
+  return (
+    <div className="flex min-w-0 items-start gap-2.5">
+      <ChartAvatar color="cyan" size={28} label={`${agent.name}, OKX.AI catalog agent`} />
+      <div className="min-w-0">
+        <h2 className="text-[13px] font-semibold text-ink">{agent.name}</h2>
+        <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">{agent.description}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-secondary">
+          <span className="rounded-full bg-inset px-2 py-0.5 font-medium text-ink">Free · read-only</span>
+          <span>OKX.AI catalog</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function OkxAgentInvite({
@@ -155,13 +172,8 @@ export function OkxAgentInvite({
             return (
               <article key={agent.id} className="mt-3 rounded-lg border border-hairline/40 bg-panel p-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-[13px] font-semibold text-ink">{agent.name}</h2>
-                    <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">{agent.description}</p>
-                  </div>
-                  <span className="shrink-0 text-[11px] text-ink-secondary">{agent.provider}</span>
+                  <OkxCatalogInviteDetails agent={agent} />
                 </div>
-                <p className="mt-2 text-[11px] text-ink-secondary">Capabilities: {agent.capabilities.join(", ") || "None"}</p>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   {inRoom ? <span role="status" className="flex items-center gap-1 text-[12px] text-success"><Check size={13} /> In this room</span> : requested ? <span role="status" aria-live="polite" className="text-[12px] text-ink-secondary">Waiting for room update…</span> : <span />}
                   <button

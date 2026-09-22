@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { builtInBrowserEnabled, sharedComputersEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "./feature-flags";
+import { builtInBrowserEnabled, devDayGateCardsEnabled, sharedComputersEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "./feature-flags";
 
 describe("experimental feature flags", () => {
   it("keeps skill authoring on by default, before and after the config arrives", () => {
@@ -37,5 +37,15 @@ describe("experimental feature flags", () => {
     expect(sharedComputersEnabled({ features: {} })).toBe(false);
     expect(sharedComputersEnabled({ features: { sharedComputers: false } })).toBe(false);
     expect(sharedComputersEnabled({ features: { sharedComputers: true } })).toBe(true);
+  });
+});
+
+
+describe("Dev Day gate cards", () => {
+  it("stays on unless explicitly disabled", () => {
+    expect(devDayGateCardsEnabled(null)).toBe(true);
+    expect(devDayGateCardsEnabled({})).toBe(true);
+    expect(devDayGateCardsEnabled({ features: {} })).toBe(true);
+    expect(devDayGateCardsEnabled({ features: { devDayGateCards: false } })).toBe(false);
   });
 });
