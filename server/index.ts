@@ -10140,7 +10140,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
               error: { code: -32602, message: "tools/call requires a tool name and an object arguments value" },
             });
           }
-          const result = okxIntelligence.handleFreeMcpToolCall(toolName, rawArgs as Record<string, unknown>);
+          const result = await okxIntelligence.handleFreeMcpToolCall(toolName, rawArgs as Record<string, unknown>);
           res.setHeader("x-time-to-session", String(Date.now() - startTime));
           return json(res, 200, { jsonrpc: "2.0", id, result });
         }

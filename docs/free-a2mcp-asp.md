@@ -34,6 +34,7 @@ All listed tools include MCP annotations declaring `readOnlyHint: true`, `destru
 
 - `list_okx_ai_use_cases` — returns the four showable use cases: market intelligence, service discovery, recurring research inputs, and responsible A2MCP launch.
 - `get_free_a2mcp_launch_checklist` — returns the launch guardrails and official documentation links.
+- `scan_free_mcp_readiness` — probes a candidate public HTTPS Free A2MCP endpoint with `tools/list`, returning PASS/WARN/FAIL checks, bounded evidence, and remediation. It blocks private, loopback, and link-local targets; it never sends credentials, payment headers, or wallet data.
 - `query_market_benchmarks` — returns locally indexed category benchmarks; optional `category` is a non-empty string of at most 80 characters.
 - `get_asp_reputation` — returns a locally indexed ASP record; `aspId` is required.
 - `get_trending_asps` — returns locally indexed rankings; optional `limit` is an integer from 1 to 20.

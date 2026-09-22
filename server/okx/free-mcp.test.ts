@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { launchVerificationServer, type VerificationServer } from "../../scripts/control-kind-meitner.ts";
+import { scanFreeMcpReadiness } from "./intelligence.ts";
 
 const rpc = (id: string, method: string, params?: Record<string, unknown>) => ({
   jsonrpc: "2.0",
@@ -106,4 +107,48 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
     expect(invalidBody.result.isError).toBe(true);
     expect(invalidBody.result.content[0].text).toContain("limit must be an integer");
   });
+
+  it("lists readiness scanning and rejects a missing endpoint URL", async () => {
+    const listed = await call(rpc("readiness-list", "tools/list"));
+    const tools = (await listed.json()).result.tools as Array<{ name: string; description: string; annotations: unknown }>;
+    expect(tools).toContainEqual(expect.objectContaining({
+      name: "scan_free_mcp_readiness",
+      description: expect.stringContaining("Free resource:"),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    }));
+    const invalid = await call(rpc("readiness-missing", "tools/call", { name: "scan_free_mcp_readiness", arguments: {} }));
+    const invalidBody = await invalid.json();
+    expect(invalidBody.result.isError).toBe(true);
+    expect(invalidBody.result.content[0].text).toBe("endpointUrl is required");
+  });
 });
+
+  it("fails known Vercel hosts without making an outbound probe", async () => {
+    const scanned = await scanFreeMcpReadiness("https://demo.vercel.app/api/okx/free-mcp", null, {
+      fetch: async () => { throw new Error("must not probe a known pitfall"); },
+      resolveHostname: async () => ["203.0.113.10"],
+    });
+    expect(scanned.data.verdict).toBe("FAIL");
+    expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "host_pitfall_vercel", status: "fail" }));
+    expect(scanned.data.remediation.join(" ")).toContain("OKX listing test env rejects vercel.app");
+  });
+
+  it("fails accidental 402 discovery responses", async () => {
+    const scanned = await scanFreeMcpReadiness("https://scanner.example/api/okx/free-mcp", null, {
+      fetch: async () => new Response(JSON.stringify({ error: "payment required" }), { status: 402 }),
+      resolveHostname: async () => ["203.0.113.10"],
+    });
+    expect(scanned.data.verdict).toBe("FAIL");
+    expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "no_accidental_402", status: "fail" }));
+    expect(scanned.data.remediation.join(" ")).toContain("Do not gate tools/list behind x402");
+  });
+
+
+  it("blocks a hostname that resolves to loopback before fetching", async () => {
+    const scanned = await scanFreeMcpReadiness("https://public-looking.example/free-mcp", null, {
+      fetch: async () => { throw new Error("must not fetch a private DNS result"); },
+      resolveHostname: async () => ["127.0.0.1"],
+    });
+    expect(scanned.data.verdict).toBe("FAIL");
+    expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "tools_list_http", status: "fail", detail: expect.stringContaining("resolves") }));
+  });
