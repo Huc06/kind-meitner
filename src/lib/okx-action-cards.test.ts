@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isOkxGateTool, parseOkxActionCard } from "./okx-action-cards";
+import { isOkxGateTool, OKX_PRODUCTION_FREE_MCP_URL, parseOkxActionCard } from "./okx-action-cards";
 
 const readiness = {
   resource: { access: "free" },
@@ -49,5 +49,11 @@ describe("OKX action-card payload parsing", () => {
   it("only treats the two explicit gate tools as action-card candidates", () => {
     expect(isOkxGateTool("mcp__markets__scan_free_mcp_readiness")).toBe(true);
     expect(isOkxGateTool("query_market_benchmarks")).toBe(false);
+  });
+
+  it("exposes the known-good Railway Free-MCP URL for Apply host", () => {
+    expect(OKX_PRODUCTION_FREE_MCP_URL).toBe(
+      "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
+    );
   });
 });

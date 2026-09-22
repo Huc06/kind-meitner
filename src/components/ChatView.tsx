@@ -721,6 +721,7 @@ const MessagesList = memo(function MessagesList({
                     <OkxGateToolResult
                       message={step}
                       enabled={showGateCards}
+                      busy={bot.busy}
                       composerDraftId={`bot:${bot.id}:${bot.threadId}`}
                       fallback={<ActivityChip message={step} />}
                     />
@@ -786,6 +787,7 @@ const MessagesList = memo(function MessagesList({
                 <OkxGateToolResult
                   message={m}
                   enabled={showGateCards}
+                  busy={bot.busy}
                   composerDraftId={`bot:${bot.id}:${bot.threadId}`}
                   fallback={<ActivityChip message={m} />}
                 />

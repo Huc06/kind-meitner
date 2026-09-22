@@ -189,6 +189,7 @@ const Transcript = memo(function Transcript({
   const { state, dispatch } = useStore();
   const showToolCalls = showToolCallsEnabled(state.config);
   const showGateCards = devDayGateCardsEnabled(state.config);
+  const gateBusy = Boolean(group.busyBotId) || Boolean(group.working);
   const memberOf = (id?: string) => members.find((b) => b.id === id);
   // Several bots working at once turn a room into a wall of chips; fold the
   // finished ones the same way a 1:1 chat does.
@@ -226,6 +227,7 @@ const Transcript = memo(function Transcript({
                     <OkxGateToolResult
                       message={step}
                       enabled={showGateCards}
+                      busy={gateBusy}
                       composerDraftId={`group:${group.id}:${group.threadId}`}
                       fallback={<RoomToolChip message={step} roomId={group.id} />}
                     />
@@ -288,6 +290,7 @@ const Transcript = memo(function Transcript({
               <OkxGateToolResult
                 message={m}
                 enabled={showGateCards}
+                busy={gateBusy}
                 composerDraftId={`group:${group.id}:${group.threadId}`}
                 fallback={<RoomToolChip message={m} roomId={group.id} />}
               />

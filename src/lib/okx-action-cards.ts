@@ -34,6 +34,10 @@ export type TrustCardData = {
 
 export type OkxActionCardData = ReadinessRunCardData | TrustCardData;
 
+/** Known-good Railway Free-MCP URL used by Apply host (Dev Day Loop A). */
+export const OKX_PRODUCTION_FREE_MCP_URL =
+  "https://kind-meitner-production.up.railway.app/api/okx/free-mcp";
+
 const READINESS_TOOL = "scan_free_mcp_readiness";
 const TRUST_TOOL = "get_asp_trust_card";
 const statuses = new Set<GateStatus>(["pass", "warn", "fail", "skipped"]);
