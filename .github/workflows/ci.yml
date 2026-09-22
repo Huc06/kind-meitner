@@ -15,7 +15,62 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: classify changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      okx: ${{ steps.scope.outputs.okx }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            echo "okx=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "$GITHUB_SHA")"
+          full=false
+          okx=false
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              server/okx/*) okx=true ;;
+              electron/*|companion/*|android/*|ios/*|src/*|shared/*|enterprise/*|scripts/*|Dockerfile|railway.toml|package.json|pnpm-lock.yaml|tsconfig*.json|vite.config.ts|.github/workflows/*)
+                full=true ;;
+              server/*) full=true ;;
+              *) full=true ;;
+            esac
+          done <<< "$files"
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "okx=$okx" >> "$GITHUB_OUTPUT"
+
+  okx-server:
+    name: typecheck + OKX Free-MCP security
+    needs: changes
+    if: needs.changes.outputs.okx == 'true' && needs.changes.outputs.full != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm exec vitest run server/okx/free-mcp.test.ts server/okx/a2mcp-security.test.ts
+
   test:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: typecheck + test (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -71,6 +126,8 @@ jobs:
         run: pnpm exec vite build
 
   cloudflared-linux-arm64:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: cloudflared installer (Linux ARM64)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
@@ -91,6 +148,8 @@ jobs:
           "$KIND_MEITNER_ARM64_FIXTURE/dist-native/cloudflared/linux-arm64/cloudflared" version
 
   foss:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     # LICENSING.md promises that deleting enterprise/ leaves a working
     # open-source edition. Prove it on every change: typecheck, the edition
     # tests, and a boot that reports "oss" even with a key set.
@@ -122,6 +181,8 @@ jobs:
           kill %1; wait %1 || true
 
   control-plane:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: control-plane check + workerd tests + dry run
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -140,6 +201,8 @@ jobs:
       - run: pnpm control-plane:dry-run
 
   ui-smoke:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     # Advisory, outside the required `test` matrix: the renderer recipe in
     # docs/verification/chat-ui.md run by a machine. It downloads the pinned
     # agent-browser release (digest verified) and its Chrome, drives the real
@@ -178,6 +241,8 @@ jobs:
           retention-days: 7
 
   package-linux:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: package + smoke (Ubuntu 24.04 x64)
     runs-on: ubuntu-24.04
     timeout-minutes: 25
