@@ -183,6 +183,18 @@ export class OkxTreasuryManager {
     this.save();
   }
 
+  /** Sets the balance to an exact value, as opposed to `deposit`'s
+   * additive top-up. This is what a settings form's numeric balance
+   * field implies: the number shown is what the balance should become,
+   * not an amount to add on top of whatever it currently is. */
+  setBalance(amount: number): void {
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
+      throw new Error("Balance must be a non-negative number");
+    }
+    this.balance = amount;
+    this.save();
+  }
+
   getMonthlySpend(atTimestamp = Date.now()): number {
     const thirtyDaysAgo = atTimestamp - 30 * 24 * 60 * 60 * 1000;
     const spend = this.receipts

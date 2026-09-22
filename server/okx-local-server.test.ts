@@ -60,6 +60,29 @@ describe("OKX local server", () => {
     expect(body.error).toMatch(/server-only/);
   });
 
+  it("sets the treasury balance to exactly the submitted value, not an additive top-up", async () => {
+    const save = (treasuryBalance: number) => fetch(`${baseUrl}/api/okx/settings`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-okx-pairing-token": pairingToken },
+      body: JSON.stringify({ treasuryBalance }),
+    });
+
+    await save(777);
+    let current = await (await fetch(`${baseUrl}/api/okx/settings`)).json() as { treasuryBalance: number };
+    expect(current.treasuryBalance).toBe(777);
+
+    // Saving the same modal state twice (e.g. opening the modal again and
+    // re-submitting an unchanged value) must not silently grow the
+    // balance — it must land on exactly what was submitted both times.
+    await save(777);
+    current = await (await fetch(`${baseUrl}/api/okx/settings`)).json() as { treasuryBalance: number };
+    expect(current.treasuryBalance).toBe(777);
+
+    await save(50);
+    current = await (await fetch(`${baseUrl}/api/okx/settings`)).json() as { treasuryBalance: number };
+    expect(current.treasuryBalance).toBe(50);
+  });
+
   it("keeps the legacy EIP-3009 MCP path disabled by default", async () => {
     const res = await fetch(`${baseUrl}/api/okx/mcp`, {
       method: "POST",

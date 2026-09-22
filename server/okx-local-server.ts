@@ -442,7 +442,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           });
         }
         if (typeof body.treasuryBalance === "number") {
-          okxTreasury.deposit(body.treasuryBalance);
+          okxTreasury.setBalance(body.treasuryBalance);
         }
         return json(res, 200, { ok: true });
       }

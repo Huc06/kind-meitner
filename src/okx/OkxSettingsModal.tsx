@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Shield,
   Wallet,
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { okxApiBase, okxApiUrl, okxPairingToken, setOkxApiBase, setOkxPairingToken } from "./okx-api-base";
+import { fetchOkxSettings } from "./okx-settings-api";
 
 export interface OkxSettingsData {
   treasuryBalance: number;
@@ -36,6 +37,14 @@ export interface OkxSettingsModalProps {
   className?: string;
 }
 
+/** Whether the modal should fetch the server's real current values on
+ * open. Only when the caller did not already supply them — a caller
+ * that passes initialSettings is assumed to have a source of truth of
+ * its own and does not want this modal overriding it with a fetch. */
+export function shouldFetchCurrentSettings(open: boolean, initialSettings: Partial<OkxSettingsData> | undefined): boolean {
+  return open && !initialSettings;
+}
+
 export function OkxSettingsModal({
   open,
   onClose,
@@ -47,6 +56,7 @@ export function OkxSettingsModal({
   const [maxPerRunSpend, setMaxPerRunSpend] = useState(initialSettings?.maxPerRunSpend ?? 50);
   const [monthlyBudgetCap, setMonthlyBudgetCap] = useState(initialSettings?.monthlyBudgetCap ?? 500);
   const [token] = useState(initialSettings?.token ?? "USDT");
+  const [loadingCurrent, setLoadingCurrent] = useState(!initialSettings);
 
   const [localServerUrl, setLocalServerUrl] = useState(okxApiBase());
   const [localServerCheck, setLocalServerCheck] = useState<"idle" | "checking" | "ok" | "unreachable">("idle");
@@ -55,6 +65,34 @@ export function OkxSettingsModal({
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The caller (App.tsx) does not have a live copy of the server's actual
+  // treasury values, so this modal fetches them itself when opened without
+  // an explicit initialSettings. Without this, the fields below always
+  // showed a hardcoded default (e.g. 200) regardless of what was really
+  // configured — and because the server side used to treat a save as an
+  // additive top-up, saving that stale default silently changed the real
+  // balance by an amount the user never intended. The server side now
+  // sets the balance to exactly what is submitted, so this fetch is what
+  // makes "submitting the value shown" match "the value that was there".
+  useEffect(() => {
+    if (!shouldFetchCurrentSettings(open, initialSettings)) return;
+    let cancelled = false;
+    setLoadingCurrent(true);
+    void fetchOkxSettings().then((current) => {
+      if (cancelled || !current) return;
+      setTreasuryBalance(current.treasuryBalance);
+      setMaxPerRunSpend(current.maxPerRunSpend);
+      setMonthlyBudgetCap(current.monthlyBudgetCap);
+    }).finally(() => {
+      if (!cancelled) setLoadingCurrent(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Re-fetch each time the modal opens, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 
@@ -217,6 +255,7 @@ export function OkxSettingsModal({
             <div className="font-semibold uppercase text-[10px] tracking-wider text-ink-secondary flex items-center gap-1.5">
               <Wallet size={12} />
               Autonomous Treasury & Budget Limits
+              {loadingCurrent && <span className="text-ink-secondary/70">(loading current values…)</span>}
             </div>
 
             <div className="grid grid-cols-3 gap-3">
@@ -227,8 +266,9 @@ export function OkxSettingsModal({
                   min="0"
                   step="any"
                   value={treasuryBalance}
+                  disabled={loadingCurrent}
                   onChange={(e) => setTreasuryBalance(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none"
+                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none disabled:opacity-50"
                 />
               </div>
 
@@ -239,8 +279,9 @@ export function OkxSettingsModal({
                   min="1"
                   step="any"
                   value={maxPerRunSpend}
+                  disabled={loadingCurrent}
                   onChange={(e) => setMaxPerRunSpend(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none"
+                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none disabled:opacity-50"
                 />
               </div>
 
@@ -251,8 +292,9 @@ export function OkxSettingsModal({
                   min="1"
                   step="any"
                   value={monthlyBudgetCap}
+                  disabled={loadingCurrent}
                   onChange={(e) => setMonthlyBudgetCap(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none"
+                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none disabled:opacity-50"
                 />
               </div>
             </div>

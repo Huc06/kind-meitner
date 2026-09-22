@@ -15921,7 +15921,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           });
         }
         if (typeof body.treasuryBalance === "number") {
-          okxTreasury.deposit(body.treasuryBalance);
+          okxTreasury.setBalance(body.treasuryBalance);
         }
         return json(res, 200, { ok: true });
       }

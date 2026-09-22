@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { saveOkxSettings } from "./okx-settings-api";
+import { fetchOkxSettings, saveOkxSettings } from "./okx-settings-api";
 import { setOkxApiBase } from "./okx-api-base";
 
 function memoryStorage() {
@@ -70,5 +70,40 @@ describe("saveOkxSettings", () => {
   it("throws the server failure instead of treating a rejected save as success", async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({ error: "OKX credentials are server-only" }), { status: 400 }));
     await expect(saveOkxSettings(settings, fetcher as typeof fetch)).rejects.toThrow("OKX credentials are server-only");
+  });
+});
+
+describe("fetchOkxSettings", () => {
+  it("returns the server's current values on success", async () => {
+    const current = {
+      credentialsConfigured: true,
+      webhookSecretConfigured: false,
+      treasuryBalance: 640,
+      maxPerRunSpend: 80,
+      monthlyBudgetCap: 900,
+    };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(current), { status: 200 }));
+    await expect(fetchOkxSettings(fetcher as typeof fetch)).resolves.toEqual(current);
+  });
+
+  it("returns undefined on a non-ok response instead of throwing", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }));
+    await expect(fetchOkxSettings(fetcher as typeof fetch)).resolves.toBeUndefined();
+  });
+
+  it("returns undefined when the request itself fails instead of throwing", async () => {
+    const fetcher = vi.fn(async () => { throw new Error("network down"); });
+    await expect(fetchOkxSettings(fetcher as typeof fetch)).resolves.toBeUndefined();
+  });
+
+  it("reads from the configured local server base URL, same as saveOkxSettings", async () => {
+    setOkxApiBase("http://127.0.0.1:8899");
+    let requestUrl: string | undefined;
+    const fetcher: typeof fetch = async (input) => {
+      requestUrl = String(input);
+      return new Response(JSON.stringify({}), { status: 200 });
+    };
+    await fetchOkxSettings(fetcher);
+    expect(requestUrl).toBe("http://127.0.0.1:8899/api/okx/settings");
   });
 });

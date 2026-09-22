@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { BloombergView, type AspItem, type CategoryMetric } from "./BloombergView";
 import { EvaluatorView, type DisputeCardData } from "./EvaluatorView";
-import { OkxSettingsModal, buildOkxSettingsPayload } from "./OkxSettingsModal";
+import { OkxSettingsModal, buildOkxSettingsPayload, shouldFetchCurrentSettings } from "./OkxSettingsModal";
 
 const mockAsps: AspItem[] = [
   {
@@ -328,6 +328,25 @@ describe("OKX UI Components", () => {
       for (const key of ["apiKey", "secretKey", "passphrase", "webhookSecret", "baseUrl"]) {
         expect(payload).not.toHaveProperty(key);
       }
+    });
+
+    describe("shouldFetchCurrentSettings", () => {
+      it("fetches when open with no caller-supplied settings — the common case (App.tsx has none today)", () => {
+        expect(shouldFetchCurrentSettings(true, undefined)).toBe(true);
+      });
+
+      it("does not fetch when closed, regardless of initialSettings", () => {
+        expect(shouldFetchCurrentSettings(false, undefined)).toBe(false);
+        expect(shouldFetchCurrentSettings(false, { treasuryBalance: 300 })).toBe(false);
+      });
+
+      it("does not fetch when the caller already supplied settings, even while open", () => {
+        expect(shouldFetchCurrentSettings(true, { treasuryBalance: 300 })).toBe(false);
+      });
+
+      it("does not fetch for an empty-but-present initialSettings object", () => {
+        expect(shouldFetchCurrentSettings(true, {})).toBe(false);
+      });
     });
   });
 });
