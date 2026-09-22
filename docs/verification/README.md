@@ -109,11 +109,15 @@ keyless local generation, saved-key handling, and safe errors with a local fake 
 The [independent threads fixture](threads.md) checks nested sidebar navigation,
 per-thread models, simultaneous direct conversations and thread-scoped Stop.
 
-The [iOS thread checks](ios-threads.md) cover the native thread tree, folder
-search and draft isolation using disposable simulators and an offline fixture.
+When the checkout contains `ios/Package.swift`, the [iOS thread checks](ios-threads.md)
+cover the native thread tree, folder search and draft isolation using disposable
+simulators and an offline fixture. When it does not, those checks and their source
+references are intentionally not claimed or validated.
 
-The [Android thread checks](android-threads.md) cover the Compose thread tree,
-local selection, draft isolation and installable preview APK.
+When the checkout contains `android/gradlew` plus `android/settings.gradle` or
+`android/settings.gradle.kts`, the [Android thread checks](android-threads.md) cover
+the Compose thread tree, local selection, draft isolation and installable preview APK.
+Without that Android source manifest, those checks and references are likewise skipped.
 
 The [right-to-left fixture](bidi.md) checks per-block direction in bot replies
 and per-line direction in sent turns, with code pinned left-to-right.

@@ -321,10 +321,12 @@ export function api() {}
       const result1 = await evaluator1.deliberate(input);
       expect(result1.disputeId).toBe("disp-persist-01");
 
-      // Verify file was written with 0o600 POSIX permissions
+      // Verify file exists everywhere; Windows does not expose POSIX mode bits.
       expect(existsSync(storageFile)).toBe(true);
-      const stat = statSync(storageFile);
-      expect(stat.mode & 0o777).toBe(0o600);
+      if (process.platform !== "win32") {
+        const stat = statSync(storageFile);
+        expect(stat.mode & 0o777).toBe(0o600);
+      }
 
       // Verify serialized state content
       const raw1 = readFileSync(storageFile, "utf8");
