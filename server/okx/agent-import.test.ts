@@ -39,8 +39,12 @@ describe("OKX agent catalog", () => {
     const markets = findCatalogOkxAgent("okx-market-scout-v1")!;
 
     expect(listingCoach.soul).toContain("readiness");
+    expect(listingCoach.soul).toContain("Never invent PASS, WARN, or FAIL");
+    expect(listingCoach.soul).toContain("scan_free_mcp_readiness");
     expect(listingCoach.soul).toContain("Never ask for wallet keys");
     expect(spendScout.soul).toContain("trust card");
+    expect(spendScout.soul).toContain("Never invent GO, CAUTION, or NO_GO");
+    expect(spendScout.soul).toContain("get_asp_trust_card");
     expect(spendScout.soul).toContain("notChecked");
     expect(markets.soul).toContain("scan_free_mcp_readiness");
     expect(markets.soul).toContain("get_asp_trust_card");

@@ -3,12 +3,14 @@ import { useId, useRef, useState } from "react";
 
 import {
   checkLabel,
+  formatGateLastRunSummary,
   OKX_PRODUCTION_FREE_MCP_URL,
   type GateSignal,
   type ReadinessRunCardData,
 } from "@/lib/okx-action-cards";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { relativeTime } from "@/lib/memory";
 
 function statusTone(status: GateSignal["status"]): string {
   return status === "pass" ? "text-success" : status === "fail" ? "text-danger" : "text-warning";
@@ -32,6 +34,7 @@ export function ReadinessRunCard({
   onRescan,
   onApplyHost,
   busy = false,
+  ranAt,
 }: {
   data: ReadinessRunCardData;
   onRescan?: (endpointUrl: string) => void;
@@ -39,11 +42,18 @@ export function ReadinessRunCard({
   onApplyHost?: (hostUrl: string) => void;
   /** True while a Markets / Free-MCP tool call is in flight. */
   busy?: boolean;
+  /** Transcript message time for the last-run age line. */
+  ranAt?: number;
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const evidenceId = useId();
   const actionLocked = useRef(false);
+  const lastRunSummary = formatGateLastRunSummary(
+    data.lastRun,
+    ranAt,
+    typeof ranAt === "number" ? relativeTime(ranAt) : undefined,
+  );
   const verdictTone =
     data.verdict === "PASS"
       ? "bg-success/15 text-success"
@@ -87,6 +97,11 @@ export function ReadinessRunCard({
           <p title={data.endpointUrl} className="mt-0.5 truncate font-mono text-[12px] text-ink-secondary">
             {data.endpointUrl}
           </p>
+          {lastRunSummary && (
+            <p className="mt-1 text-[11.5px] text-ink-secondary">
+              {t("okxGate.lastRun.label", { summary: lastRunSummary })}
+            </p>
+          )}
         </div>
       </div>
       <ul aria-label={t("okxGate.readiness.checks")} className="mt-3 space-y-1.5 border-t border-hairline/70 pt-3">

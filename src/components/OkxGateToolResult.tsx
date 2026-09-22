@@ -37,6 +37,7 @@ export function OkxGateToolResult({
       <ReadinessRunCard
         data={data}
         busy={busy}
+        ranAt={message.at}
         onApplyHost={(hostUrl) =>
           appendComposerDraft(
             composerDraftId,
@@ -51,6 +52,7 @@ export function OkxGateToolResult({
       <TrustCard
         data={data}
         busy={busy}
+        ranAt={message.at}
         onBlockSpend={(agentId) =>
           appendComposerDraft(
             composerDraftId,

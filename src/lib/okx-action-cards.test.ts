@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { isOkxGateTool, OKX_PRODUCTION_FREE_MCP_URL, parseOkxActionCard } from "./okx-action-cards";
+import {
+  extractGateLastRun,
+  formatGateLastRunSummary,
+  isOkxGateTool,
+  OKX_PRODUCTION_FREE_MCP_URL,
+  parseOkxActionCard,
+} from "./okx-action-cards";
 
 const readiness = {
   resource: { access: "free" },
@@ -55,5 +61,43 @@ describe("OKX action-card payload parsing", () => {
     expect(OKX_PRODUCTION_FREE_MCP_URL).toBe(
       "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
     );
+  });
+
+  it("extracts last-run latency and tool count only from server evidence", () => {
+    const checks = [
+      { id: "tools_list_http", status: "pass" as const, detail: "status=200 latencyMs=412" },
+      { id: "tools_list_shape", status: "pass" as const, detail: "7 tools" },
+    ];
+    expect(extractGateLastRun({ raw: { toolNames: ["a", "b", "c", "d", "e", "f", "g"] } }, checks)).toEqual({
+      latencyMs: 412,
+      toolCount: 7,
+    });
+    expect(extractGateLastRun({}, [{ id: "listing_page", status: "fail", detail: "HTTP 404" }])).toBeUndefined();
+    expect(formatGateLastRunSummary({ latencyMs: 412, toolCount: 7 }, 1, "12s ago")).toBe(
+      "12s ago · 412ms · 7 tools",
+    );
+    expect(formatGateLastRunSummary(undefined, undefined, undefined)).toBeNull();
+  });
+
+  it("attaches lastRun on readiness parse when detail evidence is present", () => {
+    const envelope = {
+      resource: { access: "free" },
+      data: {
+        endpointUrl: "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
+        verdict: "PASS",
+        checks: [
+          { id: "tools_list_http", status: "pass", detail: "status=200 latencyMs=88" },
+          { id: "tools_list_shape", status: "pass", detail: "7 tools" },
+        ],
+        remediation: [],
+        raw: { toolNames: ["a", "b", "c", "d", "e", "f", "g"] },
+      },
+    };
+    const parsed = parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify(envelope),
+    });
+    expect(parsed).toMatchObject({ kind: "readiness", lastRun: { latencyMs: 88, toolCount: 7 } });
   });
 });
