@@ -40,7 +40,11 @@ jobs:
           while IFS= read -r file; do
             [[ -z "$file" ]] && continue
             case "$file" in
-              server/okx/*) okx=true ;;
+              # Dev Day / Free-MCP surface: keep the cheap okx-server gate (PR #71)
+              # instead of the 3-OS + package matrix. First match wins — these must
+              # stay above the broad src/* arm.
+              server/okx/*|src/okx/*|src/components/Okx*|src/components/ReadinessRunCard*|src/components/TrustCard*|src/lib/okx-*|src/locales/*)
+                okx=true ;;
               electron/*|companion/*|android/*|ios/*|src/*|shared/*|enterprise/*|scripts/*|Dockerfile|railway.toml|package.json|pnpm-lock.yaml|tsconfig*.json|vite.config.ts|.github/workflows/*)
                 full=true ;;
               server/*) full=true ;;
@@ -51,11 +55,11 @@ jobs:
           echo "okx=$okx" >> "$GITHUB_OUTPUT"
 
   okx-server:
-    name: typecheck + OKX Free-MCP security
+    name: typecheck + OKX / Dev Day gate
     needs: changes
     if: needs.changes.outputs.okx == 'true' && needs.changes.outputs.full != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3 # v6.0.10
@@ -66,7 +70,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm exec vitest run server/okx/free-mcp.test.ts server/okx/a2mcp-security.test.ts
+      - run: pnpm exec vitest run server/okx/ src/lib/okx-action-cards.test.ts src/components/OkxGateToolResult.test.ts src/components/OkxAgentInvite.test.ts
 
   test:
     needs: changes
