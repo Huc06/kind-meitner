@@ -1,0 +1,61 @@
+{
+  "resource": {
+    "access": "free",
+    "paymentRequired": false,
+    "walletRequired": false,
+    "mainnet": false,
+    "provenance": "kind-meitner live HTTPS probes + public listing pitfalls"
+  },
+  "data": {
+    "endpointUrl": "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
+    "agentId": null,
+    "verdict": "PASS",
+    "score": 100,
+    "checks": [
+      {
+        "id": "https_scheme",
+        "status": "pass",
+        "detail": "https"
+      },
+      {
+        "id": "host_pitfall_vercel",
+        "status": "pass",
+        "detail": "host=kind-meitner-production.up.railway.app"
+      },
+      {
+        "id": "tools_list_http",
+        "status": "pass",
+        "detail": "status=200 latencyMs=13"
+      },
+      {
+        "id": "tools_list_shape",
+        "status": "pass",
+        "detail": "7 tools"
+      },
+      {
+        "id": "no_accidental_402",
+        "status": "pass",
+        "detail": "no 402"
+      },
+      {
+        "id": "initialize_soft",
+        "status": "pass",
+        "detail": "status=200"
+      }
+    ],
+    "remediation": [],
+    "raw": {
+      "httpStatus": 200,
+      "toolNames": [
+        "list_okx_ai_use_cases",
+        "get_free_a2mcp_launch_checklist",
+        "scan_free_mcp_readiness",
+        "get_asp_trust_card",
+        "query_market_benchmarks",
+        "get_asp_reputation",
+        "get_trending_asps"
+      ],
+      "truncatedNotes": ""
+    }
+  }
+}
