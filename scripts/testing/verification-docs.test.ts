@@ -9,6 +9,14 @@ import { describe, expect, it } from "vitest";
 import { HELP } from "../control-kind-meitner.ts";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const hasIosSource = existsSync(join(ROOT, "ios", "Package.swift"));
+const hasAndroidSource = existsSync(join(ROOT, "android", "gradlew"))
+  && (existsSync(join(ROOT, "android", "settings.gradle")) || existsSync(join(ROOT, "android", "settings.gradle.kts")));
+const nativeSourceAvailable = (path: string) => {
+  if (path.startsWith("ios/")) return hasIosSource;
+  if (path.startsWith("android/")) return hasAndroidSource;
+  return true;
+};
 const DOCS = join(ROOT, "docs", "verification");
 const recipes = readdirSync(DOCS).filter((name) => name.endsWith(".md")).sort();
 const text = (recipe: string) => readFileSync(join(DOCS, recipe), "utf8");
@@ -53,9 +61,9 @@ describe("docs/verification recipes cite things that exist", () => {
   });
 
   it("cite source files that exist", () => {
-    const refs = cited(/(?<![\w/.-])((?:scripts|server|src|shared|electron|companion|enterprise)\/[\w./-]+\.(?:ts|tsx|mjs|cjs|py))(?![\w/])/g);
+    const refs = cited(/(?<![\w/.-])((?:scripts|server|src|shared|electron|companion|enterprise|ios|android)\/[\w./-]+\.(?:ts|tsx|mjs|cjs|py|swift|kt))(?![\w/])/g);
     expect(refs.length).toBeGreaterThan(50);
-    expect([...new Set(refs.filter((hit) => !existsSync(join(ROOT, target(hit)))))]).toEqual([]);
+    expect([...new Set(refs.filter((hit) => nativeSourceAvailable(target(hit)) && !existsSync(join(ROOT, target(hit)))))]).toEqual([]);
   });
 
   it("cite test files that exist", () => {
@@ -99,6 +107,8 @@ describe("docs/verification recipes cite things that exist", () => {
       for (const [, link] of text(recipe).matchAll(/\]\(([^)\s]+)\)/g)) {
         if (/^(https?:|mailto:|#)/.test(link!)) continue;
         const [file, anchor] = link!.split("#");
+        const relative = file!.replace(/^(?:\.\.\/)+/, "");
+        if (!nativeSourceAvailable(relative)) continue;
         const resolved = resolve(DOCS, file!);
         if (!existsSync(resolved)) { broken.push(`${recipe}: ${link}`); continue; }
         if (anchor && resolved.endsWith(".md")) {
