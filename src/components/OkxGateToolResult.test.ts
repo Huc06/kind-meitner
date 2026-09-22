@@ -69,6 +69,43 @@ describe("OKX action cards", () => {
     expect(isDisabledButton(html, "Re-scan")).toBe(true);
   });
 
+  it("disables trust CTAs while busy", () => {
+    const html = renderToStaticMarkup(createElement(TrustCard, {
+      data: { ...trustBase, decision: "NO_GO" },
+      onBlockSpend: () => {},
+      onContinue: () => {},
+      onRecheck: () => {},
+      busy: true,
+    }));
+    expect(isDisabledButton(html, "Block spend")).toBe(true);
+    expect(isDisabledButton(html, "Continue free tools")).toBe(true);
+    expect(isDisabledButton(html, "Re-check")).toBe(true);
+  });
+
+  it("renders a last-run line from evidence and message time", () => {
+    const html = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        lastRun: { latencyMs: 412, toolCount: 5 },
+      },
+      onRescan: () => {},
+      onApplyHost: () => {},
+      ranAt: Date.now() - 12_000,
+    }));
+    expect(html).toContain("Last run");
+    expect(html).toContain("412ms");
+    expect(html).toContain("5 tools");
+  });
+
+  it("omits the last-run line when no evidence or time is available", () => {
+    const html = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: readinessData,
+      onRescan: () => {},
+      onApplyHost: () => {},
+    }));
+    expect(html).not.toContain("Last run");
+  });
+
   it("renders a trust decision without a made-up score and always exposes not-checked evidence", () => {
     const html = renderToStaticMarkup(createElement(TrustCard, {
       data: { ...trustBase, decision: "NO_GO" },

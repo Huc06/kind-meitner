@@ -20,6 +20,7 @@
   "okxGate.trust.recheck": "Re-check",
   "okxGate.evidence": "Evidence",
   "okxGate.copied": "Copied",
+  "okxGate.lastRun.label": "Last run {summary}",
   "okxGate.error.parseCard": "The gate tool returned data this app could not read. Open the normal tool result below, or run the check again.",
   "toolDetail.label": "{name} · {status} · Tool details",
   "toolDetail.input": "Input",

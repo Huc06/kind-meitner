@@ -1,9 +1,15 @@
 import { AlertTriangle, Ban, Check, Copy, Play, RefreshCw, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
-import { checkLabel, type GateSignal, type TrustCardData } from "@/lib/okx-action-cards";
+import {
+  checkLabel,
+  formatGateLastRunSummary,
+  type GateSignal,
+  type TrustCardData,
+} from "@/lib/okx-action-cards";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { relativeTime } from "@/lib/memory";
 
 function statusTone(status: GateSignal["status"]): string {
   return status === "pass" ? "text-success" : status === "fail" ? "text-danger" : "text-warning";
@@ -27,6 +33,7 @@ export function TrustCard({
   onContinue,
   onRecheck,
   busy = false,
+  ranAt,
 }: {
   data: TrustCardData;
   onBlockSpend?: (agentId: string) => void;
@@ -35,6 +42,8 @@ export function TrustCard({
   onRecheck?: (agentId: string) => void;
   /** True while a Markets / Free-MCP tool call is in flight. */
   busy?: boolean;
+  /** Transcript message time for the last-run age line. */
+  ranAt?: number;
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -42,6 +51,11 @@ export function TrustCard({
   const actionLocked = useRef(false);
   const continueEnabled = data.decision === "GO" && !busy && Boolean(onContinue);
   const showBlockSpend = data.decision === "NO_GO" || data.decision === "CAUTION";
+  const lastRunSummary = formatGateLastRunSummary(
+    data.lastRun,
+    ranAt,
+    typeof ranAt === "number" ? relativeTime(ranAt) : undefined,
+  );
   const decisionTone =
     data.decision === "GO"
       ? "bg-success/15 text-success"
@@ -84,6 +98,11 @@ export function TrustCard({
           <p className="mt-0.5 text-[12px] text-ink-secondary">
             {t("okxGate.trust.agent", { agentId: data.agentId })}
           </p>
+          {lastRunSummary && (
+            <p className="mt-1 text-[11.5px] text-ink-secondary">
+              {t("okxGate.lastRun.label", { summary: lastRunSummary })}
+            </p>
+          )}
         </div>
       </div>
       <p className="mt-3 border-t border-hairline/70 pt-3 text-[12px] leading-relaxed text-ink-secondary">

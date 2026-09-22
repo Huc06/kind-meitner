@@ -11,6 +11,12 @@ export type GateSignal = {
   label?: string;
 };
 
+/** Optional evidence for the card last-run line. Never invent values. */
+export type GateLastRun = {
+  latencyMs?: number;
+  toolCount?: number;
+};
+
 export type ReadinessRunCardData = {
   kind: "readiness";
   endpointUrl: string;
@@ -18,6 +24,7 @@ export type ReadinessRunCardData = {
   checks: GateSignal[];
   remediation: string[];
   rawJson: string;
+  lastRun?: GateLastRun;
 };
 
 export type TrustCardData = {
@@ -30,6 +37,7 @@ export type TrustCardData = {
   remediation: string[];
   safeNextStep: string;
   rawJson: string;
+  lastRun?: GateLastRun;
 };
 
 export type OkxActionCardData = ReadinessRunCardData | TrustCardData;
@@ -78,6 +86,30 @@ function signals(value: unknown): GateSignal[] | null {
   return rows;
 }
 
+/** Pull latency / tool count only when the server already stated them. */
+export function extractGateLastRun(
+  data: Record<string, unknown>,
+  rows: GateSignal[],
+): GateLastRun | undefined {
+  let latencyMs: number | undefined;
+  let toolCount: number | undefined;
+  for (const row of rows) {
+    const latency = row.detail.match(/\blatencyMs=(\d+)\b/);
+    if (latency) latencyMs = Number(latency[1]);
+    const tools = row.detail.match(/\b(\d+)\s+tools?\b/i);
+    if (tools) toolCount = Number(tools[1]);
+  }
+  if (isRecord(data.raw) && Array.isArray(data.raw.toolNames)) {
+    const names = data.raw.toolNames.filter((name): name is string => typeof name === "string");
+    if (names.length > 0 && names.length === data.raw.toolNames.length) toolCount = names.length;
+  }
+  if (latencyMs === undefined && toolCount === undefined) return undefined;
+  return {
+    ...(latencyMs !== undefined ? { latencyMs } : {}),
+    ...(toolCount !== undefined ? { toolCount } : {}),
+  };
+}
+
 /** The provider records a completed MCP result as a string in `tool.output`.
  * Accept the real `{ resource, data }` envelope and a bare `data` object for
  * older transcripts, but never fabricate a verdict/decision from malformed data. */
@@ -99,7 +131,16 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     const checks = signals(data.checks);
     const remediation = listOfText(data.remediation);
     if (!endpointUrl || !verdict || !readinessVerdicts.has(verdict as ReadinessVerdict) || !checks || !remediation) return null;
-    return { kind: "readiness", endpointUrl, verdict: verdict as ReadinessVerdict, checks, remediation, rawJson };
+    const lastRun = extractGateLastRun(data, checks);
+    return {
+      kind: "readiness",
+      endpointUrl,
+      verdict: verdict as ReadinessVerdict,
+      checks,
+      remediation,
+      rawJson,
+      ...(lastRun ? { lastRun } : {}),
+    };
   }
 
   const agentId = text(data.agentId, 128);
@@ -110,6 +151,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   const remediation = listOfText(data.remediation);
   const safeNextStep = text(data.safeNextStep);
   if (!agentId || !decision || !trustDecisions.has(decision as TrustDecision) || !summary || !signalsList || !notChecked || !remediation || !safeNextStep) return null;
+  const lastRun = extractGateLastRun(data, signalsList);
   return {
     kind: "trust",
     agentId,
@@ -120,6 +162,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     remediation,
     safeNextStep,
     rawJson,
+    ...(lastRun ? { lastRun } : {}),
   };
 }
 
@@ -151,4 +194,19 @@ export function checkLabel(row: GateSignal): string {
     endpoint_readiness: "Endpoint readiness",
   };
   return labels[row.id] ?? row.id.replace(/[_-]+/g, " ");
+}
+
+/** Build the muted last-run summary from message time + parsed evidence. */
+export function formatGateLastRunSummary(
+  lastRun: GateLastRun | undefined,
+  ranAt: number | undefined,
+  ageLabel: string | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (typeof ranAt === "number" && Number.isFinite(ranAt) && ageLabel) parts.push(ageLabel);
+  if (typeof lastRun?.latencyMs === "number") parts.push(`${lastRun.latencyMs}ms`);
+  if (typeof lastRun?.toolCount === "number") {
+    parts.push(`${lastRun.toolCount} ${lastRun.toolCount === 1 ? "tool" : "tools"}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
