@@ -4,15 +4,27 @@ Read this after the easy plan: `docs/plans/2026-09-21-okx-feature-uiux-easy.md` 
 
 Master tracker: issue **#31**. Submit deadline: **25 Sep 2026 23:59 UTC**. Singapore finale target: **7 Oct**.
 
+## Focus lock (owner)
+
+**Features only right now.**
+
+Do: readiness, trust, action card CTAs, room loops, small gate UX.
+
+Do **not** prioritize: evidence packs, demo video, submit docs, positioning writeups, visual E2E evidence.
+
+Defer until production smoke PASS and both loops work: issue **#68** and draft PRs **#52 #53 #54 #55 #57**.
+
 ## What just landed
 
 - **#59** merged: skip absent mobile CI jobs.
-- **#61** merged: cross-platform CI baseline (vendor SHA, MausBodies guards, phone-secret fixture, evaluator size, POSIX broker paths).
+- **#61** merged: cross platform CI baseline (vendor SHA, MausBodies guards, phone secret fixture, evaluator size, POSIX broker paths).
+- **#62** merged: this next steps checklist (first version).
 - Planning docs + smoke script already on `main` (through **#41**).
+- CI tickets **#58** and **#60** closed.
 
 ## What is still blocked
 
-Production Free-MCP still does **not** list `scan_free_mcp_readiness`.
+Production Free MCP still does **not** list `scan_free_mcp_readiness`.
 
 ```bash
 pnpm dev-day:smoke
@@ -21,86 +33,100 @@ pnpm dev-day:smoke
 
 Live URL: `https://kind-meitner-production.up.railway.app/api/okx/free-mcp`
 
-## Spine order (do in this order only)
+## Implement issues (use these)
 
-### 1. Merge readiness tool — PR **#47** (issue #23)
+| Order | Issue | What | PR |
+|------:|-------|------|-----|
+| 1 | **#63** | Ship readiness: rebase, merge, Railway, smoke PASS | **#47** |
+| 2 | **#64** | Ship trust after smoke green | **#48** |
+| 3 | **#65** | Finish locked CTAs (Apply host, Block, Continue GO only, Re check) | **#50** |
+| 4 | **#66** | Verify both loops in `#dev-day-gate` | **#51** |
+| 5 | **#67** | Optional gate UX: busy disable, last run, mention routing | with #50 or follow up |
+| later | **#68** | Evidence / video / submit package | **DEFER** |
 
-Owner: **@Huc06**
+Parents still valid: #23 readiness, #24 trust, #29 cards, #30 room.
 
-1. Rebase `feat/issue-23-free-mcp-readiness` onto latest `main` (now includes #61).
-2. Confirm `typecheck + test` green on ubuntu / macos / windows.
-3. Confirm local: `pnpm exec vitest run server/okx/free-mcp.test.ts` (expect 8/8).
-4. Undraft already done — **merge** when CI is green.
-5. Deploy Railway production for kind-meitner.
-6. Run `pnpm dev-day:smoke` until PASS (must list `scan_free_mcp_readiness` and call it successfully).
+## Spine order (features only)
 
-Do not start cards/room merges before this smoke is green.
-
-### 2. Merge trust tool — PR **#48** (issue #24)
-
-Owner: **@Huc06**
-
-1. Rebase onto `main` after #47 (PR is currently CONFLICTING).
-2. Confirm `get_asp_trust_card` returns GO / CAUTION / NO_GO plus `notChecked` and `safeNextStep`.
-3. Undraft and merge.
-4. Redeploy if needed; smoke should still pass and trust tool must appear in tools/list.
-
-### 3. Finish action cards — PR **#50** (issue #29)
+### 1. Ship readiness — issue **#63** / PR **#47** (parent #23)
 
 Owner: **@Huc06**
 
-Current gap: cards only have Copy / Evidence / Rescan.
+1. Rebase `feat/issue-23-free-mcp-readiness` onto latest `main` (includes #61 and #62).
+2. Confirm `typecheck + test` green on ubuntu, macos, and windows.
+3. Local check: `pnpm exec vitest run server/okx/free-mcp.test.ts` (expect 8/8).
+4. Merge PR **#47**.
+5. Deploy Railway production for kind meitner.
+6. Run `pnpm dev-day:smoke` until PASS (`scan_free_mcp_readiness` in tools/list and call works).
 
-Add locked CTAs from the easy plan:
+Do not merge cards or room before this smoke is green.
+
+### 2. Ship trust — issue **#64** / PR **#48** (parent #24)
+
+Owner: **@Huc06**
+
+1. Wait for #63 smoke PASS.
+2. Rebase #48 onto `main` (currently CONFLICTING).
+3. Confirm `get_asp_trust_card` returns GO / CAUTION / NO_GO plus `notChecked` and `safeNextStep`.
+4. Undraft and merge **#48**.
+5. Confirm tool on production tools/list.
+
+### 3. Finish action card CTAs — issue **#65** / PR **#50** (parent #29)
+
+Owner: **@Huc06**
+
+Current gap: Copy / Evidence / Rescan only.
 
 | Card | CTA | Rule |
 |------|-----|------|
-| Readiness | **Apply host** | Pastes real Railway Free-MCP URL |
+| Readiness | **Apply host** | Pastes real Railway Free MCP URL |
 | Readiness | **Run scan again** | Keep; disable while Markets busy |
-| Trust | **Block spend** | On NO_GO / CAUTION |
+| Trust | **Block spend** | On NO_GO or CAUTION |
 | Trust | **Continue free tools** | Enabled **only on GO** |
-| Trust | **Re-check** | Re-run trust for same agent id |
-
-Also: disable CTAs while a tool call is in flight; never invent verdicts in the UI; shared parser only.
+| Trust | **Re check** | Re run trust for same agent id |
 
 Merge only after #47 and #48 are live on Railway.
 
-### 4. Room seed — PR **#51** (issue #30)
+### 4. Room loops — issue **#66** / PR **#51** (parent #30)
 
 Owner: **@Huc06**
 
-Hold until steps 1–3 are done. Then verify `#dev-day-gate`:
+Hold until steps 1 to 3 done. Then prove:
 
-- Loop A: vercel FAIL → Apply host → Run again → PASS
-- Loop B: agent 99999 NO_GO → Block → agent 13837 GO → Continue → real free-tool activity
+- Loop A: bad host FAIL → Apply host → Run again → PASS
+- Loop B: bad agent NO_GO → Block → ASP `#13837` GO → Continue → real free tool activity
 
-## Hold (do not merge yet)
+### 5. Optional gate UX — issue **#67**
 
-| PR | Why |
-|----|-----|
-| #49 catalog | After room |
-| #42 avatars | Last; OKX-agent marks only |
-| #52 #53 #54 #55 #57 | Evidence / video / submit / visual — after smoke green |
-| #43 | Rebase conflict; docs only |
-| #44 | Not spine (local OKX server) |
-| #16 | Welcome polish — after gate |
-| #14 #46 | Chore OK when free; do not delay #47 |
+Busy disable on CTAs, last run line, Coach/Scout never invent verdicts.
+
+## Hold (not features focus)
+
+| Item | Why |
+|------|-----|
+| **#68**, #26, #27, #25, #28, #56 | Evidence / video / submit / positioning / visual E2E |
+| PR #52 #53 #54 #55 #57 | Same; keep draft |
+| #49 catalog, #42 avatars | After loops |
+| #43 | Rebase docs; low priority |
+| #44 | Local OKX server; not spine |
+| #16 | Welcome polish; after gate |
+| #14 #46 | Chore when free |
 | **#15** | **Do not merge** (drops OKX views) |
 
 ## Who does what
 
 | Role | Now |
 |------|-----|
-| **@Huc06 (Hulk)** | Rebase+CI+#47 merge+deploy → #48 → #50 CTAs → #51 |
-| **Planning (harrymove-ctrl / Grok Bot)** | Specs, PR review comments, this checklist — no feature coding |
-| **Huc bot** | Stood down unless user asks for coding help |
-| **Owner** | Nudge merge when #47 CI is green; keep submit form path ready for 25 Sep |
+| **@Huc06 (Hulk)** | **#63 → #64 → #65 → #66** (then #67 if small) |
+| Planning (harrymove ctrl / Grok Bot) | Specs, review, this checklist; no feature coding |
+| Huc bot | Stood down unless Hari asks for coding help |
+| Owner (Hari) | Nudge merge when #47 CI is green |
 
-## Done when
+## Done when (features bar)
 
 1. `pnpm dev-day:smoke` PASS on production.
-2. Both loops runnable in `#dev-day-gate` with real CTAs (not JSON-only).
-3. Then evidence / video / submit package PRs can land.
+2. Both loops runnable in `#dev-day-gate` with real CTAs (not JSON only).
+3. Only then pick up #68 / evidence / video / submit.
 
 ## Links
 
@@ -108,7 +134,4 @@ Hold until steps 1–3 are done. Then verify `#dev-day-gate`:
 - Recommendations: `docs/plans/2026-09-21-okx-recommendations-and-linked-plan.md`
 - Smoke: `scripts/dev-day-gate-smoke.sh` / `pnpm dev-day:smoke`
 - Tracker: https://github.com/Huc06/kind-meitner/issues/31
-- #47: https://github.com/Huc06/kind-meitner/pull/47
-- #48: https://github.com/Huc06/kind-meitner/pull/48
-- #50: https://github.com/Huc06/kind-meitner/pull/50
-- #51: https://github.com/Huc06/kind-meitner/pull/51
+- Ship tickets: #63 #64 #65 #66 #67 (defer #68)
