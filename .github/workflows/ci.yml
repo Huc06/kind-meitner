@@ -244,8 +244,25 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  mobile-projects:
+    name: detect mobile projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.projects.outputs.ios }}
+      android: ${{ steps.projects.outputs.android }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: projects
+        shell: bash
+        run: |
+          if [[ -f ios/Package.swift ]]; then echo "ios=true" >> "$GITHUB_OUTPUT"; else echo "ios=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ -f android/gradlew && ( -f android/settings.gradle || -f android/settings.gradle.kts ) ]]; then echo "android=true" >> "$GITHUB_OUTPUT"; else echo "android=false" >> "$GITHUB_OUTPUT"; fi
+
   ios:
     name: Swift tests + iOS build
+    needs: mobile-projects
+    if: needs.mobile-projects.outputs.ios == 'true'
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -273,6 +290,8 @@ jobs:
   # Kotlin suite on exactly the change that breaks it.
   android:
     name: Kotlin tests + Android build
+    needs: mobile-projects
+    if: needs.mobile-projects.outputs.android == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
