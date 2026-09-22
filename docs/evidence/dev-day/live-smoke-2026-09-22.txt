@@ -1,0 +1,25 @@
+
+> kind-meitner@0.1.78 dev-day:smoke /private/tmp/kind-meitner-issue66
+> bash scripts/dev-day-gate-smoke.sh
+
+MCP: https://kind-meitner-production.up.railway.app/api/okx/free-mcp
+
+== 1) tools/list must include gate tools ==
+list_okx_ai_use_cases
+get_free_a2mcp_launch_checklist
+scan_free_mcp_readiness
+get_asp_trust_card
+query_market_benchmarks
+get_asp_reputation
+get_trending_asps
+OK: both gate tools listed
+
+== 2) vercel.app host must FAIL (no live vercel required) ==
+verdict=FAIL
+OK: vercel host FAIL with remediation
+
+== 3) self Free MCP URL must PASS or WARN ==
+verdict=PASS
+OK: self scan PASS
+
+All Dev Day gate smoke checks passed.
