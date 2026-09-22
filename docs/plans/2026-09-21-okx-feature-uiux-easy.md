@@ -291,6 +291,15 @@ Keep field level detail in the older long docs if needed. For day to day reading
 
 ## Locked decisions (from recommendations review)
 
+### Focus lock (22 Sep)
+
+Product features first: ship readiness (#63/#47), trust (#64/#48), action card CTAs (#65/#50), room loops (#66/#51). Optional gate UX (#67).
+
+Do not prioritize evidence packs, demo video, submit docs, positioning, or visual E2E until production smoke PASS and both loops work. Defer #68 and draft PRs #52–#55/#57.
+
+See `docs/plans/2026-09-22-okx-dev-day-next-steps.md`.
+
+
 These are now product rules, not optional ideas.
 
 1. Ship readiness and trust tools with CI before polishing cards.
