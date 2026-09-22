@@ -63,7 +63,7 @@ async function restartVerificationServer(baseUrl: string, dataDir: string, logPa
   return child;
 }
 
-it("serves only the catalog and provisions/imports Market Scout exactly once across restart", async () => {
+it("serves only the catalog and provisions/imports Markets exactly once across restart", async () => {
   const fixture = await launchVerificationServer();
   const { url, dataDir, logPath } = fixture.info;
   let restarted: ChildProcess | undefined;
@@ -75,7 +75,7 @@ it("serves only the catalog and provisions/imports Market Scout exactly once acr
       agents: expect.arrayContaining([
         expect.objectContaining({
           id: "okx-market-scout-v1",
-          name: "Market Scout",
+          name: "Markets",
           avatar: "chart",
           provider: "OKX.ai",
           capabilities: ["chat", "market-intelligence"],
@@ -120,7 +120,7 @@ it("serves only the catalog and provisions/imports Market Scout exactly once acr
     const scout = beforeRestart.body.bots.find((bot: { id: string }) => bot.id === firstImport.body.agent.id);
     const room = beforeRestart.body.groups.find((group: { id: string }) => group.id === firstDefault.body.room.id);
     expect(scout).toMatchObject({
-      name: "Market Scout",
+      name: "Markets",
       okxImport: {
         kind: "okx-catalog",
         externalAgentId: "okx-market-scout-v1",
@@ -138,7 +138,7 @@ it("serves only the catalog and provisions/imports Market Scout exactly once acr
     });
     expect(room.memberIds.filter((id: string) => id === scout.id)).toHaveLength(1);
     expect(room.messages.filter((message: { kind: string; tool?: { name?: string; system?: boolean } }) =>
-      message.kind === "activity" && message.tool?.name === "Market Scout joined #Channel 1 from OKX.ai." && message.tool.system === true,
+      message.kind === "activity" && message.tool?.name === "Markets joined #Channel 1 from OKX.ai." && message.tool.system === true,
     )).toHaveLength(1);
 
     const clearedLegacySoul = await api(url, `/api/bots/${scout.id}`, "PATCH", { soul: "" });
