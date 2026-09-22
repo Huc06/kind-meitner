@@ -5782,10 +5782,11 @@ describe("harness HTTP API", () => {
 
   it("injects the bot's standing instructions (soul) into a real turn, directly after the persona", async () => {
     const bot = (await api("POST", "/api/bots", { name: "Kiwi", title: "Tracker" })).body.bot;
+    const soul = "File bugs. Never file noise.";
     try {
       expect((await api("PATCH", `/api/bots/${bot.id}`, {
         modelSelection: { instanceId: "claude", model: "claude-sonnet-5" },
-        soul: "File bugs. Never file noise.",
+        soul,
       })).status).toBe(200);
       rmSync(fakeClaudeDump, { force: true });
       expect((await api("POST", `/api/bots/${bot.id}/messages`, { text: "hello" })).status).toBe(202);
@@ -5796,7 +5797,7 @@ describe("harness HTTP API", () => {
       const persona = "You are Kiwi, a personal bot in kind-meitner. Role: Tracker.";
       const afterPersona = system.slice(persona.length);
       expect(afterPersona.startsWith("\n\nYour standing instructions follow.")).toBe(true);
-      expect(system).toContain("--- BEGIN STANDING INSTRUCTIONS (SOUL.md, 28 bytes) ---\nFile bugs. Never file noise.\n--- END STANDING INSTRUCTIONS ---");
+      expect(system).toContain(`--- BEGIN STANDING INSTRUCTIONS (SOUL.md, ${Buffer.byteLength(soul, "utf8")} bytes) ---\n${soul}\n--- END STANDING INSTRUCTIONS ---`);
     } finally {
       await api("POST", `/api/bots/${bot.id}/interrupt`);
       await api("DELETE", `/api/bots/${bot.id}`);
@@ -8677,11 +8678,12 @@ describe("bot memory API", () => {
     try {
       const before = await api("GET", `/api/bots/${bot.id}/system-prompt`);
       expect(before.status).toBe(200);
+      const persona = "You are Kiwi, a personal bot in kind-meitner. Role: Tracker. About: Files bugs.";
       expect(before.body.sections[0]).toEqual({
         id: "persona",
         label: "Identity",
-        text: "You are Kiwi, a personal bot in kind-meitner. Role: Tracker. About: Files bugs.",
-        bytes: 78,
+        text: persona,
+        bytes: Buffer.byteLength(persona, "utf8"),
       });
       expect(before.body.sections.map((s: { id: string }) => s.id)).not.toContain("soul");
       expect(before.body.sections.map((s: { id: string }) => s.id)).toContain("memory");
