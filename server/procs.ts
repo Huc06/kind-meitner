@@ -236,6 +236,10 @@ export function brokerSocketPath(dataDir: string, tag: string): string {
     // concurrent app instances the way a POSIX socket directory does.
     return `\\\\.\\pipe\\kind-meitner-perm-${process.pid}-${tag}`;
   }
+  // macOS reports a per-user /var/folders/... TMPDIR that can itself consume
+  // most of sun_path. /tmp is a short local path; the unguessable data-dir
+  // hash plus the broker's 0600 chmod preserve isolation.
+  const brokerDir = process.platform === "darwin" ? "/tmp" : tmpdir();
   const scope = createHash("sha256").update(`${dataDir}\0${tag}`).digest("hex").slice(0, 20);
-  return join(tmpdir(), `kind-meitner-perm-${scope}.sock`);
+  return join(brokerDir, `kind-meitner-perm-${scope}.sock`);
 }

@@ -54,7 +54,8 @@ describe("brokerSocketPath", () => {
       return;
     }
 
-    expect(path.startsWith(tmpdir())).toBe(true);
+    const expectedDir = process.platform === "darwin" ? "/tmp" : tmpdir();
+    expect(path.startsWith(expectedDir)).toBe(true);
     expect(path.length).toBeLessThan(104);
     expect(path).not.toContain(deepDataDir);
   });

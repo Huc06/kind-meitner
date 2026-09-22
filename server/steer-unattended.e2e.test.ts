@@ -59,7 +59,8 @@ function brokerCandidates(threadId: string, botId: string): string[] {
   const tag = `${prefix}${digest}`;
   const baseScope = createHash("sha256").update(`${dataDir}\0${tag}`).digest("hex").slice(0, 20);
   const scope = createHash("sha256").update(`${dataDir}\0${child.pid}\0${botId}\0${threadId}`).digest("hex").slice(0, 16);
-  return [join(tmpdir(), `kind-meitner-perm-${baseScope}.sock`), join(tmpdir(), `kind-meitner-perm-${scope}.sock`)];
+  const brokerDir = process.platform === "darwin" ? "/tmp" : tmpdir();
+  return [join(brokerDir, `kind-meitner-perm-${baseScope}.sock`), join(brokerDir, `kind-meitner-perm-${scope}.sock`)];
 }
 
 async function connectBroker(threadId: string, botId: string): Promise<Socket> {
