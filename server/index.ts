@@ -9702,6 +9702,28 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         const result = appendMemoryLog(internalSender.id, body.text, { source: memorySource() });
         return json(res, result.ok ? 200 : 400, result);
       }
+      if (method === "POST" && path === "/api/internal/okx/scan-free-mcp-readiness") {
+        const body = await readInternalBody();
+        const endpointUrl = typeof body?.endpointUrl === "string" ? body.endpointUrl.trim() : "";
+        const agentId = typeof body?.agentId === "string" ? body.agentId.trim() : undefined;
+        if (!endpointUrl) return json(res, 400, { error: "endpointUrl is required" });
+        const scanned = await okxIntelligence.handleFreeMcpToolCall("scan_free_mcp_readiness", {
+          endpointUrl,
+          ...(agentId ? { agentId } : {}),
+        });
+        return json(res, 200, scanned);
+      }
+      if (method === "POST" && path === "/api/internal/okx/get-asp-trust-card") {
+        const body = await readInternalBody();
+        const agentId = typeof body?.agentId === "string" ? body.agentId.trim() : "";
+        const endpointUrl = typeof body?.endpointUrl === "string" ? body.endpointUrl.trim() : undefined;
+        if (!agentId) return json(res, 400, { error: "agentId is required" });
+        const card = await okxIntelligence.handleFreeMcpToolCall("get_asp_trust_card", {
+          agentId,
+          ...(endpointUrl ? { endpointUrl } : {}),
+        });
+        return json(res, 200, card);
+      }
       if (method === "POST" && path === "/api/internal/browser/mcp") {
         const body = await readInternalBody();
         const bot = store.bot(internalCapability.botId);

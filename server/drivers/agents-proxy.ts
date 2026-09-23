@@ -827,6 +827,30 @@ const TOOLS = [
       required: ["action", "skill_md", "source"],
     },
   },
+  {
+    name: "scan_free_mcp_readiness",
+    description: "Scan an external OKX.ai agent or Free A2MCP endpoint for listing readiness, protocol compliance, latency and security before recommending or using it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        endpointUrl: { type: "string", description: "The public HTTPS endpoint to scan (e.g. https://kind-meitner-production.up.railway.app/api/okx/free-mcp)." },
+        agentId: { type: "string", description: "Optional OKX Agent ID (e.g. 13837 or 896)." },
+      },
+      required: ["endpointUrl"],
+    },
+  },
+  {
+    name: "get_asp_trust_card",
+    description: "Evaluate an OKX Agent Service Provider (ASP) by Agent ID or endpoint before payment, spend, or delegation to produce an authoritative GO / NO_GO decision.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agentId: { type: "string", description: "The OKX Agent ID (e.g. 13837 or 896)." },
+        endpointUrl: { type: "string", description: "Optional candidate endpoint URL." },
+      },
+      required: ["agentId"],
+    },
+  },
 ].map((tool) => {
   const annotations = agentToolAnnotations(tool.name);
   return annotations ? { ...tool, annotations } : tool;
@@ -985,6 +1009,30 @@ function recallSpeaker(hit: Json): string {
 }
 
 async function callTool(name: string, args: Json): Promise<{ text: string; isError?: boolean }> {
+  if (name === "scan_free_mcp_readiness") {
+    const endpointUrl = typeof args.endpointUrl === "string" ? args.endpointUrl : "";
+    const agentId = typeof args.agentId === "string" ? args.agentId : undefined;
+    const r = await api("/api/internal/okx/scan-free-mcp-readiness", {
+      method: "POST",
+      body: JSON.stringify({ endpointUrl, agentId }),
+    });
+    return {
+      text: (r as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? JSON.stringify(r),
+      ...(r.error || (r as { isError?: boolean }).isError ? { isError: true } : {}),
+    };
+  }
+  if (name === "get_asp_trust_card") {
+    const agentId = typeof args.agentId === "string" ? args.agentId : "";
+    const endpointUrl = typeof args.endpointUrl === "string" ? args.endpointUrl : undefined;
+    const r = await api("/api/internal/okx/get-asp-trust-card", {
+      method: "POST",
+      body: JSON.stringify({ agentId, endpointUrl }),
+    });
+    return {
+      text: (r as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? JSON.stringify(r),
+      ...(r.error || (r as { isError?: boolean }).isError ? { isError: true } : {}),
+    };
+  }
   if (name === "list_room_targets") {
     const r = await api("/api/internal/room-targets");
     return { text: JSON.stringify(r), ...(r.error ? { isError: true } : {}) };

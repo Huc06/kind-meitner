@@ -493,6 +493,8 @@ describe("agents-proxy MCP surface", () => {
       "propose_profile",
       "skills_list",
       "skill_manage",
+      "scan_free_mcp_readiness",
+      "get_asp_trust_card",
     ]);
     const ask = list.result.tools.find((tool: { name: string }) => tool.name === "ask_bot");
     const delegate = list.result.tools.find((tool: { name: string }) => tool.name === "delegate_bot");
