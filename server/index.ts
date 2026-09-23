@@ -293,9 +293,9 @@ import { RoutineManager, type RoutineRun, type RoutineRunOn, type RoutineRunTrig
 import { OkxGateway } from "./okx/gateway.ts";
 import { OkxRecurringEngine, OkxTreasuryManager } from "./okx/scheduler.ts";
 import { OkxWebhookJournal } from "./okx/journal.ts";
-import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
+import { OkxMarketplaceIntelligence, fetchOkxAgentMetadata, verifyEip3009Payment } from "./okx/intelligence.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
-import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor } from "./okx/agent-import.ts";
+import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor, type OkxCatalogAgent } from "./okx/agent-import.ts";
 import { resolveOkxAgent, executeOkxAgentTool } from "./okx/agent-mcp-resolver.ts";
 import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
@@ -2267,27 +2267,63 @@ function isDevDayGate(room: Pick<GroupRecord, "name" | "section">): boolean {
 /** Reuses one catalog bot per durable external id and repairs its membership.
  * The seed and the explicit import endpoint share this path, so neither can
  * create an orphan or a second local copy after a restart. */
-function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: GroupRecord; bot: BotRecord; activity: Message; created: boolean } {
-  const cleanId = agentId.trim().replace(/^#/, "");
+async function resolveOkxAgentSpec(cleanId: string): Promise<OkxCatalogAgent> {
   const normalizedId = cleanId === "13837" ? "okx-market-scout-v1" : cleanId;
-  let agent = findCatalogOkxAgent(normalizedId);
-  if (!agent) {
-    const isResearch = cleanId === "2023" || cleanId.toLowerCase().includes("research");
-    agent = {
+  const catalog = findCatalogOkxAgent(normalizedId);
+  if (catalog) return catalog;
+
+  // 1. Check indexed ASPs in local intelligence registry
+  if (typeof okxIntelligence !== "undefined") {
+    const asp = okxIntelligence.getAsp(cleanId);
+    if (asp) {
+      return {
+        id: cleanId,
+        name: asp.name,
+        description: `Autonomous ${asp.category.toUpperCase()} ASP on OKX.ai. Trust tier: ${asp.trustTier}, Reputation: ${asp.reputationScore}/100.`,
+        soul: `You are ${asp.name} (ASP #${cleanId}) from OKX.ai Marketplace, an autonomous agent proxy specializing in ${asp.category}. You are installed in this workspace to provide active service to the user and team. You have direct access to OKX.ai intelligence and workspace tools. When the user asks you questions or assigns you tasks or scheduled routines, act as their dedicated ${asp.category} specialist, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+        provider: "OKX.ai",
+        avatar: "chart",
+        capabilities: ["chat", "market-intelligence"],
+        status: "available",
+      };
+    }
+  }
+
+  // 2. Fetch live metadata from OKX.ai SSR
+  const remote = await fetchOkxAgentMetadata(cleanId);
+  if (remote) {
+    const servicesList = remote.services?.map((s) => `- ${s.name}: ${s.description.split("\n")[0]} (${s.price} USDT)`).join("\n") || "";
+    return {
       id: cleanId,
-      name: `Agent #${cleanId}`,
-      description: isResearch
-        ? `OKX.ai Autonomous Market Research & Intelligence Specialist (#${cleanId}).`
-        : `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
-      soul: isResearch
-        ? `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy specializing in Onchain Market Research, Liquidity Analytics, and Competitive Intelligence. You are installed in this workspace to provide active research services to the user and team. You have direct access to OKX.ai intelligence tools (get_market_intelligence_report, query_market_benchmarks). When the user asks you questions, gives you research prompts, or schedules routine tasks for you, act as their dedicated market research specialist: call your research tools, analyze marketplace benchmarks, liquidity, and ASP reputations, and deliver clear, structured market reports. Do not mention @Markets or discuss listing readiness — you are an active service provider executing market research tasks for the user.`
-        : `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy representing OKX Service #${cleanId}. You are installed in this workspace to provide active service to the user and team. When the user asks you questions or assigns you tasks, act as the dedicated specialist for Service #${cleanId}, introduce your specialized capabilities on OKX.ai, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+      name: remote.name,
+      description: remote.description,
+      soul: `You are ${remote.name} (Agent #${cleanId}) from OKX.ai Marketplace. ${remote.description}\n\nYour services on OKX.ai include:\n${servicesList}\n\nYou are installed in this workspace to provide active service to the user and team. When the user asks you questions, gives you prompts, or runs scheduled routines, act as the dedicated specialist for your services, accept task briefs, and deliver clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
       provider: "OKX.ai",
       avatar: "chart",
       capabilities: ["chat", "market-intelligence"],
       status: "available",
     };
   }
+
+  // 3. Graceful fallback for any other unknown ID
+  return {
+    id: cleanId,
+    name: `OKX Agent #${cleanId}`,
+    description: `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
+    soul: `You are OKX Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy representing OKX Service #${cleanId}. You are installed in this workspace to provide active service to the user and team. When the user asks you questions or assigns you tasks, act as the dedicated specialist for Service #${cleanId}, introduce your specialized capabilities on OKX.ai, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+    provider: "OKX.ai",
+    avatar: "chart",
+    capabilities: ["chat", "market-intelligence"],
+    status: "available",
+  };
+}
+
+/** Reuses one catalog bot per durable external id and repairs its membership.
+ * The seed and the explicit import endpoint share this path, so neither can
+ * create an orphan or a second local copy after a restart. */
+async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promise<{ room: GroupRecord; bot: BotRecord; activity: Message; created: boolean }> {
+  const cleanId = agentId.trim().replace(/^#/, "");
+  const agent = await resolveOkxAgentSpec(cleanId);
   let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
   let created = false;
   if (!bot) {
@@ -2323,7 +2359,7 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
 /** Create the Dev Day workbench once, then repair its catalog roster on every
  * later request. It intentionally adds only lifecycle receipts, never a fake
  * completed chat transcript. */
-function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
+async function ensureDevDayGate(): Promise<{ room: GroupRecord; created: boolean }> {
   let room = store.groups.find((group) => !group.dm && isDevDayGate(group));
   let created = false;
   if (!room) {
@@ -2337,7 +2373,7 @@ function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
     created = true;
   }
   for (const agentId of DEV_DAY_GATE_AGENT_IDS) {
-    const ensured = ensureCatalogOkxAgent(room, agentId);
+    const ensured = await ensureCatalogOkxAgent(room, agentId);
     room = ensured.room;
     created ||= ensured.created;
   }
@@ -2346,7 +2382,7 @@ function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
 
 /** Import is keyed by durable external-agent provenance plus room membership,
  * not the client request id, so it remains idempotent after a restart. */
-function importCatalogOkxAgent(value: unknown): { created: boolean; result: ReturnType<typeof okxImportResult> } {
+async function importCatalogOkxAgent(value: unknown): Promise<{ created: boolean; result: ReturnType<typeof okxImportResult> }> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw Object.assign(new Error("import body must be a JSON object"), { status: 400 });
   }
@@ -2363,7 +2399,7 @@ function importCatalogOkxAgent(value: unknown): { created: boolean; result: Retu
   const room = store.group(body.roomId.trim());
   if (!room) throw Object.assign(new Error("no such room"), { status: 404 });
   if (room.dm) throw Object.assign(new Error("OKX agents can only join non-DM rooms"), { status: 400 });
-  const ensured = ensureCatalogOkxAgent(room, body.agentId.trim());
+  const ensured = await ensureCatalogOkxAgent(room, body.agentId.trim());
   return { created: ensured.created, result: okxImportResult(ensured.bot, ensured.room, ensured.activity) };
 }
 
@@ -11976,13 +12012,13 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       });
     }
     if (method === "POST" && path === "/api/okx/dev-day-gate") {
-      const seeded = ensureDevDayGate();
+      const seeded = await ensureDevDayGate();
       return json(res, seeded.created ? 201 : 200, {
         room: { ...publicGroupState(seeded.room), messages: store.messagesFor(seeded.room.threadId) },
       });
     }
     if (method === "POST" && path === "/api/okx/agents/import") {
-      const imported = importCatalogOkxAgent(await readBody(req));
+      const imported = await importCatalogOkxAgent(await readBody(req));
       return json(res, imported.created ? 201 : 200, imported.result);
     }
     if (method === "POST" && path === "/api/okx/resolve-agent") {

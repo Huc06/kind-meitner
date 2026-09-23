@@ -30,6 +30,11 @@ export type ReadinessRunCardData = {
 export type TrustCardData = {
   kind: "trust";
   agentId: string;
+  agentName?: string;
+  description?: string;
+  score?: string;
+  avatarUrl?: string;
+  services?: Array<{ serviceId: number | string; name: string; description: string; price: string }>;
   decision: TrustDecision;
   summary: string;
   signals: GateSignal[];
@@ -165,6 +170,23 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   }
 
   const agentId = text(data.agentId, 128);
+  const agentName = text(data.agentName, 200);
+  const description = text(data.description, 2000);
+  const score = text(data.score, 20);
+  const avatarUrl = text(data.avatarUrl, 500);
+  const services = Array.isArray(data.services)
+    ? data.services.slice(0, 10).flatMap((s: any) => {
+        if (!isRecord(s)) return [];
+        const name = text(s.name, 100);
+        if (!name) return [];
+        return [{
+          serviceId: typeof s.serviceId === "number" || typeof s.serviceId === "string" ? s.serviceId : String(s.serviceId ?? ""),
+          name,
+          description: text(s.description, 500) ?? "",
+          price: text(s.price, 20) ?? "0",
+        }];
+      })
+    : undefined;
   const decision = text(data.decision, 20);
   const summary = text(data.summary);
   const signalsList = signals(data.signals);
@@ -176,6 +198,11 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   return {
     kind: "trust",
     agentId,
+    ...(agentName ? { agentName } : {}),
+    ...(description ? { description } : {}),
+    ...(score ? { score } : {}),
+    ...(avatarUrl ? { avatarUrl } : {}),
+    ...(services && services.length > 0 ? { services } : {}),
     decision: decision as TrustDecision,
     summary,
     signals: signalsList,

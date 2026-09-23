@@ -265,6 +265,14 @@ export function Composer({
     });
 
     // OKX Quick Commands for Dev Day
+    const clonedBot = members?.find(
+      (m) =>
+        m.okxImport &&
+        !["okx-market-scout-v1", "okx-listing-coach", "okx-spend-scout"].includes(
+          m.okxImport.externalAgentId,
+        ),
+    );
+
     available.push(
       {
         id: "scan",
@@ -279,7 +287,7 @@ export function Composer({
       {
         id: "trust",
         label: "/trust",
-        description: "Check OKX Marketplace Agent Trust (#2023 · CAUTION)",
+        description: "Check OKX Marketplace Agent Trust (e.g. #3598 MoonFinder, #2023, #1965 CertiK)",
       },
       {
         id: "block",
@@ -289,22 +297,30 @@ export function Composer({
       {
         id: "services",
         label: "/services",
-        description: "Ask Cloned Agent #2023 what services it provides",
+        description: clonedBot
+          ? `Ask ${clonedBot.name} what services it provides`
+          : "Ask Markets what OKX agent services are available",
       },
       {
         id: "chains",
         label: "/chains",
-        description: "Query Cloned Agent #2023 for supported chains & RPCs",
+        description: clonedBot
+          ? `Query ${clonedBot.name} for supported chains & RPCs`
+          : "Query supported chains and canonical RPCs",
       },
       {
         id: "research",
         label: "/research",
-        description: "Ask Cloned Agent #2023 to generate Market Intelligence Report",
+        description: clonedBot
+          ? `Ask ${clonedBot.name} to execute market research report`
+          : "Generate Bloomberg Market Intelligence & Risk Report",
       },
       {
         id: "benchmarks",
         label: "/benchmarks",
-        description: "Ask Cloned Agent #2023 to query Category Pricing & Volume Benchmarks",
+        description: clonedBot
+          ? `Ask ${clonedBot.name} to query Category Pricing & Volume Benchmarks`
+          : "Query Category Pricing & Volume Benchmarks",
       },
     );
 
@@ -363,17 +379,40 @@ export function Composer({
 
   const pickCommand = (command: ComposerSlashCommand) => {
     if (!slash) return;
+    const clonedBot = members?.find(
+      (m) =>
+        m.okxImport &&
+        !["okx-market-scout-v1", "okx-listing-coach", "okx-spend-scout"].includes(
+          m.okxImport.externalAgentId,
+        ),
+    );
     let replacement = "";
     if (command.id === "learn") replacement = "/learn ";
     else if (command.id === "setup") replacement = "/setup ";
     else if (command.id === "scan") replacement = '@Markets scan endpoint https://kind-meitner-production.up.railway.app/api/okx/free-mcp agentId="13837"';
     else if (command.id === "scan-vercel") replacement = "@Markets scan endpoint https://demo.vercel.app/api/okx/free-mcp";
-    else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="2023"';
+    else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="3598"';
     else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
-    else if (command.id === "services") replacement = "@Agent #2023 What services do you provide and how can you assist our team in this workspace?";
-    else if (command.id === "chains") replacement = "@Agent #2023 List all supported EVM and SVM chain IDs, network names, and canonical RPCs for X Layer, Solana, and Ethereum.";
-    else if (command.id === "research") replacement = "@Agent #2023 Execute your research service: Generate a comprehensive Market Intelligence and Risk Report for OKX.ai agent categories.";
-    else if (command.id === "benchmarks") replacement = "@Agent #2023 Query competitive pricing benchmarks, reject rates, and volume statistics for all OKX.ai agent categories.";
+    else if (command.id === "services") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} What services do you provide on OKX.ai and how can you assist our team in this workspace?`
+        : "@Markets What OKX.ai agent services and categories are currently available?";
+    }
+    else if (command.id === "chains") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} List all supported EVM and SVM chain IDs, network names, and canonical RPCs for X Layer, Solana, and Ethereum.`
+        : "@Markets List all supported EVM and SVM chain IDs, network names, and canonical RPCs.";
+    }
+    else if (command.id === "research") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} Execute your specialized analysis service: generate a comprehensive market intelligence report for the team.`
+        : "@Markets Generate a comprehensive Bloomberg Market Intelligence and Risk Report for OKX.ai agent categories.";
+    }
+    else if (command.id === "benchmarks") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} Query competitive pricing benchmarks, reject rates, and volume statistics for OKX.ai agent categories.`
+        : "@Markets Query competitive pricing benchmarks, reject rates, and volume statistics for all OKX.ai agent categories.";
+    }
 
     const next = replaceComposerSlashTrigger(text, slash, replacement);
     editText(next.text);

@@ -99,9 +99,13 @@ export function TrustCard({
           {data.decision}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[13px] font-medium text-ink">{t("okxGate.trust.title")}</h3>
+          <h3 className="text-[13px] font-medium text-ink">
+            {data.agentName ? `${data.agentName} (#${data.agentId})` : t("okxGate.trust.title")}
+          </h3>
           <p className="mt-0.5 text-[12px] text-ink-secondary">
-            {t("okxGate.trust.agent", { agentId: data.agentId })}
+            {data.agentName
+              ? `OKX.ai Marketplace Agent${data.score ? ` · ⭐ ${data.score}/5.0` : ""}`
+              : t("okxGate.trust.agent", { agentId: data.agentId })}
           </p>
           {lastRunSummary && (
             <p className="mt-1 text-[11.5px] text-ink-secondary">
@@ -113,6 +117,21 @@ export function TrustCard({
       <p className="mt-3 border-t border-hairline/70 pt-3 text-[12px] leading-relaxed text-ink-secondary">
         {data.summary}
       </p>
+      {data.services && data.services.length > 0 && (
+        <div className="mt-2.5 rounded-xl border border-hairline/60 bg-inset/50 p-2.5">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">
+            Verified Services on OKX ({data.services.length})
+          </div>
+          <div className="mt-1.5 space-y-1">
+            {data.services.slice(0, 3).map((s) => (
+              <div key={s.serviceId} className="flex items-center justify-between text-[11.5px] text-ink">
+                <span className="truncate">{s.name}</span>
+                <span className="ml-2 shrink-0 font-mono text-[10.5px] text-ink-secondary">{s.price} USDT</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <ul aria-label={t("okxGate.trust.signals")} className="mt-2 space-y-1.5">
         {data.signals.map((signal) => (
           <li key={`${signal.id}:${signal.detail}`} className="flex items-start gap-2 text-[12px] leading-relaxed">
