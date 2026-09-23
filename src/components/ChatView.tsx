@@ -39,7 +39,8 @@ import { EngineSetup } from "./EngineSetup";
 import { isProviderSafetyBlock, PROVIDER_SAFETY_GUIDANCE, PROVIDER_SAFETY_HELP_URL } from "../../shared/provider-safety";
 import { BotAvatar } from "./Avatar";
 import { TurnPresence } from "./TurnPresence";
-import { showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
+import { devDayGateCardsEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
+import { isOkxGateTool } from "@/lib/okx-action-cards";
 import { normalizeState, stateForBot } from "@/lib/mascot";
 import { peerLine, type PeerLine } from "@/lib/peer-message";
 import { showWorkingDots } from "@/lib/turn-tail";
@@ -49,6 +50,7 @@ import { RawMarkdownView, RawToggleAction } from "./RawMarkdownToggle";
 import { ThreadChip } from "./ThreadChip";
 import { VerifyCard } from "./VerifyCard";
 import { askText, runSteps, runSummary, showRun, skillPrompt, skillStaged } from "@/lib/verify-steps";
+import { OkxGateToolResult } from "./OkxGateToolResult";
 import { ToolActivity } from "./ToolActivity";
 import { ThreadRefText } from "./ThreadRefs";
 import { OptionCard, shouldHideOnboardingCard } from "./OptionCard";
@@ -641,6 +643,7 @@ const MessagesList = memo(function MessagesList({
 }) {
   const { state, dispatch } = useStore();
   const showToolCalls = showToolCallsEnabled(state.config);
+  const showGateCards = devDayGateCardsEnabled(state.config);
   // Finished tool chips become compact runs; settled assistant narration
   // becomes one reversible turn row while the terminal answer stays visible.
   const items = useMemo(() => groupTranscript(messages), [messages, locale]);
@@ -690,14 +693,20 @@ const MessagesList = memo(function MessagesList({
           );
         }
         if (item.kind === "run") {
-          if (!showToolCalls) return null;
+          if (!showToolCalls && !item.messages.some((step) => isOkxGateTool(step.tool?.name))) return null;
           return (
             <div key={item.id} className="contents">
               {newDay && <DaySeparator at={first.at} />}
-              <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId)}>
+              <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId || isOkxGateTool(step.tool?.name))}>
                 {item.messages.map((step) => (
                   <div key={step.id} className="contents" data-mid={step.id}>
-                    <ActivityChip message={step} />
+                    <OkxGateToolResult
+                      message={step}
+                      enabled={showGateCards}
+                      busy={bot.busy}
+                      composerDraftId={`bot:${bot.id}:${bot.threadId}`}
+                      fallback={<ActivityChip message={step} />}
+                    />
                   </div>
                 ))}
               </ActivityRun>
@@ -755,8 +764,16 @@ const MessagesList = memo(function MessagesList({
                   />
                 );
               }
-              if (!showToolCalls && !m.comm && !m.threadRef) return null;
-              return <ActivityChip message={m} />;
+              if (!showToolCalls && !m.comm && !m.threadRef && !isOkxGateTool(m.tool?.name)) return null;
+              return (
+                <OkxGateToolResult
+                  message={m}
+                  enabled={showGateCards}
+                  busy={bot.busy}
+                  composerDraftId={`bot:${bot.id}:${bot.threadId}`}
+                  fallback={<ActivityChip message={m} />}
+                />
+              );
             }
             case "screen":
               return m.png ? <ScreenFrame png={m.png} mime={m.mime} /> : null;

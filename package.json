@@ -44,7 +44,6 @@
     "bench:observation": "node --experimental-strip-types scripts/bench-observation.ts",
     "test:watch": "vitest",
     "test:cua": "pnpm build:cua && node scripts/smoke-cua.mjs",
-    "test:cua-container": "node scripts/smoke-cua-container.mjs",
     "check:electron": "node scripts/check-electron.mjs",
     "preview": "vite preview",
     "gen:bodies": "node --experimental-strip-types scripts/gen-mascot-bodies.ts",
@@ -80,7 +79,8 @@
     "control-plane:types": "pnpm --filter @kind-meitner/control-plane types",
     "control-plane:check": "pnpm --filter @kind-meitner/control-plane check",
     "control-plane:test": "pnpm --filter @kind-meitner/control-plane test",
-    "control-plane:dry-run": "pnpm --filter @kind-meitner/control-plane dry-run"
+    "control-plane:dry-run": "pnpm --filter @kind-meitner/control-plane dry-run",
+    "dev-day:smoke": "bash scripts/dev-day-gate-smoke.sh"
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",

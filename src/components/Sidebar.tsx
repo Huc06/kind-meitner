@@ -26,8 +26,6 @@ import {
   Search,
   Scale,
   MessageSquare,
-  TrendingUp,
-  Puzzle,
   Trash2,
   Users,
   X,
@@ -1853,6 +1851,21 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 <button
                   onClick={() => {
                     setPlusOpen(false);
+                    void api("/api/okx/dev-day-gate", { method: "POST", body: "{}" })
+                      .then(({ room }) => {
+                        dispatch({ type: "groupPatched", group: room });
+                        dispatch({ type: "select", id: room.id });
+                      })
+                      .catch((cause) => dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }));
+                  }}
+                  className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
+                >
+                  <Network size={16} className="text-ink-secondary" />
+                  Open Dev Day Gate
+                </button>
+                <button
+                  onClick={() => {
+                    setPlusOpen(false);
                     setNewRoom(true);
                   }}
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
@@ -2093,20 +2106,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             )}
           </button>
           <button
-            data-tour="nav-bloomberg"
-            onClick={() => dispatch({ type: "showBloomberg" })}
-            aria-label={density === "icons" ? "Bloomberg Terminal" : undefined}
-            title={density === "icons" ? "Bloomberg Terminal" : undefined}
-            className={cn(
-              "flex min-h-10 w-full items-center rounded-xl py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "okx-bloomberg" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
-            )}
-          >
-            <TrendingUp size={20} className={state.activeView === "okx-bloomberg" ? "text-accent" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[14px]", density === "icons" && "hidden")}>Bloomberg Terminal</span>
-          </button>
-          <button
             data-tour="nav-evaluator"
             onClick={() => dispatch({ type: "showEvaluator" })}
             aria-label={density === "icons" ? "Evaluator Disputes" : undefined}
@@ -2130,15 +2129,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 {activeDisputesCount}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => dispatch({ type: "togglePlugins", open: true })}
-            className={cn("flex min-h-10 w-full items-center rounded-xl py-2 text-left hover:bg-raised/50", density === "icons" ? "justify-center px-2" : "gap-3 px-3")}
-            aria-label={density === "icons" ? t("sidebar.nav.connectedApps") : undefined}
-            title={density === "icons" ? t("sidebar.nav.connectedApps") : undefined}
-          >
-            <Puzzle size={20} className="text-ink-secondary" />
-            <span className={cn("text-[14px] text-ink", density === "icons" && "hidden")}>{t("sidebar.nav.connectedApps")}</span>
           </button>
           </>
         )}
@@ -2178,14 +2168,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 onSelect: () => dispatch({ type: "showRoutines" }),
               },
               {
-                key: "okx-bloomberg",
-                tourId: "nav-bloomberg",
-                label: "Bloomberg Terminal",
-                icon: <TrendingUp size={18} />,
-                active: state.activeView === "okx-bloomberg",
-                onSelect: () => dispatch({ type: "showBloomberg" }),
-              },
-              {
                 key: "okx-evaluator",
                 tourId: "nav-evaluator",
                 label: "Evaluator Disputes",
@@ -2201,13 +2183,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   </span>
                 ) : undefined,
                 onSelect: () => dispatch({ type: "showEvaluator" }),
-              },
-              {
-                key: "plugins",
-                tourId: "nav-apps",
-                label: t("sidebar.nav.connectedApps"),
-                icon: <Puzzle size={18} />,
-                onSelect: () => dispatch({ type: "togglePlugins", open: true }),
               },
             ]}
           />

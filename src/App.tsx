@@ -16,7 +16,6 @@ import { RemoteAgentSettingsPanel } from "@/components/RemoteAgentSettingsPanel"
 import { NewBotDialog } from "@/components/NewBotDialog";
 import { PluginsPanel, preloadConnectedApps } from "@/components/PluginsPanel";
 import { ComputerPanel } from "@/components/ComputerPanel";
-import { RemoteDesktopPanel } from "@/components/remote-desktop-panel";
 import { InspectorPanel } from "@/components/InspectorPanel";
 import { SettingsModal } from "@/components/SettingsModal";
 import { WorkspaceBackupRecovery } from "@/components/WorkspaceBackupSettings";
@@ -27,7 +26,6 @@ import { RoutinesPage } from "@/components/RoutinesPage";
 import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
-import { LocalVmWorkspace } from "@/components/LocalVmWorkspace";
 import { TeamMapPage } from "@/components/TeamMapPage";
 import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { saveOkxSettings } from "./okx/okx-settings-api";
@@ -74,8 +72,7 @@ function Shell() {
     setLocale(language || globalThis.navigator?.language);
     setLocaleEpoch((epoch) => epoch + 1);
   }, [language]);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [localVmWorkspaceBotId, setLocalVmWorkspaceBotId] = useState<string | null>(null);
+  const [, setPaletteOpen] = useState(false);
   // the Browser tab, expanded into the main column (the small preview in
   // the panel hands off to this and back)
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -159,26 +156,6 @@ function Shell() {
     previousViewRef.current = state.activeView;
   }, [state.activeView]);
 
-  useEffect(() => {
-    if (
-      localVmWorkspaceBotId &&
-      (state.activeView !== "chat" || state.selectedId !== localVmWorkspaceBotId)
-    ) {
-      setLocalVmWorkspaceBotId(null);
-    }
-  }, [localVmWorkspaceBotId, state.activeView, state.selectedId]);
-
-  const openLocalVmWorkspace = (botId: string) => {
-    dispatch({ type: "toggleComputer", open: false });
-    setLocalVmWorkspaceBotId(botId);
-  };
-
-  const openComputerFromWorkspace = (botId: string) => {
-    setLocalVmWorkspaceBotId(null);
-    dispatch({ type: "select", id: botId });
-    dispatch({ type: "toggleComputer", open: true });
-  };
-
   const closeCalendar = useCallback(() => {
     if (calendarOriginRef.current === "team-map") {
       dispatch({ type: "showTeamMap" });
@@ -197,15 +174,6 @@ function Shell() {
   const openCalendarRoom = useCallback((id: string) => {
     dispatch({ type: "select", id });
   }, [dispatch]);
-
-  const nativeViewOverlayOpen =
-    drawerOpen ||
-    paletteOpen ||
-    state.settingsOpen ||
-    state.computerOpen ||
-    state.inspectorOpen ||
-    state.appSettingsOpen ||
-    state.pluginsOpen;
 
   // The macOS app menu's Preferences… item lives in the desktop shell, so the
   // shell signals the request over the bridge (Cmd+, accelerates the item).
@@ -276,13 +244,6 @@ function Shell() {
         <BloombergView />
       ) : state.activeView === "okx-evaluator" ? (
         <EvaluatorView />
-      ) : !remoteClient && localVmWorkspaceBotId ? (
-        <LocalVmWorkspace
-          primaryBotId={localVmWorkspaceBotId}
-          overlayOpen={nativeViewOverlayOpen}
-          onClose={() => setLocalVmWorkspaceBotId(null)}
-          onOpenComputer={openComputerFromWorkspace}
-        />
       ) : noEngines ? (
         <NoEngines />
       ) : group ? (
@@ -307,17 +268,7 @@ function Shell() {
           ? <RemoteAgentSettingsPanel bot={bot} />
           : <BotSettingsDialog key={bot.id} bot={bot} />
       )}
-      {state.computerOpen && bot && (
-        remoteClient ? (
-          <RemoteDesktopPanel key={bot.id} bot={bot} />
-        ) : (
-          <ComputerPanel
-            key={bot.id}
-            bot={bot}
-            onOpenVmWorkspace={openLocalVmWorkspace}
-          />
-        )
-      )}
+      {state.computerOpen && bot && <ComputerPanel key={bot.id} bot={bot} />}
       {!remoteClient && state.inspectorOpen && bot && <InspectorPanel key={bot.threadId} bot={bot} />}
       {state.appSettingsOpen && <SettingsModal />}
       {state.pluginsOpen && <PluginsPanel />}

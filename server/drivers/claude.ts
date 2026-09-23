@@ -30,7 +30,7 @@ import type {
   RuntimeEventListener,
   SendTurnInput,
 } from "../contracts.ts";
-import { computerProxyEnv } from "../container-computer.ts";
+import { computerProxyEnv } from "../computer-proxy-env.ts";
 import { gateServer, resultBudget } from "../mcp-gate-config.ts";
 import { newEventId, newId } from "../contracts.ts";
 import { askInputSummary, commandSummary, toolDetailPreview } from "../tool-summary.ts";

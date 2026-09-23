@@ -274,6 +274,32 @@ function MausAvatarComponent(
 
 export const MausAvatar = memo(forwardRef(MausAvatarComponent));
 
+export function ChartAvatar({
+  color,
+  size = 44,
+  label = "OKX.AI catalog agent",
+}: {
+  color: MausColor;
+  size?: number;
+  label?: string;
+}) {
+  const [highlight, fill] = gradientFor(color);
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-app-bg/70 text-ink"
+      style={{ width: size, height: size, background: `linear-gradient(135deg, ${highlight}99, ${fill}66)` }}
+    >
+      <svg aria-hidden="true" width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 17 9 11l4 4 8-9" />
+        <path d="M15 6h6v6" />
+      </svg>
+    </span>
+  );
+}
+
 export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
   bot: {
     name?: string;
@@ -281,6 +307,7 @@ export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
     avatarUrl?: string | null;
     avatarCrop?: BotAvatarCrop;
     mascotBody?: MascotBodyId | null;
+    okxImport?: { kind?: string };
   };
 };
 
@@ -323,6 +350,9 @@ export function BotAvatar({
   emphasis = "quiet",
   ...mascotProps
 }: BotAvatarProps) {
+  if (bot.okxImport?.kind === "okx-catalog") {
+    return <ChartAvatar color={bot.color} size={size} label={label ?? (bot.name ? `${bot.name}, OKX.AI catalog agent` : undefined)} />;
+  }
   const profile = botAvatarProfile(bot);
   const [imageFailed, setImageFailed] = useState(false);
 

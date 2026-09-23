@@ -20,7 +20,7 @@ updating and backups. This page is the reference behind it.
 
 Runs fully on a server:
 
-- every engine CLI (Claude, Codex, Grok, custom ACP engines — install and
+- every engine CLI (Claude and Grok — install and
   log them in **on the server**)
 - chats, rooms, bot-to-bot coordination, routines (they keep running with
   every laptop on the planet closed — this is the point)
@@ -281,8 +281,7 @@ rely on routines running unattended.
 
 ## Installing the engines without a terminal
 
-Engines whose installer is an npm package (Claude Code, Codex, OpenCode,
-MiniMax, pi) can be installed and updated from **Settings → Engines** when
+Engines whose installer is an npm package (Claude Code) can be installed and updated from **Settings → Engines** when
 npm is on the server's PATH. kind-meitner runs `npm install -g` as its own user into
 `<data dir>/tools/npm`, so nothing needs sudo and nothing touches a global
 prefix; that folder goes ahead of everything else on the engines' PATH, so
