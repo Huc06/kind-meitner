@@ -287,6 +287,11 @@ export function Composer({
         description: "Check Broken Backend (Charlie #896 · NO_GO / Block)",
       },
       {
+        id: "services",
+        label: "/services",
+        description: "Ask Cloned Agent #2023 what services it provides",
+      },
+      {
         id: "chains",
         label: "/chains",
         description: "Query Cloned Agent #2023 for supported chains & RPCs",
@@ -355,6 +360,7 @@ export function Composer({
     else if (command.id === "scan-vercel") replacement = "@Markets scan endpoint https://demo.vercel.app/api/okx/free-mcp";
     else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="2023"';
     else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
+    else if (command.id === "services") replacement = "@Agent #2023 What services do you provide and how can you assist our team in this workspace?";
     else if (command.id === "chains") replacement = "@Agent #2023 List all supported EVM and SVM chain IDs, network names, and canonical RPCs for X Layer, Solana, and Ethereum.";
 
     const next = replaceComposerSlashTrigger(text, slash, replacement);

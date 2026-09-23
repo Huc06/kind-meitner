@@ -6,6 +6,7 @@ export type ComposerSlashCommandId =
   | "scan-vercel"
   | "trust"
   | "block"
+  | "services"
   | "chains";
 
 export interface ComposerSlashCommand {
