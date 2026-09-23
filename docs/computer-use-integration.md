@@ -16,8 +16,7 @@ Electron main process
 ├── WebContentsView pool (embedded browser, persist: partitions per bot)
 │     driven via webContents.debugger (CDP) — zero-install browser use
 └── server/ harness (drivers spawn agent CLIs with --mcp-config)
-      ├── computer-proxy-local.ts  ──▶ forwards MCP tool calls to driver socket
-      └── computer-proxy.ts (existing) ──▶ remote/cloud box
+      └── local-computer-proxy.ts  ──▶ forwards MCP tool calls to the host driver socket
 ```
 
 - **Plugins = MCP servers over stdio.** The Plugins panel toggles which MCP
@@ -26,9 +25,8 @@ Electron main process
 - **Local desktop use = `cua-driver`**. macOS packages the Rust Mach-O in app
   Resources; Ubuntu x64 packages the certified 0.19.3 ELF plus its cursor-theme
   sidecar outside ASAR. Both remain paired with the application release. This
-  applies to the Ubuntu 24.04 GNOME/Xorg beta and guarded GNOME/Wayland beta;
-  remote/cloud boxes and the isolated Local VM remain separate providers.
-  NOT Swift — the Swift file everyone remembers
+applies to the Ubuntu 24.04 GNOME/Xorg beta and guarded GNOME/Wayland beta.
+NOT Swift — the Swift file everyone remembers
   (`examples/embedded-host-macos/ExampleAgentHarness.swift`) is a 165-line
   reference host showing the embedding pattern, not the driver.
 - **Browser use = the app's own Chromium first.** Electron *is* Chromium;
@@ -43,7 +41,7 @@ No cliclick, no robotjs/nut.js, no Python computer-server, no fallbacks.**
 All local desktop-control and input actions go through the validated
 `cua-driver` binary. Linux screen preview uses the supported Xorg or
 user-initiated XDG portal capture path and is not a control provider. This rule
-does not replace remote/cloud boxes or the isolated Local VM provider. Local
+is the only computer-use provider. Local
 alternatives evaluated and rejected:
 
 The Ubuntu GNOME beta uses the same official CUA provider with the Phase 5

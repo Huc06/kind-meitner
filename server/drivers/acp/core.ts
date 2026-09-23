@@ -44,7 +44,7 @@ import type {
   TurnImageInput,
 } from "../../contracts.ts";
 import { newEventId, newId } from "../../contracts.ts";
-import { computerProxyEnv } from "../../container-computer.ts";
+import { computerProxyEnv } from "../../computer-proxy-env.ts";
 import { augmentedPath } from "../../env-path.ts";
 import { supportsApprovalMode } from "../../../shared/approval-mode.ts";
 

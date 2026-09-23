@@ -1,27 +1,21 @@
 ---
 title: Give a bot a computer
-description: Choose the right desktop or isolated environment for a task.
+description: Let a bot work on this computer, or turn computer use off.
 icon: Monitor
 ---
 
-A bot can work without a computer, use the computer running kind-meitner, or work inside an isolated desktop.
-
-<ProductScreenshot name="docs-computer-panel" alt="kind-meitner computer panel offering cloud, local VM, host computer, and off modes" caption="Computer placement is explicit per bot and can be changed without changing its model." />
+A bot can work without a computer, or use the computer running kind-meitner.
 
 | Backend | Isolation | Best for |
 |---|---|---|
 | This computer | None | Working with local apps and files you explicitly approve |
-| Local VM | Containerized desktop | Repeatable browser and desktop work on your machine |
-| Box cloud computer | Hosted remote desktop | Always-available isolated Linux work |
-| Self-hosted VPS | Hardened container over SSH | Using infrastructure you own |
+| Off | — | Chat, files, and connected apps without screen control |
 
-## Auto, local, and cloud selection
+Computer use is local only. Cloud computers, containerized local VMs, and self-hosted VPS desktops are not available.
 
-Computer selection is explicit per bot. Auto may reuse a ready, verified backend, but it does not silently provision every backend or turn on host control.
+## This computer
 
-## Preview and takeover
-
-The Computer panel can show live frames while an agent works. Supported cloud desktops also provide an interactive viewer. kind-meitner opens that viewer in the app when possible, with a browser fallback for external join flows.
+Choose **This computer** on a bot to let a supported engine use the host through the bundled CUA driver. It stays off until you turn it on. Risky actions still go through the bot's approval level.
 
 <Callout type="warn" title="Preview is not permission">
   Starting a screen preview does not grant the bot control. Local input requires a separate opt-in and remains subject to the computer-use safety boundary.
