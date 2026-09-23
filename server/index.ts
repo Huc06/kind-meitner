@@ -2276,7 +2276,7 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
       id: cleanId,
       name: `Agent #${cleanId}`,
       description: `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
-      soul: `You are Agent #${cleanId} on OKX.ai. You represent Service #${cleanId}. When asked to run tasks, you assist the room and coordinate with OKX Onchain OS.`,
+      soul: `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy for OKX Service #${cleanId}. Your private backend tools are securely managed via OKX Onchain OS (A2A task router). When the user or team assigns you tasks or asks about your capabilities, you act as the active specialist for Service #${cleanId}, explain what your service offers, accept task briefs, and return structured deliverables to this room through OKX Onchain OS. You do not need to expose a raw MCP endpoint URL because your execution is routed through OKX Onchain OS.`,
       provider: "OKX.ai",
       avatar: "chart",
       capabilities: ["chat", "market-intelligence"],
@@ -2302,7 +2302,7 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
     }) ?? bot;
     created = true;
   } else {
-    if (!bot.soul?.trim()) bot = store.setSoul(bot.id, agent.soul) ?? bot;
+    bot = store.setSoul(bot.id, agent.soul) ?? bot;
     // Keep custom names intact, but migrate the old catalog display name to
     // the role name used in the Dev Day room roster and @mention prompts.
     if (bot.name === "Market Scout" && agent.name === "Markets") bot = store.patchBot(bot.id, { name: agent.name }) ?? bot;
