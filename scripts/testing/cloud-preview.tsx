@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ComputerPanel } from "../../src/components/ComputerPanel";
 import { BotSettingsDialog } from "../../src/components/BotSettingsDialog";
-import { RemoteDesktopPanel } from "../../src/components/remote-desktop-panel";
 import { StoreProvider, useStore } from "../../src/state/store";
 import { applySkin, readSkin } from "../../src/lib/skins";
 import "../../src/styles.css";
@@ -117,7 +116,7 @@ function Fixture() {
   useEffect(() => {
     if (bot) {
       dispatch({ type: "screenFrame", botId: bot.id, png: blank, mime: "image/png" });
-      dispatch({ type: "updateBot", botId: bot.id, patch: { computer: "cloud", cloudBackend: "box" } });
+      dispatch({ type: "updateBot", botId: bot.id, patch: { computer: "local" } });
       dispatch({ type: "toggleComputer", open: true });
     }
   }, [bot?.id, dispatch]);
@@ -136,9 +135,8 @@ function Fixture() {
       <button disabled={!bot} onClick={() => dispatch({ type: "screenFrame", botId: bot.id, png: frame("New live frame", "#312e81"), mime: "image/png" })}>Publish live frame</button>
     </div>
     {state.settingsOpen && bot && <BotSettingsDialog key={bot.id} bot={bot} />}
-    {state.computerOpen && bot ? panel === "computer"
+    {state.computerOpen && bot
       ? <ComputerPanel key={generation} bot={{ ...bot, busy }} />
-      : <RemoteDesktopPanel key={generation} bot={{ ...bot, busy }} />
       : !state.settingsOpen && <button onClick={() => dispatch({ type: "toggleComputer", open: true })}>Open computer panel</button>}
   </div>;
 }

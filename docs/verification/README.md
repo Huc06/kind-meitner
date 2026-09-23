@@ -152,9 +152,6 @@ offline Codex CLI whose identity is synthetic and whose credential directory is 
 The [mention fixture](mentions.md) checks candidate selection, composer highlighting,
 sent mentions, multiline scrolling and responsive wrapping in real chat views.
 
-The [Group and Goal Local VM recipe](group-local-vm.md) checks per-speaker
-desktop routing, cancellation, and computer authority cleanup.
-
 ## Evidence
 
 The [Japanese desktop font recipe](japanese-desktop.md) checks real Firefox and

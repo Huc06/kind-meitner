@@ -34,9 +34,8 @@ function loadEnvironmentIdInChild(dataDir: string): Promise<string> {
 }
 
 function importComputerProvidersInChild(dataDir: string): Promise<void> {
-  const boxUrl = new URL("./box.ts", import.meta.url).href;
-  const vpsUrl = new URL("./vps-computer.ts", import.meta.url).href;
-  const source = `await import(${JSON.stringify(boxUrl)}); await import(${JSON.stringify(vpsUrl)});`;
+  const localUrl = new URL("./local-computer.ts", import.meta.url).href;
+  const source = `await import(${JSON.stringify(localUrl)});`;
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,

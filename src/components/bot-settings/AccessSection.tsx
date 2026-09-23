@@ -14,7 +14,7 @@ import { t } from "@/lib/i18n";
 import { mcpServersForBot, useMcpServers } from "@/lib/mcp-servers";
 import { shortPath } from "@/lib/short-path";
 import { useDesktopCapabilities } from "../DesktopCapabilities";
-import { CloudBackendPicker } from "../CloudBackendPicker";
+
 import { LocalComputerAutoWarning } from "../LocalComputerAutoWarning";
 import { Switch } from "../SettingsPrimitives";
 import { preloadConnectedApps, type ConnectorInventory } from "../PluginsPanel";
@@ -185,7 +185,6 @@ export function AccessSection({
   const { state, dispatch } = useStore();
   const {
     patch,
-    canUseVps,
     canUseConnectedApps,
     connectedAppsConfigured,
     connectedAppsEnabled,
@@ -231,9 +230,6 @@ export function AccessSection({
         </div>
         <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
           {([
-            [null, "Auto"],
-            ["cloud", "Cloud"],
-            ["vm", "Local VM"],
             ["local", "This computer"],
             ["browser", "Browser"],
             ["off", "Off"],
@@ -251,10 +247,8 @@ export function AccessSection({
                       : undefined
               }
               onClick={() => {
-                if ((mode === null && bot.computer === undefined) || mode === bot.computer) return;
+                if (mode === bot.computer) return;
                 if (mode === "local" && derived.approvalMode === "auto") setLocalAutoWarning(bot.id);
-                // a browser-only bot must actually have its browser: flip
-                // the per-bot switch on with the destination
                 else if (mode === "browser") patch({ computer: mode, browser: true });
                 else patch({ computer: mode });
               }}
@@ -262,7 +256,7 @@ export function AccessSection({
                 "flex-1 py-1.5 text-[13px] capitalize",
                 i > 0 && "border-l border-hairline/40",
                 ((mode === "local" && !localSelectable) || (mode === "browser" && !browserSelectable)) && "cursor-not-allowed opacity-40",
-                (mode === null ? bot.computer === undefined : bot.computer === mode)
+                (bot.computer === mode)
                   ? "bg-control text-ink"
                   : "text-ink-secondary hover:bg-control/60 hover:text-ink",
               )}
@@ -278,35 +272,10 @@ export function AccessSection({
             anywhere. Its connected apps, MCP servers, files and chat all still work.
           </div>
         )}
-        {(!bot.computer || bot.computer === "cloud") && (
-          <>
-            {!bot.computer && (
-              <div className="mt-3 rounded-lg bg-inset px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-secondary">
-                <span className="font-medium text-ink">Auto cloud preference.</span>{" "}
-                This chooses what Auto may reuse during a task; viewing settings does not create or wake a computer.
-              </div>
-            )}
-            <CloudBackendPicker
-              value={bot.cloudBackend ?? "box"}
-              vpsSupported={canUseVps}
-              onChange={(backend) => patch({ cloudBackend: backend })}
-            />
-            {!bot.computer && bot.cloudBackend === "vps" && (
-              <div className="mt-3 flex items-center justify-between gap-4 rounded-lg bg-inset px-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="text-[13px] text-ink">Start VPS automatically</div>
-                  <div className="mt-0.5 text-[11.5px] text-ink-secondary">
-                    Allow Auto to create or wake this bot's managed container when needed.
-                  </div>
-                </div>
-                <Switch
-                  checked={Boolean(bot.autoStartVps)}
-                  aria-label="Start VPS automatically"
-                  onClick={() => patch({ autoStartVps: !bot.autoStartVps })}
-                />
-              </div>
-            )}
-          </>
+        {bot.computer === "local" && (
+          <div className="mt-3 rounded-lg bg-inset px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-secondary">
+            This bot can use this computer. Actions still follow its approval level.
+          </div>
         )}
       </div>
 
