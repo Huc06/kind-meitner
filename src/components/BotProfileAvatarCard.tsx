@@ -254,7 +254,7 @@ export function BotProfileAvatarCard({
                       : "text-ink-secondary hover:bg-control/60",
                   )}
                 >
-                  <MausAvatar color={bot.color} bodyId={id} size={34} animated={false} trackPointer={false} />
+                  <MausAvatar color={bot.color} bodyId={id} size={34} animated={false} />
                 </button>
               ))}
             </div>

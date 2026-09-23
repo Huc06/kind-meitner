@@ -1,14 +1,17 @@
 ---
 title: Configuration
-description: Understand engine paths, credentials, and the local configuration boundary.
+description: Server-only portal credentials, and the local engine boundary.
 icon: Settings
 ---
 
-Most users configure kind-meitner from the app. The packaged desktop validates credentials before saving them and stores supported secrets with the operating system's secure storage.
+OKX Developer Portal credentials are server-only. The browser does not collect API keys, passphrases, webhook secrets, or recipient addresses.
+
+The rest of this page is local runtime: how the suite finds an engine CLI and where optional third-party keys live.
 
 ## Engine discovery
 
 kind-meitner checks the inherited process path, common install locations, and the login shell. If an engine is installed somewhere unusual, open **Settings → Engines** and choose its executable explicitly.
+
 
 Explicit paths are useful when you:
 

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ArrowRight, BookOpen, Crown, MessageCircle, Minus, Monitor, MoreHorizontal, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Crown, MessageCircle, Minus, Monitor, MoreHorizontal, Pencil, Plus, ScrollText, Trash2, Users } from "lucide-react";
 import { api, useStore, type Bot } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import { teamMapStatus, type TeamMapSection } from "@/lib/team-map";
-import { COMPUTER_DRAG_TYPE, fitTeams, layoutTeams, orderBots, parseBotOrders, parsePositions, reorderBot, zoomAt, type Point, type View } from "@/lib/team-canvas";
+import { teamMapStatus, type TeamMapEdge, type TeamMapSection } from "@/lib/team-map";
+import { CARD_HEIGHT, CARD_WIDTH, COMPUTER_DRAG_TYPE, GAP, HEADER_HEIGHT, TEAM_PADDING, fitTeams, layoutTeams, orderBots, parseBotOrders, parsePositions, reorderBot, zoomAt, type Point, type View } from "@/lib/team-canvas";
 import { BotAvatar } from "./Avatar";
 import { ProviderMark } from "./ProviderIcons";
 
@@ -19,13 +19,14 @@ type Gesture = {
 const iconButton = "flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-ink focus-visible:outline-2 focus-visible:outline-accent";
 const menuButton = "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[12px] text-ink-secondary hover:bg-control hover:text-ink";
 
-function BotCard({ bot, selected, moving, connected, onComputer, onArrange }: {
+function BotCard({ bot, selected, moving, connected, onComputer, onArrange, onLogs }: {
   bot: Bot;
   selected: boolean;
   moving: boolean;
   connected: boolean;
   onComputer?: (bot: Bot) => void;
   onArrange?: (bot: Bot, delta: number) => void;
+  onLogs?: (bot: Bot) => void;
 }) {
   const { state, dispatch } = useStore();
   const status = teamMapStatus(bot);
@@ -46,12 +47,13 @@ function BotCard({ bot, selected, moving, connected, onComputer, onArrange }: {
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5"><span className="truncate text-[14px] font-semibold">{bot.name}</span>
           {bot.chiefOfStaff && <Crown size={12} className="shrink-0 text-warning" aria-label={t("chat.chiefOfStaff")} />}</span>
-        <span className="mt-1 block truncate text-[11px] text-ink-secondary">{bot.title || (bot.chiefOfStaff ? t("chat.chiefOfStaff") : t("canvas.bot"))}</span>
+        <span className="mt-1 block truncate text-[11px] text-ink-secondary">{bot.okxImport?.kind === "okx-catalog" ? `${bot.title || "OKX.ai Agent"} · Free · read-only` : bot.title || (bot.chiefOfStaff ? t("chat.chiefOfStaff") : t("canvas.bot"))}</span>
       </span>
     </button>
     <div className="flex h-[43px] items-center gap-1 border-t border-hairline/30 px-2">
       <button className={cn(iconButton, "size-8")} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
         onClick={() => dispatch({ type: "select", id: bot.id })}><MessageCircle size={13} /></button>
+      {onLogs && <button className={cn(iconButton, "size-8")} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
       {status.tone !== "idle" && <span className="flex items-center gap-1.5 text-[10px] text-ink-secondary" title={status.label}>
         <span className={cn("size-1.5 rounded-full", status.tone === "success" ? "bg-success" : status.tone === "warning" ? "bg-warning" : status.tone === "danger" ? "bg-danger" : "bg-ink-secondary/35")} />
         {status.label}
@@ -68,7 +70,7 @@ function BotCard({ bot, selected, moving, connected, onComputer, onArrange }: {
   </article>;
 }
 
-export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEditTeam, onDeleteTeam, isEmpty, onComputer, onComputerDrop, onTeamComputer, teamComputers = {}, connectedBotIds = [] }: {
+export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEditTeam, onDeleteTeam, isEmpty, onComputer, onComputerDrop, onTeamComputer, teamComputers = {}, connectedBotIds = [], onLogs, edges = [] }: {
   sections: TeamMapSection<Bot>[];
   canManage: boolean;
   onMove: (bot: Bot, destination: string) => Promise<boolean | void>;
@@ -81,6 +83,8 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
   onTeamComputer?: (sectionKey: string) => void;
   teamComputers?: Record<string, { name: string; state?: string }>;
   connectedBotIds?: string[];
+  onLogs?: (bot: Bot) => void;
+  edges?: TeamMapEdge[];
 }) {
   const { state } = useStore();
   const viewport = useRef<HTMLDivElement>(null);
@@ -298,6 +302,33 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
       ? t("canvas.arrangeBot", { name: dragged.bot.name, team: dropSection.name }) : t("canvas.moveBot", { name: dragged.bot.name, team: dropSection.name })
       : null;
 
+  const centers: Record<string, Point> = {};
+  sections.forEach((section, index) => {
+    const tile = tiles[index];
+    if (!tile) return;
+    const chiefs = orderBots(section.chiefs, personalOrder(section.key));
+    const members = orderBots(section.members, personalOrder(section.key));
+    const hierarchy = chiefs.length > 0 && members.length > 0;
+    const place = (lane: Bot[], memberLane: boolean) => {
+      lane.forEach((bot, row) => {
+        centers[bot.id] = {
+          x: tile.x + TEAM_PADDING + (memberLane && hierarchy ? CARD_WIDTH + 40 : 0) + CARD_WIDTH / 2,
+          y: tile.y + HEADER_HEIGHT + row * (CARD_HEIGHT + GAP) + CARD_HEIGHT / 2,
+        };
+      });
+    };
+    place(chiefs, false);
+    place(members, true);
+  });
+  const edgeExtent = tiles.reduce((box, tile) => ({
+    width: Math.max(box.width, tile.x + tile.width),
+    height: Math.max(box.height, tile.y + tile.height),
+  }), { width: 1, height: 1 });
+  for (const point of Object.values(centers)) {
+    edgeExtent.width = Math.max(edgeExtent.width, point.x + 8);
+    edgeExtent.height = Math.max(edgeExtent.height, point.y + 8);
+  }
+
   return <div ref={viewport} role="region" aria-label={t("canvas.region")} tabIndex={0} data-team-canvas
     className="relative min-h-0 flex-1 touch-none overflow-clip outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
     style={{ backgroundImage: "radial-gradient(circle, color-mix(in srgb, var(--color-ink-secondary) 18%, transparent) 1px, transparent 1px)", backgroundSize: `${24 * view.scale}px ${24 * view.scale}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
@@ -352,6 +383,15 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
       if (event.key === "0") { event.preventDefault(); fit(); }
     }}>
     <div data-canvas-world className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}>
+      <svg className="pointer-events-none absolute left-0 top-0" width={edgeExtent.width} height={edgeExtent.height} aria-hidden="true">
+        {edges.flatMap((edge) => {
+          const from = centers[edge.sourceBotId];
+          const to = centers[edge.targetBotId];
+          if (!from || !to) return [];
+          const stroke = edge.state === "running" ? "var(--color-accent)" : edge.state === "queued" ? "var(--color-warning)" : "var(--color-ink-secondary)";
+          return [<line key={`${edge.sourceBotId}:${edge.targetBotId}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={stroke} strokeWidth="2" />];
+        })}
+      </svg>
       {sections.map((section, index) => {
         const tile = tiles[index];
         const hierarchy = section.chiefs.length > 0 && section.members.length > 0;
@@ -360,7 +400,7 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
         const renderBot = (bot: Bot) => <div key={bot.id} className="relative">
           {insertion?.botId === bot.id && <div className={cn("pointer-events-none absolute inset-x-1 h-0.5 rounded bg-accent", insertion.after ? "-bottom-[9px]" : "-top-[9px]")} />}
           <BotCard bot={bot} selected={state.selectedId === bot.id && state.settingsOpen} moving={dragged?.bot.id === bot.id || moving === bot.id}
-            connected={connectedBotIds.includes(bot.id)} onComputer={onComputer} onArrange={layoutLoaded ? arrangeBot : undefined} />
+            connected={connectedBotIds.includes(bot.id)} onComputer={onComputer} onArrange={layoutLoaded ? arrangeBot : undefined} onLogs={onLogs} />
         </div>;
         return <section key={section.key} data-team-key={section.key} aria-label={t("canvas.teamRegion", { name: section.name })}
           className={cn("absolute rounded-2xl border bg-panel/90 shadow-sm has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-hairline/50")}
