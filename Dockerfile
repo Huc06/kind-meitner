@@ -7,7 +7,7 @@
 # to terminate TLS and authentication at the edge.
 #
 #   docker build -t kind-meitner .
-#   docker build --build-arg ENGINES="@anthropic-ai/claude-code @openai/codex" -t kind-meitner .
+#   docker build --build-arg ENGINES="@anthropic-ai/claude-code" -t kind-meitner .
 #
 # HOME is /data. Mount persistent storage at /data (for example, a Railway
 # Volume) so engine CLI logins (~/.claude, ~/.codex, ...) and kind-meitner's

@@ -125,19 +125,19 @@ describe("control-kind-meitner ui drives the real renderer", () => {
     launched = await launch([]);
     const { info } = launched;
     await fixtureApi(info.url)("PUT", "/api/config", {
-      openaiCompat: { key: "fixture-saved-key", url: "http://127.0.0.1:1/v1" },
+      xai: { key: "fixture-saved-key" },
     });
     const evaluate = async (js: string) => (await ui("eval", info.ui, "--js", js)).result;
     const click = (name: string) => ui("click", info.ui, "--name", name);
-    const input = `document.querySelector('input[aria-label="OpenAI-compatible API key"]')`;
+    const input = `document.querySelector('input[aria-label="xAI API key"]')`;
     const testButton = `[...${input}.parentElement.querySelectorAll('button')].find(b => b.textContent === 'Test')`;
     const verdict = () => evaluate(`${input}.parentElement.parentElement.querySelector('[role="status"]')?.textContent`);
     const save = () => evaluate(`[...${input}.parentElement.querySelectorAll('button')].find(b => b.textContent === 'Save').click(); true`);
     const type = async (text: string) => {
-      await click("OpenAI-compatible API key");
+      await click("xAI API key");
       await evaluate(`${input}.select(); true`);
       await ui("press", info.ui, "--keys", "Backspace");
-      if (text) await ui("type", info.ui, "--name", "OpenAI-compatible API key", "--text", text);
+      if (text) await ui("type", info.ui, "--name", "xAI API key", "--text", text);
     };
     await evaluate(`(() => {
       const original = window.fetch.bind(window);
@@ -165,12 +165,12 @@ describe("control-kind-meitner ui drives the real renderer", () => {
     await click("Connections");
     await expect.poll(() => evaluate(`${testButton}?.disabled`)).toBe(false);
     await click("Test");
-    await expect.poll(() => evaluate("window.keyTests")).toEqual([{ provider: "openaiCompat" }]);
+    await expect.poll(() => evaluate("window.keyTests")).toEqual([{ provider: "xai" }]);
     await expect.poll(verdict).toBe("Saved key: Model catalog reachable: fixture-model. Authentication and chat not verified.");
     await type("  fixture-draft-key  ");
     await click("Test");
     await expect.poll(() => evaluate("window.keyTests")).toEqual([
-      { provider: "openaiCompat" }, { provider: "openaiCompat", key: "fixture-draft-key" },
+      { provider: "xai" }, { provider: "xai", key: "fixture-draft-key" },
     ]);
     await expect.poll(verdict).toBe("Unsaved key — save it to use it. Model catalog reachable: fixture-model. Authentication and chat not verified.");
     for (const erased of ["", "   "]) {
@@ -199,7 +199,7 @@ describe("control-kind-meitner ui drives the real renderer", () => {
     await expect.poll(() => evaluate(`${testButton}.disabled`)).toBe(false);
     await click("Test");
     await expect.poll(() => evaluate("window.keyTests")).toEqual([
-      { provider: "openaiCompat" }, { provider: "openaiCompat", key: "fixture-draft-key" }, { provider: "openaiCompat" },
+      { provider: "xai" }, { provider: "xai", key: "fixture-draft-key" }, { provider: "xai" },
     ]);
     await expect.poll(verdict).toBe("Saved key: Model catalog reachable: fixture-model. Authentication and chat not verified.");
     await waitForExit(launched.child, { signal: "SIGINT", graceMs: 30_000 });

@@ -18,7 +18,7 @@
 // drivers/ nested; import.meta.url still resolves to the same location, so
 // that lookup is unaffected.
 import { build } from "esbuild";
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -139,13 +139,3 @@ if (existsSync(join(root, "enterprise", "server", "index.ts"))) {
     logLevel: "info",
   });
 }
-
-// pi-mcp-extension.ts is NOT a kind-meitner entry point: it is loaded by the
-// external `pi` process (pi's own jiti), which resolves its
-// @earendil-works/pi-coding-agent and typebox imports from pi's install. Ship
-// it verbatim as .ts so the packaged app has it too — never bundle it, or
-// esbuild would inline pi's packages and the extension would stop loading.
-const piMcpExtSrc = join(server, "drivers", "pi-mcp-extension.ts");
-const piMcpExtDest = join(root, "dist-server", "drivers", "pi-mcp-extension.ts");
-mkdirSync(dirname(piMcpExtDest), { recursive: true });
-copyFileSync(piMcpExtSrc, piMcpExtDest);
