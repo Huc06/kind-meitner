@@ -35,7 +35,7 @@ const evidenceRoot = join(ROOT, "scripts", "testing", "issue66-evidence");
 const readinessOutput = readFileSync(join(evidenceRoot, "scan-vercel-envelope.json"), "utf8");
 const readinessPassOutput = readFileSync(join(evidenceRoot, "scan-self-envelope.json"), "utf8");
 const trustOutput = JSON.parse(readFileSync(join(evidenceRoot, "trust-99999.json"), "utf8")).result.content[0].text as string;
-const trustGoOutput = JSON.parse(readFileSync(join(evidenceRoot, "trust-go-8136.json"), "utf8")).result.content[0].text as string;
+const trustGoOutput = JSON.parse(readFileSync(join(evidenceRoot, "trust-go-13851.json"), "utf8")).result.content[0].text as string;
 const trust13837Output = JSON.parse(readFileSync(join(evidenceRoot, "trust-13837-ep.json"), "utf8")).result.content[0].text as string;
 
 type Launched = {
@@ -137,7 +137,7 @@ describe("Dev Day gate visual E2E", () => {
     const tree = empty.snapshot as string;
     expect(tree).toContain("Gate before list. Gate before spend. Free MCP only.");
     expect(tree).toContain("Markets, Listing Coach, and Spend Scout gate every listing and spend.");
-    for (const starter of ["Scan a vercel URL", "Scan our Railway Free MCP", "Trust agent 99999", "Trust agent 13837"]) {
+    for (const starter of ["Scan a vercel URL", "Scan our Railway Free MCP", "Trust agent 99999", "Trust agent 13851"]) {
       expect(tree).toContain(`button "${starter}"`);
     }
     const chartMarks = await ui("eval", fixture.info.ui, "--js", "(() => { const marks = [...document.querySelectorAll('button[aria-label=\"Manage members — 3 bots in this group\"] [aria-label$=\"OKX.AI catalog agent\"]')]; return { count: marks.length, labels: marks.map(el => el.getAttribute('aria-label')), paths: marks.reduce((count, mark) => count + mark.querySelectorAll('svg path').length, 0) }; })()");
@@ -258,12 +258,11 @@ describe("Dev Day gate visual E2E", () => {
     await assertPng(png);
   }, LAUNCH_TIMEOUT_MS + 120_000);
 
-  run("enables Continue on live substitute GO card (8136 mechanics check)", async () => {
-    const fixture = await launch([{ name: "mcp__markets__get_asp_trust_card", input: { agentId: "8136", endpointUrl: "https://kind-meitner-production.up.railway.app/api/okx/free-mcp" }, ok: true, output: trustGoOutput }]);
+  run("enables Continue on live Kind Meitner Markets GO card (#13851)", async () => {
+    const fixture = await launch([{ name: "mcp__markets__get_asp_trust_card", input: { agentId: "13851", endpointUrl: "https://kind-meitner-production.up.railway.app/api/okx/free-mcp" }, ok: true, output: trustGoOutput }]);
     launched.push(fixture);
     await openDevDayGate(fixture.info.ui);
-    // No dedicated starter for 8136; paste prompt manually
-    await ui("type", fixture.info.ui, "--name", "Message #dev-day-gate", "--text", "@Markets run get_asp_trust_card for agentId 8136 with endpointUrl https://kind-meitner-production.up.railway.app/api/okx/free-mcp");
+    await ui("click", fixture.info.ui, "--name", "Trust agent 13851");
     await ui("click", fixture.info.ui, "--name", "Send message");
     await expect.poll(async () => (await ui("snapshot", fixture.info.ui)).snapshot as string, { timeout: 60_000 })
       .toContain('region "Trust result: GO"');
@@ -274,7 +273,7 @@ describe("Dev Day gate visual E2E", () => {
     await expect.poll(() => composer(fixture.info.ui), { timeout: 10_000 })
       .toContain("get_free_a2mcp_launch_checklist");
     expect((await ui("eval", fixture.info.ui, "--js", "document.querySelectorAll('[data-mid]').length")).result).toBe(rowsBefore.result);
-    const png = join(evidenceDir, "loop-b-go-8136-continue.png");
+    const png = join(evidenceDir, "loop-b-go-13851-continue.png");
     expect(await ui("screenshot", fixture.info.ui, "--out", png)).toMatchObject({ ok: true, path: png });
     await assertPng(png);
   }, LAUNCH_TIMEOUT_MS + 120_000);
