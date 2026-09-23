@@ -3,7 +3,7 @@
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
 import { useEffect, useRef, useState } from "react";
-import { Archive, Coins, FlaskConical, KeyRound, Monitor, Palette, Search, TabletSmartphone, Terminal, User, Users, X, Building2 } from "lucide-react";
+import { Archive, Coins, FlaskConical, KeyRound, Palette, Search, TabletSmartphone, Terminal, User, Users, X, Building2 } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
 import { analyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { browserAvailable, browserUnavailableReason, builtInBrowserEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
@@ -11,10 +11,9 @@ import { localeChoices, type LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
 import { withTourReset } from "@/lib/guided-tour";
 import { completionPatch } from "@/lib/onboarding";
-import { ApiKeyRow, VpsConnection } from "./ApiKeys";
+import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
 import { EnginesSettings } from "./EnginesSettings";
-import { LocalComputerSection } from "./LocalComputerSection";
 import { CompanionSection } from "./CompanionSection";
 import { ServerPairingCard } from "./ServerPairingCard";
 import { PeopleSection } from "./PeopleSection";
@@ -47,10 +46,9 @@ const SECTIONS: Array<{
   { id: "desktopWorkspaces", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "vps", "server", "connect", "pair", "switch", "local"] },
   { id: "appearance", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "display"] },
   { id: "experimental", labelKey: "settings.section.experimental", icon: FlaskConical, keywords: ["early", "preview", "learn", "skill", "authoring", "browser", "profiles"] },
-  { id: "connections", labelKey: "settings.section.connections", icon: KeyRound, keywords: ["keys", "api", "composio", "box", "xai", "vps"] },
+  { id: "connections", labelKey: "settings.section.connections", icon: KeyRound, keywords: ["keys", "api", "composio", "anthropic", "xai"] },
   { id: "engines", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "claude", "grok", "providers", "cli"] },
   { id: "companion", labelKey: "settings.section.companion", icon: TabletSmartphone, keywords: ["companion", "device", "phone", "desktop", "client", "host", "pair", "pairing", "mobile", "https", "secure", "tailscale", "wifi", "remote", "advanced", "domain", "dns", "self-hosted", "server", "caddy"] },
-  { id: "computer", labelKey: "settings.section.computer", icon: Monitor, keywords: ["vm", "virtual", "desktop"] },
   { id: "usage", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing"] },
   { id: "people", labelKey: "settings.section.people", icon: Users, keywords: ["people", "users", "invite", "sign in", "members", "admins", "access"] },
   { id: "backups", labelKey: "settings.section.backups", icon: Archive, keywords: ["export", "import", "restore", "full backup", "password", "recovery"] },
@@ -678,8 +676,6 @@ export function SettingsModal() {
                   <ApiKeyRow section="anthropic" testProvider="anthropic" />
                   <ApiKeyRow section="xai" testProvider="xai" />
                   <div className="pt-2 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("keys.integrations.title")}</div>
-                  <ApiKeyRow section="box" />
-                  <VpsConnection />
                   <details className="rounded-lg border border-hairline/40 bg-inset px-3 py-2">
                     <summary className="cursor-pointer text-[13px] text-ink-secondary">{t("settings.connections.selfHost")}</summary>
                     <div className="mt-3">
@@ -705,8 +701,6 @@ export function SettingsModal() {
                 {!remoteActive && <CompanionSection profileEmail={state.config?.profile?.email} />}
               </>
             )}
-
-            {section === "computer" && <LocalComputerSection />}
 
             {section === "usage" && <UsageSection />}
             {section === "people" && <PeopleSection />}
