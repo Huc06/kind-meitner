@@ -296,6 +296,7 @@ import { OkxWebhookJournal } from "./okx/journal.ts";
 import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
 import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor } from "./okx/agent-import.ts";
+import { resolveOkxAgent, executeOkxAgentTool } from "./okx/agent-mcp-resolver.ts";
 import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
 import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
@@ -5749,6 +5750,49 @@ routines = new RoutineManager({
   },
   okxTaskState: () => "ready",
   startOkxTask: async (run, prompt, onDispatchError) => {
+    if (prompt.startsWith("okx-tool:")) {
+      try {
+        const payload = JSON.parse(prompt.slice("okx-tool:".length));
+        const { toolName, endpointUrl, arguments: args } = payload;
+        const execResult = await executeOkxAgentTool({
+          endpointUrl: endpointUrl || "/api/okx/free-mcp",
+          toolName,
+          arguments: args || {},
+        }, {
+          localIntelligence: okxIntelligence,
+          localPort: PORT,
+        });
+
+        if (!execResult.ok) {
+          onDispatchError(execResult.error ?? "OKX agent tool execution failed");
+          return;
+        }
+
+        const devDayGateRoom = store.groups.find((group) => !group.dm && isDevDayGate(group));
+        const targetThreadId = run.resultsThreadId || run.sourceThreadId || devDayGateRoom?.threadId || run.threadId;
+        const output = typeof execResult.result === "string" ? execResult.result : JSON.stringify(execResult.result, null, 2);
+
+        if (targetThreadId) {
+          store.appendMessage(targetThreadId, {
+            role: "bot",
+            kind: "activity",
+            text: `${toolName} completed`,
+            tool: {
+              name: toolName,
+              ok: true,
+              summary: toolName,
+              output,
+            },
+          });
+        }
+        routines?.finishOkxRun(run.id, output);
+        return;
+      } catch (err) {
+        onDispatchError(err instanceof Error ? err.message : "Failed to execute OKX agent tool");
+        return;
+      }
+    }
+
     const startTime = Date.now();
     const traceId = randomUUID();
     const res = await okxRecurringEngine.executeScheduledRun(run, prompt);
@@ -11814,6 +11858,49 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     if (method === "POST" && path === "/api/okx/agents/import") {
       const imported = importCatalogOkxAgent(await readBody(req));
       return json(res, imported.created ? 201 : 200, imported.result);
+    }
+    if (method === "POST" && path === "/api/okx/resolve-agent") {
+      const body = await readBody(req);
+      const agentIdOrUrl = typeof body?.agentIdOrUrl === "string" ? body.agentIdOrUrl.trim() : "";
+      if (!agentIdOrUrl) return json(res, 400, { error: "agentIdOrUrl is required" });
+      const resolved = await resolveOkxAgent(agentIdOrUrl, {
+        localIntelligence: okxIntelligence,
+        localPort: PORT,
+      });
+      return json(res, 200, resolved);
+    }
+    if (method === "POST" && path === "/api/okx/execute-agent-tool") {
+      const body = await readBody(req);
+      const { endpointUrl, toolName, arguments: args, targetThreadId } = body ?? {};
+      if (!toolName || typeof toolName !== "string" || !toolName.trim()) return json(res, 400, { error: "toolName is required" });
+
+      const execResult = await executeOkxAgentTool({
+        endpointUrl: typeof endpointUrl === "string" ? endpointUrl : "/api/okx/free-mcp",
+        toolName: toolName.trim(),
+        arguments: (args && typeof args === "object" && !Array.isArray(args)) ? args : {},
+      }, {
+        localIntelligence: okxIntelligence,
+        localPort: PORT,
+      });
+
+      if (targetThreadId && typeof targetThreadId === "string") {
+        const output = typeof execResult.result === "string"
+          ? execResult.result
+          : JSON.stringify(execResult.result ?? { error: execResult.error }, null, 2);
+        store.appendMessage(targetThreadId, {
+          role: "bot",
+          kind: "activity",
+          text: execResult.ok ? `${toolName} completed` : `${toolName} failed`,
+          tool: {
+            name: toolName,
+            ok: execResult.ok,
+            summary: toolName,
+            output,
+          },
+        });
+      }
+
+      return json(res, execResult.ok ? 200 : 400, execResult);
     }
 
     // ── channels (persisted internally as groups) ───────────────────────

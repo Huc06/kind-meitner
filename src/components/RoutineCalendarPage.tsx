@@ -44,6 +44,7 @@ import { CalendarSidebar } from "@/components/routines/CalendarSidebar";
 import { RoutineList } from "@/components/routines/RoutineList";
 import { RoutineLogs } from "@/components/routines/RoutineLogs";
 import { ResultsDestination } from "@/components/routines/ResultsDestination";
+import { OkxAgentSchedulerCard } from "@/components/routines/OkxAgentSchedulerCard";
 import { CronScheduleFields, CronSchedulePreview } from "@/components/routines/CronScheduleFields";
 import { cronChoiceFor, cronDraftFor, cronEditorValue, isCronChoice, type CronChoice } from "@/components/routines/cron-editor";
 import { routineRunLabel } from "@/lib/routine-display";
@@ -1797,6 +1798,12 @@ export function RoutinesPage({ onBack, onOpenRoom }: { onBack: () => void; onOpe
           {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "loading" && state.routines.length === 0 && <p role="status" className="w-full text-[11.5px] text-ink-secondary">{t("routines.loading")}</p>}
         </div>}
       </header>
+
+      {section === "calendar" && (
+        <div className="shrink-0 border-b border-hairline/35 px-4 py-4">
+          <OkxAgentSchedulerCard onOpenRoom={onOpenRoom} />
+        </div>
+      )}
 
       {section === "webhooks" ? <WebhooksPanel bots={visibleBots} createRequest={webhookCreateRequest} onCreateHandled={handleWebhookCreateHandled} /> : section === "logs" ? (
         <div className="min-h-0 flex-1 overflow-y-auto"><RoutineLogs runs={filteredRuns} bots={state.bots} loading={state.routinesLoadState === "loading" && filteredRuns.length === 0} error={state.routinesLoadState === "error"} routineId={routineFilter} onClearRoutine={() => setRoutineFilter(undefined)} onOpen={openRun} /></div>
