@@ -18,7 +18,6 @@ import {
   Monitor,
   Power,
   Settings,
-  Smartphone,
   X,
 } from "lucide-react";
 import { api, ApiError, useStore, type Bot } from "@/state/store";
@@ -31,7 +30,6 @@ import { isRemoteScreenshotContention } from "@/lib/remote-desktop";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { RoutinesSection } from "./bot-settings/RoutinesSection";
 import { routineRunLabel, routineRunTone } from "@/lib/routine-display";
-import { AndroidDevicePanel, useAndroidUsbDevices } from "./AndroidDevicePanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { browserAvailable, builtInBrowserEnabled } from "@/lib/feature-flags";
 import { transitionComputerControlLease, type ComputerControlAction } from "@/lib/computer-control";
@@ -229,8 +227,6 @@ export function ComputerPanel({
   const [error, setError] = useState<Error | string | null>(null);
   const errorText = panelErrorText(error);
   const [panelView, setPanelView] = useState<ComputerPanelView>(() => readComputerPanelView(bot.id));
-  const androidStatus = useAndroidUsbDevices();
-  const androidConnected = androidStatus.devices.length > 0;
   // Keep installation reachable before the engine is ready. Actual browser
   // operations below still require browserAvailableHere.
   const browserAvailableHere = browserAvailable(state.config);
@@ -270,11 +266,11 @@ export function ComputerPanel({
   }, [bot.id]);
 
   useEffect(() => {
-    if ((!androidConnected && panelView === "android") || (!browserEnabled && panelView === "browser")) {
+    if (!browserEnabled && panelView === "browser") {
       setPanelView("computer");
       writeComputerPanelView(bot.id, "computer");
     }
-  }, [androidConnected, bot.id, browserEnabled, panelView]);
+  }, [bot.id, browserEnabled, panelView]);
   const botRoutines = state.routines
     .filter((routine) => routine.botId === bot.id)
     .sort((a, b) => Number(b.enabled) - Number(a.enabled) || (a.nextRunAt ?? Infinity) - (b.nextRunAt ?? Infinity));
@@ -610,18 +606,6 @@ export function ComputerPanel({
               aria-pressed={panelView === "routines"}
               className={cn("flex items-center gap-1.5 border-l border-hairline/40 px-2.5 py-1 text-[12.5px]", panelView === "routines" ? "bg-control text-ink" : "text-ink-secondary hover:text-ink")}
             ><CalendarClock size={13} />{t("computer.tab.routines")}</button>
-            {androidConnected && (
-            <button
-              onClick={() => selectPanelView("android")}
-              aria-pressed={panelView === "android"}
-              className={cn(
-                "flex items-center gap-1.5 border-l border-hairline/40 px-2.5 py-1 text-[12.5px]",
-                panelView === "android" ? "bg-control text-ink" : "text-ink-secondary hover:text-ink",
-              )}
-            >
-              <Smartphone size={13} /> {t("computer.tab.android")}
-            </button>
-            )}
             {browserEnabled && (
             <button
               data-tour="computer-browser"
@@ -660,10 +644,6 @@ export function ComputerPanel({
               {errorText}
             </div>
           )}
-        </div>
-      ) : panelView === "android" && androidConnected ? (
-        <div className="flex-1 overflow-y-auto px-4 pt-2">
-          <AndroidDevicePanel status={androidStatus} />
         </div>
       ) : (
       <div className="flex-1 overflow-y-auto px-5 pb-5">
