@@ -9383,8 +9383,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       }
     }
 
-    if (!gate.auth) return json(res, gate.status, { error: gate.error });
-    const auth = gate.auth;
+    // Public access mode: allow anonymous access for GET requests
+    const publicAccessEnabled = process.env.KIND_MEITNER_PUBLIC_ACCESS === "true";
+    const auth = gate.auth ?? (publicAccessEnabled && method === "GET" ? { kind: "loopback" as const, scopes: ["client" as const] } : null);
+    if (!auth) return json(res, gate.status, { error: gate.error });
     if (HOSTED_WORKSPACE && auth.kind === "session") {
       const failure = workspaceAccess
         ? await workspaceAccess.authorize(req, auth)
@@ -9404,6 +9406,11 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
 
     // ── sessions: who am I, tickets, pairing and revocation ─────────────
     if (method === "GET" && path === "/api/auth/session") {
+      // Public access mode: return anonymous session for unauthenticated requests
+      const publicAccess = process.env.KIND_MEITNER_PUBLIC_ACCESS === "true";
+      if (!auth && publicAccess) {
+        return json(res, 200, { kind: "loopback", scopes: ["client"], environmentId: ENVIRONMENT_ID });
+      }
       return json(
         res,
         200,

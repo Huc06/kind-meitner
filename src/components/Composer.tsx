@@ -623,7 +623,7 @@ export function Composer({
   };
 
   return (
-    <div className="pointer-events-none relative px-5 pb-3">
+    <div className="pointer-events-none relative mx-auto w-full max-w-[52rem] px-5 pb-3">
       {/* No fill or hairline on this wrapper — those were the black frame
           in the pill's top corners. The dock overlays the transcript. */}
       {speechError && (
@@ -800,7 +800,7 @@ export function Composer({
             data-composer-backdrop
             className="pointer-events-none absolute -left-5 -right-5 -bottom-3 top-1/2 bg-app"
           />
-        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-2 py-1.5 ring-1 ring-composer-ring">
+        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-2.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)] ring-1 ring-composer-ring">
         <div className="flex items-end gap-1">
           <input
             ref={fileInput}

@@ -302,8 +302,8 @@ export function appendComposerDraft(id: string, text: string): void {
   });
 }
 
-/** Replaces a thread's prepared text without sending it. Attachments and
- * channel mode remain intact, so a starter prompt is only a composer fill. */
+/** Replaces the composer text for a thread without sending. Attachments and
+ * channel mode stay. Uses the restore path so a mounted Composer updates live. */
 export function setComposerDraft(id: string, text: string): void {
   const store = getStore();
   markDraftEdited(id);

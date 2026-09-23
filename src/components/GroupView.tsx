@@ -1138,7 +1138,7 @@ export function GroupView({ group }: { group: Group }) {
       <div
         style={headerDragStyle}
         className={cn(
-          "flex items-center justify-between px-5 py-3",
+          "flex items-center justify-between border-b border-hairline/15 px-5 py-2.5",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
         )}
@@ -1314,7 +1314,7 @@ export function GroupView({ group }: { group: Group }) {
         ) : (
         <div
           ref={transcriptRef}
-          className="flex w-full flex-col gap-3"
+          className="mx-auto flex w-full max-w-[52rem] flex-col gap-3 pt-1"
           style={{ paddingBottom: composerDock.pad }}
           role="log"
           aria-live="polite"

@@ -104,6 +104,30 @@ describe("resolveBotAvatarOutcome", () => {
   });
 });
 
+describe("SoftAvatarPlate chrome", () => {
+  it("wraps the mascot in a quiet plate by default", () => {
+    const markup = render({ size: 32 });
+    expect(markup).toContain('data-avatar-plate="quiet"');
+    expect(markup).toContain("rounded-full");
+  });
+
+  it("can render the bare mark when plate is off", () => {
+    const markup = render({ size: 32, plate: false });
+    expect(markup).not.toContain("data-avatar-plate");
+  });
+
+  it("uses hero chrome for empty-state emphasis", () => {
+    const markup = render({ size: 80, emphasis: "hero" });
+    expect(markup).toContain('data-avatar-plate="hero"');
+  });
+
+  it("plates flat uploads the same way as the mascot", () => {
+    const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "circle" });
+    expect(markup).toContain('data-avatar-plate="quiet"');
+    expect(markup).toContain("<img");
+  });
+});
+
 describe("catalog chart avatars", () => {
   it("renders an imported OKX catalog agent as a chart mark, never as a mascot", () => {
     const markup = renderBot({
