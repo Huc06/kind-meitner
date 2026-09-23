@@ -2272,11 +2272,16 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
   const normalizedId = cleanId === "13837" ? "okx-market-scout-v1" : cleanId;
   let agent = findCatalogOkxAgent(normalizedId);
   if (!agent) {
+    const isResearch = cleanId === "2023" || cleanId.toLowerCase().includes("research");
     agent = {
       id: cleanId,
       name: `Agent #${cleanId}`,
-      description: `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
-      soul: `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy representing OKX Service #${cleanId}. You are installed in this workspace to provide active service to the user and team. When the user asks you questions or assigns you tasks, act as the dedicated specialist for Service #${cleanId}, introduce your specialized capabilities on OKX.ai, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+      description: isResearch
+        ? `OKX.ai Autonomous Market Research & Intelligence Specialist (#${cleanId}).`
+        : `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
+      soul: isResearch
+        ? `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy specializing in Onchain Market Research, Liquidity Analytics, and Competitive Intelligence. You are installed in this workspace to provide active research services to the user and team. You have direct access to OKX.ai intelligence tools (get_market_intelligence_report, query_market_benchmarks). When the user asks you questions, gives you research prompts, or schedules routine tasks for you, act as their dedicated market research specialist: call your research tools, analyze marketplace benchmarks, liquidity, and ASP reputations, and deliver clear, structured market reports. Do not mention @Markets or discuss listing readiness — you are an active service provider executing market research tasks for the user.`
+        : `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy representing OKX Service #${cleanId}. You are installed in this workspace to provide active service to the user and team. When the user asks you questions or assigns you tasks, act as the dedicated specialist for Service #${cleanId}, introduce your specialized capabilities on OKX.ai, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
       provider: "OKX.ai",
       avatar: "chart",
       capabilities: ["chat", "market-intelligence"],
@@ -9813,7 +9818,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         const body = await readInternalBody();
         const category = typeof body?.category === "string" ? body.category.trim() : undefined;
         const resObj = await okxIntelligence.handleFreeMcpToolCall("query_market_benchmarks", {
-          ...(category ? { category } : {}),
+          category,
         });
         return json(res, 200, resObj);
       }
