@@ -24,11 +24,17 @@
 //                      bounded multi-turn orchestration deterministic.
 //   FAKE_CLAUDE_REPLY_STATE Optional counter file shared by fresh CLI
 //                      processes so scripted replies keep their order.
-//   FAKE_CLAUDE_TOOL_CALLS JSON array of {name, input?, ok?}: the tool calls
-//                      each turn makes, in order and before its reply text —
-//                      one tool_use (fresh id, that name and input) followed
-//                      by its tool_result (is_error unless ok, default true).
-//                      Unset, a turn makes the single default Bash call.
+//   FAKE_CLAUDE_TOOL_CALLS JSON array of {name, input?, ok?, output?}: the tool
+//                      calls each turn makes, in order and before its reply
+//                      text — one tool_use (fresh id, that name and input)
+//                      followed by its tool_result (is_error unless ok,
+//                      default true). When several entries share a readiness
+//                      or trust tool name, the turn keeps only those whose
+//                      input.endpointUrl or input.agentId appears in the
+//                      *latest* `User:` line of the prompt (room transcripts
+//                      accumulate prior turns). That lets vercel FAIL and
+//                      Railway PASS share one fixture. Unset, a turn makes
+//                      the single default Bash call.
 //   FAKE_CLAUDE_AUTH   in (default) | out | unsupported | malformed |
 //                      inherited-api-key — what `auth status` reports
 //   FAKE_CLAUDE_AUTO_UNAVAILABLE_MODELS comma-separated --model values for
@@ -193,6 +199,41 @@ const promptText = (prompt: JsonValue): string => {
   return typeof m?.content === "string" ? m.content : "";
 };
 
+/** Room turns paste the whole transcript; only the newest `User:` line should
+ * pick among competing readiness/trust envelopes. */
+const latestUserAsk = (asked: string): string => {
+  const matches = [...asked.matchAll(/(?:^|\n)User:\s*([^\n]*)/g)];
+  if (matches.length === 0) return asked;
+  return matches[matches.length - 1]?.[1]?.trim() || asked;
+};
+
+const selectScriptedToolCalls = (calls: ScriptedToolCall[], asked: string): ScriptedToolCall[] => {
+  const focus = latestUserAsk(asked);
+  const matched = calls.filter((call) => {
+    const endpointUrl = typeof call.input.endpointUrl === "string" ? call.input.endpointUrl : "";
+    const agentId = typeof call.input.agentId === "string" ? call.input.agentId : "";
+    return (endpointUrl !== "" && focus.includes(endpointUrl)) || (agentId !== "" && focus.includes(agentId));
+  });
+  if (matched.length === 0) return calls;
+  // Prefer the longest endpointUrl hit so a short substring cannot steal a
+  // more specific Railway URL when both somehow remain in focus.
+  const ranked = [...matched].sort((a, b) => {
+    const aUrl = typeof a.input.endpointUrl === "string" ? a.input.endpointUrl.length : 0;
+    const bUrl = typeof b.input.endpointUrl === "string" ? b.input.endpointUrl.length : 0;
+    return bUrl - aUrl;
+  });
+  const top = ranked[0]!;
+  const topUrl = typeof top.input.endpointUrl === "string" ? top.input.endpointUrl : "";
+  const topAgent = typeof top.input.agentId === "string" ? top.input.agentId : "";
+  return ranked.filter((call) => {
+    const endpointUrl = typeof call.input.endpointUrl === "string" ? call.input.endpointUrl : "";
+    const agentId = typeof call.input.agentId === "string" ? call.input.agentId : "";
+    if (topUrl) return endpointUrl === topUrl;
+    if (topAgent) return agentId === topAgent;
+    return call === top;
+  });
+};
+
 const finishIfDone = () => {
   if (stdinEnded && !turnRunning) process.exit(0);
 };
@@ -339,8 +380,9 @@ const playTurn = (prompt: JsonValue) => {
   const replyParts = nextScriptedReply();
   const usage = { input_tokens: 10, cache_read_input_tokens: 2, output_tokens: 5 };
   if (scriptedToolCalls) {
+    const calls = selectScriptedToolCalls(scriptedToolCalls, promptText(prompt));
     // scripted calls come first, each settled before the reply text
-    for (const call of scriptedToolCalls) {
+    for (const call of calls) {
       const id = `tu-${++toolUseCount}`;
       out({ type: "assistant", message: { content: [{ type: "tool_use", id, name: call.name, input: call.input }], usage } });
       out({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, is_error: !call.ok, content: call.output }] } });

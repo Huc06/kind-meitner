@@ -292,4 +292,27 @@ describe("Dev Day gate visual E2E", () => {
     await assertPng(png);
   }, LAUNCH_TIMEOUT_MS + 120_000);
 
+  run("picks Railway PASS after vercel FAIL in one fixture (latest User: line only)", async () => {
+    const fixture = await launch([
+      { name: "mcp__markets__scan_free_mcp_readiness", input: { endpointUrl: "https://demo.vercel.app/api/okx/free-mcp" }, ok: true, output: readinessOutput },
+      { name: "mcp__markets__scan_free_mcp_readiness", input: { endpointUrl: "https://kind-meitner-production.up.railway.app/api/okx/free-mcp" }, ok: true, output: readinessPassOutput },
+    ]);
+    launched.push(fixture);
+    await openDevDayGate(fixture.info.ui);
+    await ui("click", fixture.info.ui, "--name", "Scan a vercel URL");
+    await ui("click", fixture.info.ui, "--name", "Send message");
+    await expect.poll(async () => (await ui("snapshot", fixture.info.ui)).snapshot as string, { timeout: 60_000 })
+      .toContain('region "Readiness result: FAIL"');
+    await ui("click", fixture.info.ui, "--name", "Scan our Railway Free MCP");
+    await ui("click", fixture.info.ui, "--name", "Send message");
+    await expect.poll(async () => (await ui("snapshot", fixture.info.ui)).snapshot as string, { timeout: 60_000 })
+      .toContain('region "Readiness result: PASS"');
+    const endpoint = await ui("eval", fixture.info.ui, "--js", "document.querySelector('section[aria-label=\"Readiness result: PASS\"]')?.textContent ?? ''");
+    expect(String(endpoint.result)).toContain("kind-meitner-production.up.railway.app");
+    expect(String(endpoint.result)).not.toContain("demo.vercel.app");
+    const png = join(evidenceDir, "loop-a-fail-then-pass.png");
+    expect(await ui("screenshot", fixture.info.ui, "--out", png)).toMatchObject({ ok: true, path: png });
+    await assertPng(png);
+  }, LAUNCH_TIMEOUT_MS + 180_000);
+
 });
