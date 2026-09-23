@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=ghcr.io/harrymove-ctrl/kind-meitner:latest
 FROM ${BASE_IMAGE}
 USER root
-ARG ENGINES="@anthropic-ai/claude-code @openai/codex"
+ARG ENGINES="@anthropic-ai/claude-code"
 RUN if [ -n "$ENGINES" ]; then npm install -g $ENGINES; fi
 USER maus
