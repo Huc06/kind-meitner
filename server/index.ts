@@ -2268,8 +2268,21 @@ function isDevDayGate(room: Pick<GroupRecord, "name" | "section">): boolean {
  * The seed and the explicit import endpoint share this path, so neither can
  * create an orphan or a second local copy after a restart. */
 function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: GroupRecord; bot: BotRecord; activity: Message; created: boolean } {
-  const agent = findCatalogOkxAgent(agentId);
-  if (!agent) throw Object.assign(new Error("unknown OKX agent"), { status: 404 });
+  const cleanId = agentId.trim().replace(/^#/, "");
+  const normalizedId = cleanId === "13837" ? "okx-market-scout-v1" : cleanId;
+  let agent = findCatalogOkxAgent(normalizedId);
+  if (!agent) {
+    agent = {
+      id: cleanId,
+      name: `Agent #${cleanId}`,
+      description: `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
+      soul: `You are Agent #${cleanId} on OKX.ai. You represent Service #${cleanId}. When asked to run tasks, you assist the room and coordinate with OKX Onchain OS.`,
+      provider: "OKX.ai",
+      avatar: "chart",
+      capabilities: ["chat", "market-intelligence"],
+      status: "available",
+    };
+  }
   let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
   let created = false;
   if (!bot) {

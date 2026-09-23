@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Check, Copy, Play, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Ban, Check, Copy, Loader2, Play, RefreshCw, UserPlus, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import {
@@ -32,6 +32,7 @@ export function TrustCard({
   onBlockSpend,
   onContinue,
   onRecheck,
+  onCloneAgent,
   busy = false,
   ranAt,
 }: {
@@ -40,6 +41,8 @@ export function TrustCard({
   /** Enabled only when decision === GO. */
   onContinue?: (agentId: string) => void;
   onRecheck?: (agentId: string) => void;
+  /** Clone/import this agent into the workspace team. */
+  onCloneAgent?: (agentId: string) => Promise<void> | void;
   /** True while a Markets / Free-MCP tool call is in flight. */
   busy?: boolean;
   /** Transcript message time for the last-run age line. */
@@ -47,6 +50,8 @@ export function TrustCard({
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [cloned, setCloned] = useState(false);
   const evidenceId = useId();
   const actionLocked = useRef(false);
   const continueEnabled = data.decision === "GO" && !busy && Boolean(onContinue);
@@ -188,6 +193,27 @@ export function TrustCard({
         >
           {t("okxGate.evidence")}
         </button>
+        {onCloneAgent && (
+          <button
+            type="button"
+            disabled={busy || cloned || cloning}
+            onClick={async () => {
+              if (cloning || cloned) return;
+              setCloning(true);
+              try {
+                await onCloneAgent(data.agentId);
+                setCloned(true);
+              } finally {
+                setCloning(false);
+              }
+            }}
+            aria-label="Clone to Team"
+            className={cn(btnClass, cloned ? "text-success font-semibold" : "text-accent font-semibold hover:text-accent-hover")}
+          >
+            {cloning ? <Loader2 size={13} className="animate-spin" /> : cloned ? <Check size={13} /> : <UserPlus size={13} />}
+            {cloned ? "In Team" : "Clone to Team"}
+          </button>
+        )}
       </div>
       {evidenceOpen && (
         <pre

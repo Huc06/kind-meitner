@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Copy, Link2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, Link2, Loader2, RefreshCw, UserPlus, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import {
@@ -33,6 +33,7 @@ export function ReadinessRunCard({
   data,
   onRescan,
   onApplyHost,
+  onCloneAgent,
   busy = false,
   ranAt,
 }: {
@@ -40,6 +41,8 @@ export function ReadinessRunCard({
   onRescan?: (endpointUrl: string) => void;
   /** Pastes the known-good Railway Free-MCP URL into the host/endpoint field. */
   onApplyHost?: (hostUrl: string) => void;
+  /** Clone/import this agent into the workspace team. */
+  onCloneAgent?: (agentId: string) => Promise<void> | void;
   /** True while a Markets / Free-MCP tool call is in flight. */
   busy?: boolean;
   /** Transcript message time for the last-run age line. */
@@ -47,6 +50,8 @@ export function ReadinessRunCard({
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [cloned, setCloned] = useState(false);
   const evidenceId = useId();
   const actionLocked = useRef(false);
   const lastRunSummary = formatGateLastRunSummary(
@@ -171,6 +176,27 @@ export function ReadinessRunCard({
         >
           {t("okxGate.evidence")}
         </button>
+        {onCloneAgent && data.verdict === "PASS" && (
+          <button
+            type="button"
+            disabled={busy || cloned || cloning}
+            onClick={async () => {
+              if (cloning || cloned) return;
+              setCloning(true);
+              try {
+                await onCloneAgent("13837");
+                setCloned(true);
+              } finally {
+                setCloning(false);
+              }
+            }}
+            aria-label="Clone to Team"
+            className={cn(btnClass, cloned ? "text-success font-semibold" : "text-accent font-semibold hover:text-accent-hover")}
+          >
+            {cloning ? <Loader2 size={13} className="animate-spin" /> : cloned ? <Check size={13} /> : <UserPlus size={13} />}
+            {cloned ? "In Team" : "Clone to Team"}
+          </button>
+        )}
       </div>
       {evidenceOpen && (
         <pre
