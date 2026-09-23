@@ -110,6 +110,27 @@ export function extractGateLastRun(
   };
 }
 
+export function extractCardPayload(parsed: unknown): Record<string, unknown> | null {
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    const first = parsed[0];
+    if (isRecord(first)) {
+      if (isRecord(first.text)) return extractCardPayload(first.text);
+      if (typeof first.text === "string") {
+        try {
+          return extractCardPayload(JSON.parse(first.text));
+        } catch {
+          /* not json string */
+        }
+      }
+      return extractCardPayload(first);
+    }
+  }
+  if (!isRecord(parsed)) return null;
+  if (isRecord(parsed.data)) return parsed.data;
+  if (isRecord(parsed.result)) return extractCardPayload(parsed.result);
+  return parsed;
+}
+
 /** The provider records a completed MCP result as a string in `tool.output`.
  * Accept the real `{ resource, data }` envelope and a bare `data` object for
  * older transcripts, but never fabricate a verdict/decision from malformed data. */
@@ -121,8 +142,8 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   } catch {
     return null;
   }
-  if (!isRecord(parsed)) return null;
-  const data = isRecord(parsed.data) ? parsed.data : parsed;
+  const data = extractCardPayload(parsed);
+  if (!data) return null;
   const rawJson = tool.output.length <= 20_000 ? tool.output : tool.output.slice(0, 20_000);
 
   if (isReadinessTool(tool.name)) {
