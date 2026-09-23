@@ -5675,6 +5675,78 @@ const okxIntelligence = new OkxMarketplaceIntelligence({
   storageFile: join(DATA_DIR, "okx-intelligence.json"),
   queryFeeUsdt: 0.05,
 });
+if (okxIntelligence.getMarketOverview().totalAsps === 0) {
+  okxIntelligence.indexAsps([
+    {
+      id: "13837",
+      name: "Markets (Official ASP)",
+      category: "research",
+      reputationScore: 98,
+      medianPrice: 0,
+      averageTurnaroundMinutes: 1,
+      tasksCompleted: 342,
+      disputesCount: 0,
+      rejectionsCount: 2,
+      disputesWon: 0,
+      rejectRate: 0.006,
+      disputeRate: 0,
+      recentVolume7d: 1450,
+      trustTier: "elite",
+      updatedAt: Date.now(),
+    },
+    {
+      id: "asp-dex-scout",
+      name: "DEX Momentum Scout",
+      category: "dex",
+      reputationScore: 92,
+      medianPrice: 0.05,
+      averageTurnaroundMinutes: 2,
+      tasksCompleted: 189,
+      disputesCount: 1,
+      rejectionsCount: 4,
+      disputesWon: 1,
+      rejectRate: 0.021,
+      disputeRate: 0.005,
+      recentVolume7d: 980,
+      trustTier: "verified",
+      updatedAt: Date.now() - 3600_000,
+    },
+    {
+      id: "asp-audit-sentinel",
+      name: "Contract Sentinel",
+      category: "audit",
+      reputationScore: 95,
+      medianPrice: 0.15,
+      averageTurnaroundMinutes: 5,
+      tasksCompleted: 95,
+      disputesCount: 0,
+      rejectionsCount: 1,
+      disputesWon: 0,
+      rejectRate: 0.011,
+      disputeRate: 0,
+      recentVolume7d: 620,
+      trustTier: "verified",
+      updatedAt: Date.now() - 7200_000,
+    },
+    {
+      id: "asp-indexer-pro",
+      name: "X Layer Data Indexer",
+      category: "data",
+      reputationScore: 89,
+      medianPrice: 0.08,
+      averageTurnaroundMinutes: 3,
+      tasksCompleted: 210,
+      disputesCount: 0,
+      rejectionsCount: 3,
+      disputesWon: 0,
+      rejectRate: 0.014,
+      disputeRate: 0,
+      recentVolume7d: 1120,
+      trustTier: "verified",
+      updatedAt: Date.now() - 1800_000,
+    },
+  ]);
+}
 const okxX402Testnet = new X402TestnetResource({
   enabled: process.env.OKX_X402_TESTNET_ENABLED === "true",
   apiKey: process.env.OKX_API_KEY?.trim(),
@@ -9736,6 +9808,20 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           ...(endpointUrl ? { endpointUrl } : {}),
         });
         return json(res, 200, card);
+      }
+      if (method === "POST" && path === "/api/internal/okx/market-benchmarks") {
+        const body = await readInternalBody();
+        const category = typeof body?.category === "string" ? body.category.trim() : undefined;
+        const resObj = await okxIntelligence.handleFreeMcpToolCall("query_market_benchmarks", {
+          ...(category ? { category } : {}),
+        });
+        return json(res, 200, resObj);
+      }
+      if (method === "POST" && path === "/api/internal/okx/intelligence-report") {
+        const body = await readInternalBody();
+        const focusCategory = typeof body?.focusCategory === "string" ? body.focusCategory.trim() : undefined;
+        const report = okxIntelligence.generateIntelligenceReport({ focusCategory });
+        return json(res, 200, { report });
       }
       if (method === "POST" && path === "/api/internal/browser/mcp") {
         const body = await readInternalBody();

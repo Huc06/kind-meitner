@@ -296,6 +296,16 @@ export function Composer({
         label: "/chains",
         description: "Query Cloned Agent #2023 for supported chains & RPCs",
       },
+      {
+        id: "research",
+        label: "/research",
+        description: "Generate Bloomberg Market Intelligence & Risk Report",
+      },
+      {
+        id: "benchmarks",
+        label: "/benchmarks",
+        description: "Query Category Pricing & Volume Benchmarks",
+      },
     );
 
     const query = slash.query.toLowerCase();
@@ -362,6 +372,8 @@ export function Composer({
     else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
     else if (command.id === "services") replacement = "@Agent #2023 What services do you provide and how can you assist our team in this workspace?";
     else if (command.id === "chains") replacement = "@Agent #2023 List all supported EVM and SVM chain IDs, network names, and canonical RPCs for X Layer, Solana, and Ethereum.";
+    else if (command.id === "research") replacement = "@Markets Generate a comprehensive Bloomberg Market Intelligence and Risk Report for OKX.ai agent categories.";
+    else if (command.id === "benchmarks") replacement = "@Markets Query competitive pricing benchmarks, reject rates, and volume statistics for all OKX.ai agent categories.";
 
     const next = replaceComposerSlashTrigger(text, slash, replacement);
     editText(next.text);

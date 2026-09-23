@@ -7,7 +7,9 @@ export type ComposerSlashCommandId =
   | "trust"
   | "block"
   | "services"
-  | "chains";
+  | "chains"
+  | "research"
+  | "benchmarks";
 
 export interface ComposerSlashCommand {
   id: ComposerSlashCommandId;

@@ -851,6 +851,26 @@ const TOOLS = [
       required: ["agentId"],
     },
   },
+  {
+    name: "query_market_benchmarks",
+    description: "Query competitive pricing benchmarks, reject rates, and volume statistics for OKX.ai agent categories.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        category: { type: "string", description: "Optional category filter (e.g. 'research', 'dex', 'audit', 'data')." },
+      },
+    },
+  },
+  {
+    name: "get_market_intelligence_report",
+    description: "Generate a comprehensive market research and risk intelligence report for OKX.ai marketplace categories, pricing, and ASP rankings.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        focusCategory: { type: "string", description: "Optional category to focus the research report on." },
+      },
+    },
+  },
 ].map((tool) => {
   const annotations = agentToolAnnotations(tool.name);
   return annotations ? { ...tool, annotations } : tool;
@@ -1031,6 +1051,28 @@ async function callTool(name: string, args: Json): Promise<{ text: string; isErr
     return {
       text: (r as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? JSON.stringify(r),
       ...(r.error || (r as { isError?: boolean }).isError ? { isError: true } : {}),
+    };
+  }
+  if (name === "query_market_benchmarks") {
+    const category = typeof args.category === "string" ? args.category : undefined;
+    const r = await api("/api/internal/okx/market-benchmarks", {
+      method: "POST",
+      body: JSON.stringify({ category }),
+    });
+    return {
+      text: (r as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? JSON.stringify(r),
+      ...(r.error || (r as { isError?: boolean }).isError ? { isError: true } : {}),
+    };
+  }
+  if (name === "get_market_intelligence_report") {
+    const focusCategory = typeof args.focusCategory === "string" ? args.focusCategory : undefined;
+    const r = await api("/api/internal/okx/intelligence-report", {
+      method: "POST",
+      body: JSON.stringify({ focusCategory }),
+    });
+    return {
+      text: (r as { report?: string })?.report ?? JSON.stringify(r),
+      ...(r.error ? { isError: true } : {}),
     };
   }
   if (name === "list_room_targets") {
