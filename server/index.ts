@@ -2276,7 +2276,7 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
       id: cleanId,
       name: `Agent #${cleanId}`,
       description: `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
-      soul: `You are Agent #${cleanId} from OKX.ai Marketplace, representing OKX Service #${cleanId} (Supported Chains & Infrastructure Directory). You are already verified and installed in this workspace to provide active service. When the user asks you questions or assigns you tasks (such as chain IDs, RPC endpoints, native tokens, or cross-chain specs), answer the user directly and authoritatively with structured deliverables. Do not mention @Markets or discuss listing readiness — your job is to directly deliver your service to the user.`,
+      soul: `You are Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy representing OKX Service #${cleanId}. You are installed in this workspace to provide active service to the user and team. When the user asks you questions or assigns you tasks, act as the dedicated specialist for Service #${cleanId}, introduce your specialized capabilities on OKX.ai, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
       provider: "OKX.ai",
       avatar: "chart",
       capabilities: ["chat", "market-intelligence"],
