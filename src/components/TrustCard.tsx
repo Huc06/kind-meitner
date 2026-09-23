@@ -203,12 +203,19 @@ export function TrustCard({
               try {
                 await onCloneAgent(data.agentId);
                 setCloned(true);
+              } catch (err) {
+                console.error("Failed to clone agent:", err);
               } finally {
                 setCloning(false);
               }
             }}
             aria-label="Clone to Team"
-            className={cn(btnClass, cloned ? "text-success font-semibold" : "text-accent font-semibold hover:text-accent-hover")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-semibold transition-all",
+              cloned
+                ? "bg-success/15 text-success border border-success/30"
+                : "bg-accent text-white hover:brightness-110 shadow-sm",
+            )}
           >
             {cloning ? <Loader2 size={13} className="animate-spin" /> : cloned ? <Check size={13} /> : <UserPlus size={13} />}
             {cloned ? "In Team" : "Clone to Team"}
