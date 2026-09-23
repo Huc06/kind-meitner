@@ -8,10 +8,10 @@ import { redactSecrets, redactSecretsInText } from "./redact.ts";
  * credential cannot be cut in half and escape detection. */
 export function toolDetailPreview(value: unknown): string | undefined {
   if (value === undefined) return undefined;
-  let budget = 200;
+  let budget = 500;
   let textBudget = 256_000;
   const bounded = (item: unknown, depth = 0): unknown => {
-    if (--budget < 0 || depth > 6) return "[additional data omitted]";
+    if (--budget < 0 || depth > 16) return "[additional data omitted]";
     if (typeof item === "string") {
       if (item.length > textBudget) return "[large content omitted]";
       if (/^data:[^,\s]+;base64,/i.test(item)) return "[binary content omitted]";
