@@ -2323,7 +2323,9 @@ async function resolveOkxAgentSpec(cleanId: string): Promise<OkxCatalogAgent> {
  * create an orphan or a second local copy after a restart. */
 async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promise<{ room: GroupRecord; bot: BotRecord; activity: Message; created: boolean }> {
   const cleanId = agentId.trim().replace(/^#/, "");
+  const normalizedId = cleanId === "13837" ? "okx-market-scout-v1" : cleanId;
   const agent = await resolveOkxAgentSpec(cleanId);
+  const isCatalog = Boolean(findCatalogOkxAgent(normalizedId));
   let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
   let created = false;
   if (!bot) {
@@ -2334,9 +2336,15 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
     bot = store.patchBot(bot.id, {
       okxImport: okxImportDescriptor(agent),
       composio: false,
-      approvalMode: "ask",
-      autoApprove: false,
-      alwaysAllow: [],
+      approvalMode: isCatalog ? "ask" : "auto",
+      autoApprove: !isCatalog,
+      alwaysAllow: isCatalog ? [] : [
+        "get_market_intelligence_report",
+        "query_market_benchmarks",
+        "scan_free_mcp_readiness",
+        "get_asp_trust_card",
+        "Read",
+      ],
       browser: false,
       computer: "off",
       peers: [],
