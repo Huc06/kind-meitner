@@ -263,6 +263,36 @@ export function Composer({
       label: "/setup",
       description: t("composer.command.setupDesc"),
     });
+
+    // OKX Quick Commands for Dev Day
+    available.push(
+      {
+        id: "scan",
+        label: "/scan",
+        description: "Scan Railway Free-MCP endpoint (PASS · ASP #13837)",
+      },
+      {
+        id: "scan-vercel",
+        label: "/scan-vercel",
+        description: "Scan Vercel endpoint (FAIL · serverless pitfall)",
+      },
+      {
+        id: "trust",
+        label: "/trust",
+        description: "Check OKX Marketplace Agent Trust (#2023 · CAUTION)",
+      },
+      {
+        id: "block",
+        label: "/block",
+        description: "Check Broken Backend (Charlie #896 · NO_GO / Block)",
+      },
+      {
+        id: "chains",
+        label: "/chains",
+        description: "Query Cloned Agent #2023 for supported chains & RPCs",
+      },
+    );
+
     const query = slash.query.toLowerCase();
     return available.filter(
       (command) =>
@@ -318,7 +348,15 @@ export function Composer({
 
   const pickCommand = (command: ComposerSlashCommand) => {
     if (!slash) return;
-    const replacement = command.id === "learn" ? "/learn " : command.id === "setup" ? "/setup " : "";
+    let replacement = "";
+    if (command.id === "learn") replacement = "/learn ";
+    else if (command.id === "setup") replacement = "/setup ";
+    else if (command.id === "scan") replacement = '@Markets scan endpoint https://kind-meitner-production.up.railway.app/api/okx/free-mcp agentId="13837"';
+    else if (command.id === "scan-vercel") replacement = "@Markets scan endpoint https://demo.vercel.app/api/okx/free-mcp";
+    else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="2023"';
+    else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
+    else if (command.id === "chains") replacement = "@Agent #2023 List all supported EVM and SVM chain IDs, network names, and canonical RPCs for X Layer, Solana, and Ethereum.";
+
     const next = replaceComposerSlashTrigger(text, slash, replacement);
     editText(next.text);
     setCaret(next.caret);
