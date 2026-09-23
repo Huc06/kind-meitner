@@ -25,7 +25,6 @@
   "settings.section.connections": "接続",
   "settings.section.engines": "エンジン",
   "settings.section.companion": "リモートアクセス",
-  "settings.section.computer": "ローカル VM",
   "settings.section.usage": "使用状況",
   "settings.profile.title": "プロフィール",
   "settings.profile.subtitle": "サイドバーに表示されます。入力するそばから保存されます。",

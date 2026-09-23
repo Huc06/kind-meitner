@@ -54,8 +54,6 @@ const ENTRY_POINTS = [
   "local-computer.ts",
   "computer-proxy.ts",
   "local-computer-proxy.ts",
-  "container-mcp.ts",
-  "vps-container-mcp.ts",
   "permission-proxy.ts",
   "connector-proxy.ts",
   "mcp-gate.ts",
