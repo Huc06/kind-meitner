@@ -2346,6 +2346,7 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
         "Read",
         "WebSearch",
         "WebFetch",
+        "Bash",
       ],
       browser: false,
       computer: "off",
@@ -3772,9 +3773,20 @@ bus.subscribe((event: RuntimeEvent) => {
       const asker = bot ?? (speaker ? store.bot(speaker.botId) : undefined);
       const unattended = permission && asker && event.requestId ? isUnattended(asker.id, event.threadId) : false;
       const effectiveApprovalMode = asker ? approvalModeForTurn(asker, isInternalTurn(event.threadId)) : "ask";
-      const verdict = permission && asker && event.requestId
+      let verdict = permission && asker && event.requestId
         ? autoVerdict(effectiveApprovalMode, event.tool, { requiresExplicitApproval: event.requiresExplicitApproval })
         : null;
+      const isToolAlwaysAllowed = Boolean(
+        asker && (
+          asker.alwaysAllow?.includes(event.tool) ||
+          asker.alwaysAllow?.includes(event.tool.replace(/^mcp__[^_]+__/, "")) ||
+          asker.alwaysAllow?.includes("everything") ||
+          (routineRun && (asker.autoApprove || asker.okxImport))
+        )
+      );
+      if (permission && asker && event.requestId && isToolAlwaysAllowed && !verdict?.approve) {
+        verdict = { approve: `approved ${event.tool} (always allowed)`, source: "full-access" };
+      }
       // Auto's reviewer is the engine's own. Claude accepts `--permission-mode
       // auto` for any model and starts in Manual without a word when auto is
       // unavailable (Haiku 4.5, Sonnet 4.5, an org that disabled it), so the
