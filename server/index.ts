@@ -2335,6 +2335,10 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
       { seedMessages: false },
     );
     bot = store.patchBot(bot.id, {
+      // Without this the bot has no section, so buildTeamMapSections drops it
+      // into General while the room's own section renders as an empty team
+      // tile next to it. Follow the room the bot was imported into.
+      section: room.section,
       okxImport: okxImportDescriptor(agent),
       composio: false,
       approvalMode: isCatalog ? "ask" : "auto",
@@ -2359,6 +2363,9 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
     // Keep custom names intact, but migrate the old catalog display name to
     // the role name used in the Dev Day room roster and @mention prompts.
     if (bot.name === "Market Scout" && agent.name === "Markets") bot = store.patchBot(bot.id, { name: agent.name }) ?? bot;
+    // Repair a bot imported before sections were carried over. `undefined`
+    // means never set; an explicit "" is someone choosing General, so leave it.
+    if (bot.section === undefined && room.section) bot = store.patchBot(bot.id, { section: room.section }) ?? bot;
   }
   if (!room.memberIds.includes(bot.id)) {
     room = store.patchGroup(room.id, { memberIds: [...room.memberIds, bot.id] }) ?? room;
