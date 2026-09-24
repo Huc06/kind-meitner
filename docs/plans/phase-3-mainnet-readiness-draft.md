@@ -3,7 +3,7 @@
 
 # Phase 3 mainnet readiness — planning draft
 
-## 0. Precondition (currently unmet)
+## 0. Precondition (partially met — see below)
 
 Per the roadmap, Phase 3 work is only meaningful after Phase 2 exit criteria are met:
 
@@ -11,7 +11,24 @@ Per the roadmap, Phase 3 work is only meaningful after Phase 2 exit criteria are
 - `OKX_X402_TESTNET_ENABLED` remains off by default in production configuration.
 - PR #7 is rebased, CI-green, and merged.
 
-**As of this draft, Phase 2 is not complete**: PR #7 is open with failing CI, and no testnet `402`/payment/settlement evidence has been captured. This draft exists so Phase 3 scaffolding is ready to fill in with real evidence — it must not be treated as progress toward enabling mainnet.
+**This paragraph is superseded.** The original draft stated that PR #7 was open with failing CI and that no testnet evidence existed. Both statements have since been overtaken by events:
+
+- **Third bullet — met.** PR #7 merged as `7b528bd3`.
+- **Second bullet — met.** `OKX_X402_TESTNET_ENABLED` is read as a strict `=== "true"` comparison (`server/index.ts:6234`), so the route is off unless explicitly enabled.
+- **First bullet — substantially met, with one gap.** A real X Layer testnet settlement has been performed and recorded in [`docs/x402-testnet-local.md`](../x402-testnet-local.md) §4. The receipt is independently verifiable on-chain:
+
+  | Field | Value |
+  | --- | --- |
+  | Transaction | `0xe059043a5c61673610b4a0b82ba2b458a8217b9f2e4ddae042a78956337bb527` |
+  | Chain ID | `0x7a0` (1952) — X Layer testnet, matching `eip155:1952` |
+  | Receipt status | `0x1` (success), block 41,087,246 |
+  | Token | `0x9e29b3aada05bf2d2c827af80bd28dc0b9b4fb0c` (test USD₮0) |
+  | Settlement | `Transfer` of `10000` (= $0.01 at 6 decimals) to the configured recipient |
+  | Replay control | `AuthorizationUsed` emitted — the EIP-3009 nonce was consumed |
+
+  **The remaining gap is the automated half of the exit criterion.** The roadmap asks for "an integration test [that] demonstrates the entire x402 challenge/settlement sequence on testnet". `server/okx/x402-testnet.e2e.test.ts` declares itself `"(mock facilitator, no network or funds)"` — it proves the protocol shape, not a testnet settlement. The real settlement above was produced manually via `scripts/x402-testnet-buyer-sample.mjs`, not by a test.
+
+This draft remains planning material. Phase 2 evidence existing does not authorize any mainnet variable, and Phase 3 still ends in a separate, human-approved mainnet change request.
 
 ## 1. Purpose
 
@@ -117,6 +134,8 @@ This form must be completed and signed by a named human approver — not generat
 
 ## 4. Suggested next steps (still Phase 2, not Phase 3)
 
-1. Fix CI on PR #7 and merge it.
-2. Run the local and Railway testnet exercises described in `docs/x402-testnet-local.md` and record the resulting receipts/trace IDs as Phase 2 evidence (tracked in issue #8).
-3. Only after step 2 produces real evidence, begin populating section 2 of this draft with actual artifacts rather than checklist items.
+1. ~~Fix CI on PR #7 and merge it.~~ Done — merged as `7b528bd3`.
+2. ~~Run the **local** testnet exercise in `docs/x402-testnet-local.md`.~~ Done — a verified on-chain settlement is recorded in §4 of that runbook and reproduced in section 0 above.
+3. Run the **Railway** half of that runbook (§5): set the service-scoped sealed variables, redeploy, re-run the self-check against the public HTTPS host, and capture a deployed-testnet receipt. Tracked in issue #8. **This is the current blocker for Phase 2 exit.**
+4. Close the automated-test gap: either extend `x402-testnet.e2e.test.ts` with an opt-in testnet integration path (skipped by default so CI never spends funds), or record an explicit, reviewed waiver stating that the manual receipt satisfies this criterion.
+5. Only after steps 3 and 4, begin populating section 2 of this draft with actual artifacts rather than checklist items.
