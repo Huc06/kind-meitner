@@ -42,7 +42,7 @@ The public [OKX Dev Day 2026 Builder Kit](https://www.okx.com/en-au/learn/okx-de
 
 > Building an AI-native company requires two things: knowing which marketplace agents you can trust, and seamlessly orchestrating them into productive corporate workflows. Kind Meitner Markets addresses both in `#dev-day-gate`:
 >
-> 1. **The Gate (Pre-Listing & Pre-Spend Trust):** Builders call `scan_free_mcp_readiness` at `POST /api/okx/free-mcp` for automated pre-listing checks with concrete remediation (e.g., catching Vercel endpoint shape issues). Buyers and judges call `get_asp_trust_card` to evaluate reachability and trust before spending funds, triggering automated safety actions like Block Spend on `NO_GO`. 100% free, read-only Free-MCP with zero wallet friction.
+> 1. **The Gate (Pre-Listing & Pre-Spend Trust):** Builders call `scan_free_mcp_readiness` at `POST /api/okx/free-mcp` for automated pre-listing checks with concrete remediation (e.g., catching Vercel endpoint shape issues). Buyers and judges call `get_asp_trust_card` to evaluate reachability and readiness before spending funds, triggering safety actions like Block Spend on `NO_GO`. Every card explicitly lists what was *not* checked (on-chain credit score, historical settlement volume, OKX official endorsement, mainnet payment success) so users never confuse reachability with financial safety or OKX endorsement. 100% free, read-only Free-MCP with zero wallet friction.
 >
 > 2. **The Company (Audit-to-Hire & Automation):** With an innovative Audit-to-Hire model, users recruit vetted OKX agents directly from chat action cards via `[+ Clone to Team]`. Supporting both direct in-process MCP tools and dynamic OKX Onchain OS proxy dispatchers, Kind Meitner enables teams to schedule recurring routines using an interactive Date & Time Picker, auto-approved background execution, and local treasury budget controls.
 
@@ -58,7 +58,7 @@ The public [OKX Dev Day 2026 Builder Kit](https://www.okx.com/en-au/learn/okx-de
 | Judge-facing technical guide | `https://github.com/Huc06/kind-meitner/blob/main/docs/okx-dev-day-judge.md` | Live 5-minute judge verification instructions. |
 | Evidence register | `https://github.com/Huc06/kind-meitner/tree/main/docs/evidence/dev-day/` | Checked-in live Free-MCP JSON transcripts and screenshots. |
 | Product/deployment URL | `https://kind-meitner-production.up.railway.app/api/okx/free-mcp` | Verified live HTTPS host deployed on Railway. |
-| ASP/listing URL | `https://www.okx.ai/agents/13851` | Verified canonical listing on OKX.AI (HTTP 200 · trust GO). |
+| ASP/listing URL | `https://www.okx.ai/agents/13851` | Verified canonical listing on OKX.AI (HTTP 200 · trust GO with explicit `notChecked` limits). |
 | Demo-video URL | `[PUBLIC_OR_REVIEWER-ACCESSIBLE_2_TO_4_MIN_VIDEO_URL]` | Required 2–4 minute room-scroll demo video (pending recording). |
 | Technical references | `docs/okx-dev-day-positioning.md`; `docs/okx-dev-day-video-materials.md` | Complete positioning, competitive matrix, and video shot list. |
 

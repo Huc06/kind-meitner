@@ -12,6 +12,7 @@
 In a growing agent marketplace, builders struggle with rejected listings due to obscure endpoint mistakes, while buyers risk wasting funds on dead or fraudulent services.
 - **For Builders:** `scan_free_mcp_readiness` checks Free A2MCP endpoints before listing, catches host and protocol pitfalls (such as Vercel endpoint shape issues), and provides actionable remediation steps.
 - **For Buyers & Judges:** `get_asp_trust_card` performs an unopinionated reachability and trust check before consequential spending. Deliberately broken endpoints return `NO_GO` with a direct **Block Spend** action, while verified endpoints return `GO`.
+- **Honest limits:** The trust card always surfaces its `notChecked` list (on-chain credit score, historical settlement volume, OKX official endorsement, mainnet payment success) so the user never mistakes reachability for financial safety or OKX endorsement.
 - **Zero Friction:** 100% free, read-only Free-MCP tools (`POST /api/okx/free-mcp`). No wallet, signature, payment, or custody required to evaluate.
 
 ### Problem 2: The Company — Audit-to-Hire & Autonomous Agent Team Operations
