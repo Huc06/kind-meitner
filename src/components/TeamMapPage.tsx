@@ -29,6 +29,7 @@ import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
 import { TeamMapAttentionRail } from "./TeamMapAttentionRail";
+import { TeamMapUseCaseBanner } from "./TeamMapUseCaseBanner";
 import {
   deriveAttentionItems,
   getTeamMapDataMode,
@@ -459,8 +460,17 @@ export function TeamMapPage() {
           )}
         </div>
       </header>
+      {/* 2. Commercial Use Case Banner with Interactive Pipeline Stepper */}
+      <TeamMapUseCaseBanner
+        onSelectStepAgent={(agentId) => {
+          const resolvedId = bots.find((b) => b.id === agentId || b.name.toLowerCase().includes(agentId.toLowerCase()))?.id ?? agentId;
+          setSelectedWorkflowBotId(resolvedId);
+          setSelectedWorkflowTaskId(null);
+          setHighlightBotIds([resolvedId]);
+        }}
+      />
 
-      {/* 2. Compact Canvas Toolbar (Board vs Map switch, Search, Status filter) */}
+      {/* 3. Compact Canvas Toolbar (Board vs Map switch, Search, Status filter) */}
       <TeamMapToolbar
         viewMode={viewMode}
         onViewModeChange={setViewMode}
