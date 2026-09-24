@@ -8,10 +8,21 @@ export interface TeamMapBot {
   activity?: "working" | "waiting-on-you" | "idle" | "no-signal" | "dead";
 }
 
+export interface LiveTeamMapTask {
+  agentId: string;
+  taskId: string;
+  title: string;
+  state: "working" | "queued" | "waiting" | "ready";
+  createdAt: number;
+  delegatedFromAgentId?: string;
+  reason?: string;
+}
+
 export interface TeamMapSnapshot {
   collaborations: Array<{ groupId: string; botIds: [string, string]; lastAt: number }>;
   queued: Array<{ sourceBotId: string; targetBotId: string; reason?: string }>;
   running: Array<{ sourceBotId: string; targetBotId: string; threadId: string; groupId?: string }>;
+  liveTasks?: LiveTeamMapTask[];
 }
 
 export interface TeamMapSection<T extends TeamMapBot = TeamMapBot> {
@@ -40,6 +51,7 @@ export const EMPTY_TEAM_MAP_SNAPSHOT: TeamMapSnapshot = {
   collaborations: [],
   queued: [],
   running: [],
+  liveTasks: [],
 };
 
 export function buildTeamMapSections<T extends TeamMapBot>(bots: T[], names: string[] = []): TeamMapSection<T>[] {

@@ -570,18 +570,20 @@ export function TeamMapPage() {
               if (t) setHighlightBotIds([t.ownerAgentId]);
             }}
             onIntervene={(action) => {
-              if (action.type === "open_chat" && action.agentId) {
+              if (action.type === "open_conversation") {
                 dispatch({ type: "select", id: action.agentId });
-              } else if (action.type === "unblock" && action.taskId) {
-                setUnblockedTaskIds((prev) => [...prev, action.taskId!]);
+              } else if (action.type === "unblock_task") {
+                setUnblockedTaskIds((prev) => [...prev, action.taskId]);
                 setSelectedWorkflowTaskId(null);
                 setSelectedWorkflowBotId(null);
                 setHighlightBotIds([]);
-              } else if (action.type === "approve" && action.taskId) {
-                setUnblockedTaskIds((prev) => [...prev, action.taskId!]);
+              } else if (action.type === "approve_task") {
+                setUnblockedTaskIds((prev) => [...prev, action.taskId]);
                 setSelectedWorkflowTaskId(null);
                 setSelectedWorkflowBotId(null);
                 setHighlightBotIds([]);
+              } else if (action.type === "inspect_blocker") {
+                setSelectedWorkflowTaskId(action.taskId);
               }
             }}
           />

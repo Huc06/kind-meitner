@@ -11430,7 +11430,31 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         if (!sourceBotId || !visible.has(sourceBotId)) return [];
         return [{ sourceBotId, targetBotId: watch.toBotId, threadId, groupId: channel?.id }];
       });
-      return json(res, 200, { collaborations, queued, running });
+      const liveTasks = store.bots
+        .filter((b) => !b.hidden)
+        .flatMap((b) => {
+          const currentTask = store.taskByThread(b.id, b.threadId) ?? b.tasks?.[0];
+          if (!currentTask) return [];
+          const runningDel = [...delegationWatch.values()].find((w) => w.toBotId === b.id);
+          const queuedDel = pendingDelegationSnapshot().find((p) => p.toBotId === b.id);
+          const state = runningDel || b.busy || b.activity === "working"
+            ? "working"
+            : queuedDel
+              ? "queued"
+              : b.activity === "waiting-on-you"
+                ? "waiting"
+                : "ready";
+          return [{
+            agentId: b.id,
+            taskId: currentTask.threadId,
+            title: currentTask.title || "Active conversation",
+            state,
+            createdAt: currentTask.createdAt,
+            delegatedFromAgentId: runningDel?.sourceBotId ?? queuedDel?.sourceBotId,
+            reason: queuedDel?.reason,
+          }];
+        });
+      return json(res, 200, { collaborations, queued, running, liveTasks });
     }
 
     // ── routines calendar ────────────────────────────────────────────────
