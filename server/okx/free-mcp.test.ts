@@ -121,6 +121,42 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
     expect(invalidBody.result.isError).toBe(true);
     expect(invalidBody.result.content[0].text).toBe("endpointUrl is required");
   });
+
+  it("completes the MCP Streamable HTTP session handshake", async () => {
+    const init = await call(rpc("init-1", "initialize", {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: { name: "fixture", version: "1.0.0" },
+    }));
+    expect(init.status).toBe(200);
+    const sessionId = init.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+    const initBody = await init.json();
+    expect(initBody.result.serverInfo.name).toBe("kind-meitner-free-okx-ai");
+    expect(initBody.result.protocolVersion).toBe("2024-11-05");
+
+    const notified = await call(
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { "mcp-session-id": sessionId! },
+    );
+    expect(notified.status).toBe(202);
+
+    const listed = await call(rpc("list-session", "tools/list"), { "mcp-session-id": sessionId! });
+    expect(listed.status).toBe(200);
+    expect((await listed.json()).result.tools.length).toBeGreaterThan(0);
+  });
+
+  it("terminates an MCP session on DELETE", async () => {
+    const init = await call(rpc("init-del", "initialize", {}));
+    const sessionId = init.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    const del = await fetch(`${baseUrl}/api/okx/free-mcp`, {
+      method: "DELETE",
+      headers: { "mcp-session-id": sessionId! },
+    });
+    expect(del.status).toBe(200);
+  });
 });
 
   it("fails known Vercel hosts without making an outbound probe", async () => {
