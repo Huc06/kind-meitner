@@ -69,9 +69,12 @@ describe("bot-first sidebar", () => {
       const markup = renderToStaticMarkup(createElement(Capture));
       const row = findElement(tree, "data-sidebar-bot-row", bot.id)!;
       expect(String(row.props.className).split(" ")).toEqual(expect.arrayContaining([...spacing]));
+      // A flat upload is an <img> with real attributes; the mascot is a
+      // canvas that bleeds past its box, so the layout size lives on the
+      // wrapper span.
       expect(markup).toContain(avatar.avatarUrl
         ? `width="${size}" height="${size}"`
-        : `width="${size}px" height="${size}px"`);
+        : `width:${size}px;height:${size}px`);
     }
   });
 

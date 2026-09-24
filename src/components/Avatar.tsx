@@ -115,7 +115,10 @@ function MausAvatarComponent(
   const hex = mausColorToHex(color);
 
   return (
-    <span className="inline-flex shrink-0">
+    // The library draws at 1.5x and pulls the overflow back with negative
+    // margins, so its own box is not the layout size callers asked for.
+    // Pin the wrapper to `size` and let the mark bleed outside it.
+    <span className="inline-flex shrink-0" style={{ width: size, height: size }}>
       <LibBotAvatar
         type={botType}
         state={botState}
