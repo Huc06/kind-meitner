@@ -51,8 +51,71 @@ export function readinessVerdict(checks: ReadinessCheck[]): FreeMcpReadinessData
   return checks.some((check) => check.status === "warn") ? "WARN" : "PASS";
 }
 
+export interface OkxRemoteAgentMetadata {
+  agentId: string;
+  name: string;
+  description: string;
+  score?: string;
+  approvalRate?: string;
+  usageCount?: number;
+  avatarUrl?: string;
+  categories?: string[];
+  services?: Array<{
+    serviceId: number | string;
+    name: string;
+    description: string;
+    price: string;
+    endpoint?: string;
+  }>;
+}
+
+export async function fetchOkxAgentMetadata(
+  agentId: string,
+  dependencies: ReadinessProbeDependencies = {},
+): Promise<OkxRemoteAgentMetadata | null> {
+  const probeFetch = dependencies.fetch ?? fetch;
+  try {
+    const res = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(agentId)}`, {
+      signal: AbortSignal.timeout(6_000),
+      headers: { "user-agent": "KindMeitner/1.0" },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const match = html.match(/<script data-id="__app_data_for_ssr__"[^>]*>([\s\S]*?)<\/script>/);
+    if (!match) return null;
+    const data = JSON.parse(match[1]);
+    const overview = data.appContext?.initialProps?.AgentDetailPage?.overview;
+    const services = data.appContext?.initialProps?.AgentDetailPage?.services?.list || [];
+    if (!overview || !overview.name) return null;
+    return {
+      agentId,
+      name: String(overview.name).trim(),
+      description: String(overview.description ?? "").trim(),
+      score: overview.score != null ? String(overview.score).trim() : undefined,
+      approvalRate: overview.approvalRate != null ? String(overview.approvalRate).trim() : undefined,
+      usageCount: typeof overview.usageCount === "number" ? overview.usageCount : undefined,
+      avatarUrl: typeof overview.avatar === "string" ? overview.avatar.trim() : undefined,
+      categories: Array.isArray(overview.categories) ? overview.categories.map(String) : [],
+      services: services.map((s: any) => ({
+        serviceId: s.serviceId,
+        name: String(s.name ?? "").trim(),
+        description: String(s.description ?? "").trim(),
+        price: String(s.price ?? "0").trim(),
+        endpoint: typeof s.endpoint === "string" ? s.endpoint.trim() : undefined,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface AspTrustCardData {
   agentId: string;
+  agentName?: string;
+  description?: string;
+  score?: string;
+  avatarUrl?: string;
+  services?: Array<{ serviceId: number | string; name: string; description: string; price: string }>;
   decision: "GO" | "CAUTION" | "NO_GO";
   summary: string;
   signals: Array<{ id: "listing_page" | "endpoint_readiness"; status: "pass" | "warn" | "fail" | "skipped"; detail: string }>;
@@ -65,21 +128,83 @@ export async function getAspTrustCard(agentId: string, endpointUrl?: string, dep
   const probeFetch = dependencies.fetch ?? fetch;
   const signals: AspTrustCardData["signals"] = [];
   const remediation: string[] = [];
+  let metadata: OkxRemoteAgentMetadata | null = null;
+
   try {
     const response = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(agentId)}`, { signal: AbortSignal.timeout(8_000) });
-    signals.push({ id: "listing_page", status: response.status === 200 ? "pass" : response.status === 404 ? "fail" : "warn", detail: `HTTP ${response.status}` });
-  } catch { signals.push({ id: "listing_page", status: "warn", detail: "listing probe unavailable" }); }
+    if (response.status === 200) {
+      signals.push({ id: "listing_page", status: "pass", detail: `HTTP 200` });
+      try {
+        const html = await response.text();
+        const match = html.match(/<script data-id="__app_data_for_ssr__"[^>]*>([\s\S]*?)<\/script>/);
+        if (match) {
+          const data = JSON.parse(match[1]);
+          const overview = data.appContext?.initialProps?.AgentDetailPage?.overview;
+          const services = data.appContext?.initialProps?.AgentDetailPage?.services?.list || [];
+          if (overview && overview.name) {
+            metadata = {
+              agentId,
+              name: String(overview.name).trim(),
+              description: String(overview.description ?? "").trim(),
+              score: overview.score != null ? String(overview.score).trim() : undefined,
+              approvalRate: overview.approvalRate != null ? String(overview.approvalRate).trim() : undefined,
+              usageCount: typeof overview.usageCount === "number" ? overview.usageCount : undefined,
+              avatarUrl: typeof overview.avatar === "string" ? overview.avatar.trim() : undefined,
+              categories: Array.isArray(overview.categories) ? overview.categories.map(String) : [],
+              services: services.map((s: any) => ({
+                serviceId: s.serviceId,
+                name: String(s.name ?? "").trim(),
+                description: String(s.description ?? "").trim(),
+                price: String(s.price ?? "0").trim(),
+                endpoint: typeof s.endpoint === "string" ? s.endpoint.trim() : undefined,
+              })),
+            };
+          }
+        }
+      } catch {
+        // SSR parsing is best effort
+      }
+    } else {
+      signals.push({ id: "listing_page", status: response.status === 404 ? "fail" : "warn", detail: `HTTP ${response.status}` });
+    }
+  } catch {
+    signals.push({ id: "listing_page", status: "warn", detail: "listing probe unavailable" });
+  }
+
   if (endpointUrl) {
     const readiness = await scanFreeMcpReadiness(endpointUrl, agentId, dependencies);
     const status = readiness.data.verdict === "PASS" ? "pass" : readiness.data.verdict === "FAIL" ? "fail" : "warn";
     signals.push({ id: "endpoint_readiness", status, detail: `verdict=${readiness.data.verdict}` });
     remediation.push(...readiness.data.remediation);
   } else signals.push({ id: "endpoint_readiness", status: "skipped", detail: "no endpointUrl provided" });
+
   const failed = signals.some((signal) => signal.status === "fail");
   const passed = signals.every((signal) => signal.status === "pass");
   const decision: AspTrustCardData["decision"] = failed ? "NO_GO" : passed ? "GO" : "CAUTION";
   const safeNextStep = decision === "GO" ? "Caller may use free read-only tools on this endpoint. Do not treat this as payment approval." : decision === "NO_GO" ? "Do not call pay/x402 tools. Fix listing or endpoint first." : "Probe or fix endpoint before paying. Free tools only if readiness is known.";
-  return { resource: { ...readinessResource, provenance: "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement" }, data: { agentId, decision, summary: decision === "GO" ? "Listing page reachable and endpoint readiness PASS." : decision === "NO_GO" ? "Listing or endpoint checks failed." : "Signals are incomplete; use caution before spending.", signals, notChecked: ["on-chain credit score", "historical settlement volume", "OKX official endorsement", "mainnet payment success"], remediation: [...new Set(remediation)], safeNextStep } };
+
+  const displayName = metadata?.name;
+  return {
+    resource: { ...readinessResource, provenance: "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement" },
+    data: {
+      agentId,
+      agentName: displayName,
+      description: metadata?.description,
+      score: metadata?.score,
+      avatarUrl: metadata?.avatarUrl,
+      services: metadata?.services?.map(s => ({ serviceId: s.serviceId, name: s.name, description: s.description, price: s.price })),
+      decision,
+      summary: decision === "GO"
+        ? (displayName ? `Verified ${displayName} on OKX.ai. Endpoint readiness PASS.` : "Listing page reachable and endpoint readiness PASS.")
+        : decision === "NO_GO"
+          ? "Listing or endpoint checks failed."
+          : (displayName ? `Found ${displayName} on OKX.ai. Signals are incomplete; use caution before spending.` : "Signals are incomplete; use caution before spending."),
+      signals,
+      notChecked: ["on-chain credit score", "historical settlement volume", "OKX official endorsement", "mainnet payment success"],
+      remediation: [...new Set(remediation)],
+      safeNextStep,
+    },
+  };
 }
 
 export type TrustTier = "elite" | "verified" | "neutral" | "high_risk";

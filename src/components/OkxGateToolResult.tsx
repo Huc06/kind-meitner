@@ -20,6 +20,7 @@ export function OkxGateToolResult({
   fallback,
   composerDraftId,
   busy = false,
+  onCloneAgent,
 }: {
   message: Message;
   enabled: boolean;
@@ -28,16 +29,20 @@ export function OkxGateToolResult({
   composerDraftId: string;
   /** True while a Markets / Free-MCP tool call is in flight. */
   busy?: boolean;
+  /** Custom clone callback when provided. */
+  onCloneAgent?: (agentId: string) => Promise<void> | void;
 }) {
   const tool = message.tool;
   if (!enabled || !tool || !isOkxGateTool(tool.name)) return <>{fallback}</>;
   const data = parseOkxActionCard(tool);
+
   if (data) {
     return data.kind === "readiness" ? (
       <ReadinessRunCard
         data={data}
         busy={busy}
         ranAt={message.at}
+        onCloneAgent={onCloneAgent}
         onApplyHost={(hostUrl) =>
           appendComposerDraft(
             composerDraftId,
@@ -53,6 +58,7 @@ export function OkxGateToolResult({
         data={data}
         busy={busy}
         ranAt={message.at}
+        onCloneAgent={onCloneAgent}
         onBlockSpend={(agentId) =>
           appendComposerDraft(
             composerDraftId,
