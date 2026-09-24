@@ -1244,7 +1244,7 @@ function CalendarEventCard({
         left: `calc(${(layout.column / layout.columns) * 100}% + 2px)`,
         width: `calc(${100 / layout.columns}% - 4px)`,
         top: `${((new Date(item.at).getHours() * 60 + new Date(item.at).getMinutes()) / 60) * HOUR_HEIGHT}px`,
-        height: `${Math.max(16, (previewDuration / 60) * HOUR_HEIGHT)}px`,
+        height: `${Math.max(previewDuration >= 30 ? 44 : 16, (previewDuration / 60) * HOUR_HEIGHT)}px`,
         background: `linear-gradient(110deg, color-mix(in srgb, ${color} 58%, #242424), color-mix(in srgb, ${color} 28%, #181818))`,
         borderColor: `color-mix(in srgb, ${color} 70%, transparent)`,
       }}
