@@ -10,6 +10,8 @@ export const GAP = 16;
 export const TEAM_PADDING = 20;
 export const HEADER_HEIGHT = 64;
 export const COMPUTER_DRAG_TYPE = "application/x-kind-meitner-computer";
+export const MIN_READABLE_SCALE = 0.72;
+export const MAX_READABLE_SCALE = 1.0;
 
 /** Personal card order never changes a bot's team or Chief role. */
 export function orderBots<T extends { id: string }>(bots: T[], order: string[] = []): T[] {

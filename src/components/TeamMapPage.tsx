@@ -18,6 +18,7 @@ import {
   buildTeamMapSections,
   type TeamMapSnapshot,
 } from "@/lib/team-map";
+import { cn } from "@/lib/cn";
 import { TeamCanvas, type BotWorkflowInfo } from "./TeamCanvas";
 import { TeamMapBoardView } from "./TeamMapBoardView";
 import { TeamMapToolbar } from "./TeamMapToolbar";
@@ -461,10 +462,11 @@ export function TeamMapPage() {
         onZoomOut={() => setZoomPercent((z) => Math.max(30, z / 1.2))}
       />
 
-      {/* 3. Operational Attention Strip (Placed at top of canvas) */}
-      <div className="shrink-0 border-b border-white/[0.08] bg-[#0B0C0E] px-6 py-2.5">
+      {/* 3. Operational Attention Strip (Compact in Map mode, normal in Board mode) */}
+      <div className={cn("shrink-0 border-b border-white/[0.08] bg-[#0B0C0E]", viewMode === "map" ? "px-6 py-1.5" : "px-6 py-2.5")}>
         <TeamMapAttentionRail
           items={attentionItems}
+          compact={viewMode === "map"}
           selectedItemId={selectedWorkflowTaskId ? `attention-blocked-${selectedWorkflowTaskId}` : null}
           onSelectItem={(item) => {
             if (item.taskId) {
@@ -478,7 +480,6 @@ export function TeamMapPage() {
           }}
         />
       </div>
-
       {/* 4. Canvas Area: Board View (Default) or Spatial Map + Right-side Detail Drawer */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -564,76 +565,118 @@ export function TeamMapPage() {
         )}
       </div>
 
-      {/* 5. Compact Lower Content (15-20% viewport max): Flat Handoffs + Collapsed Workflow Insights */}
+      {/* 5. Lower Content: Collapsed Supporting Details Bar in Map mode, Full footer in Board mode */}
       <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
-        <div className="max-h-[300px] overflow-y-auto px-6 py-4 space-y-3.5">
-          {/* Flat Structured Handoffs with Deduplicated Channels */}
-          <TeamMapHandoffList
-            items={unifiedHandoffs}
-            selectedTaskId={selectedWorkflowTaskId}
-            onSelectHandoff={(item: UnifiedHandoffItem) => {
-              if (item.taskId) {
-                setSelectedWorkflowTaskId(item.taskId);
-                setSelectedWorkflowBotId(null);
-              } else {
-                setSelectedWorkflowBotId(item.fromBotId);
-                setSelectedWorkflowTaskId(null);
-              }
-              setHighlightBotIds([item.fromBotId, item.toBotId]);
-            }}
-          />
-
-          {/* Collapsible Secondary Workflow Insights */}
-          <details
-            open={activeMetricId !== null}
-            className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
-          >
-            <summary className="flex h-11 cursor-pointer list-none items-center justify-between px-5 text-[13.5px] font-semibold text-white/85 hover:bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <Sparkles size={14} className="text-accent" aria-hidden="true" />
-                <span>Workflow insights</span>
-                <span className="text-[11px] font-normal text-white/40">Historical metrics &amp; event audit</span>
+        {viewMode === "map" ? (
+          <details className="group/details">
+            <summary className="flex h-9 cursor-pointer list-none items-center justify-between px-6 text-[12px] font-medium text-white/70 hover:bg-white/[0.03] hover:text-white transition-colors">
+              <div className="flex items-center gap-2.5">
+                <span className="text-white/40 group-open/details:rotate-180 transition-transform duration-150">▲</span>
+                <span>Supporting details</span>
+                <span className="rounded-[5px] bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10.5px] text-white/60">
+                  Handoffs {unifiedHandoffs.length}
+                </span>
+                <span className="text-white/30">·</span>
+                <span className="text-white/40">Workflow insights &amp; event trail</span>
               </div>
-              <span className="text-[11.5px] font-normal text-white/45">
-                {activeMetricId ? "Filtering by metric" : "Expand metrics"}
+              <span className="text-[11px] text-white/40">
+                Click to expand / collapse
               </span>
             </summary>
+            <div className="max-h-[340px] overflow-y-auto px-6 py-4 space-y-3.5 border-t border-white/[0.06] bg-[#121417]">
+              {/* Flat Structured Handoffs */}
+              <TeamMapHandoffList
+                items={unifiedHandoffs}
+                selectedTaskId={selectedWorkflowTaskId}
+                onSelectHandoff={(item: UnifiedHandoffItem) => {
+                  if (item.taskId) {
+                    setSelectedWorkflowTaskId(item.taskId);
+                    setSelectedWorkflowBotId(null);
+                  } else {
+                    setSelectedWorkflowBotId(item.fromBotId);
+                    setSelectedWorkflowTaskId(null);
+                  }
+                  setHighlightBotIds([item.fromBotId, item.toBotId]);
+                }}
+              />
 
-            <div className="space-y-4 border-t border-white/[0.08] p-4">
+              {/* Secondary Workflow Insights */}
               <TeamMapWowFacts
                 facts={wowFacts}
                 activeMetricId={activeMetricId}
                 onSelectMetric={handleSelectMetric}
                 onResetMetric={handleResetMetric}
               />
-
-              <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0C0E]/50">
-                <div className="flex h-9 items-center justify-between border-b border-white/[0.06] px-4 text-[12px]">
-                  <span className="font-semibold text-white/80">Activity Event Trail</span>
-                  <span className="text-[11px] text-white/40">Chronological</span>
-                </div>
-                <div className="h-[180px]">
-                  <TeamMapActivityFeed
-                    snapshot={workflowSnapshot}
-                    kindFilter={factsFilter}
-                    onKindFilter={setFactsFilter}
-                    onSelectAgent={(agentId) => {
-                      setSelectedWorkflowBotId(agentId);
-                      setHighlightBotIds([agentId]);
-                    }}
-                    onSelectTask={(taskId) => {
-                      setSelectedWorkflowTaskId(taskId);
-                      const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
-                      if (t) setHighlightBotIds([t.ownerAgentId]);
-                    }}
-                    highlightAgentId={selectedWorkflowBotId}
-                    className="h-full"
-                  />
-                </div>
-              </div>
             </div>
           </details>
-        </div>
+        ) : (
+          <div className="max-h-[300px] overflow-y-auto px-6 py-4 space-y-3.5">
+            {/* Board View Bottom Area: Flat Handoffs & Collapsible Insights */}
+            <TeamMapHandoffList
+              items={unifiedHandoffs}
+              selectedTaskId={selectedWorkflowTaskId}
+              onSelectHandoff={(item: UnifiedHandoffItem) => {
+                if (item.taskId) {
+                  setSelectedWorkflowTaskId(item.taskId);
+                  setSelectedWorkflowBotId(null);
+                } else {
+                  setSelectedWorkflowBotId(item.fromBotId);
+                  setSelectedWorkflowTaskId(null);
+                }
+                setHighlightBotIds([item.fromBotId, item.toBotId]);
+              }}
+            />
+
+            <details
+              open={activeMetricId !== null}
+              className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
+            >
+              <summary className="flex h-11 cursor-pointer list-none items-center justify-between px-5 text-[13.5px] font-semibold text-white/85 hover:bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-accent" aria-hidden="true" />
+                  <span>Workflow insights</span>
+                  <span className="text-[11px] font-normal text-white/40">Historical metrics &amp; event audit</span>
+                </div>
+                <span className="text-[11.5px] font-normal text-white/45">
+                  {activeMetricId ? "Filtering by metric" : "Expand metrics"}
+                </span>
+              </summary>
+              <div className="space-y-4 border-t border-white/[0.08] p-4">
+                <TeamMapWowFacts
+                  facts={wowFacts}
+                  activeMetricId={activeMetricId}
+                  onSelectMetric={handleSelectMetric}
+                  onResetMetric={handleResetMetric}
+                />
+
+                <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0C0E]/50">
+                  <div className="flex h-9 items-center justify-between border-b border-white/[0.06] px-4 text-[12px]">
+                    <span className="font-semibold text-white/80">Activity Event Trail</span>
+                    <span className="text-[11px] text-white/40">Chronological</span>
+                  </div>
+                  <div className="h-[180px]">
+                    <TeamMapActivityFeed
+                      snapshot={workflowSnapshot}
+                      kindFilter={factsFilter}
+                      onKindFilter={setFactsFilter}
+                      onSelectAgent={(agentId) => {
+                        setSelectedWorkflowBotId(agentId);
+                        setHighlightBotIds([agentId]);
+                      }}
+                      onSelectTask={(taskId) => {
+                        setSelectedWorkflowTaskId(taskId);
+                        const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
+                        if (t) setHighlightBotIds([t.ownerAgentId]);
+                      }}
+                      highlightAgentId={selectedWorkflowBotId}
+                      className="h-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        )}
       </footer>
 
       {/* Legacy Session log modal */}

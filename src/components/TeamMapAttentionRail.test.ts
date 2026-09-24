@@ -18,7 +18,7 @@ describe("TeamMapAttentionRail", () => {
 
     expect(markup).toContain("No attention items required");
     expect(markup).toContain("All systems quiet");
-    expect(markup).toContain("Select any agent to inspect workload");
+    expect(markup).toContain("Select an agent to inspect");
   });
 
   it("prioritizes blocked items first and renders actionable next steps", () => {

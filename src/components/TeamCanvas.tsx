@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ArrowRight, BookOpen, Crown, MessageCircle, Minus, Monitor, MoreHorizontal, Pencil, Plus, ScrollText, Trash2, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Crown, MessageCircle, Monitor, MoreHorizontal, Pencil, ScrollText, Trash2, Users } from "lucide-react";
 import { api, useStore, type Bot } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -179,6 +179,7 @@ export function TeamCanvas({
   searchQuery = "",
   statusFilter = "all",
   onlyNeedsAttention = false,
+  onScaleChange,
 }: {
   sections: TeamMapSection<Bot>[];
   canManage: boolean;
@@ -200,6 +201,7 @@ export function TeamCanvas({
   searchQuery?: string;
   statusFilter?: string;
   onlyNeedsAttention?: boolean;
+  onScaleChange?: (scalePercent: number) => void;
 }) {
   const { state } = useStore();
   const viewport = useRef<HTMLDivElement>(null);
@@ -210,6 +212,9 @@ export function TeamCanvas({
   const [positions, setPositions] = useState<Record<string, Point>>({});
   const [botOrders, setBotOrders] = useState<Record<string, string[]>>({});
   const [view, setView] = useState<View>({ x: 40, y: 40, scale: 1 });
+  useEffect(() => {
+    onScaleChange?.(Math.round(view.scale * 100));
+  }, [view.scale, onScaleChange]);
   const [dragged, setDragged] = useState<{ bot: Bot; point: Point } | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [computerDropKey, setComputerDropKey] = useState<string | null>(null);
@@ -609,11 +614,7 @@ export function TeamCanvas({
         <p className="max-sm:hidden">{t("canvas.hint")}</p>
         <p role="status" aria-live="polite" className="max-w-[440px]">{dropHint ?? announcement}</p>
       </div>
-      <div className="pointer-events-auto flex shrink-0 items-center gap-0.5 rounded-xl border border-hairline/60 bg-panel p-1 shadow-sm">
-        <button className={iconButton} aria-label={t("canvas.zoomOut")} onClick={() => zoom(1 / 1.2)}><Minus size={15} /></button>
-        <button className="min-w-12 rounded-md px-1 py-2 text-[11px] tabular-nums text-ink-secondary hover:bg-control" aria-label={t("canvas.fit")} title={t("canvas.fitHint")} onClick={fit}>{Math.round(view.scale * 100)}%</button>
-        <button className={iconButton} aria-label={t("canvas.zoomIn")} onClick={() => zoom(1.2)}><Plus size={15} /></button>
-      </div>
+      {/* Unified zoom controls exist on the primary TeamMapToolbar */}
     </div>
   </div>;
 }

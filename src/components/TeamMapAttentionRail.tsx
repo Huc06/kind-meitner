@@ -78,11 +78,13 @@ export function TeamMapAttentionRail({
   items,
   selectedItemId,
   onSelectItem,
+  compact = false,
   className,
 }: {
   items: AttentionItem[];
   selectedItemId?: string | null;
   onSelectItem: (item: AttentionItem) => void;
+  compact?: boolean;
   className?: string;
 }) {
   const sortedItems = useMemo(() => {
@@ -103,7 +105,8 @@ export function TeamMapAttentionRail({
         role="status"
         aria-label="Workspace health"
         className={cn(
-          "flex h-9 w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#15171A] px-4 text-[12px] text-white/70",
+          "flex w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#15171A] px-4 text-[12px] text-white/70",
+          compact ? "h-8 py-0.5 text-[11px]" : "h-9",
           className,
         )}
       >
@@ -113,7 +116,42 @@ export function TeamMapAttentionRail({
           <span className="text-white/30">·</span>
           <span className="text-white/50">All systems quiet</span>
         </div>
-        <span className="text-[11px] text-white/40">Select any agent to inspect workload</span>
+        <span className="text-[11px] text-white/40 hidden sm:inline">Select an agent to inspect</span>
+      </div>
+    );
+  }
+
+  // Compact mode single-line summary for Spatial Map view
+  if (compact) {
+    const topItem = sortedItems[0];
+    const config = PRIORITY_STYLES[topItem.priority];
+    const Icon = config.icon;
+
+    return (
+      <div
+        role="region"
+        aria-label="Urgent attention summary"
+        className={cn(
+          "flex h-9 w-full items-center justify-between gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 text-[11.5px]",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0">
+          <Icon size={13} className="shrink-0 text-danger" aria-hidden="true" />
+          <span className="font-semibold text-danger">{sortedItems.length} needs attention:</span>
+          <span className="truncate text-white/90 font-medium">{topItem.agentName}</span>
+          <span className="text-white/30">·</span>
+          <span className="truncate text-white/60">{topItem.summary}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onSelectItem(topItem)}
+          className="shrink-0 inline-flex items-center gap-1 rounded-md bg-white/[0.08] px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-white/[0.15]"
+        >
+          <span>{topItem.actionLabel ?? topItem.recommendedAction}</span>
+          <ArrowRight size={11} aria-hidden="true" />
+        </button>
       </div>
     );
   }
