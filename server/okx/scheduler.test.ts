@@ -278,6 +278,17 @@ asp: asp-auditor-sec`;
       expect(() => treasury.deposit(0)).toThrow("positive");
       expect(() => treasury.deposit(-10)).toThrow("positive");
       expect(treasury.getBalance()).toBe(100);
+
+      // setBalance replaces the value exactly, unlike deposit's top-up
+      treasury.setBalance(250);
+      expect(treasury.getBalance()).toBe(250);
+      treasury.setBalance(0);
+      expect(treasury.getBalance()).toBe(0);
+
+      // setBalance rejects negative and non-finite values
+      expect(() => treasury.setBalance(-1)).toThrow("non-negative");
+      expect(() => treasury.setBalance(Number.NaN)).toThrow("non-negative");
+      expect(treasury.getBalance()).toBe(0);
     });
 
     it("prevents double-spend race condition across concurrent scheduled runs via reservation lifecycle", async () => {

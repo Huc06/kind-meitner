@@ -158,16 +158,18 @@ function StackedMauses({ members, density }: { members: Bot[]; density: SidebarD
       </div>
     );
   }
-  const shown = members.slice(0, 2);
+  const shown = members.slice(0, 3);
   const extra = members.length - shown.length;
   return (
     <div className={cn("flex shrink-0 items-center justify-center", slotSize)}>
       <div className="flex items-center -space-x-2.5">
         {shown.map((b) => (
-          <BotAvatar key={b.id} bot={b} state="happy" size={iconOnly ? 30 : 20} animated={false} />
+          <span key={b.id} className="relative inline-flex rounded-full ring-2 ring-app">
+            <BotAvatar bot={b} state="happy" size={iconOnly ? 30 : 20} animated={false} />
+          </span>
         ))}
         {extra > 0 && (
-          <span className="z-10 flex size-4 items-center justify-center rounded-full border border-hairline/40 bg-raised text-[9px] font-medium text-ink-secondary">
+          <span className="z-10 flex size-4 items-center justify-center rounded-full border-2 border-app bg-raised text-[9px] font-medium text-ink-secondary">
             +{extra}
           </span>
         )}
@@ -2130,6 +2132,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               </span>
             )}
           </button>
+
           </>
         )}
         {density === "icons" && (
@@ -2184,6 +2187,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 ) : undefined,
                 onSelect: () => dispatch({ type: "showEvaluator" }),
               },
+
             ]}
           />
         )}
