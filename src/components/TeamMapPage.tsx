@@ -26,6 +26,7 @@ import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
 import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
+import { TeamMapAttentionRail, type AttentionItem } from "./TeamMapAttentionRail";
 import {
   buildSampleWorkflowSnapshot,
   SAMPLE_WORKFLOW_LABEL,
@@ -257,6 +258,64 @@ export function TeamMapPage() {
     const order = (key: string) => key === "" ? -1 : names.includes(key) ? names.indexOf(key) : names.length;
     return buildTeamMapSections(bots, names).sort((a, b) => order(a.key) - order(b.key));
   }, [bots, state.sections, state.groups]);
+  // Derive prioritized attention items for Team Lead operational intervention
+  const attentionItems = useMemo<AttentionItem[]>(() => {
+    const items: AttentionItem[] = [];
+
+    // 1. Check for blocked tasks (P0)
+    for (const task of workflowSnapshot.tasks) {
+      if (task.state === "blocked") {
+        const owner = bots.find((b) => b.id === task.ownerAgentId) ?? { name: "Listing Coach" };
+        items.push({
+          id: `att-blocked-${task.id}`,
+          priority: "p0_blocked",
+          agentId: task.ownerAgentId,
+          agentName: owner.name,
+          taskId: task.id,
+          taskTitle: task.title,
+          summary: "Blocked on counterparty risk & reputation data from Vendor Orion",
+          recommendedAction: "Unblock",
+          ageStr: "2m ago",
+        });
+      }
+    }
+
+    // 2. Check for review requests (P2)
+    for (const task of workflowSnapshot.tasks) {
+      if (task.state === "reviewing") {
+        const rev = bots.find((b) => b.id === botRoleMapping.reviewerId) ?? { name: "Spend Scout" };
+        items.push({
+          id: `att-review-${task.id}`,
+          priority: "p2_review",
+          agentId: botRoleMapping.reviewerId,
+          agentName: rev.name,
+          taskId: task.id,
+          taskTitle: task.title,
+          summary: "Deal package submitted: inspection window & escrow terms ready",
+          recommendedAction: "Review",
+          ageStr: "just now",
+        });
+      }
+    }
+
+    // 3. Check for bots waiting on user input (P1)
+    for (const b of bots) {
+      if (b.activity === "waiting-on-you") {
+        items.push({
+          id: `att-input-${b.id}`,
+          priority: "p1_input",
+          agentId: b.id,
+          agentName: b.name,
+          taskTitle: "Awaiting operator prompt",
+          summary: "Agent finished previous turn and needs steering or approval",
+          recommendedAction: "Provide input",
+          ageStr: "live",
+        });
+      }
+    }
+
+    return items;
+  }, [workflowSnapshot.tasks, bots, botRoleMapping]);
 
   const edges = useMemo(() => buildTeamMapEdges(bots, snapshot), [bots, snapshot]);
 
@@ -445,13 +504,42 @@ export function TeamMapPage() {
               const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
               if (t) setHighlightBotIds([t.ownerAgentId]);
             }}
+            onIntervene={(action) => {
+              if (action.type === "open_chat" && action.agentId) {
+                dispatch({ type: "select", id: action.agentId });
+              } else if (action.type === "unblock") {
+                setHighlightBotIds([]);
+                setSelectedWorkflowTaskId(null);
+              } else if (action.type === "approve") {
+                setHighlightBotIds([]);
+                setSelectedWorkflowTaskId(null);
+              }
+            }}
           />
         )}
       </div>
 
+      {/* Operational Attention Rail (Between canvas and footer) */}
+      <div className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E] px-6 py-3">
+        <TeamMapAttentionRail
+          items={attentionItems}
+          selectedItemId={selectedWorkflowTaskId ? `att-blocked-${selectedWorkflowTaskId}` : null}
+          onSelectItem={(item) => {
+            if (item.taskId) {
+              setSelectedWorkflowTaskId(item.taskId);
+              setSelectedWorkflowBotId(null);
+            } else {
+              setSelectedWorkflowBotId(item.agentId);
+              setSelectedWorkflowTaskId(null);
+            }
+            setHighlightBotIds([item.agentId]);
+          }}
+        />
+      </div>
+
       {/* Bottom Area: Redesigned Handoffs, Responsive Facts Grid, and Activity Feed */}
       <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
-        <div className="max-h-[420px] overflow-y-auto px-6 py-5 space-y-4">
+        <div className="max-h-[380px] overflow-y-auto px-6 py-4 space-y-4">
           {/* 1. Unified, Deduplicated Agent Handoffs */}
           <TeamMapHandoffList
             items={unifiedHandoffs}
@@ -468,42 +556,58 @@ export function TeamMapPage() {
             }}
           />
 
-          {/* 2. Responsive Interactive Workflow Facts Grid */}
-          <TeamMapWowFacts
-            facts={wowFacts}
-            activeMetricId={activeMetricId}
-            onSelectMetric={handleSelectMetric}
-            onResetMetric={handleResetMetric}
-          />
-
-          {/* 3. Compact Activity Feed */}
-          <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]">
-            <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-5">
+          {/* 2. Collapsible Workflow Insights (Secondary Analytics & Event Trail) */}
+          <details
+            open={activeMetricId !== null}
+            className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
+          >
+            <summary className="flex h-12 cursor-pointer list-none items-center justify-between px-5 font-semibold text-[15px] text-white/90 hover:bg-white/[0.02]">
               <div className="flex items-center gap-2">
                 <Sparkles size={15} className="text-accent" aria-hidden="true" />
-                <h4 className="text-[15px] font-semibold text-white/90">Collaboration Activity</h4>
+                <span>Workflow insights</span>
+                <span className="text-[11px] text-white/45 font-normal">Secondary analytics &amp; event trail</span>
               </div>
-              <span className="text-[12px] text-white/45 hidden sm:inline">Chronological event trail</span>
-            </div>
-            <div className="h-[220px]">
-              <TeamMapActivityFeed
-                snapshot={workflowSnapshot}
-                kindFilter={factsFilter}
-                onKindFilter={setFactsFilter}
-                onSelectAgent={(agentId) => {
-                  setSelectedWorkflowBotId(agentId);
-                  setHighlightBotIds([agentId]);
-                }}
-                onSelectTask={(taskId) => {
-                  setSelectedWorkflowTaskId(taskId);
-                  const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
-                  if (t) setHighlightBotIds([t.ownerAgentId]);
-                }}
-                highlightAgentId={selectedWorkflowBotId}
-                className="h-full"
+              <span className="text-[11.5px] font-normal text-white/45">
+                {activeMetricId ? "Filtering by metric" : "Click to view metrics"}
+              </span>
+            </summary>
+
+            <div className="space-y-4 border-t border-white/[0.08] p-4">
+              {/* Responsive Interactive Workflow Facts Grid */}
+              <TeamMapWowFacts
+                facts={wowFacts}
+                activeMetricId={activeMetricId}
+                onSelectMetric={handleSelectMetric}
+                onResetMetric={handleResetMetric}
               />
+
+              {/* Compact Activity Feed */}
+              <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0C0E]/50">
+                <div className="flex h-10 items-center justify-between border-b border-white/[0.06] px-4">
+                  <span className="text-[12px] font-semibold text-white/80">Activity Event Trail</span>
+                  <span className="text-[11px] text-white/40">Chronological</span>
+                </div>
+                <div className="h-[200px]">
+                  <TeamMapActivityFeed
+                    snapshot={workflowSnapshot}
+                    kindFilter={factsFilter}
+                    onKindFilter={setFactsFilter}
+                    onSelectAgent={(agentId) => {
+                      setSelectedWorkflowBotId(agentId);
+                      setHighlightBotIds([agentId]);
+                    }}
+                    onSelectTask={(taskId) => {
+                      setSelectedWorkflowTaskId(taskId);
+                      const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
+                      if (t) setHighlightBotIds([t.ownerAgentId]);
+                    }}
+                    highlightAgentId={selectedWorkflowBotId}
+                    className="h-full"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
       </footer>
 

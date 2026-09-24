@@ -41,6 +41,7 @@ export function TeamMapWorkflowDrawer({
   onClose,
   onSelectAgent: _onSelectAgent,
   onSelectTask,
+  onIntervene,
 }: {
   snapshot: WorkflowSnapshot;
   agentId?: string | null;
@@ -48,6 +49,7 @@ export function TeamMapWorkflowDrawer({
   onClose: () => void;
   onSelectAgent?: (id: string) => void;
   onSelectTask?: (id: string) => void;
+  onIntervene?: (action: { type: "unblock" | "approve" | "request_changes" | "open_chat"; taskId?: string; agentId?: string }) => void;
 }) {
   const agent: WorkflowAgent | undefined = agentId
     ? snapshot.agents.find((a) => a.id === agentId)
@@ -158,6 +160,64 @@ export function TeamMapWorkflowDrawer({
           </section>
         )}
 
+        {/* DIRECT OPERATIONAL INTERVENTION ACTIONS */}
+        {task && onIntervene && (
+          <section className="space-y-2 rounded-2xl border border-accent/40 bg-accent/5 p-3.5">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-white/90">
+              <span>Operator Intervention</span>
+              <span className="text-[10px] text-accent">1-click action</span>
+            </div>
+
+            {task.state === "blocked" && (
+              <div className="flex flex-col gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onIntervene({ type: "unblock", taskId: task.id, agentId: currentOwner?.id })}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-danger px-3 py-2 text-[12px] font-semibold text-white shadow-sm hover:bg-danger/90"
+                >
+                  <CheckCircle2 size={13} aria-hidden="true" />
+                  <span>Unblock Task &amp; Resume</span>
+                </button>
+                <p className="text-[10.5px] text-white/50 text-center">
+                  Resolves dependency and returns agent to active working state.
+                </p>
+              </div>
+            )}
+
+            {task.state === "reviewing" && (
+              <div className="flex flex-col gap-1.5 pt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onIntervene({ type: "approve", taskId: task.id, agentId: currentOwner?.id })}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-success px-3 py-2 text-[12px] font-semibold text-white hover:bg-success/90"
+                  >
+                    <CheckCircle2 size={13} aria-hidden="true" />
+                    <span>Approve</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onIntervene({ type: "request_changes", taskId: task.id, agentId: currentOwner?.id })}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-[12px] font-semibold text-warning hover:bg-warning/20"
+                  >
+                    <span>Request Changes</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {currentOwner && (
+              <button
+                type="button"
+                onClick={() => onIntervene({ type: "open_chat", agentId: currentOwner.id })}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 text-[11.5px] font-medium text-white/80 hover:bg-white/[0.08]"
+              >
+                <MessageSquare size={13} aria-hidden="true" />
+                <span>Open 1:1 Conversation with {currentOwner.name}</span>
+              </button>
+            )}
+          </section>
+        )}
         {/* 2. CURRENT TASK */}
         {task && (
           <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
