@@ -43,7 +43,15 @@ function BotCard({ bot, selected, moving, connected, onComputer, onArrange, onLo
         onArrange(bot, event.key === "ArrowUp" ? -1 : 1);
       }}
       className="flex h-[82px] w-full cursor-grab items-center gap-3 rounded-t-xl px-4 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent">
-      <BotAvatar bot={bot} size={38} motion="none" motionKey={0} animated={false} />
+      <BotAvatar
+        bot={bot}
+        size={38}
+        motion="none"
+        motionKey={0}
+        interactive={false}
+        animated={status.tone !== "idle"}
+        state={status.tone === "idle" ? "happy" : status.tone === "danger" ? "sad" : "working"}
+      />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5"><span className="truncate text-[14px] font-semibold">{bot.name}</span>
           {bot.chiefOfStaff && <Crown size={12} className="shrink-0 text-warning" aria-label={t("chat.chiefOfStaff")} />}</span>
