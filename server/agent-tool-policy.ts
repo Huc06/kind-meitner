@@ -16,6 +16,10 @@ export const READ_ONLY_AGENT_TOOL_NAMES: ReadonlySet<string> = new Set([
   "session_read",
   "list_routines",
   "skills_list",
+  "scan_free_mcp_readiness",
+  "get_asp_trust_card",
+  "query_market_benchmarks",
+  "get_market_intelligence_report",
 ]);
 
 const READ_ONLY_ANNOTATIONS = Object.freeze({

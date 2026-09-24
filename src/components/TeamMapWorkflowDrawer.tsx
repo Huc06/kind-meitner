@@ -24,7 +24,6 @@ export type InterventionCommand =
   | { type: "approve_task"; taskId: string }
   | { type: "request_changes"; taskId: string; reason: string }
   | { type: "provide_input"; agentId: string; taskId?: string };
-
 function presenceBadge(presence?: string): { label: string; tone: string } {
   switch (presence) {
     case "working":

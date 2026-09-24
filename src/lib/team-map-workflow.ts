@@ -982,7 +982,7 @@ function taskActiveDurationsMs(events: WorkflowEvent[]): Map<string, number> | n
         }
         break;
       case "workflow_completed":
-        for (const taskId of [...starts.keys()]) close(taskId, event.at);
+        for (const taskId of Array.from(starts.keys())) close(taskId, event.at);
         break;
       default:
         break;

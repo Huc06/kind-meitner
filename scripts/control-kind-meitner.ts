@@ -335,8 +335,8 @@ export async function launchVerificationServer(
    * it should accept, so a recipe can prove entitled behaviour offline. */
   enterprise?: { dir: string; licenseKey: string },
   room?: { scripted: boolean },
-  /** Optional repository-owned fake providers for multi-engine setup checks. */
-  extraProviders: Array<"codex"> = [],
+  /** Optional repository-owned providers for multi-engine setup checks. */
+  extraProviders: Array<"grok"> = [],
   /** Programmatic tests only: an owned loopback Box provider, never a live account. */
   boxFixtureApi?: string,
 ): Promise<VerificationServer> {
@@ -368,8 +368,10 @@ export async function launchVerificationServer(
   writeFileSync(join(dataDir, "config.json"), JSON.stringify({
     ...(boxFixtureApi ? { box: { token: "box_verification_fixture" } } : {}),
     instances: {
-      ...(extraProviders.includes("codex") ? { codex: {
-        driver: "codex", displayName: "Verification Codex", config: { cli: fileURLToPath(new URL("../server/testing/fake-codex-app-server.ts", import.meta.url)) },
+      ...(extraProviders.includes("grok") ? { grok: {
+        driver: "grok", displayName: "Verification Grok",
+        // Fixture key only — never a live account. Keeps the instance live with a real model catalog.
+        environment: { XAI_API_KEY: "fixture-xai-verification" },
       } } : {}),
       claude: {
         driver: "claudeAgent",

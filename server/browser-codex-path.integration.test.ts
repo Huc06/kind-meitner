@@ -16,7 +16,11 @@ const FINDER_PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
 
 // This regression concerns Unix shebang lookup and macOS Finder's PATH;
 // Windows resolves CLI shims through a separate launch contract.
-describe.skipIf(process.platform === "win32")("Codex browser turns with a minimal GUI PATH", () => {
+// Codex was dropped from BUILT_IN_DRIVERS in dcec921 ("ship only Claude and
+// Grok engines"). Without a Codex registry entry, both `default` and
+// `absolute` instances shadow as unavailable at load — this PATH regression
+// cannot exercise a real CLI spawn in CI anymore.
+describe.skip("Codex browser turns with a minimal GUI PATH (Codex driver retired; no CLI in this job)", () => {
   let home: string;
   let bin: string;
   let browser: string;

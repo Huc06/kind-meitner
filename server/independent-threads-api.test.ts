@@ -476,7 +476,7 @@ describe("independent bot tasks through the isolated control surface", () => {
     await control(["interrupt", "--bot", botId, "--task", taskA]);
   }, 45_000);
 
-  it("runs an unattended task in the bot's own level, still carding what the provider asks, while a sibling runs attended", async () => {
+  it("runs an unattended routine task with autoApprove auto-answering permissions while a sibling runs attended", async () => {
     const created = await tool("create_bot", { name: "Unattended fixture", instance_id: "claude", model: models[0] });
     const botId = created.bot.id;
     expect((await api("PATCH", `/api/bots/${botId}`, { approvalMode: "auto" })).status).toBe(200);
@@ -496,21 +496,25 @@ describe("independent bot tasks through the isolated control surface", () => {
     await control(["set-model", "--bot", botId, "--task", attendedTask, "--instance", "claude", "--model", models[1]]);
     await control(["send", "--bot", botId, "--task", attendedTask, "--text", "ATTENDED_ONLY"]);
     const attendedLaunch = await dump(models[1]);
-    // Approval levels are the provider's own modes, passed through: a turn a
-    // webhook started runs in the bot's level like any other, and a request
-    // Claude's reviewer leaves for a person is carded, not answered.
+    // Approval levels are the provider's own modes, passed through. A webhook
+    // turn still launches in the bot's level; with autoApprove + activeRoutine
+    // (a675502 / fdec223) a permission the provider leaves is auto-answered
+    // so the routine cannot stall waiting on a human.
     expect(unattendedLaunch.argv[unattendedLaunch.argv.indexOf("--permission-mode") + 1]).toBe("auto");
     expect(attendedLaunch.argv[attendedLaunch.argv.indexOf("--permission-mode") + 1]).toBe("auto");
 
     const unattendedAnswers = await permission(models[0], "unattended-permission");
-    expect((await control(["wait", "--bot", botId, "--task", unattendedTask, "--timeout", "5"])).status).toBe("needs-user");
+    // Permission is auto-answered; the slow fixture stays working, so wait
+    // times out rather than reporting needs-user.
+    expect((await control(["wait", "--bot", botId, "--task", unattendedTask, "--timeout", "5"])).status).toBe("timed-out");
+    await expect.poll(() => unattendedAnswers.length > 0, { timeout: 10_000 }).toBe(true);
+    expect(unattendedAnswers.some((answer: any) => answer.id === "unattended-permission")).toBe(true);
     const card = (await api("GET", `/api/threads/${unattendedTask}/messages`)).body.messages
-      .find((message: any) => message.card?.requestId === "unattended-permission");
-    expect(card.card.heldCode).toBe("approval.held.native");
-    expect(unattendedAnswers).toEqual([]);
+      .find((message: any) => message.card?.requestId === "unattended-permission" && !message.card?.answered);
+    expect(card, "an unanswered permission card appeared despite routine auto-approve").toBeUndefined();
     expect((await botState(botId)).tasks.find((task: any) => task.taskId === attendedTask)?.activity).toBe("working");
     await control(["interrupt", "--bot", botId, "--task", attendedTask]);
-    expect((await botState(botId)).tasks.find((task: any) => task.taskId === unattendedTask)?.activity).toBe("waiting-on-you");
+    expect((await botState(botId)).tasks.find((task: any) => task.taskId === unattendedTask)?.activity).not.toBe("waiting-on-you");
     await control(["messages", "--bot", botId, "--task", unattendedTask]);
     await control(["interrupt", "--bot", botId, "--task", unattendedTask]);
   }, 45_000);

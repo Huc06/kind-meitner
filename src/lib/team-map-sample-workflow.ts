@@ -476,10 +476,64 @@ export function buildSampleWorkflowSnapshot(mapping?: BotRoleMapping): {
   facts: WowFacts;
 } {
   const events = buildSampleWorkflowEvents(mapping);
-  let snapshot = createEmptyWorkflow();
+  let fullSnapshot = createEmptyWorkflow();
   for (const event of events) {
-    snapshot = applyEvent(snapshot, event);
+    fullSnapshot = applyEvent(fullSnapshot, event);
   }
-  const facts = computeWowFacts(snapshot);
+  const facts = computeWowFacts(fullSnapshot);
+
+  const {
+    coordinatorId: coord = DEFAULT_BOT_ROLES.coordinatorId,
+    discoveryId: disc = DEFAULT_BOT_ROLES.discoveryId,
+    listingCoachId: coach = DEFAULT_BOT_ROLES.listingCoachId,
+    escrowId: escrow = DEFAULT_BOT_ROLES.escrowId,
+    reviewerId: rev = DEFAULT_BOT_ROLES.reviewerId,
+  } = mapping ?? DEFAULT_BOT_ROLES;
+
+  // Active snapshot preserves active operational friction points (Blocked on Listing Coach, Active on Discovery & Escrow)
+  const activeTasks = [
+    {
+      id: "task-discovery",
+      title: "Supplier & catalog discovery",
+      ownerAgentId: disc,
+      state: "active" as const,
+      dependsOnTaskIds: [] as string[],
+      progress: 85,
+      branchId: "branch-discovery",
+    },
+    {
+      id: "task-terms",
+      title: "Validate commercial terms",
+      ownerAgentId: coach,
+      state: "blocked" as const,
+      dependsOnTaskIds: ["task-discovery"],
+      progress: 65,
+      branchId: "branch-terms",
+    },
+    {
+      id: "task-escrow",
+      title: "Prepare payment protection",
+      ownerAgentId: escrow,
+      state: "active" as const,
+      dependsOnTaskIds: [] as string[],
+      progress: 45,
+      branchId: "branch-escrow",
+    },
+  ];
+
+  const activeAgents = [
+    { id: coord, name: "Tuli", role: "Coordinator", presence: "working" as const, currentTaskId: undefined },
+    { id: disc, name: "Markets", role: "Market Discovery", presence: "working" as const, currentTaskId: "task-discovery" },
+    { id: coach, name: "Listing Coach", role: "Offer Quality", presence: "blocked" as const, currentTaskId: "task-terms" },
+    { id: escrow, name: "Atlas", role: "Settlement & Escrow", presence: "working" as const, currentTaskId: "task-escrow" },
+    { id: rev, name: "Spend Scout", role: "Trust & Risk Reviewer", presence: "waiting" as const, currentTaskId: undefined },
+  ];
+
+  const snapshot: WorkflowSnapshot = {
+    ...fullSnapshot,
+    tasks: activeTasks,
+    agents: activeAgents,
+    completedAt: undefined,
+  };
   return { snapshot, facts };
 }

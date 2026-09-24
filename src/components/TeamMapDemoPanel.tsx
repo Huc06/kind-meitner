@@ -301,8 +301,10 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
             <div>
               <TeamMapWowFacts
                 facts={facts}
-                activeFilter={kindFilter}
-                onSelectFilter={(kind) => setKindFilter(kind)}
+                onSelectMetric={(metric) => {
+                  if (metric.filterKind) setKindFilter(metric.filterKind);
+                }}
+                onResetMetric={() => setKindFilter("all")}
               />
             </div>
 

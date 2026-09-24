@@ -15159,7 +15159,15 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           });
         }
       }
-      if (patch.box?.token !== undefined) patch.box.token = patch.box.token.trim();
+      // Box / VPS / local-VM backends were removed in chore/local-computer-only
+      // (PR #86). Reject leftover config writes so Settings and tests cannot
+      // reintroduce dead destinations.
+      if (patch.box !== undefined || patch.vps !== undefined) {
+        return json(res, 400, { error: "cloud computers are no longer available" });
+      }
+      if (patch.localVm !== undefined) {
+        return json(res, 400, { error: "local VM computers are no longer available" });
+      }
       providerConfigBusy = true;
       try {
       // A project key is useful only if it can create/reuse the Session that
@@ -15178,9 +15186,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           patch.composio = { ...patch.composio, apiKey: "", sessionId: "" };
         }
       }
-      // check a box token against the provider before storing it: a
-      // rejected token used to save happily and only surface as a 401 in
-      // another panel later, with nothing the user could act on
       // same rule for a voice key — and check it against the provider the
       // patch SELECTS, not the one already saved, or pasting a Cartesia key
       // while switching from ElevenLabs validates against the wrong service
