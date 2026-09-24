@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 
 import { BotAvatar } from "@/components/Avatar";
+import { ChatMarkdown } from "@/components/ChatMarkdown";
 import { pathForFile } from "@/components/ComposerAttachments";
 import { CalendarSidebar } from "@/components/routines/CalendarSidebar";
 import { RoutineList } from "@/components/routines/RoutineList";
@@ -1726,11 +1727,38 @@ export function EventDetails({
               </div>
             </div>
           )}
-          {description && <div className="flex items-start gap-3"><FileText size={17} className="mt-1 shrink-0 text-ink-secondary" /><div className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">{description}</div></div>}
+          {description && (
+            <div className="flex items-start gap-3">
+              <FileText size={17} className="mt-1 shrink-0 text-ink-secondary" />
+              <div className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-ink">
+                <ChatMarkdown text={description} />
+              </div>
+            </div>
+          )}
           {attachments.length > 0 && <div className="flex items-start gap-3"><Paperclip size={17} className="mt-1 shrink-0 text-ink-secondary" /><div className="min-w-0 flex-1 space-y-2"><AttachmentChips attachments={attachments} />{call && <div className="text-[11px] leading-relaxed text-ink-secondary">{call.botIds.length > 1 ? "These references will be shared in the group when the event starts." : "These references stay with the event and are available when you join the group."}</div>}</div></div>}
           {!isCall && <div className="flex items-start gap-3"><Clock3 size={17} className="mt-1 shrink-0 text-ink-secondary" /><div><div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">Run limit</div><div className="mt-1 text-[12.5px] text-ink">{safetyLimit == null ? "No time limit" : `Stops if still running after ${durationLabel(safetyLimit)}`}</div></div></div>}
-          {run && <div className="rounded-xl border border-hairline/40 bg-inset p-3"><div className="flex items-center gap-2 text-[12px] font-medium text-ink">{run.status === "running" && <Loader2 size={13} className="animate-spin text-accent" />}{routineRunLabel(run)}</div>{run.output && <div className="mt-2 whitespace-pre-wrap text-[11.5px] leading-relaxed text-ink-secondary">{run.output}</div>}{run.error && <div className="mt-2 text-[11.5px] text-danger">{run.error}</div>}</div>}
-          {run?.attention && <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning"><CircleAlert size={15} className="mt-0.5 shrink-0" /><div className="min-w-0 whitespace-pre-wrap text-[11.5px] leading-relaxed">{run.attention}</div></div>}
+          {run && (
+            <div className="rounded-xl border border-hairline/40 bg-inset p-3.5 space-y-2">
+              <div className="flex items-center gap-2 text-[12px] font-medium text-ink">
+                {run.status === "running" && <Loader2 size={13} className="animate-spin text-accent" />}
+                {routineRunLabel(run)}
+              </div>
+              {run.output && (
+                <div className="text-[12px] leading-relaxed text-ink-secondary">
+                  <ChatMarkdown text={run.output} />
+                </div>
+              )}
+              {run.error && <div className="text-[11.5px] text-danger">{run.error}</div>}
+            </div>
+          )}
+          {run?.attention && (
+            <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
+              <CircleAlert size={15} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1 text-[11.5px] leading-relaxed">
+                <ChatMarkdown text={run.attention} />
+              </div>
+            </div>
+          )}
           {run?.status === "waiting" && !run.attention && <div className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-[11.5px] text-warning">This run is waiting. Open its execution thread for more context.</div>}
           {error && <div className="rounded-lg bg-danger/10 px-3 py-2 text-[11.5px] text-danger">{error}</div>}
         </div>
