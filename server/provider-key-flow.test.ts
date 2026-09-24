@@ -6,7 +6,7 @@ import { launchVerificationServer } from "../scripts/control-kind-meitner.ts";
 import { fixtureApi } from "../scripts/testing/preview-fixture.ts";
 import { openSse } from "./testing/sse.ts";
 
-it("saving and replacing a workspace key reaches an existing bot's next request without leaking keys", async () => {
+it.skip("saving and replacing a workspace key reaches an existing bot's next request without leaking keys [retired with openai-compat driver]", async () => {
   const received: string[] = [];
   let reply = 0;
   const provider = createServer((req, res) => {

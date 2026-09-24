@@ -48,11 +48,9 @@ Use only mapped, tested commands:
 - [Chief access to additional teams](team-access.md)
 - [Engines and Doctor](engines.md)
 - [Claude coordination and turn-scoped tools](claude-tool-lifecycle.md)
-- [Codex bot instructions](codex-instructions.md)
-- [Codex helper event isolation](codex-helpers.md)
-- [Qwen model route selection](qwen-models.md)
 - [Team backups](team-backups.md)
 - [Teams and shared instructions](teams.md)
+- [Team Map workflow and facts](team-map-workflow.md)
 - [Full workspace backups](workspace-backups.md)
 - [Fleet: many workspaces on one server](fleet.md)
 - [Workspaces screen and the fleet agent](workspaces.md)
@@ -146,23 +144,14 @@ The [skill approval lifecycle recipe](skill-approval-lifecycle.md) checks Deny,
 missing staged records and active-thread deletion in two isolated app windows,
 including the surviving conversation and sending again without deleting the bot.
 
-The [Codex account recipe](codex-account.md) checks account switching against an
-offline Codex CLI whose identity is synthetic and whose credential directory is empty.
-
 The [mention fixture](mentions.md) checks candidate selection, composer highlighting,
 sent mentions, multiline scrolling and responsive wrapping in real chat views.
 
 ## Evidence
 
-The [Japanese desktop font recipe](japanese-desktop.md) checks real Firefox and
-XFCE glyph rendering in disposable managed desktops, including fresh recreation.
-
 The optional [Podman full-stack acceptance recipe](podman-self-hosting.md)
 checks the Compose deployment with a fresh home, fake engine, and two desktops.
 It includes workspace ownership, persistence, and proxy authentication checks.
-
-The [Podman Firefox sandbox recipe](podman-firefox.md) checks the capability set a
-managed desktop keeps so Firefox can start, with before/after acceptance evidence.
 
 The [Hetzner launch record](hetzner-launch-2026-09-07.md) is a dated self-hosting
 run on a disposable VPS: what passed, what was corrected, and what it does not prove.

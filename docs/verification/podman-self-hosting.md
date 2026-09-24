@@ -57,9 +57,10 @@ URL in this example is `http://127.0.0.1:28799` (WSL forwards the machine's loop
 listener on Windows). Confirm `GET /api/config` has the fixture profile before
 issuing mutations. If it does not, stop: the URL is not your fixture.
 
-1. `GET /api/local-computer` must report `runtime: podman` and `daemonUp: true`.
-   If `image` is false, `POST /api/local-computer/pull` prepares the official
-   managed desktop image. This may take several minutes on a fresh machine.
+1. Confirm the rootless Podman daemon is up (`podman info`) and the managed
+   desktop image is present (pull it with `podman pull` if needed). This may take
+   several minutes on a fresh machine. Daemon readiness is a host check, not an
+   app HTTP status endpoint.
 2. Use `control-kind-meitner.ts new-bot --name "Fixture A" --url URL` and repeat for B.
    Record each returned `bot.id`.
 3. For each ID, `PATCH /api/bots/ID` with `{"computer":"vm"}`, then

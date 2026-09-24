@@ -61,7 +61,10 @@ describe("Settings → General", () => {
   it("offers a labeled compact section picker without removing desktop navigation", async () => {
     const html = await renderSettings();
     expect(html).toMatch(/<select[^>]*aria-label="Settings"[^>]*sm:hidden/);
-    expect(html).toContain('<option value="companion">Remote access</option>');
+    // Assert a section the app still ships. Pinning a removed one (companion)
+    // made this test fail for the trimmed settings list, not for the picker
+    // contract it is actually guarding.
+    expect(html).toContain('<option value="engines">Engines</option>');
     expect(html).toMatch(/<nav[^>]*hidden[^>]*sm:flex/);
     expect(html).toContain('id="app-settings-title" class="sr-only"');
   });

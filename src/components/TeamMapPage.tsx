@@ -1,230 +1,158 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, BookOpen, Loader2, Network, Plus, Save, Users, X } from "lucide-react";
+import {
+  BookOpen,
+  Loader2,
+  Network,
+  Plus,
+  Save,
+  Users,
+  X,
+  Sparkles,
+} from "lucide-react";
 
-import { api, formatTime, useStore, type Bot } from "@/state/store";
+import { api, useStore, type Bot } from "@/state/store";
 import {
   EMPTY_TEAM_MAP_SNAPSHOT,
   buildTeamMapEdges,
   buildTeamMapSections,
-  type TeamMapEdge,
   type TeamMapSnapshot,
 } from "@/lib/team-map";
-import { cn } from "@/lib/cn";
-import { TeamCanvas } from "./TeamCanvas";
+import { TeamCanvas, type BotWorkflowInfo } from "./TeamCanvas";
+import { TeamMapBoardView } from "./TeamMapBoardView";
+import { TeamMapToolbar } from "./TeamMapToolbar";
 import { TeamDialog } from "./TeamDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
+import { TeamMapWowFacts } from "./TeamMapWowFacts";
+import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
+import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
+import { TeamMapAttentionRail } from "./TeamMapAttentionRail";
+import {
+  deriveAttentionItems,
+  getTeamMapDataMode,
+  type TeamMapDataMode,
+} from "@/lib/team-map-attention";
+import {
+  buildSampleWorkflowSnapshot,
+  SAMPLE_WORKFLOW_LABEL,
+  type BotRoleMapping,
+} from "@/lib/team-map-sample-workflow";
+import { createEmptyWorkflow, computeWowFacts } from "@/lib/team-map-workflow";
+import type { ActivityKind } from "@/lib/team-map-demo-ui";
 import { t } from "@/lib/i18n";
 
-
-function EdgeRow({ edge, bots }: { edge: TeamMapEdge; bots: Bot[] }) {
-  const { dispatch } = useStore();
-  const source = bots.find((bot) => bot.id === edge.sourceBotId);
-  const target = bots.find((bot) => bot.id === edge.targetBotId);
-  if (!source || !target) return null;
-  const live = edge.state !== "connected";
-  return (
-    <button
-      onClick={() => dispatch({ type: "select", id: edge.groupId ?? target.id })}
-      className="flex w-full items-center gap-3 rounded-xl border border-hairline/40 bg-card px-3 py-2.5 text-left transition hover:bg-raised/50"
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-[13px] font-medium text-ink">{source.name}</span>
-        <ArrowRight size={13} className={cn("shrink-0", live ? "text-accent" : "text-ink-secondary")} />
-        <span className="truncate text-[13px] font-medium text-ink">{target.name}</span>
-      </div>
-      {edge.reason && <span className="max-w-[220px] truncate text-[11.5px] text-ink-secondary">{edge.reason}</span>}
-      <span
-        className={cn(
-          "rounded-full px-2 py-0.5 text-[10.5px] font-medium",
-          edge.state === "running"
-            ? "bg-success/15 text-success"
-            : edge.state === "queued"
-              ? "bg-warning/15 text-warning"
-              : "bg-control text-ink-secondary",
-        )}
-      >
-        {edge.state === "running" ? "Running" : edge.state === "queued" ? "Queued" : edge.lastAt ? formatTime(edge.lastAt) : "Connected"}
-      </span>
-    </button>
-  );
-}
-
-interface SectionContextResponse {
-  section: string;
-  label: string;
-  text: string;
-  updatedAt: number | null;
-  maxBytes: number;
-}
-
 function SectionContextDialog({ section, label, onClose }: { section: string; label: string; onClose: () => void }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const onCloseRef = useRef(onClose);
-  const savingRef = useRef(false);
-  const dirtyRef = useRef(false);
   const [text, setText] = useState("");
-  const [savedText, setSavedText] = useState("");
-  const [maxBytes, setMaxBytes] = useState(24_000);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dirty = text !== savedText;
-  const bytes = useMemo(() => new TextEncoder().encode(text).byteLength, [text]);
-  onCloseRef.current = onClose;
-  savingRef.current = saving;
-  dirtyRef.current = dirty;
-
-  const requestClose = useCallback(() => {
-    if (savingRef.current) return;
-    if (dirtyRef.current && !window.confirm(t("team.instructionsDiscard"))) return;
-    onCloseRef.current();
-  }, []);
-
-  useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialogRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !savingRef.current) {
-        event.preventDefault();
-        requestClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = [...dialog.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-      )];
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      previousFocus?.focus();
-    };
-  }, [requestClose]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const maxBytes = 12_000;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void api(`/api/section-context?section=${encodeURIComponent(section)}`)
-      .then((result: SectionContextResponse) => {
+    api(`/api/sidebar-sections?section=${encodeURIComponent(section)}`)
+      .then((body: { text?: string }) => {
         if (cancelled) return;
-        setText(result.text);
-        setSavedText(result.text);
-        setUpdatedAt(result.updatedAt);
-        setMaxBytes(result.maxBytes);
-        window.setTimeout(() => textareaRef.current?.focus(), 0);
+        setText(body?.text ?? "");
+        setDirty(false);
+        setLoading(false);
+        requestAnimationFrame(() => textareaRef.current?.focus());
       })
-      .catch((cause) => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, [section]);
 
-  const save = async () => {
-    if (bytes > maxBytes) return;
+  const bytes = useMemo(() => new TextEncoder().encode(text).length, [text]);
+
+  const requestClose = useCallback(() => {
+    if (!dirty || confirm(t("team.instructionsDiscard"))) {
+      onClose();
+    }
+  }, [dirty, onClose]);
+
+  const save = useCallback(async () => {
+    if (saving || !dirty || bytes > maxBytes) return;
     setSaving(true);
     setError(null);
     try {
-      const result: SectionContextResponse = await api(
-        `/api/section-context?section=${encodeURIComponent(section)}`,
-        { method: "PUT", body: JSON.stringify({ text }) },
-      );
-      setSavedText(result.text);
-      setText(result.text);
-      setUpdatedAt(result.updatedAt);
-      setMaxBytes(result.maxBytes);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
+      await api("/api/sidebar-sections", {
+        method: "PUT",
+        body: JSON.stringify({ name: section, text }),
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
       setSaving(false);
     }
-  };
+  }, [saving, dirty, bytes, maxBytes, section, text, onClose]);
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px] sm:p-6"
-      onMouseDown={(event) => event.target === event.currentTarget && requestClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="section-instructions-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          requestClose();
+        }
+      }}
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="section-context-title"
-        tabIndex={-1}
-        className="animate-pop-in flex max-h-[min(680px,calc(100dvh-2rem))] w-full max-w-[680px] flex-col overflow-hidden rounded-[24px] border border-hairline/50 bg-panel shadow-2xl shadow-black/50 outline-none"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-hairline/40 px-6 pb-4 pt-6 sm:px-8 sm:pt-7">
-          <div>
-            <div className="flex items-center gap-2">
-              <BookOpen size={19} className="text-accent" />
-              <h2 id="section-context-title" className="text-[20px] font-semibold tracking-[-0.01em] text-ink">
-                {t("team.instructionsTitle", { name: label })}
-              </h2>
-            </div>
-            <p className="mt-1.5 max-w-[520px] text-[12.5px] leading-relaxed text-ink-secondary">
-              {t("team.instructionsHint")}
-            </p>
+      <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
+        <header className="flex items-center justify-between border-b border-hairline/40 px-6 py-4 sm:px-8">
+          <div className="flex items-center gap-2">
+            <BookOpen size={16} className="text-accent" />
+            <h3 id="section-instructions-title" className="text-[15px] font-semibold text-ink">
+              {t("team.instructionsTitle", { name: label })}
+            </h3>
           </div>
           <button
+            type="button"
+            aria-label={t("common.close")}
             onClick={requestClose}
-            disabled={saving}
-            aria-label={t("team.instructionsClose")}
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
+            className="rounded-lg p-1.5 text-ink-secondary hover:bg-control hover:text-ink"
           >
-            <X size={19} />
+            <X size={16} />
           </button>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-8">
-          {loading ? (
-            <div className="flex min-h-[260px] items-center justify-center text-ink-secondary">
-              <Loader2 size={20} className="animate-spin" aria-label={t("team.instructionsLoading")} />
-            </div>
-          ) : (
-            <>
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                placeholder={"Goals\n- Ship the Windows onboarding refresh\n\nDecisions\n- Keep customer data local\n\nPreferences\n- Use concise weekly updates"}
-                aria-label={t("team.instructionsTitle", { name: label })}
-                className="min-h-[280px] w-full resize-y rounded-xl border border-hairline/60 bg-inset px-4 py-3 font-mono text-[12.5px] leading-relaxed text-ink outline-none placeholder:text-ink-secondary/55 focus:border-accent/50"
-              />
-              <div className="mt-2 flex items-start justify-between gap-4 text-[11.5px] text-ink-secondary">
-                <span>
-                  Keep durable team facts here. Private notes stay in each bot's own Memory.
-                  {updatedAt ? ` Last saved ${new Date(updatedAt).toLocaleString()}.` : ""}
-                </span>
-                <span className={cn("shrink-0 tabular-nums", bytes > maxBytes && "text-danger")}>
-                  {bytes.toLocaleString()} / {maxBytes.toLocaleString()} bytes
-                </span>
-              </div>
-            </>
-          )}
+          <p className="text-[12.5px] leading-relaxed text-ink-secondary">
+            {t("team.instructionsHint")}
+          </p>
+
+          <textarea
+            ref={textareaRef}
+            disabled={loading || saving}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setDirty(true);
+            }}
+            placeholder={t("room.setup.instructionsPlaceholder")}
+            rows={8}
+            className="mt-3 w-full rounded-xl border border-hairline/50 bg-inset p-3.5 font-mono text-[12.5px] leading-relaxed text-ink placeholder:text-ink-secondary/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+
+          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-secondary">
+            <span>
+              {bytes} / {maxBytes} bytes
+            </span>
+            {bytes > maxBytes && <span className="text-danger font-medium">Text too large</span>}
+          </div>
+
           {error && <div className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">{error}</div>}
         </div>
 
@@ -247,56 +175,6 @@ function SectionContextDialog({ section, label, onClose }: { section: string; la
   );
 }
 
-const calledListings = [
-  { id: "2023", name: "Onchain Data Explorer" },
-  { id: "8705", name: "Arbitrage Casebook" },
-] as const;
-
-function SessionLog({ bot, onClose }: { bot: Bot; onClose: () => void }) {
-  const { dispatch } = useStore();
-  const [lines, setLines] = useState<Array<{ id: string; role: string; text: string }>>([]);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    setFailed(false);
-    setLines([]);
-    api(`/api/threads/${bot.threadId}/messages?limit=8`)
-      .then((body) => {
-        if (cancelled) return;
-        setLines((body.messages ?? []).slice(-6).map((message: { id: string; role: string; text?: string; kind: string }) => ({
-          id: message.id,
-          role: message.role,
-          text: message.text?.trim() || message.kind,
-        })));
-      })
-      .catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
-  }, [bot.id, bot.threadId]);
-  return (
-    <section className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3" aria-label={`Session log for ${bot.name}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[12px] font-medium">{bot.name} session log</p>
-        <div className="flex items-center gap-2">
-          <button className="text-[12px] text-accent" onClick={() => dispatch({ type: "select", id: bot.id })}>Open session</button>
-          <button aria-label="Close session log" className="rounded p-1 text-ink-secondary hover:bg-control" onClick={onClose}><X size={14} /></button>
-        </div>
-      </div>
-      <p className="mt-1 text-[11px] text-ink-secondary">Our transcript only. Not a remote ASP process log.</p>
-      {failed && <p className="mt-2 text-[12px] text-danger">Could not load the transcript.</p>}
-      <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
-        {lines.length === 0 && !failed && <li className="text-[12px] text-ink-secondary">No transcript lines yet.</li>}
-        {lines.map((line) => <li key={line.id} className="truncate text-[12px]"><span className="text-ink-secondary">{line.role}</span> {line.text}</li>)}
-      </ul>
-      <p className="mt-3 text-[11px] text-ink-secondary">Listings stay outside this session. We do not host them.</p>
-      <ul className="mt-1 flex flex-wrap gap-3 text-[12px]">
-        {calledListings.map((listing) => (
-          <li key={listing.id}><a className="text-accent hover:underline" href={`https://www.okx.ai/agents/${listing.id}`} target="_blank" rel="noreferrer">{listing.name}</a></li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 export function TeamMapPage() {
   const { state, dispatch } = useStore();
   const remoteClient = window.ogb?.remoteClient?.active === true;
@@ -307,16 +185,117 @@ export function TeamMapPage() {
   const [teamEditor, setTeamEditor] = useState<{ section?: string; rename?: boolean } | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null);
   const [logBot, setLogBot] = useState<Bot | null>(null);
+  void error;
+  void setError;
+  void refreshError;
+  void deletingTeam;
+
+  // View Mode & Operational Toolbar State (Default is Board View)
+  const [viewMode, setViewMode] = useState<"board" | "map">("board");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [onlyNeedsAttention, setOnlyNeedsAttention] = useState(false);
+  const [zoomPercent, setZoomPercent] = useState(100);
+
+  // Workflow Drawer & Inspection States
+  const [selectedWorkflowBotId, setSelectedWorkflowBotId] = useState<string | null>(null);
+  const [selectedWorkflowTaskId, setSelectedWorkflowTaskId] = useState<string | null>(null);
+  const [highlightBotIds, setHighlightBotIds] = useState<string[]>([]);
+  const [factsFilter, setFactsFilter] = useState<ActivityKind | "all">("all");
+  const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
+
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
   pendingMoveRef.current = pendingMove;
   useEffect(() => () => pendingMoveRef.current?.resolve(false), []);
+
   const bots = useMemo(() => state.bots.filter((bot) => !bot.hidden), [state.bots]);
+
+  // Determine Authoritative Data Mode (Default is Live/Empty, Sample requires explicit fixture flag)
+  const dataMode = useMemo<TeamMapDataMode>(() => {
+    return getTeamMapDataMode({
+      search: typeof window !== "undefined" ? window.location.search : "",
+      hasLiveWorkflow: false,
+      isError: Boolean(refreshError),
+    });
+  }, [refreshError]);
+
+  // Map workspace bots into sample roles ONLY when explicit sample mode is active
+  const botRoleMapping = useMemo<BotRoleMapping>(() => {
+    const findBot = (pattern: RegExp) => bots.find((b) => pattern.test(b.name) || pattern.test(b.id))?.id;
+    return {
+      coordinatorId: findBot(/tuli/i) ?? bots[0]?.id ?? "tuli",
+      discoveryId: findBot(/markets/i) ?? bots[1]?.id ?? "markets",
+      listingCoachId: findBot(/listing/i) ?? bots[2]?.id ?? "listing-coach",
+      escrowId: findBot(/atlas/i) ?? bots[3]?.id ?? "atlas",
+      reviewerId: findBot(/spend|scout/i) ?? bots[4]?.id ?? "spend-scout",
+    };
+  }, [bots]);
+
+  // Only generate sample workflow when explicitly requested via fixture flag; otherwise keep empty
+  const { workflowSnapshot, wowFacts } = useMemo(() => {
+    if (dataMode === "sample") {
+      const sample = buildSampleWorkflowSnapshot(botRoleMapping);
+      return { workflowSnapshot: sample.snapshot, wowFacts: sample.facts };
+    }
+    const empty = createEmptyWorkflow();
+    return { workflowSnapshot: empty, wowFacts: computeWowFacts(empty) };
+  }, [dataMode, botRoleMapping]);
+
+  // Derive prioritized attention items for Team Lead operational intervention
+  const attentionItems = useMemo(() => {
+    return deriveAttentionItems(workflowSnapshot, bots);
+  }, [workflowSnapshot, bots]);
+
+  // Derive compact workflow info for each bot card
+  const workflowMap = useMemo<Record<string, BotWorkflowInfo>>(() => {
+    const result: Record<string, BotWorkflowInfo> = {};
+    for (const bot of bots) {
+      if (dataMode === "sample") {
+        let roleId: string | undefined;
+        if (bot.id === botRoleMapping.coordinatorId) roleId = botRoleMapping.coordinatorId;
+        else if (bot.id === botRoleMapping.discoveryId) roleId = botRoleMapping.discoveryId;
+        else if (bot.id === botRoleMapping.listingCoachId) roleId = botRoleMapping.listingCoachId;
+        else if (bot.id === botRoleMapping.escrowId) roleId = botRoleMapping.escrowId;
+        else if (bot.id === botRoleMapping.reviewerId) roleId = botRoleMapping.reviewerId;
+
+        if (roleId) {
+          const agent = workflowSnapshot.agents.find((a) => a.id === roleId);
+          const task = workflowSnapshot.tasks.find((t) => t.ownerAgentId === roleId);
+          const hasHelp = workflowSnapshot.messages.some(
+            (m) => (m.kind === "help" || m.kind === "help_requested") && m.toAgentId === roleId,
+          );
+          const isReviewer = roleId === botRoleMapping.reviewerId;
+          const reviewPending = isReviewer && workflowSnapshot.tasks.some((t) => t.state === "reviewing");
+          const isBlocked = task?.state === "blocked";
+
+          result[bot.id] = {
+            taskTitle: task?.title,
+            taskState: task?.state,
+            progress: task?.progress,
+            presence: agent?.presence ?? (isBlocked ? "blocked" : task ? "working" : "idle"),
+            waitingReason: isBlocked ? "Waiting for counterparty risk data" : undefined,
+            hasIncomingHelp: hasHelp,
+            reviewRequested: reviewPending,
+          };
+          continue;
+        }
+      }
+
+      // Default Live State derivation: derive strictly from authentic bot presence
+      result[bot.id] = {
+        presence: bot.activity === "working" || bot.busy ? "working" : bot.activity === "waiting-on-you" ? "waiting" : "idle",
+      };
+    }
+    return result;
+  }, [bots, botRoleMapping, workflowSnapshot, dataMode]);
+
   const sections = useMemo(() => {
     const names = [...new Set([...(state.sections ?? []), ...state.groups.flatMap((group) => group.section ? [group.section] : [])])];
     const order = (key: string) => key === "" ? -1 : names.includes(key) ? names.indexOf(key) : names.length;
     return buildTeamMapSections(bots, names).sort((a, b) => order(a.key) - order(b.key));
   }, [bots, state.sections, state.groups]);
+
   const edges = useMemo(() => buildTeamMapEdges(bots, snapshot), [bots, snapshot]);
 
   const refresh = useCallback(async () => {
@@ -330,86 +309,337 @@ export function TeamMapPage() {
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void refresh();
-    }, 3_000);
-    return () => window.clearInterval(timer);
   }, [refresh]);
 
-  const moveBot = async (bot: Bot, destination: string) => {
-    setError(null);
-    try {
-      const result: { sections: string[]; bots: Bot[] } = await api("/api/sidebar-sections", {
-        method: "POST", body: JSON.stringify({ name: destination, botIds: [bot.id] }),
-      });
-      dispatch({ type: "sections", sections: result.sections });
-      for (const patched of result.bots) dispatch({ type: "botPatched", bot: patched });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-      throw cause;
-    }
-  };
+  const requestMove = useCallback((bot: Bot, destination: string) => {
+    return new Promise<boolean>((resolve) => {
+      setPendingMove({ bot, destination, resolve });
+    });
+  }, []);
 
-  const requestMove = (bot: Bot, destination: string) => new Promise<boolean>((resolve) => {
-    pendingMoveRef.current?.resolve(false);
-    setPendingMove({ bot, destination, resolve });
-  });
   const cancelMove = useCallback(() => {
-    pendingMoveRef.current?.resolve(false);
-    setPendingMove(null);
+    if (pendingMove) {
+      pendingMove.resolve(false);
+      setPendingMove(null);
+    }
+  }, [pendingMove]);
+
+  // Deduplicate and unify handoffs and persistent connections cleanly
+  const unifiedHandoffs = useMemo(() => {
+    return deduplicateHandoffs(workflowSnapshot.transfers, edges, bots, workflowSnapshot.tasks);
+  }, [workflowSnapshot.transfers, workflowSnapshot.tasks, edges, bots]);
+
+  // Handle metric click drill-down
+  const handleSelectMetric = useCallback(
+    (metric: { id: string; filterKind?: ActivityKind; explanation: string }) => {
+      setActiveMetricId(metric.id);
+      setFactsFilter(metric.filterKind ?? "all");
+
+      switch (metric.id) {
+        case "branches":
+          setHighlightBotIds([botRoleMapping.discoveryId, botRoleMapping.listingCoachId, botRoleMapping.escrowId]);
+          break;
+        case "transfers":
+          setHighlightBotIds([botRoleMapping.coordinatorId, botRoleMapping.escrowId]);
+          if (workflowSnapshot.transfers[0]) {
+            setSelectedWorkflowTaskId(workflowSnapshot.transfers[0].taskId);
+          }
+          break;
+        case "blocked":
+          setHighlightBotIds([botRoleMapping.listingCoachId, botRoleMapping.discoveryId]);
+          break;
+        case "reviews":
+          setHighlightBotIds([botRoleMapping.listingCoachId, botRoleMapping.reviewerId]);
+          break;
+        case "tasks":
+          setHighlightBotIds([botRoleMapping.discoveryId, botRoleMapping.listingCoachId, botRoleMapping.escrowId]);
+          break;
+        case "messages":
+        case "agents":
+        case "concurrent":
+          setHighlightBotIds(bots.map((b) => b.id));
+          break;
+        default:
+          setHighlightBotIds([]);
+      }
+    },
+    [botRoleMapping, bots, workflowSnapshot],
+  );
+
+  const handleResetMetric = useCallback(() => {
+    setActiveMetricId(null);
+    setFactsFilter("all");
+    setHighlightBotIds([]);
   }, []);
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-app text-ink">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-hairline/40 px-6 py-4 max-md:pl-12">
+    <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#0B0C0E] text-ink">
+      {/* 1. Header (Primary operational title & data state badge) */}
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#15171A] px-6 py-3.5 max-md:pl-12">
         <div>
           <div className="flex items-center gap-2.5">
-            <Network size={18} className="text-ink-secondary" />
-            <h1 className="text-[17px] font-semibold">Team map</h1>
-            <span className="ml-1 text-[11px] text-ink-secondary">{t("canvas.botCount", { count: bots.length })}</span>
+            <Network size={18} className="text-white/60" />
+            <h1 className="text-[17px] font-semibold text-white/95">Team map</h1>
+            <span className="ml-1 text-[11px] text-white/50">{t("canvas.botCount", { count: bots.length })}</span>
+
+            {/* Authoritative Data State Indicator */}
+            {dataMode === "sample" ? (
+              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10.5px] font-medium text-accent">
+                {SAMPLE_WORKFLOW_LABEL}
+              </span>
+            ) : dataMode === "live" ? (
+              <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[10.5px] font-medium text-success">
+                Live workflow
+              </span>
+            ) : dataMode === "unavailable" ? (
+              <span className="rounded-full bg-danger/15 px-2.5 py-0.5 text-[10.5px] font-medium text-danger">
+                Workflow status unavailable
+              </span>
+            ) : (
+              <span className="rounded-full bg-white/[0.08] px-2.5 py-0.5 text-[10.5px] font-medium text-white/70">
+                All tracked agents healthy
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-[12px] text-ink-secondary">{t("canvas.description")}</p>
+          <p className="mt-0.5 text-[12px] text-white/50">{t("canvas.description")}</p>
         </div>
-        {!remoteClient && <div className="flex items-center gap-2">
 
-          <details className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.removeAttribute("open"); }} onKeyDown={(event) => {
-            if (event.key === "Escape") { event.currentTarget.removeAttribute("open"); event.currentTarget.querySelector("summary")?.focus(); }
-          }}>
-            <summary aria-label="Add to team map" className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-hairline/60 bg-panel px-3 py-2 text-[12px] font-medium hover:bg-control [&::-webkit-details-marker]:hidden"><Plus size={14} /> Add</summary>
-            <div className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-hairline/60 bg-panel p-1.5 shadow-xl" onClick={(event) => {
-              const details = event.currentTarget.closest("details"); details?.querySelector("summary")?.focus(); details?.removeAttribute("open");
-            }}>
-              <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[12px] hover:bg-control" onClick={() => setTeamEditor({})}><Users size={14} />{t("team.create")}</button>
+        <div className="flex items-center gap-2">
+          {!remoteClient && (
+            <details
+              className="relative"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.removeAttribute("open");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.currentTarget.removeAttribute("open");
+                  event.currentTarget.querySelector("summary")?.focus();
+                }
+              }}
+            >
+              <summary
+                aria-label="Add to team map"
+                className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/[0.1] bg-[#1C2025] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
+              >
+                <Plus size={14} /> Add
+              </summary>
+              <div
+                className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
+                onClick={(event) => {
+                  const details = event.currentTarget.closest("details");
+                  details?.querySelector("summary")?.focus();
+                  details?.removeAttribute("open");
+                }}
+              >
+                <button
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-white/80 hover:bg-white/[0.08] hover:text-white"
+                  onClick={() => setTeamEditor({})}
+                >
+                  <Users size={14} />
+                  {t("team.create")}
+                </button>
+              </div>
+            </details>
+          )}
+        </div>
+      </header>
 
+      {/* 2. Compact Canvas Toolbar (Board vs Map switch, Search, Status filter) */}
+      <TeamMapToolbar
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onlyNeedsAttention={onlyNeedsAttention}
+        onToggleOnlyAttention={() => setOnlyNeedsAttention((prev) => !prev)}
+        zoomPercent={zoomPercent}
+        onResetZoom={() => setZoomPercent(100)}
+        onZoomIn={() => setZoomPercent((z) => Math.min(150, z * 1.2))}
+        onZoomOut={() => setZoomPercent((z) => Math.max(30, z / 1.2))}
+      />
+
+      {/* 3. Operational Attention Strip (Placed at top of canvas) */}
+      <div className="shrink-0 border-b border-white/[0.08] bg-[#0B0C0E] px-6 py-2.5">
+        <TeamMapAttentionRail
+          items={attentionItems}
+          selectedItemId={selectedWorkflowTaskId ? `attention-blocked-${selectedWorkflowTaskId}` : null}
+          onSelectItem={(item) => {
+            if (item.taskId) {
+              setSelectedWorkflowTaskId(item.taskId);
+              setSelectedWorkflowBotId(null);
+            } else {
+              setSelectedWorkflowBotId(item.agentId);
+              setSelectedWorkflowTaskId(null);
+            }
+            setHighlightBotIds([item.agentId]);
+          }}
+        />
+      </div>
+
+      {/* 4. Canvas Area: Board View (Default) or Spatial Map + Right-side Detail Drawer */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {viewMode === "board" ? (
+            <TeamMapBoardView
+              sections={sections}
+              workflowMap={workflowMap}
+              highlightBotIds={highlightBotIds}
+              selectedBotId={selectedWorkflowBotId}
+              onSelectBot={(botId) => {
+                setSelectedWorkflowBotId(botId);
+                setSelectedWorkflowTaskId(null);
+              }}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              onlyNeedsAttention={onlyNeedsAttention}
+            />
+          ) : (
+            <TeamCanvas
+              sections={sections}
+              canManage={!remoteClient}
+              onMove={requestMove}
+              onLogs={setLogBot}
+              edges={edges}
+              workflowMap={workflowMap}
+              highlightBotIds={highlightBotIds}
+              onSelectBot={(botId) => {
+                setSelectedWorkflowBotId(botId);
+                setSelectedWorkflowTaskId(null);
+              }}
+              connectedBotIds={
+                state.settingsOpen
+                  ? edges.flatMap((edge) =>
+                      edge.sourceBotId === state.selectedId
+                        ? [edge.targetBotId]
+                        : edge.targetBotId === state.selectedId
+                          ? [edge.sourceBotId]
+                          : [],
+                    )
+                  : []
+              }
+              onComputer={(bot) => dispatch({ type: "toggleSettings", botId: bot.id, section: "access", open: true })}
+              onInstructions={(section, label) => setContextEditor({ section, label })}
+              onEditTeam={(section, rename) => setTeamEditor({ section, rename })}
+              onDeleteTeam={setDeletingTeam}
+              isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)}
+            />
+          )}
+        </div>
+
+        {/* Right-side Detail Drawer with 1-click Operator Interventions */}
+        {(selectedWorkflowBotId || selectedWorkflowTaskId) && (
+          <TeamMapWorkflowDrawer
+            snapshot={workflowSnapshot}
+            agentId={selectedWorkflowBotId}
+            taskId={selectedWorkflowTaskId}
+            onClose={() => {
+              setSelectedWorkflowBotId(null);
+              setSelectedWorkflowTaskId(null);
+              setHighlightBotIds([]);
+            }}
+            onSelectAgent={(agentId) => {
+              setSelectedWorkflowBotId(agentId);
+              setHighlightBotIds([agentId]);
+            }}
+            onSelectTask={(taskId) => {
+              setSelectedWorkflowTaskId(taskId);
+              const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
+              if (t) setHighlightBotIds([t.ownerAgentId]);
+            }}
+            onIntervene={(action) => {
+              if (action.type === "open_chat" && action.agentId) {
+                dispatch({ type: "select", id: action.agentId });
+              } else if (action.type === "unblock") {
+                setHighlightBotIds([]);
+                setSelectedWorkflowTaskId(null);
+              } else if (action.type === "approve") {
+                setHighlightBotIds([]);
+                setSelectedWorkflowTaskId(null);
+              }
+            }}
+          />
+        )}
+      </div>
+
+      {/* 5. Compact Lower Content (15-20% viewport max): Flat Handoffs + Collapsed Workflow Insights */}
+      <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
+        <div className="max-h-[300px] overflow-y-auto px-6 py-4 space-y-3.5">
+          {/* Flat Structured Handoffs with Deduplicated Channels */}
+          <TeamMapHandoffList
+            items={unifiedHandoffs}
+            selectedTaskId={selectedWorkflowTaskId}
+            onSelectHandoff={(item: UnifiedHandoffItem) => {
+              if (item.taskId) {
+                setSelectedWorkflowTaskId(item.taskId);
+                setSelectedWorkflowBotId(null);
+              } else {
+                setSelectedWorkflowBotId(item.fromBotId);
+                setSelectedWorkflowTaskId(null);
+              }
+              setHighlightBotIds([item.fromBotId, item.toBotId]);
+            }}
+          />
+
+          {/* Collapsible Secondary Workflow Insights */}
+          <details
+            open={activeMetricId !== null}
+            className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
+          >
+            <summary className="flex h-11 cursor-pointer list-none items-center justify-between px-5 text-[13.5px] font-semibold text-white/85 hover:bg-white/[0.02]">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-accent" aria-hidden="true" />
+                <span>Workflow insights</span>
+                <span className="text-[11px] font-normal text-white/40">Historical metrics &amp; event audit</span>
+              </div>
+              <span className="text-[11.5px] font-normal text-white/45">
+                {activeMetricId ? "Filtering by metric" : "Expand metrics"}
+              </span>
+            </summary>
+
+            <div className="space-y-4 border-t border-white/[0.08] p-4">
+              <TeamMapWowFacts
+                facts={wowFacts}
+                activeMetricId={activeMetricId}
+                onSelectMetric={handleSelectMetric}
+                onResetMetric={handleResetMetric}
+              />
+
+              <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0C0E]/50">
+                <div className="flex h-9 items-center justify-between border-b border-white/[0.06] px-4 text-[12px]">
+                  <span className="font-semibold text-white/80">Activity Event Trail</span>
+                  <span className="text-[11px] text-white/40">Chronological</span>
+                </div>
+                <div className="h-[180px]">
+                  <TeamMapActivityFeed
+                    snapshot={workflowSnapshot}
+                    kindFilter={factsFilter}
+                    onKindFilter={setFactsFilter}
+                    onSelectAgent={(agentId) => {
+                      setSelectedWorkflowBotId(agentId);
+                      setHighlightBotIds([agentId]);
+                    }}
+                    onSelectTask={(taskId) => {
+                      setSelectedWorkflowTaskId(taskId);
+                      const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
+                      if (t) setHighlightBotIds([t.ownerAgentId]);
+                    }}
+                    highlightAgentId={selectedWorkflowBotId}
+                    className="h-full"
+                  />
+                </div>
+              </div>
             </div>
           </details>
-        </div>}
-      </header>
-      {(error || refreshError) && <div role="alert" className="flex shrink-0 items-center justify-between gap-3 border-b border-danger/20 bg-danger/10 px-6 py-2 text-[12px] text-danger">
-        {error || refreshError}
-        <button aria-label={t("common.close")} className="rounded p-1 hover:bg-danger/10" onClick={() => { setError(null); setRefreshError(null); }}><X size={14} /></button>
-      </div>}
-      <div className="relative flex min-h-0 flex-1">
-      <TeamCanvas sections={sections} canManage={!remoteClient} onMove={requestMove} onLogs={setLogBot} edges={edges}
-        connectedBotIds={state.settingsOpen ? edges.flatMap((edge) => edge.sourceBotId === state.selectedId ? [edge.targetBotId] : edge.targetBotId === state.selectedId ? [edge.sourceBotId] : []) : []}
-        onComputer={(bot) => dispatch({ type: "toggleSettings", botId: bot.id, section: "access", open: true })}
-        onInstructions={(section, label) => setContextEditor({ section, label })}
-        onEditTeam={(section, rename) => setTeamEditor({ section, rename })}
-        onDeleteTeam={setDeletingTeam}
-        isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)} />
-      </div>
+        </div>
+      </footer>
+
+      {/* Legacy Session log modal */}
       {logBot && <SessionLog bot={logBot} onClose={() => setLogBot(null)} />}
-      {/* Uncontrolled: React re-forces a literal `open` on every render, which
-          would make the tray impossible to collapse. Open it once on mount. */}
-      <details ref={(node) => { if (node && node.dataset.opened === undefined) { node.dataset.opened = "1"; node.open = true; } }} className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3">
-        <summary className="cursor-pointer text-[12px] text-ink-secondary">{t("canvas.handoffs")} · {edges.length}</summary>
-        {edges.length === 0
-          ? <div className="mt-2 flex flex-wrap items-center gap-3">
-              <p className="text-[12px] text-ink-secondary">No handoffs yet. A line appears for a 1:1 DM or an active delegation, not because bots share a column.</p>
-              {bots.length >= 2 && <button className="rounded-lg border border-hairline/60 px-3 py-1.5 text-[12px] hover:bg-control" onClick={() => void api("/api/team-map/dm", { method: "POST", body: JSON.stringify({ fromBotId: bots[0].id, toBotId: bots[1].id }) }).then(() => refresh())}>Start 1:1</button>}
-            </div>
-          : <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">{edges.slice(0, 12).map((edge) => <EdgeRow key={`${edge.sourceBotId}:${edge.targetBotId}`} edge={edge} bots={bots} />)}</div>}
-      </details>
+
+      {/* Team Dialogs */}
       {contextEditor && (
         <SectionContextDialog
           section={contextEditor.section}
@@ -418,24 +648,76 @@ export function TeamMapPage() {
         />
       )}
       {teamEditor && <TeamDialog {...teamEditor} onClose={() => setTeamEditor(null)} />}
-      <ConfirmDialog open={pendingMove !== null} tone="neutral" title={`Move ${pendingMove?.bot.name ?? "bot"} to ${pendingMove?.destination || "General"}?`}
+      <ConfirmDialog
+        open={pendingMove !== null}
+        tone="neutral"
+        title={`Move ${pendingMove?.bot.name ?? "bot"} to ${pendingMove?.destination || "General"}?`}
         body="This changes the bot's home team and shared instructions, not just its position. Its conversations and model stay with it. To arrange visually, drag within the same team."
-        confirmLabel="Move bot" onCancel={cancelMove} onConfirm={() => {
+        confirmLabel="Move bot"
+        onCancel={cancelMove}
+        onConfirm={() => {
           const move = pendingMoveRef.current;
           if (!move) return;
+          pendingMoveRef.current = null;
           setPendingMove(null);
-          void moveBot(move.bot, move.destination).then(() => move.resolve(true), () => move.resolve(false));
-        }} />
-      <ConfirmDialog open={deletingTeam !== null} title={t("team.deleteTitle", { name: deletingTeam ?? "" })}
-        body={t("team.deleteDescription")}
-        confirmLabel={t("team.delete")} onCancel={() => setDeletingTeam(null)} onConfirm={() => {
-          const name = deletingTeam;
-          setDeletingTeam(null);
-          if (!name) return;
-          void api(`/api/sidebar-sections?section=${encodeURIComponent(name)}`, { method: "DELETE" })
-            .then(({ sections: names }) => dispatch({ type: "sections", sections: names }))
-            .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
-        }} />
+          move.resolve(true);
+        }}
+      />
     </main>
+  );
+}
+
+function SessionLog({ bot, onClose }: { bot: Bot; onClose: () => void }) {
+  const { dispatch } = useStore();
+  const [lines, setLines] = useState<Array<{ id: string; role: string; text: string }>>([]);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFailed(false);
+    setLines([]);
+    api(`/api/threads/${bot.threadId}/messages?limit=8`)
+      .then((body: { messages?: Array<{ id: string; role: string; text?: string; kind: string }> }) => {
+        if (cancelled) return;
+        setLines(
+          (body.messages ?? []).slice(-6).map((message) => ({
+            id: message.id,
+            role: message.role,
+            text: message.text?.trim() || message.kind,
+          })),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bot.id, bot.threadId]);
+
+  return (
+    <section className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3" aria-label={`Session log for ${bot.name}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[12px] font-medium">{bot.name} session log</p>
+        <div className="flex items-center gap-2">
+          <button className="text-[12px] text-accent hover:underline" onClick={() => dispatch({ type: "select", id: bot.id })}>
+            Open session
+          </button>
+          <button aria-label="Close session log" className="rounded p-1 text-ink-secondary hover:bg-control" onClick={onClose}>
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+      <p className="mt-1 text-[11px] text-ink-secondary">Our transcript only. Not a remote ASP process log.</p>
+      {failed && <p className="mt-2 text-[12px] text-danger">Could not load the transcript.</p>}
+      <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
+        {lines.length === 0 && !failed && <li className="text-[12px] text-ink-secondary">No transcript lines yet.</li>}
+        {lines.map((line) => (
+          <li key={line.id} className="truncate text-[12px]">
+            <span className="text-ink-secondary">{line.role}:</span> {line.text}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
