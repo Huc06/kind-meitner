@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, BookOpen, Loader2, Network, Plus, Save, Users, X } from "lucide-react";
+import { ArrowRight, BookOpen, Loader2, Network, Plus, Save, Sparkles, Users, X } from "lucide-react";
 
 import { api, formatTime, useStore, type Bot } from "@/state/store";
 import {
@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { TeamCanvas } from "./TeamCanvas";
 import { TeamDialog } from "./TeamDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { TeamMapDemoPanel } from "./TeamMapDemoPanel";
 import { t } from "@/lib/i18n";
 
 
@@ -307,6 +308,7 @@ export function TeamMapPage() {
   const [teamEditor, setTeamEditor] = useState<{ section?: string; rename?: boolean } | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null);
   const [logBot, setLogBot] = useState<Bot | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
   pendingMoveRef.current = pendingMove;
@@ -370,8 +372,22 @@ export function TeamMapPage() {
           </div>
           <p className="mt-1 text-[12px] text-ink-secondary">{t("canvas.description")}</p>
         </div>
-        {!remoteClient && <div className="flex items-center gap-2">
-
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={demoMode}
+            onClick={() => setDemoMode((value) => !value)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[12px] font-medium",
+              demoMode
+                ? "border-accent/50 bg-accent/15 text-accent"
+                : "border-hairline/60 bg-panel text-ink hover:bg-control",
+            )}
+          >
+            <Sparkles size={14} />
+            {demoMode ? "Demo on" : "Run marketplace demo"}
+          </button>
+        {!remoteClient && <>
           <details className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.removeAttribute("open"); }} onKeyDown={(event) => {
             if (event.key === "Escape") { event.currentTarget.removeAttribute("open"); event.currentTarget.querySelector("summary")?.focus(); }
           }}>
@@ -383,12 +399,17 @@ export function TeamMapPage() {
 
             </div>
           </details>
-        </div>}
+        </>}
+        </div>
       </header>
-      {(error || refreshError) && <div role="alert" className="flex shrink-0 items-center justify-between gap-3 border-b border-danger/20 bg-danger/10 px-6 py-2 text-[12px] text-danger">
+      {(error || refreshError) && !demoMode && <div role="alert" className="flex shrink-0 items-center justify-between gap-3 border-b border-danger/20 bg-danger/10 px-6 py-2 text-[12px] text-danger">
         {error || refreshError}
         <button aria-label={t("common.close")} className="rounded p-1 hover:bg-danger/10" onClick={() => { setError(null); setRefreshError(null); }}><X size={14} /></button>
       </div>}
+      {demoMode ? (
+        <TeamMapDemoPanel />
+      ) : (
+      <>
       <div className="relative flex min-h-0 flex-1">
       <TeamCanvas sections={sections} canManage={!remoteClient} onMove={requestMove} onLogs={setLogBot} edges={edges}
         connectedBotIds={state.settingsOpen ? edges.flatMap((edge) => edge.sourceBotId === state.selectedId ? [edge.targetBotId] : edge.targetBotId === state.selectedId ? [edge.sourceBotId] : []) : []}
@@ -410,6 +431,8 @@ export function TeamMapPage() {
             </div>
           : <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">{edges.slice(0, 12).map((edge) => <EdgeRow key={`${edge.sourceBotId}:${edge.targetBotId}`} edge={edge} bots={bots} />)}</div>}
       </details>
+      </>
+      )}
       {contextEditor && (
         <SectionContextDialog
           section={contextEditor.section}
