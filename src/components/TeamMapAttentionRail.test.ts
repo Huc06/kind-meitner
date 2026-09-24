@@ -16,8 +16,8 @@ describe("TeamMapAttentionRail", () => {
       }),
     );
 
-    expect(markup).toContain("All tracked agents healthy");
-    expect(markup).toContain("No blockers or pending reviews");
+    expect(markup).toContain("No attention items required");
+    expect(markup).toContain("All systems quiet");
     expect(markup).toContain("Select any agent to inspect workload");
   });
 

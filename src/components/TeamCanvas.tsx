@@ -176,6 +176,9 @@ export function TeamCanvas({
   workflowMap = {},
   highlightBotIds = [],
   onSelectBot,
+  searchQuery = "",
+  statusFilter = "all",
+  onlyNeedsAttention = false,
 }: {
   sections: TeamMapSection<Bot>[];
   canManage: boolean;
@@ -194,6 +197,9 @@ export function TeamCanvas({
   workflowMap?: Record<string, BotWorkflowInfo>;
   highlightBotIds?: string[];
   onSelectBot?: (botId: string) => void;
+  searchQuery?: string;
+  statusFilter?: string;
+  onlyNeedsAttention?: boolean;
 }) {
   const { state } = useStore();
   const viewport = useRef<HTMLDivElement>(null);
@@ -506,21 +512,41 @@ export function TeamCanvas({
         const hierarchy = section.chiefs.length > 0 && section.members.length > 0;
         const dropping = computerDropKey === section.key || (dragged && dropKey === section.key && (dragged.bot.section?.trim() ?? "") !== section.key);
         const computer = Object.hasOwn(teamComputers, section.key) ? teamComputers[section.key] : undefined;
-        const renderBot = (bot: Bot) => <div key={bot.id} className="relative">
-          {insertion?.botId === bot.id && <div className={cn("pointer-events-none absolute inset-x-1 h-0.5 rounded bg-accent", insertion.after ? "-bottom-[9px]" : "-top-[9px]")} />}
-          <BotCard
-            bot={bot}
-            selected={state.selectedId === bot.id && state.settingsOpen}
-            moving={dragged?.bot.id === bot.id || moving === bot.id}
-            connected={connectedBotIds.includes(bot.id)}
-            highlighted={highlightBotIds.includes(bot.id)}
-            workflow={workflowMap[bot.id] ?? workflowMap[bot.okxImport?.externalAgentId ?? ""]}
-            onComputer={onComputer}
-            onArrange={layoutLoaded ? arrangeBot : undefined}
-            onLogs={onLogs}
-            onSelect={onSelectBot}
-          />
-        </div>;
+        const q = searchQuery.trim().toLowerCase();
+        const renderBot = (bot: Bot) => {
+          const wf = workflowMap[bot.id];
+          let matches = true;
+          if (q) {
+            matches = bot.name.toLowerCase().includes(q) ||
+              (bot.title || "").toLowerCase().includes(q) ||
+              (wf?.taskTitle || "").toLowerCase().includes(q);
+          }
+          if (matches && onlyNeedsAttention) {
+            matches = Boolean(wf?.presence === "blocked" || wf?.presence === "waiting" || bot.activity === "waiting-on-you");
+          }
+          if (matches && statusFilter !== "all") {
+            const pres = wf?.presence ?? (bot.busy ? "working" : "ready");
+            matches = pres.toLowerCase() === statusFilter.toLowerCase();
+          }
+
+          return (
+            <div key={bot.id} className={cn("relative transition-opacity", !matches && "opacity-25 pointer-events-none")}>
+              {insertion?.botId === bot.id && <div className={cn("pointer-events-none absolute inset-x-1 h-0.5 rounded bg-accent", insertion.after ? "-bottom-[9px]" : "-top-[9px]")} />}
+              <BotCard
+                bot={bot}
+                selected={state.selectedId === bot.id && state.settingsOpen}
+                moving={dragged?.bot.id === bot.id || moving === bot.id}
+                connected={connectedBotIds.includes(bot.id)}
+                highlighted={highlightBotIds.includes(bot.id)}
+                workflow={workflowMap[bot.id] ?? workflowMap[bot.okxImport?.externalAgentId ?? ""]}
+                onComputer={onComputer}
+                onArrange={layoutLoaded ? arrangeBot : undefined}
+                onLogs={onLogs}
+                onSelect={onSelectBot}
+              />
+            </div>
+          );
+        };
         return <section key={section.key} data-team-key={section.key} aria-label={t("canvas.teamRegion", { name: section.name })}
           className={cn("absolute rounded-2xl border bg-panel/90 shadow-sm has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-hairline/50")}
           style={{ left: tile.x, top: tile.y, width: tile.width, height: tile.height }}>

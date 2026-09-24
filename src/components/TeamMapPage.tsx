@@ -397,7 +397,7 @@ export function TeamMapPage() {
               </span>
             ) : (
               <span className="rounded-full bg-white/[0.08] px-2.5 py-0.5 text-[10.5px] font-medium text-white/70">
-                All tracked agents healthy
+                No active workflow data
               </span>
             )}
           </div>
@@ -525,6 +525,9 @@ export function TeamMapPage() {
               onEditTeam={(section, rename) => setTeamEditor({ section, rename })}
               onDeleteTeam={setDeletingTeam}
               isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              onlyNeedsAttention={onlyNeedsAttention}
             />
           )}
         </div>
@@ -533,6 +536,7 @@ export function TeamMapPage() {
         {(selectedWorkflowBotId || selectedWorkflowTaskId) && (
           <TeamMapWorkflowDrawer
             snapshot={workflowSnapshot}
+            bots={bots}
             agentId={selectedWorkflowBotId}
             taskId={selectedWorkflowTaskId}
             onClose={() => {
@@ -549,15 +553,11 @@ export function TeamMapPage() {
               const t = workflowSnapshot.tasks.find((task) => task.id === taskId);
               if (t) setHighlightBotIds([t.ownerAgentId]);
             }}
-            onIntervene={(action) => {
-              if (action.type === "open_chat" && action.agentId) {
-                dispatch({ type: "select", id: action.agentId });
-              } else if (action.type === "unblock") {
-                setHighlightBotIds([]);
-                setSelectedWorkflowTaskId(null);
-              } else if (action.type === "approve") {
-                setHighlightBotIds([]);
-                setSelectedWorkflowTaskId(null);
+            onIntervene={(command) => {
+              if (command.type === "open_conversation" || command.type === "provide_input") {
+                dispatch({ type: "select", id: command.agentId });
+              } else if (command.type === "inspect_blocker") {
+                setSelectedWorkflowTaskId(command.taskId);
               }
             }}
           />

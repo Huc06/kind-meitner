@@ -1,9 +1,10 @@
+import { useEffect, useRef, useState } from "react";
 import {
   X,
   MessageSquare,
   FileText,
-  CheckCircle2,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type {
@@ -13,7 +14,16 @@ import type {
   OwnershipTransfer,
   WorkflowArtifact,
 } from "@/lib/team-map-workflow";
+import type { Bot } from "@/state/store";
 import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
+
+export type InterventionCommand =
+  | { type: "inspect_blocker"; taskId: string }
+  | { type: "open_conversation"; agentId: string }
+  | { type: "unblock_task"; taskId: string }
+  | { type: "approve_task"; taskId: string }
+  | { type: "request_changes"; taskId: string; reason: string }
+  | { type: "provide_input"; agentId: string; taskId?: string };
 
 function presenceBadge(presence?: string): { label: string; tone: string } {
   switch (presence) {
@@ -36,6 +46,7 @@ function presenceBadge(presence?: string): { label: string; tone: string } {
 
 export function TeamMapWorkflowDrawer({
   snapshot,
+  bots = [],
   agentId,
   taskId,
   onClose,
@@ -44,408 +55,351 @@ export function TeamMapWorkflowDrawer({
   onIntervene,
 }: {
   snapshot: WorkflowSnapshot;
+  bots?: Bot[];
   agentId?: string | null;
   taskId?: string | null;
   onClose: () => void;
   onSelectAgent?: (id: string) => void;
   onSelectTask?: (id: string) => void;
-  onIntervene?: (action: { type: "unblock" | "approve" | "request_changes" | "open_chat"; taskId?: string; agentId?: string }) => void;
+  onIntervene?: (command: InterventionCommand) => void;
 }) {
-  const agent: WorkflowAgent | undefined = agentId
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "artifacts">("overview");
+
+  // Keyboard accessibility: Escape to close
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  // Focus trap / entry on mount
+  useEffect(() => {
+    drawerRef.current?.focus();
+  }, []);
+
+  // 1. Resolve agent: from snapshot or fallback to real workspace bot
+  const realBot = agentId ? bots.find((b) => b.id === agentId) : undefined;
+  const snapshotAgent: WorkflowAgent | undefined = agentId
     ? snapshot.agents.find((a) => a.id === agentId)
     : undefined;
 
-  // Find task: explicit taskId or agent's current task
-  const task: WorkflowTask | undefined = taskId
+  const agentName = snapshotAgent?.name ?? realBot?.name ?? agentId ?? "Unknown agent";
+  const agentRole = snapshotAgent?.role ?? realBot?.title ?? "AI Teammate";
+  const agentPresence = snapshotAgent?.presence ?? (realBot?.busy ? "working" : realBot?.activity === "waiting-on-you" ? "waiting" : "idle");
+
+  // 2. Resolve task: explicit taskId, snapshot task, or real bot task
+  const snapshotTask: WorkflowTask | undefined = taskId
     ? snapshot.tasks.find((t) => t.id === taskId)
-    : agent?.currentTaskId
-      ? snapshot.tasks.find((t) => t.id === agent.currentTaskId)
-      : snapshot.tasks.find((t) => t.ownerAgentId === agent?.id);
+    : snapshotAgent?.currentTaskId
+      ? snapshot.tasks.find((t) => t.id === snapshotAgent.currentTaskId)
+      : snapshot.tasks.find((t) => t.ownerAgentId === agentId);
 
-  const currentOwner: WorkflowAgent | undefined = task
-    ? snapshot.agents.find((a) => a.id === task.ownerAgentId)
-    : agent;
+  const realBotTask = realBot?.tasks?.[0];
 
-  // 1. Ownership History
+  const taskTitle = snapshotTask?.title ?? realBotTask?.title;
+  const taskState = snapshotTask?.state ?? (realBot?.busy ? "active" : "queued");
+  const taskProgress = snapshotTask?.progress ?? (snapshotTask?.state === "completed" ? 100 : undefined);
+
+  // If neither an agent ID nor a task ID was provided, render nothing
+  if (!agentId && !taskId) return null;
+
+  // 3. Ownership History
   const transfers: OwnershipTransfer[] = snapshot.transfers.filter((x) => {
-    if (task && x.taskId === task.id) return true;
-    if (agent && (x.fromAgentId === agent.id || x.toAgentId === agent.id)) return true;
+    if (taskId && x.taskId === taskId) return true;
+    if (agentId && (x.fromAgentId === agentId || x.toAgentId === agentId)) return true;
     return false;
   });
 
-  // 2. Collaboration messages & help requests
+  // 4. Collaboration messages & help requests
   const messages = snapshot.messages.filter((m) => {
-    if (task && m.taskId === task.id) return true;
-    if (agent && (m.fromAgentId === agent.id || m.toAgentId === agent.id)) return true;
+    if (taskId && m.taskId === taskId) return true;
+    if (agentId && (m.fromAgentId === agentId || m.toAgentId === agentId)) return true;
     return false;
   });
 
-  // 3. Artifacts / Deliverables
+  // 5. Artifacts / Deliverables
   const artifacts: WorkflowArtifact[] = (snapshot.artifacts ?? []).filter((art) => {
-    if (task && art.taskId === task.id) return true;
-    if (agent && art.authorAgentId === agent.id) return true;
+    if (taskId && art.taskId === taskId) return true;
+    if (agentId && art.authorAgentId === agentId) return true;
     return false;
   });
-
-  // 4. Review events
-  const reviewEvents = snapshot.events.filter((e) => {
-    if (e.type === "review_requested" || e.type === "review_started" || e.type === "review_approved" || e.type === "review_changes_requested") {
-      if (task && "taskId" in e && e.taskId === task.id) return true;
-      if (agent && "reviewerAgentId" in e && e.reviewerAgentId === agent.id) return true;
-    }
-    return false;
-  });
-
-  if (!agent && !task) return null;
 
   return (
     <aside
-      aria-label="Workflow details"
-      className="flex w-96 shrink-0 flex-col overflow-hidden border-l border-hairline/40 bg-panel shadow-2xl"
+      ref={drawerRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="false"
+      aria-label={`Workflow details for ${agentName}`}
+      className="flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#15171A] shadow-2xl outline-none"
     >
-      {/* Drawer Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-hairline/40 px-5 py-3.5">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-accent" />
-          <h3 className="text-[13.5px] font-semibold text-ink">Collaboration Details</h3>
+      {/* Header */}
+      <div className="flex h-13 shrink-0 items-center justify-between border-b border-white/[0.08] px-5 py-3">
+        <div className="flex items-center gap-2 truncate">
+          <Sparkles size={15} className="shrink-0 text-accent" aria-hidden="true" />
+          <h3 className="truncate text-[14px] font-semibold text-white/95">Inspector</h3>
+          <span className="text-white/40">·</span>
+          <span className="truncate text-[12px] text-white/60">{agentName}</span>
         </div>
         <button
           type="button"
-          aria-label="Close drawer"
+          aria-label="Close inspector drawer"
           onClick={onClose}
-          className="rounded-lg p-1 text-ink-secondary hover:bg-control hover:text-ink"
+          className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X size={15} />
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5 text-[12px] leading-relaxed">
-        {/* 1. AGENT IDENTITY */}
-        {currentOwner && (
-          <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-secondary">
-                1. Agent Identity
-              </span>
-              <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", presenceBadge(currentOwner.presence).tone)}>
-                {presenceBadge(currentOwner.presence).label}
-              </span>
-            </div>
+      {/* Tabs for Progressive Disclosure */}
+      <div className="flex h-10 shrink-0 border-b border-white/[0.08] bg-black/20 px-4 text-[12px]">
+        <button
+          type="button"
+          onClick={() => setActiveTab("overview")}
+          className={cn(
+            "flex items-center gap-1.5 border-b-2 px-3 font-medium transition-colors outline-none",
+            activeTab === "overview"
+              ? "border-accent text-white"
+              : "border-transparent text-white/50 hover:text-white/80",
+          )}
+        >
+          <span>Overview</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          className={cn(
+            "flex items-center gap-1.5 border-b-2 px-3 font-medium transition-colors outline-none",
+            activeTab === "history"
+              ? "border-accent text-white"
+              : "border-transparent text-white/50 hover:text-white/80",
+          )}
+        >
+          <span>Collaboration</span>
+          {messages.length > 0 && (
+            <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px] text-white/70">
+              {messages.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("artifacts")}
+          className={cn(
+            "flex items-center gap-1.5 border-b-2 px-3 font-medium transition-colors outline-none",
+            activeTab === "artifacts"
+              ? "border-accent text-white"
+              : "border-transparent text-white/50 hover:text-white/80",
+          )}
+        >
+          <span>Artifacts</span>
+          {artifacts.length > 0 && (
+            <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px] text-white/70">
+              {artifacts.length}
+            </span>
+          )}
+        </button>
+      </div>
 
-            <div className="flex items-center gap-3">
-              <TeamMapAgentAvatar
-                agentId={currentOwner.id}
-                name={currentOwner.name}
-                presence={currentOwner.presence}
-                size={40}
-              />
-              <div className="min-w-0 flex-1">
-                <h4 className="truncate text-[14px] font-semibold text-ink">{currentOwner.name}</h4>
-                <p className="truncate text-[11px] text-ink-secondary">{currentOwner.role}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 border-t border-hairline/30 pt-2.5 text-[11px]">
-              <div>
-                <span className="text-ink-secondary">Active Task:</span>{" "}
-                <span className="font-medium text-ink">{task?.title ?? "None"}</span>
-              </div>
-              <div>
-                <span className="text-ink-secondary">Workload:</span>{" "}
-                <span className="font-medium text-ink">
-                  {task ? `${task.progress}% in progress` : "Ready for work"}
+      {/* Drawer Body */}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-[12.5px] leading-relaxed">
+        {activeTab === "overview" && (
+          <>
+            {/* 1. Agent Identity Card */}
+            <section className="space-y-3 rounded-xl border border-white/[0.08] bg-[#1C2025]/80 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/45">
+                  Agent Identity
+                </span>
+                <span className={cn("rounded-[6px] border px-2 py-0.5 text-[10.5px] font-medium", presenceBadge(agentPresence).tone)}>
+                  {presenceBadge(agentPresence).label}
                 </span>
               </div>
-            </div>
-          </section>
-        )}
 
-        {/* DIRECT OPERATIONAL INTERVENTION ACTIONS */}
-        {task && onIntervene && (
-          <section className="space-y-2 rounded-2xl border border-accent/40 bg-accent/5 p-3.5">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-white/90">
-              <span>Operator Intervention</span>
-              <span className="text-[10px] text-accent">1-click action</span>
-            </div>
-
-            {task.state === "blocked" && (
-              <div className="flex flex-col gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => onIntervene({ type: "unblock", taskId: task.id, agentId: currentOwner?.id })}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-danger px-3 py-2 text-[12px] font-semibold text-white shadow-sm hover:bg-danger/90"
-                >
-                  <CheckCircle2 size={13} aria-hidden="true" />
-                  <span>Unblock Task &amp; Resume</span>
-                </button>
-                <p className="text-[10.5px] text-white/50 text-center">
-                  Resolves dependency and returns agent to active working state.
-                </p>
-              </div>
-            )}
-
-            {task.state === "reviewing" && (
-              <div className="flex flex-col gap-1.5 pt-1">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onIntervene({ type: "approve", taskId: task.id, agentId: currentOwner?.id })}
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-success px-3 py-2 text-[12px] font-semibold text-white hover:bg-success/90"
-                  >
-                    <CheckCircle2 size={13} aria-hidden="true" />
-                    <span>Approve</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onIntervene({ type: "request_changes", taskId: task.id, agentId: currentOwner?.id })}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-[12px] font-semibold text-warning hover:bg-warning/20"
-                  >
-                    <span>Request Changes</span>
-                  </button>
+              <div className="flex items-center gap-3">
+                {agentId && (
+                  <TeamMapAgentAvatar
+                    agentId={agentId}
+                    name={agentName}
+                    presence={agentPresence as any}
+                    size={38}
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="truncate text-[14px] font-semibold text-white/95">{agentName}</h4>
+                  <p className="truncate text-[11.5px] text-white/55">{agentRole}</p>
                 </div>
               </div>
-            )}
+            </section>
 
-            {currentOwner && (
-              <button
-                type="button"
-                onClick={() => onIntervene({ type: "open_chat", agentId: currentOwner.id })}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 text-[11.5px] font-medium text-white/80 hover:bg-white/[0.08]"
-              >
-                <MessageSquare size={13} aria-hidden="true" />
-                <span>Open 1:1 Conversation with {currentOwner.name}</span>
-              </button>
-            )}
-          </section>
-        )}
-        {/* 2. CURRENT TASK */}
-        {task && (
-          <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-secondary">
-                2. Current Task
-              </span>
-              <span className={cn("rounded-md border px-2 py-0.5 text-[10px] capitalize font-medium",
-                task.state === "blocked" ? "bg-danger/20 text-danger border-danger/40 animate-pulse font-bold" :
-                task.state === "active" ? "bg-success/20 text-success border-success/30" :
-                task.state === "reviewing" ? "bg-accent/20 text-accent border-accent/40 font-semibold" :
-                task.state === "completed" ? "bg-success/10 text-success/80 border-success/20" :
-                "bg-inset text-ink-secondary border-hairline/40"
-              )}>
-                {task.state}
-              </span>
-            </div>
+            {/* 2. Current Task & Workload */}
+            <section className="space-y-3 rounded-xl border border-white/[0.08] bg-[#1C2025]/80 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/45">
+                  Current Task
+                </span>
+                {taskState && (
+                  <span className="rounded-[6px] bg-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] font-medium uppercase text-white/70">
+                    {taskState}
+                  </span>
+                )}
+              </div>
 
-            <div>
-              <h4 className="text-[13.5px] font-semibold text-ink">{task.title}</h4>
-              {snapshot.objective && (
-                <p className="mt-1 text-[11px] text-ink-secondary">
-                  <span className="font-medium text-ink/80">Objective:</span> {snapshot.objective}
-                </p>
+              <div>
+                <h4 className="text-[13.5px] font-semibold text-white/90">
+                  {taskTitle ?? "No active task assigned"}
+                </h4>
+                {snapshot.objective && (
+                  <p className="mt-1 text-[11.5px] text-white/50">
+                    <span className="font-medium text-white/70">Objective:</span> {snapshot.objective}
+                  </p>
+                )}
+              </div>
+
+              {taskProgress !== undefined && (
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-white/50">
+                    <span>Progress</span>
+                    <span className="font-mono tabular-nums text-white/80">{taskProgress}%</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                    <div className="h-full bg-accent transition-all duration-300" style={{ width: `${taskProgress}%` }} />
+                  </div>
+                </div>
               )}
-            </div>
 
-            {/* Progress bar */}
-            <div>
-              <div className="flex items-center justify-between text-[11px] text-ink-secondary">
-                <span>Progress</span>
-                <span className="font-semibold tabular-nums text-ink">{task.progress}%</span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-inset">
-                <div
-                  className={cn("h-full transition-all duration-300",
-                    task.state === "blocked" ? "bg-danger" :
-                    task.state === "completed" ? "bg-success" :
-                    "bg-accent"
-                  )}
-                  style={{ width: `${task.progress}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Dependencies */}
-            {task.dependsOnTaskIds.length > 0 && (
-              <div className="rounded-lg bg-inset/60 p-2 text-[11px]">
-                <span className="font-medium text-ink">Dependencies:</span>
-                <ul className="mt-1 list-inside list-disc text-ink-secondary">
-                  {task.dependsOnTaskIds.map((depId) => {
-                    const dep = snapshot.tasks.find((t) => t.id === depId);
-                    return (
+              {snapshotTask?.dependsOnTaskIds && snapshotTask.dependsOnTaskIds.length > 0 && (
+                <div className="rounded-lg bg-black/30 p-2.5 text-[11.5px]">
+                  <span className="font-medium text-white/80">Depends on:</span>
+                  <ul className="mt-1 space-y-1 text-white/60">
+                    {snapshotTask.dependsOnTaskIds.map((depId) => (
                       <li key={depId}>
                         <button
                           type="button"
                           onClick={() => onSelectTask?.(depId)}
                           className="text-accent hover:underline"
                         >
-                          {dep?.title ?? depId} ({dep?.state ?? "queued"})
+                          {snapshot.tasks.find((t) => t.id === depId)?.title || depId}
                         </button>
                       </li>
-                    );
-                  })}
-                </ul>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+
+            {/* 3. Truthful Operational Actions (Never fakes state mutation) */}
+            <section className="space-y-2 rounded-xl border border-white/[0.08] bg-[#1C2025]/80 p-3.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-white/80">
+                <span>Operational Action</span>
+                <span className="text-[10.5px] text-white/40">Verified command</span>
               </div>
-            )}
-          </section>
+
+              {agentId && (
+                <button
+                  type="button"
+                  onClick={() => onIntervene?.({ type: "open_conversation", agentId })}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/15 px-3 py-2 text-[12px] font-semibold text-accent hover:bg-accent/25 focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <MessageSquare size={13} aria-hidden="true" />
+                  <span>Open 1:1 Conversation with {agentName}</span>
+                </button>
+              )}
+
+              {taskState === "blocked" && (
+                <div className="rounded-lg bg-danger/10 p-2.5 text-[11px] text-danger">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <AlertCircle size={13} aria-hidden="true" />
+                    <span>Agent is blocked</span>
+                  </div>
+                  <p className="mt-1 text-danger/80">
+                    Send instructions or resolve dependencies directly through the conversation.
+                  </p>
+                </div>
+              )}
+            </section>
+          </>
         )}
 
-        {/* 3. COLLABORATION (MESSAGES, HELP REQUESTS, ARTIFACTS) */}
-        <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-secondary">
-              3. Collaboration & Communication
-            </span>
-            <span className="text-[10.5px] text-ink-secondary">
-              {messages.length} messages · {artifacts.length} artifacts
-            </span>
-          </div>
-
-          {/* Help Requests & Agent Messages */}
-          {messages.length === 0 ? (
-            <p className="text-[11px] text-ink-secondary">No recorded messages yet for this context.</p>
-          ) : (
-            <div className="space-y-2">
-              {messages.slice(-4).map((msg) => {
-                const fromAgent = snapshot.agents.find((a) => a.id === msg.fromAgentId);
-                const toAgent = snapshot.agents.find((a) => a.id === msg.toAgentId);
-                const isHelp = msg.kind === "help" || msg.kind === "help_requested";
-                return (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "rounded-xl border p-2.5 text-[11px]",
-                      isHelp
-                        ? "border-warning/40 bg-warning/10 text-warning"
-                        : "border-hairline/40 bg-inset/50 text-ink",
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-1 font-semibold">
-                      <div className="flex items-center gap-1.5">
-                        <MessageSquare size={12} className={isHelp ? "text-warning" : "text-accent"} />
-                        <span>{fromAgent?.name ?? msg.fromAgentId}</span>
-                        {toAgent && (
-                          <>
-                            <span className="text-ink-secondary">→</span>
-                            <span>{toAgent.name}</span>
-                          </>
-                        )}
+        {activeTab === "history" && (
+          <div className="space-y-4">
+            {/* Ownership transfers */}
+            {transfers.length > 0 && (
+              <section className="space-y-2.5">
+                <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                  Ownership Transfers
+                </h5>
+                <div className="space-y-2">
+                  {transfers.map((xfer) => (
+                    <div key={xfer.id} className="rounded-xl border border-white/[0.08] bg-[#1C2025] p-3 text-[11.5px]">
+                      <div className="font-semibold text-white/90">
+                        {snapshot.agents.find((a) => a.id === xfer.fromAgentId)?.name ?? xfer.fromAgentId} →{" "}
+                        {snapshot.agents.find((a) => a.id === xfer.toAgentId)?.name ?? xfer.toAgentId}
                       </div>
-                      {isHelp && (
-                        <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[9.5px] uppercase">
-                          Help Request
-                        </span>
-                      )}
+                      <p className="mt-1 text-white/60">{xfer.reason}</p>
                     </div>
-                    <p className="mt-1 leading-relaxed">{msg.text}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {/* Deliverables / Artifacts */}
-          {artifacts.length > 0 && (
-            <div className="border-t border-hairline/30 pt-2.5">
-              <span className="text-[11px] font-medium text-ink">Artifacts & Deliverables:</span>
-              <ul className="mt-1.5 space-y-1.5">
-                {artifacts.map((art) => (
-                  <li
-                    key={art.id}
-                    className="flex items-center justify-between rounded-lg border border-hairline/40 bg-inset/70 px-2.5 py-1.5 text-[11px]"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <FileText size={13} className="shrink-0 text-accent" />
-                      <span className="truncate font-medium text-ink">{art.name}</span>
+            {/* Messages */}
+            <section className="space-y-2.5">
+              <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                Recent Communication
+              </h5>
+              {messages.length === 0 ? (
+                <p className="text-[12px] text-white/40">No messages recorded for this scope.</p>
+              ) : (
+                <div className="space-y-2">
+                  {messages.map((m) => (
+                    <div key={m.id} className="rounded-xl border border-white/[0.06] bg-[#1C2025] p-3 text-[11.5px]">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="font-semibold text-white/80">
+                          {snapshot.agents.find((a) => a.id === m.fromAgentId)?.name ?? m.fromAgentId}
+                        </span>
+                        <span className="font-mono text-[10px]">{new Date(m.at).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="mt-1 text-white/70">{m.text}</p>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] text-ink-secondary uppercase">
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {activeTab === "artifacts" && (
+          <section className="space-y-2.5">
+            <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+              Deliverables &amp; Artifacts
+            </h5>
+            {artifacts.length === 0 ? (
+              <p className="text-[12px] text-white/40">No artifacts submitted yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {artifacts.map((art) => (
+                  <li key={art.id} className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-[#1C2025] p-3 text-[12px]">
+                    <div className="flex items-center gap-2.5 truncate">
+                      <FileText size={15} className="shrink-0 text-accent" aria-hidden="true" />
+                      <div className="truncate">
+                        <span className="block truncate font-medium text-white/90">{art.name}</span>
+                        {art.summary && <span className="block truncate text-[11px] text-white/50">{art.summary}</span>}
+                      </div>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] uppercase text-white/40">
                       {art.type} {art.sizeBytes ? `· ${Math.round(art.sizeBytes / 1000)}kb` : ""}
                     </span>
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
-        </section>
-
-        {/* 4. OWNERSHIP HISTORY (TRANSFERS) */}
-        {transfers.length > 0 && (
-          <section className="space-y-3 rounded-2xl border border-warning/40 bg-warning/5 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-warning">
-                4. Ownership Transfer History
-              </span>
-              <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
-                Context Preserved
-              </span>
-            </div>
-
-            {transfers.map((xfer) => {
-              const fromAgent = snapshot.agents.find((a) => a.id === xfer.fromAgentId);
-              const toAgent = snapshot.agents.find((a) => a.id === xfer.toAgentId);
-              return (
-                <div key={xfer.id} className="space-y-2 rounded-xl border border-warning/30 bg-card/80 p-3 text-[11px]">
-                  <div className="flex items-center justify-between font-semibold text-ink">
-                    <span>{fromAgent?.name ?? xfer.fromAgentId} → {toAgent?.name ?? xfer.toAgentId}</span>
-                    <span className="text-[10px] text-ink-secondary">
-                      Resumed at {xfer.progressAtTransfer ?? 68}%
-                    </span>
-                  </div>
-
-                  <p className="text-ink-secondary">
-                    <strong className="text-ink">Reason:</strong> {xfer.reason}
-                  </p>
-
-                  <div className="rounded-lg bg-inset/70 p-2 text-[10.5px]">
-                    <p className="font-medium text-ink">Context Transferred:</p>
-                    <p className="text-ink-secondary">
-                      {xfer.messagesTransferred ?? 4} messages, {xfer.artifactsTransferred ?? 2} artifacts, {xfer.decisionsTransferred ?? 1} decision
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-        )}
-
-        {/* 5. REVIEW & CONVERGENCE */}
-        {reviewEvents.length > 0 && (
-          <section className="space-y-3 rounded-2xl border border-accent/40 bg-accent/5 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-accent">
-                5. Convergence & Review
-              </span>
-              <CheckCircle2 size={14} className="text-accent" />
-            </div>
-
-            <div className="space-y-2">
-              {reviewEvents.map((rev, idx) => {
-                const isApproved = rev.type === "review_approved";
-                const isChanges = rev.type === "review_changes_requested" || rev.type === "review_rejected";
-                return (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "rounded-xl border p-2.5 text-[11px]",
-                      isApproved ? "border-success/40 bg-success/10 text-success" :
-                      isChanges ? "border-danger/40 bg-danger/10 text-danger" :
-                      "border-accent/40 bg-accent/10 text-accent",
-                    )}
-                  >
-                    <div className="flex items-center justify-between font-semibold">
-                      <span>{rev.type.replace(/_/g, " ").toUpperCase()}</span>
-                      <span className="text-[10px] opacity-75">{new Date(rev.at).toLocaleTimeString()}</span>
-                    </div>
-
-                    {isApproved && "findings" in rev && rev.findings && (
-                      <p className="mt-1 text-[10.5px] leading-relaxed">{rev.findings}</p>
-                    )}
-
-                    {isChanges && "reason" in rev && (
-                      <p className="mt-1 text-[10.5px] leading-relaxed">{rev.reason}</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            )}
           </section>
         )}
       </div>

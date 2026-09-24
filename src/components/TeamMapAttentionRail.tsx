@@ -108,10 +108,10 @@ export function TeamMapAttentionRail({
         )}
       >
         <div className="flex items-center gap-2">
-          <CheckCircle2 size={13} className="text-success" aria-hidden="true" />
-          <span className="font-medium text-white/90">All tracked agents healthy</span>
-          <span className="text-white/40">·</span>
-          <span className="text-white/50">No blockers or pending reviews</span>
+          <CheckCircle2 size={13} className="text-white/40" aria-hidden="true" />
+          <span className="font-medium text-white/80">No attention items required</span>
+          <span className="text-white/30">·</span>
+          <span className="text-white/50">All systems quiet</span>
         </div>
         <span className="text-[11px] text-white/40">Select any agent to inspect workload</span>
       </div>
