@@ -232,13 +232,13 @@ export function TeamMapCommandMenu({
           aria-label="Open command palette"
           onClick={() => setOpen(true)}
           className={cn(
-            "group flex items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/15 backdrop-blur-md px-3.5 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:border-accent/60 hover:bg-accent/25 hover:shadow-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer",
+            "group flex h-8 items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.04] px-3 text-[12px] font-medium text-white/70 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer",
             className,
           )}
         >
           <div className="flex items-center gap-2 truncate">
-            <span className="text-accent font-bold">⚡</span>
-            <span className="truncate font-semibold tracking-tight">{triggerPlaceholder}</span>
+            <Search size={13} className="shrink-0 text-white/40 group-hover:text-white/80 transition-colors" aria-hidden="true" />
+            <span className="truncate font-normal tracking-tight text-white/70 group-hover:text-white">{triggerPlaceholder}</span>
           </div>
           <span className="flex items-center gap-1 shrink-0">
             <Kbd pressed={combo}>{modLabel}</Kbd>

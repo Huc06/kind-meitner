@@ -504,12 +504,50 @@ export function TeamCanvas({
     }}>
     <div data-canvas-world className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}>
       <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={edgeExtent.width} height={edgeExtent.height} aria-hidden="true">
+        <defs>
+          <marker id="edge-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(255,255,255,0.4)" />
+          </marker>
+          <marker id="edge-arrow-running" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-accent)" />
+          </marker>
+          <marker id="edge-arrow-blocked" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-danger)" />
+          </marker>
+        </defs>
         {edges.flatMap((edge) => {
           const from = centers[edge.sourceBotId];
           const to = centers[edge.targetBotId];
           if (!from || !to) return [];
-          const stroke = edge.state === "running" ? "var(--color-accent)" : edge.state === "queued" ? "var(--color-warning)" : "var(--color-ink-secondary)";
-          return [<line key={`${edge.sourceBotId}:${edge.targetBotId}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={stroke} strokeWidth="2" />];
+          const isRunning = edge.state === "running";
+          const isBlocked = edge.state === "queued";
+          const stroke = isRunning
+            ? "var(--color-accent)"
+            : isBlocked
+              ? "var(--color-danger)"
+              : "rgba(255,255,255,0.2)";
+          const marker = isRunning
+            ? "url(#edge-arrow-running)"
+            : isBlocked
+              ? "url(#edge-arrow-blocked)"
+              : "url(#edge-arrow)";
+          const dx = to.x - from.x;
+          const curveOffset = Math.min(60, Math.max(20, Math.abs(dx) * 0.3));
+          const d = `M ${from.x} ${from.y} C ${from.x + (dx > 0 ? curveOffset : -curveOffset)} ${from.y}, ${to.x - (dx > 0 ? curveOffset : -curveOffset)} ${to.y}, ${to.x} ${to.y}`;
+
+          return [
+            <g key={`${edge.sourceBotId}:${edge.targetBotId}`}>
+              <path
+                d={d}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={isRunning ? 2.5 : 1.8}
+                strokeDasharray={isBlocked ? "4 4" : undefined}
+                markerEnd={marker}
+                className={isRunning ? "opacity-90" : "opacity-60"}
+              />
+            </g>
+          ];
         })}
       </svg>
       {sections.map((section, index) => {

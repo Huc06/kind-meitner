@@ -5,30 +5,33 @@ import {
   Loader2,
   Network,
   Plus,
+  Minus,
   Save,
   Users,
   X,
   Sparkles,
+  LayoutGrid,
+  Map as MapIcon,
+  AlertTriangle,
+  ArrowRight,
 } from "lucide-react";
-
 import { api, useStore, type Bot } from "@/state/store";
 import {
   EMPTY_TEAM_MAP_SNAPSHOT,
   buildTeamMapEdges,
   buildTeamMapSections,
   type TeamMapSnapshot,
+  type TeamMapEdge,
 } from "@/lib/team-map";
 import { cn } from "@/lib/cn";
 import { TeamCanvas, type BotWorkflowInfo } from "./TeamCanvas";
 import { TeamMapBoardView } from "./TeamMapBoardView";
-import { TeamMapToolbar } from "./TeamMapToolbar";
 import { TeamDialog } from "./TeamDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
 import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
-import { TeamMapAttentionRail } from "./TeamMapAttentionRail";
 import { TeamMapCommandMenu, type CommandMenuItem } from "./TeamMapCommandMenu";
 import {
   deriveAttentionItems,
@@ -195,6 +198,8 @@ export function TeamMapPage() {
   const [viewMode, setViewMode] = useState<"board" | "map">("map");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  void setSearchQuery;
+  void setStatusFilter;
   const [onlyNeedsAttention, setOnlyNeedsAttention] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
 
@@ -311,7 +316,64 @@ export function TeamMapPage() {
     return buildTeamMapSections(bots, names).sort((a, b) => order(a.key) - order(b.key));
   }, [bots, state.sections, state.groups]);
 
-  const edges = useMemo(() => buildTeamMapEdges(bots, snapshot), [bots, snapshot]);
+  const edges = useMemo(() => {
+    const base = buildTeamMapEdges(bots, snapshot);
+    const existing = new Set(base.map((e) => [e.sourceBotId, e.targetBotId].sort().join(":")));
+    const additional: TeamMapEdge[] = [];
+
+    // Connect tasks that have dependencies (e.g. Markets -> Listing Coach)
+    for (const task of workflowSnapshot.tasks) {
+      if (task.dependsOnTaskIds && task.dependsOnTaskIds.length > 0) {
+        for (const depId of task.dependsOnTaskIds) {
+          const depTask = workflowSnapshot.tasks.find((t) => t.id === depId);
+          if (depTask && depTask.ownerAgentId !== task.ownerAgentId) {
+            const key = [depTask.ownerAgentId, task.ownerAgentId].sort().join(":");
+            if (!existing.has(key)) {
+              existing.add(key);
+              additional.push({
+                sourceBotId: depTask.ownerAgentId,
+                targetBotId: task.ownerAgentId,
+                state: task.state === "blocked" ? "queued" : "running",
+                reason: `Dependency: ${depTask.title}`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Connect transfer handoffs (e.g. Tuli -> Atlas)
+    for (const xfer of workflowSnapshot.transfers) {
+      const key = [xfer.fromAgentId, xfer.toAgentId].sort().join(":");
+      if (!existing.has(key)) {
+        existing.add(key);
+        additional.push({
+          sourceBotId: xfer.fromAgentId,
+          targetBotId: xfer.toAgentId,
+          state: "running",
+          reason: xfer.reason,
+        });
+      }
+    }
+
+    // Connect review requests (e.g. Listing Coach -> Spend Scout)
+    for (const art of workflowSnapshot.artifacts ?? []) {
+      if (art.assignedReviewerId && art.authorAgentId && art.assignedReviewerId !== art.authorAgentId) {
+        const key = [art.authorAgentId, art.assignedReviewerId].sort().join(":");
+        if (!existing.has(key)) {
+          existing.add(key);
+          additional.push({
+            sourceBotId: art.authorAgentId,
+            targetBotId: art.assignedReviewerId,
+            state: art.reviewState === "under_review" ? "running" : "connected",
+            reason: `Review deliverable: ${art.name}`,
+          });
+        }
+      }
+    }
+
+    return [...base, ...additional];
+  }, [bots, snapshot, workflowSnapshot]);
 
   const refresh = useCallback(async () => {
     try {
@@ -498,116 +560,157 @@ export function TeamMapPage() {
     setFactsFilter("all");
     setHighlightBotIds([]);
   }, []);
-
   return (
     <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#0B0C0E] text-ink">
-      {/* 1. Header (Primary operational title & data state badge) */}
-      {/* 1. Ultra-Clean Operational Header with ⌘K Command Palette */}
-      <header className="flex h-13 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#15171A] px-6 py-2.5 max-md:pl-12">
+      <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#121519] px-6 py-1.5">
+        {/* Left: Title, bot count, and clean segmented view switcher */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Network size={17} className="text-accent" />
-            <h1 className="text-[15px] font-bold text-white tracking-tight">Team map</h1>
-            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] text-white/60">
-              {bots.length} agents
+            <Network size={15} className="text-accent" />
+            <h1 className="text-[13.5px] font-bold text-white tracking-tight">Team map</h1>
+            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[10px] text-white/60">
+              {bots.length}
             </span>
           </div>
 
-          {/* Active Scenario Minimal Pill */}
-          <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400 sm:inline-flex">
-            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>B2B Sourcing &amp; Escrow Pipeline</span>
-          </span>
+          {/* Segmented View Switcher (Canvas vs Board) */}
+          <div className="flex items-center rounded-md border border-white/[0.1] bg-black/40 p-0.5" role="group" aria-label="View mode">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === "map"}
+              onClick={() => setViewMode("map")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-all outline-none",
+                viewMode === "map" ? "bg-white/[0.12] text-white shadow-sm font-semibold" : "text-white/60 hover:text-white"
+              )}
+            >
+              <MapIcon size={11} />
+              <span>Canvas</span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === "board"}
+              onClick={() => setViewMode("board")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-all outline-none",
+                viewMode === "board" ? "bg-white/[0.12] text-white shadow-sm font-semibold" : "text-white/60 hover:text-white"
+              )}
+            >
+              <LayoutGrid size={11} />
+              <span>Board</span>
+            </button>
+          </div>
         </div>
 
-        {/* Middle: ⌘K Command Palette Trigger with Squeeze Effect */}
+        {/* Center: Command Palette Trigger */}
         <div className="flex-1 max-w-sm mx-auto hidden md:block">
           <TeamMapCommandMenu
             items={commandItems}
             className="w-full"
-            triggerPlaceholder="⚡ Action Menu & Use Cases (⌘K)"
+            triggerPlaceholder="Search agents, pipelines or type ⌘K…"
           />
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: Needs attention toggle, Zoom controls, and Add button */}
         <div className="flex items-center gap-2">
-          <div className="md:hidden">
-            <TeamMapCommandMenu items={commandItems} triggerPlaceholder="⚡ ⌘K" />
-          </div>
+          {/* Needs attention pill */}
+          <button
+            type="button"
+            onClick={() => setOnlyNeedsAttention((p) => !p)}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition",
+              onlyNeedsAttention
+                ? "border-danger/60 bg-danger/15 text-danger font-semibold"
+                : "border-white/[0.08] bg-white/[0.03] text-white/60 hover:bg-white/[0.06] hover:text-white"
+            )}
+          >
+            {attentionItems.length > 0 && <span className="size-1.5 rounded-full bg-danger animate-pulse" />}
+            <span>{attentionItems.length > 0 ? `${attentionItems.length} issue` : "All healthy"}</span>
+          </button>
+
+          {/* Zoom controls in Canvas mode */}
+          {viewMode === "map" && (
+            <div className="flex items-center gap-0.5 rounded-md border border-white/[0.08] bg-black/30 p-0.5">
+              <button
+                type="button"
+                aria-label="Zoom out"
+                onClick={() => setZoomPercent((z) => Math.max(30, z / 1.2))}
+                className="flex size-6 items-center justify-center rounded text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                <Minus size={11} />
+              </button>
+              <button
+                type="button"
+                aria-label="Reset zoom"
+                onClick={() => setZoomPercent(100)}
+                className="px-1.5 font-mono text-[10.5px] text-white/60 hover:text-white"
+              >
+                {Math.round(zoomPercent)}%
+              </button>
+              <button
+                type="button"
+                aria-label="Zoom in"
+                onClick={() => setZoomPercent((z) => Math.min(150, z * 1.2))}
+                className="flex size-6 items-center justify-center rounded text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                <Plus size={11} />
+              </button>
+            </div>
+          )}
+
           {!remoteClient && (
-            <details
-              className="relative"
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.removeAttribute("open");
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  event.currentTarget.removeAttribute("open");
-                  event.currentTarget.querySelector("summary")?.focus();
-                }
-              }}
-            >
+            <details className="relative">
               <summary
                 aria-label="Add to team map"
-                className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/[0.1] bg-[#1C2025] px-2.5 py-1 text-[11.5px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
+                className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-white/[0.1] bg-[#1C2025] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
               >
-                <Plus size={13} /> Add
+                <Plus size={12} />
+                <span>Add</span>
               </summary>
               <div
-                className="absolute right-0 top-full z-40 mt-2 w-48 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
-                onClick={(event) => {
-                  const details = event.currentTarget.closest("details");
-                  details?.querySelector("summary")?.focus();
-                  details?.removeAttribute("open");
+                className="absolute right-0 top-full z-40 mt-1.5 w-44 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
+                onClick={(e) => {
+                  const d = e.currentTarget.closest("details");
+                  d?.removeAttribute("open");
                 }}
               >
                 <button
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-white/80 hover:bg-white/[0.08] hover:text-white"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11.5px] text-white/80 hover:bg-white/[0.08] hover:text-white"
                   onClick={() => setTeamEditor({})}
                 >
-                  <Users size={14} />
-                  {t("team.create")}
+                  <Users size={13} />
+                  <span>{t("team.create")}</span>
                 </button>
               </div>
             </details>
           )}
         </div>
       </header>
-      {/* 3. Compact Canvas Toolbar (Board vs Map switch, Search, Status filter) */}
-      <TeamMapToolbar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        onlyNeedsAttention={onlyNeedsAttention}
-        onToggleOnlyAttention={() => setOnlyNeedsAttention((prev) => !prev)}
-        zoomPercent={zoomPercent}
-        onResetZoom={() => setZoomPercent(100)}
-        onZoomIn={() => setZoomPercent((z) => Math.min(150, z * 1.2))}
-        onZoomOut={() => setZoomPercent((z) => Math.max(30, z / 1.2))}
-      />
 
-      {/* 3. Operational Attention Strip (Compact in Map mode, normal in Board mode) */}
-      <div className={cn("shrink-0 border-b border-white/[0.08] bg-[#0B0C0E]", viewMode === "map" ? "px-6 py-1.5" : "px-6 py-2.5")}>
-        <TeamMapAttentionRail
-          items={attentionItems}
-          compact={viewMode === "map"}
-          selectedItemId={selectedWorkflowTaskId ? `attention-blocked-${selectedWorkflowTaskId}` : null}
-          onSelectItem={(item) => {
-            if (item.taskId) {
-              setSelectedWorkflowTaskId(item.taskId);
-              setSelectedWorkflowBotId(null);
-            } else {
-              setSelectedWorkflowBotId(item.agentId);
-              setSelectedWorkflowTaskId(null);
-            }
-            setHighlightBotIds([item.agentId]);
-          }}
-        />
-      </div>
-
+      {/* Ultra-Slim Alert Strip (Only visible when an item needs urgent attention) */}
+      {attentionItems.length > 0 && (
+        <div className="flex h-7 shrink-0 items-center justify-between border-b border-danger/30 bg-danger/10 px-6 text-[11px] text-danger">
+          <div className="flex items-center gap-2 truncate">
+            <AlertTriangle size={12} className="shrink-0" />
+            <span className="font-semibold">{attentionItems[0].agentName}:</span>
+            <span className="truncate text-white/80">{attentionItems[0].summary}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (attentionItems[0].taskId) setSelectedWorkflowTaskId(attentionItems[0].taskId);
+              else setSelectedWorkflowBotId(attentionItems[0].agentId);
+              setHighlightBotIds([attentionItems[0].agentId]);
+            }}
+            className="inline-flex items-center gap-1 font-semibold text-danger hover:underline shrink-0 ml-3"
+          >
+            <span>{attentionItems[0].actionLabel}</span>
+            <ArrowRight size={10} />
+          </button>
+        </div>
+      )}
       {/* 4. Canvas Area: Board View (Default) or Spatial Map + Right-side Detail Drawer */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
