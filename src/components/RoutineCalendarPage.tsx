@@ -1189,7 +1189,19 @@ function CalendarEventCard({
   const canMove = isCall || Boolean(routine && !run && routine.schedule.type !== "cron");
   const schedule = isCall ? item.call.schedule : routine?.schedule;
   const recurring = Boolean(schedule && schedule.type !== "once");
-  const intervalCadence = schedule?.type === "interval" ? intervalLabel(schedule.everyMinutes) : null;
+  const recurrenceLabel = schedule && schedule.type !== "once"
+    ? schedule.type === "interval"
+      ? intervalLabel(schedule.everyMinutes)
+      : schedule.type === "cron"
+        ? "Recurring"
+        : schedule.weekdays.length === 7
+          ? "Every day"
+          : schedule.weekdays.join(",") === "1,2,3,4,5"
+            ? "Every weekday"
+            : schedule.weekdays.length === 1
+              ? `Weekly on ${DAY_NAMES[schedule.weekdays[0]]}`
+              : schedule.weekdays.map((day) => DAY_NAMES[day]).join(", ")
+    : null;
 
   const beginResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -1241,7 +1253,7 @@ function CalendarEventCard({
         {previewDuration >= 30 && (isCall ? <Video size={compact ? 11 : 13} className="mt-0.5 shrink-0" /> : primary ? <BotAvatar bot={primary} state={status ? statusState(status) : "idle"} size={compact ? 22 : 26} animated={status === "running" || status === "waiting"} /> : null)}
         <div className="min-w-0 flex-1">
           <div className={cn("truncate text-[11px] font-semibold", previewDuration < 30 ? "leading-none" : "leading-tight")}>{name}</div>
-          {previewDuration >= 30 && <div className="mt-0.5 truncate text-[9.5px] text-white/75">{niceTime(item.at)} · {intervalCadence ?? (isCall ? `${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? `Team goal · ${room?.name ?? "Group"}${statusLabel ? ` · ${statusLabel}` : ""}` : statusLabel ?? primary?.name)}</div>}
+          {previewDuration >= 30 && <div className="mt-0.5 truncate text-[9.5px] text-white/75">{niceTime(item.at)}{statusLabel ? ` · ${statusLabel}` : recurrenceLabel ? ` · ${recurrenceLabel}` : isCall ? ` · ${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? ` · Team goal${room?.name ? ` · ${room.name}` : ""}` : ""}</div>}
         </div>
         {previewDuration >= 30 && ownerBots.length > 1 && <span className="rounded bg-black/20 px-1 py-0.5 text-[8px]">+{ownerBots.length - 1}</span>}
       </div>
