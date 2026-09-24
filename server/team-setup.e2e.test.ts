@@ -8,7 +8,7 @@ import { removeTempDir } from "./testing/cleanup.ts";
 it("Clive reviews multi-provider teams once, continues after each decision, and preserves existing threads through setup and deletion", async () => {
   const gates = mkdtempSync(join(tmpdir(), "kind-meitner-team-setup-gates-"));
   const gate = join(gates, "finish");
-  const fixture = await launchVerificationServer({ FAKE_CLAUDE_MODE: "slow", FAKE_CLAUDE_SLOW_FINISH_GATE: gate }, undefined, undefined, undefined, undefined, undefined, ["codex"]);
+  const fixture = await launchVerificationServer({ FAKE_CLAUDE_MODE: "slow", FAKE_CLAUDE_SLOW_FINISH_GATE: gate }, undefined, undefined, undefined, undefined, undefined, ["grok"]);
   const evidence: unknown[] = [{ fixture: fixture.info }];
   const api = async (method: string, path: string, body?: unknown, expected = 200, token?: string, fromApp = true) => {
     const response = await fetch(fixture.info.url + path, { method, headers: { "content-type": "application/json",
@@ -26,8 +26,9 @@ it("Clive reviews multi-provider teams once, continues after each decision, and 
   try {
     const catalog = (await api("GET", "/api/instances")).instances;
     const claude = catalog.find((item: any) => item.instanceId === "claude");
-    const codex = catalog.find((item: any) => item.instanceId === "codex");
-    expect(codex).toBeDefined();
+    const grok = catalog.find((item: any) => item.instanceId === "grok");
+    expect(grok).toBeDefined();
+    expect(grok.models.default).toBeTruthy();
     const selection = (instance: any) => ({ instanceId: instance.instanceId, model: instance.models.default });
     const chief = (await api("POST", "/api/bots", { name: "Clive", title: "Chief of Staff", section: "Operations", modelSelection: selection(claude) }, 201)).bot;
     await api("PATCH", `/api/bots/${chief.id}`, { chiefOfStaff: true });
@@ -73,7 +74,7 @@ it("Clive reviews multi-provider teams once, continues after each decision, and 
       name, title: `${team} specialist`, soul: `Own ${team.toLowerCase()} work. Return evidence and state uncertainty.`, section: team, modelSelection,
     } });
     const plan = { reason: "Set up Research, Engineering and Growth specialists as requested", newTeams: ["Research", "Engineering", "Growth"], operations: [
-      build("Mira", "Research", selection(claude)), build("Patch", "Engineering", selection(codex)), build("Quill", "Growth", selection(claude)),
+      build("Mira", "Research", selection(claude)), build("Patch", "Engineering", selection(grok)), build("Quill", "Growth", selection(claude)),
       { action: "create", key: "Patch", fields: { title: "Implementation and verification engineer" } },
     ] };
     let token = await start("Clive, review this setup while you are working.");
@@ -82,8 +83,8 @@ it("Clive reviews multi-provider teams once, continues after each decision, and 
     await stopWithoutResume(stopped.requestId, chief.threadId, "--bot", chief.id);
     token = await start("Clive, set up Research, Engineering and Growth specialists with suitable engines and models.");
     const tools = await api("GET", "/api/internal/team-setup-catalog", undefined, 200, token);
-    expect(tools.instances.map((item: any) => item.instanceId)).toEqual(expect.arrayContaining(["claude", "codex"]));
-    await api("POST", "/api/internal/team-setup-requests", { plan: { ...plan, operations: [build("Bad", "Research", { instanceId: "codex", model: "invented-model" })] } }, 400, token);
+    expect(tools.instances.map((item: any) => item.instanceId)).toEqual(expect.arrayContaining(["claude", "grok"]));
+    await api("POST", "/api/internal/team-setup-requests", { plan: { ...plan, operations: [build("Bad", "Research", { instanceId: "grok", model: "invented-model" })] } }, 400, token);
     await api("POST", "/api/internal/team-setup-requests", { fromBotId: "foreign", plan }, 403, token);
     const denied = await api("POST", "/api/internal/team-setup-requests", { plan }, 201, token);
     expect((await state()).filter((bot: any) => ["Mira", "Patch", "Quill"].includes(bot.name))).toHaveLength(0);
@@ -106,7 +107,7 @@ it("Clive reviews multi-provider teams once, continues after each decision, and 
     expect(approved.result.state).toBe("applied"); await continueOnce(proposed.requestId);
     const saved = await state();
     const engineer = saved.find((bot: any) => bot.name === "Patch");
-    expect(engineer).toMatchObject({ title: "Implementation and verification engineer", section: "Engineering", modelSelection: selection(codex), approvalMode: "ask", autoApprove: false, composio: false });
+    expect(engineer).toMatchObject({ title: "Implementation and verification engineer", section: "Engineering", modelSelection: selection(grok), approvalMode: "ask", autoApprove: false, composio: false });
     expect(saved.find((bot: any) => bot.id === chief.id).managedSections).toEqual(expect.arrayContaining(plan.newTeams));
     await api("POST", `/api/threads/${chief.threadId}/respond`, { requestId: proposed.requestId, behavior: "allow" });
     expect((await state()).filter((bot: any) => bot.name === "Patch")).toHaveLength(1);
@@ -120,7 +121,7 @@ it("Clive reviews multi-provider teams once, continues after each decision, and 
     await finish(); await api("POST", `/api/threads/${chief.threadId}/respond`, { requestId: updated.requestId, behavior: "allow" }); await continueOnce(updated.requestId);
     const changed = (await state()).find((bot: any) => bot.id === engineer.id);
     expect(changed).toMatchObject({ section: "Growth", modelSelection: selection(claude), description: "Shared delivery specialist" });
-    expect(changed.tasks.find((task: any) => task.threadId === engineer.threadId).modelSelection).toEqual(selection(codex));
+    expect(changed.tasks.find((task: any) => task.threadId === engineer.threadId).modelSelection).toEqual(selection(grok));
 
     token = await start("Review another profile change for Patch.");
     const stale = await api("POST", "/api/internal/team-setup-requests", { plan: { reason: "Review stale behavior", operations: [
