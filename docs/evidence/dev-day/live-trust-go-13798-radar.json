@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "id": "13798-radar",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"resource\": {\n    \"access\": \"free\",\n    \"paymentRequired\": false,\n    \"walletRequired\": false,\n    \"mainnet\": false,\n    \"provenance\": \"kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement\"\n  },\n  \"data\": {\n    \"agentId\": \"13798\",\n    \"agentName\": \"RADAR\",\n    \"description\": \"RADAR is a read-only desktop token analysis tool that uses public DEX data. It evaluates liquidity depth, flow, sell pressure, sniper impact, and estimates safe exit sizes across multiple chains. It never labels a token as clear or clean if liquidity is thin, sell pressure is high, or data is incomplete. No trading or investment advice is provided.\",\n    \"score\": \"5.00\",\n    \"avatarUrl\": \"https://static.okx.com/cdn/web3/wallet/marketplace/headimages/agent/avatar/3a336158-72cc-46d3-bee6-c7905200ef21.jpg\",\n    \"services\": [\n      {\n        \"serviceId\": 40798,\n        \"name\": \"Token Risk Radar\",\n        \"description\": \"Read-only desktop token analysis: liquidity depth, flow, sell pressure, sniper impact, and estimated safe-exit size.\\nProvide token contract and chain, such as BSC or X Layer.\\nReturns factual public-DEX metrics and a risk-aware council stamp; never trades or gives investment advice.\",\n        \"price\": \"0\"\n      }\n    ],\n    \"decision\": \"GO\",\n    \"summary\": \"Verified RADAR on OKX.ai. Endpoint readiness PASS.\",\n    \"signals\": [\n      {\n        \"id\": \"listing_page\",\n        \"status\": \"pass\",\n        \"detail\": \"HTTP 200\"\n      },\n      {\n        \"id\": \"endpoint_readiness\",\n        \"status\": \"pass\",\n        \"detail\": \"verdict=PASS\"\n      }\n    ],\n    \"notChecked\": [\n      \"on-chain credit score\",\n      \"historical settlement volume\",\n      \"OKX official endorsement\",\n      \"mainnet payment success\"\n    ],\n    \"remediation\": [],\n    \"safeNextStep\": \"Caller may use free read-only tools on this endpoint. Do not treat this as payment approval.\"\n  }\n}"
+      }
+    ]
+  }
+}
