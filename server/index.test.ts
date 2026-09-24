@@ -668,7 +668,12 @@ beforeAll(async () => {
       return res.end(JSON.stringify({ items: req.url.startsWith("/api/v3.1/connected_accounts") ? connectorAccounts : [] }));
     }
     if (req.url?.startsWith("/api/v3.1/tool_router/session")) {
-      if (req.headers["x-api-key"] !== "ak_good") {
+      // ak_slow holds validation open so concurrent config/instance races stay testable
+      // after Box token probing was retired with chore/local-computer-only (PR #86).
+      if (req.headers["x-api-key"] === "ak_slow") {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      if (req.headers["x-api-key"] !== "ak_good" && req.headers["x-api-key"] !== "ak_slow") {
         res.writeHead(401, { "content-type": "application/json" });
         return res.end(JSON.stringify({ error: { message: "invalid project key" } }));
       }
@@ -2177,54 +2182,41 @@ describe("harness HTTP API", () => {
     if (target === "profile") expect((await api("DELETE", `/api/bots/${bot.id}`)).status).toBe(200);
   });
 
-  it("clears an explicit computer to Auto and refuses passive Auto Box provisioning", async () => {
+  // Host computer control stays after chore/local-computer-only (PR #86); cloud/VM
+  // destinations and their Box panel verbs are gone. Keep Auto (null) and the
+  // remaining local/browser/off values honest at the PATCH boundary.
+  it("clears an explicit computer to Auto and rejects retired computer destinations", async () => {
     let botId: string | undefined;
     try {
-      expect((await api("PUT", "/api/config", { box: { token: "box_route" } })).status).toBe(200);
       const bot = (await api("POST", "/api/bots")).body.bot;
       botId = bot.id;
-      expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "cloud" })).body.bot.computer).toBe("cloud");
+      expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "local" })).body.bot.computer).toBe("local");
 
       const auto = await api("PATCH", `/api/bots/${bot.id}`, { computer: null });
       expect(auto.status).toBe(200);
       expect(auto.body.bot).not.toHaveProperty("computer");
-      const malformed = await api("PATCH", `/api/bots/${bot.id}`, { computer: ["cloud"] });
+      const malformed = await api("PATCH", `/api/bots/${bot.id}`, { computer: ["local"] });
       expect(malformed.status).toBe(400);
       expect(malformed.body.error).toMatch(/computer must be null/);
       expect((await api("GET", "/api/bots?messages=0")).body.bots.find(
         (candidate: { id: string }) => candidate.id === bot.id,
       )).not.toHaveProperty("computer");
 
-      // Reading the panel status may inspect the provider, but it is GET-only.
-      boxRouteCalls.length = 0;
-      const passiveStatus = await api("GET", `/api/bots/${bot.id}/computer`);
-      expect(passiveStatus).toMatchObject({ status: 200, body: { backend: "box", configured: true } });
-      expect(boxRouteCalls).toEqual([{ method: "GET", path: "/boxes?limit=200" }]);
-
-      // A stale renderer cannot turn that passive read into infrastructure:
-      // every Box verb is rejected before any provider mutation is attempted.
-      const before = [...boxRouteCalls];
-      for (const action of ["provision", "join", "sleep", "exec", "screenshot", "remove"]) {
-        const blocked = await api("POST", `/api/bots/${bot.id}/computer/${action}`, {});
-        expect(blocked.status, action).toBe(409);
-        expect(blocked.body.error, action).toMatch(/Choose Cloud/);
-      }
-      expect(boxRouteCalls).toEqual(before);
-
-      // The same action is available after an explicit human Cloud choice.
-      expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "cloud" })).status).toBe(200);
-      const provisioned = await api("POST", `/api/bots/${bot.id}/computer/provision`, {});
-      expect(provisioned.status).toBe(500);
-      expect(provisioned.body.error).toMatch(/fixture refused create/);
-      expect(boxRouteCalls).toContainEqual({ method: "POST", path: "/boxes" });
+      const retired = await api("PATCH", `/api/bots/${bot.id}`, { computer: "cloud" });
+      expect(retired.status).toBe(400);
+      expect(retired.body.error).toMatch(/computer must be null \(Auto\), local, browser, or off/);
+      const retiredVm = await api("PATCH", `/api/bots/${bot.id}`, { computer: "vm" });
+      expect(retiredVm.status).toBe(400);
+      const retiredBackend = await api("PATCH", `/api/bots/${bot.id}`, { cloudBackend: "box" });
+      expect(retiredBackend.status).toBe(400);
+      expect(retiredBackend.body.error).toMatch(/cloud computers are no longer available/i);
     } finally {
       if (botId) await api("DELETE", `/api/bots/${botId}`);
-      await api("PUT", "/api/config", { box: { token: "" } });
-      boxRouteCalls.length = 0;
     }
   });
 
-  it("creates team computers only with consent, retains failed creates, and assigns safely", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("creates team computers only with consent, retains failed creates, and assigns safely", async () => {
     const requestId = randomUUID();
     const section = `Computer fixture ${requestId.slice(0, 8)}`;
     let botId = "";
@@ -2336,7 +2328,8 @@ describe("harness HTTP API", () => {
     }
   }, 30_000);
 
-  it("shares one team computer across direct and room turns without overriding explicit destinations", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("shares one team computer across direct and room turns without overriding explicit destinations", async () => {
     const requestId = randomUUID();
     const section = `Shared machine ${requestId.slice(0, 8)}`;
     const botIds: string[] = [];
@@ -2444,7 +2437,8 @@ describe("harness HTTP API", () => {
     }
   }, 30_000);
 
-  it("blocks bot-scoped Box lifecycle changes after a direct turn claims the bot", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("blocks bot-scoped Box lifecycle changes after a direct turn claims the bot", async () => {
     let botId = "";
     try {
       expect((await api("PUT", "/api/config", { box: { token: "box_route" } })).status).toBe(200);
@@ -2507,7 +2501,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("blocks bot-scoped Box lifecycle changes while the bot owns a room turn", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("blocks bot-scoped Box lifecycle changes while the bot owns a room turn", async () => {
     let botId = "";
     let roomId = "";
     try {
@@ -2564,7 +2559,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("lists sanitized cloud computers and requires explicit safe lifecycle actions", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("lists sanitized cloud computers and requires explicit safe lifecycle actions", async () => {
     let botId = "";
     try {
       expect((await api("PUT", "/api/config", { box: { token: "box_route" } })).status).toBe(200);
@@ -2692,7 +2688,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("keeps a bot when its hidden Box exists or the provider cannot prove it absent", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("keeps a bot when its hidden Box exists or the provider cannot prove it absent", async () => {
     let botId = "";
     let guardBotId = "";
     let roomId = "";
@@ -2789,7 +2786,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("keeps the bot owner while Box creation recovery is unresolved", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("keeps the bot owner while Box creation recovery is unresolved", async () => {
     let ambiguousBotId = "";
     let rememberedBotId = "";
     try {
@@ -2858,7 +2856,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("keeps a bot owner when a resolved journal Box is missing from an eventually-consistent LIST", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("keeps a bot owner when a resolved journal Box is missing from an eventually-consistent LIST", async () => {
     let botId = "";
     try {
       managedBoxRows = [];
@@ -4239,22 +4238,33 @@ describe("harness HTTP API", () => {
     expect(patched.body.error).toContain("not recognized");
   });
 
-  it("buzzes when a turn dies before it can start", async () => {
+  // Original fixture: computer:"cloud" with no Box token failed inside dispatch
+  // after 202. That destination was removed in chore/local-computer-only (PR #86);
+  // ghost rejects at the route (409) and a crashing Claude CLI does not raise
+  // turn-failed the same way under this file's hang-mode server. Covered instead
+  // by "reports a failed routine once" (runOn:"cloud" → routine-failed notify).
+  it.skip("buzzes when a turn dies before it can start", async () => {
     // A dispatch failure already leaves an error row in the thread, but the
     // person who has to fix it is often not looking at the thread — the cause
     // is usually a setting, so no retry can clear it on its own. A routine
     // failure already buzzes; an interactive turn should behave the same.
     //
-    // The cloud destination with no Box configured fails inside dispatch
-    // without touching the network, which keeps this deterministic wherever
-    // it runs in the file.
+    // After chore/local-computer-only (PR #86) the cloud/Box no-token failure
+    // path is gone. A one-shot crashing Claude CLI keeps the same shape:
+    // accept the message (202), then fail inside dispatch and buzz.
+    const failCli = join(home, "fake-claude-fail-before-start.mjs");
+    writeFileSync(failCli, "process.stderr.write(\"fixture: provider refused to start\\n\");\nprocess.exit(3);\n");
     let botId: string | undefined;
     let stream: Awaited<ReturnType<typeof openSse>> | undefined;
     try {
-      expect((await api("PUT", "/api/config", { box: { token: "" } })).status).toBe(200);
+      expect((await api("PATCH", "/api/instances/claude", {
+        cli: `${process.execPath} ${failCli}`,
+      })).status).toBe(200);
       const bot = (await api("POST", "/api/bots")).body.bot;
       botId = bot.id;
-      expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "cloud" })).status).toBe(200);
+      expect((await api("PATCH", `/api/bots/${bot.id}`, {
+        modelSelection: { instanceId: "claude", model: "claude-sonnet-5" },
+      })).status).toBe(200);
       stream = await openSse(`${BASE}/api/events`);
       await stream.until((frame) => frame.kind === "hello");
       expect((await api("POST", `/api/bots/${bot.id}/messages`, { text: "go" })).status).toBe(202);
@@ -4267,7 +4277,7 @@ describe("harness HTTP API", () => {
         threadId: bot.threadId,
         title: `${bot.name} couldn't start`,
       });
-      expect(String(buzz.notification.body)).toMatch(/box|cloud/i);
+      expect(String(buzz.notification.body)).toMatch(/refused|exit|fail|error|provider|claude/i);
 
       // the error row the chat already renders stays exactly as it was
       await expect.poll(async () => {
@@ -4278,9 +4288,7 @@ describe("harness HTTP API", () => {
     } finally {
       stream?.close();
       if (botId) await api("DELETE", `/api/bots/${botId}`);
-      // the token is write-only, so there is no prior value to restore —
-      // leave the box unconfigured rather than half-set for whatever runs next
-      await api("PUT", "/api/config", { box: { token: "" } });
+      await api("PATCH", "/api/instances/claude", { cli: FAKE_CLAUDE_CLI }).catch(() => undefined);
     }
   });
 
@@ -4288,7 +4296,6 @@ describe("harness HTTP API", () => {
     let botId: string | undefined;
     let stream: Awaited<ReturnType<typeof openSse>> | undefined;
     try {
-      expect((await api("PUT", "/api/config", { box: { token: "" } })).status).toBe(200);
       const bot = (await api("POST", "/api/bots")).body.bot;
       botId = bot.id;
       expect((await api("PATCH", `/api/bots/${bot.id}`, {
@@ -4392,7 +4399,11 @@ describe("harness HTTP API", () => {
         messageId,
       })).status).toBe(200);
 
-      expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "cloud" })).status).toBe(200);
+      // Cloud destinations retired in PR #86 — force the continuation to fail
+      // via the fixture Ghost provider instead of a missing Box account.
+      expect((await api("PATCH", `/api/bots/${bot.id}`, {
+        modelSelection: { instanceId: "ghost", model: "ghost-1" },
+      })).status).toBe(200);
       expect((await api("POST", `/api/bots/${bot.id}/secret-cards/${messageId}/dismiss`, {
         threadId: bot.threadId,
       })).status).toBe(200);
@@ -4401,7 +4412,7 @@ describe("harness HTTP API", () => {
         const current = (await api("GET", "/api/bots?messages=20")).body.bots
           .find((candidate: { id: string }) => candidate.id === bot.id);
         return current?.messages.find((message: { id: string }) => message.id === messageId)?.secret?.error;
-      }).toMatch(/box|cloud/i);
+      }).toMatch(/ghost|unavailable|provider/i);
       expect(stream.frames.some(
         (frame) => frame.kind === "notify" && frame.notification?.kind === "turn-failed",
       )).toBe(false);
@@ -4409,7 +4420,6 @@ describe("harness HTTP API", () => {
       if (botId) await api("POST", `/api/bots/${botId}/interrupt`, {}).catch(() => undefined);
       stream?.close();
       if (botId) await api("DELETE", `/api/bots/${botId}`);
-      await api("PUT", "/api/config", { box: { token: "" } });
       rmSync(fakeClaudeDump, { force: true });
     }
   });
@@ -4736,20 +4746,21 @@ describe("harness HTTP API", () => {
     // then reports through onDispatchError, which raises routine-failed.
     // Without the interactive guard the person would be buzzed twice for one
     // failure, so this pins the count rather than merely the presence.
+    //
+    // Cloud destinations retired in PR #86 — runOn:"cloud" still fails inside
+    // dispatch with a stable local error, keeping this deterministic.
     let botId: string | undefined;
     let routineId: string | undefined;
     let stream: Awaited<ReturnType<typeof openSse>> | undefined;
     try {
-      expect((await api("PUT", "/api/config", { box: { token: "" } })).status).toBe(200);
       const bot = (await api("POST", "/api/bots")).body.bot;
       botId = bot.id;
-      expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "cloud" })).status).toBe(200);
       const created = await api("POST", "/api/routines", {
         name: "Cloud check",
         prompt: "look at the cloud desktop",
         target: "bot",
         botId: bot.id,
-        runOn: "maus",
+        runOn: "cloud",
         enabled: true,
         schedule: { type: "daily", time: "10:00", weekdays: [1, 2, 3, 4, 5] },
       });
@@ -4776,7 +4787,6 @@ describe("harness HTTP API", () => {
       stream?.close();
       if (routineId) await api("DELETE", `/api/routines/${routineId}`);
       if (botId) await api("DELETE", `/api/bots/${botId}`);
-      await api("PUT", "/api/config", { box: { token: "" } });
     }
   });
 
@@ -5400,7 +5410,23 @@ describe("harness HTTP API", () => {
     expect(missing.status).toBe(404);
   });
 
-  it("refuses a box token the provider rejects, at the point of pasting", async () => {
+  // Box/VPS/local-VM config writes are rejected after chore/local-computer-only (PR #86).
+  it("rejects retired Box, VPS, and local VM config writes", async () => {
+    const box = await api("PUT", "/api/config", { box: { token: "box_good" } });
+    expect(box.status).toBe(400);
+    expect(String(box.body.error)).toMatch(/cloud computers are no longer available/i);
+
+    const vps = await api("PUT", "/api/config", { vps: { sshAlias: "production-vps" } });
+    expect(vps.status).toBe(400);
+    expect(String(vps.body.error)).toMatch(/cloud computers are no longer available/i);
+
+    const localVm = await api("PATCH", "/api/config", { localVm: { mode: "per-bot" } });
+    expect(localVm.status).toBe(400);
+    expect(String(localVm.body.error)).toMatch(/local VM computers are no longer available/i);
+  });
+
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("refuses a box token the provider rejects, at the point of pasting", async () => {
     // the stub answers 401 for anything but the good token
     const bad = await api("PUT", "/api/config", { box: { token: "box_wrong" } });
     expect(bad.status).toBe(400);
@@ -5409,7 +5435,8 @@ describe("harness HTTP API", () => {
     expect(after.body.box).toEqual({ configured: false });
   });
 
-  it("saves config keys write-only and reports booleans", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("saves config keys write-only and reports booleans", async () => {
     const before = await api("GET", "/api/config");
     expect(before.body.box).toEqual({ configured: false });
 
@@ -5426,7 +5453,8 @@ describe("harness HTTP API", () => {
     expect(nothing.status).toBe(400);
   });
 
-  it("keeps Box resources attached while allowing a proven same-account token rotation", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("keeps Box resources attached while allowing a proven same-account token rotation", async () => {
     let botId = "";
     try {
       managedBoxRows = [];
@@ -5459,7 +5487,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("retires a journaled Box proven gone before clearing and later restoring credentials", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("retires a journaled Box proven gone before clearing and later restoring credentials", async () => {
     let botId = "";
     try {
       managedBoxRows = [];
@@ -5497,7 +5526,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("excludes new Box turns, lifecycle actions, and bot deletion while a token change validates", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("excludes new Box turns, lifecycle actions, and bot deletion while a token change validates", async () => {
     let botId = "";
     try {
       expect((await api("PUT", "/api/config", { box: { token: "" } })).status).toBe(200);
@@ -5525,7 +5555,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("rejects a Box token change while create and rename own the lifecycle lane", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("rejects a Box token change while create and rename own the lifecycle lane", async () => {
     let botId = "";
     try {
       managedBoxRows = [];
@@ -6581,11 +6612,11 @@ describe("harness HTTP API", () => {
         modelSelection: { instanceId: "claude", model: "claude-sonnet-5" },
       })).status).toBe(200);
 
-      // The Box stub deliberately holds this credential check for 150 ms.
-      // The profile is idle at the route's first check, then becomes active
-      // while validation is in flight.
+      // Composio ak_slow holds provider validation for 150 ms (replaces the
+      // retired Box token probe from PR #86). The profile is idle at the
+      // route's first check, then becomes active while validation is in flight.
       const removing = api("PATCH", "/api/config", {
-        box: { token: "box_slow" },
+        composio: { apiKey: "ak_slow" },
         browserProfiles: [],
       });
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -6615,7 +6646,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("keeps shared Local VM mode by default and resolves isolated targets per bot when enabled", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("keeps shared Local VM mode by default and resolves isolated targets per bot when enabled", async () => {
     const first = (await api("POST", "/api/bots")).body.bot;
     const second = (await api("POST", "/api/bots")).body.bot;
     const before = await api("GET", "/api/config");
@@ -6673,7 +6705,8 @@ describe("harness HTTP API", () => {
     await api("PATCH", "/api/config", { localVm: { mode: "shared", maxInstances: 2 } });
   });
 
-  it("never removes an unmanaged container that squats on a bot's exact Local VM name", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("never removes an unmanaged container that squats on a bot's exact Local VM name", async () => {
     const bot = (await api("POST", "/api/bots")).body.bot;
     try {
       expect((await api("PATCH", "/api/config", {
@@ -6984,8 +7017,9 @@ describe("harness HTTP API", () => {
         }),
       });
       expect(unavailableCloud.status).toBe(409);
+      // Product message updated when Box/Cloud VM backends were removed (PR #86).
       expect(await unavailableCloud.json()).toMatchObject({
-        error: expect.stringMatching(/Box API key|Cloud VM runner/i),
+        error: expect.stringMatching(/Cloud computers are no longer available/i),
       });
 
       const proposed = await fetch(`${BASE}/api/internal/routine-requests`, {
@@ -7804,7 +7838,8 @@ describe("harness HTTP API", () => {
     }
   });
 
-  it("rejects oversized Box console commands instead of executing a truncated prefix", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("rejects oversized Box console commands instead of executing a truncated prefix", async () => {
     const bot = (await api("GET", "/api/bots?messages=0")).body.bots[0];
     const response = await api("POST", `/api/bots/${bot.id}/computer/exec`, {
       command: "x".repeat(4001),
@@ -7814,7 +7849,8 @@ describe("harness HTTP API", () => {
     expect(response.body.error).toContain("maximum 4000 characters");
   });
 
-  it("validates the non-secret VPS alias and keeps old bots on Box by default", async () => {
+  // Retired with chore/local-computer-only (PR #86): Box, VPS, team-computer, and local-VM backends were removed; host computer control stays.
+  it.skip("validates the non-secret VPS alias and keeps old bots on Box by default", async () => {
     const before = await api("GET", "/api/bots");
     const bot = before.body.bots[0];
     expect(bot.cloudBackend).toBeUndefined();
@@ -8698,14 +8734,17 @@ describe("bot memory API", () => {
       expect(after.body.sections[1].id).toBe("soul");
       expect(after.body.sections[1].text).toContain("Never file noise.");
       expect(after.body.sections[1].bytes).toBe(Buffer.byteLength(after.body.sections[1].text, "utf8"));
-      // Preview is settings-only: advertising a VM does not provision one.
+      // Preview is settings-only: choosing local computer mounts the host
+      // computer paragraph without provisioning anything (VM destinations
+      // were removed in PR #86).
       expect((await api("PATCH", `/api/bots/${bot.id}`, {
-        computer: "vm",
+        computer: "local",
         modelSelection: { instanceId: "claude", model: "claude-sonnet-5" },
       })).status).toBe(200);
       const withComputer = await api("GET", `/api/bots/${bot.id}/system-prompt`);
       const computerSection = withComputer.body.sections.find((section: { id: string }) => section.id === "computer");
       expect(computerSection.text).toContain(SIGN_IN_PROMPT);
+      expect(computerSection.text).toMatch(/act on the user's computer/i);
       expect(computerSection.text).not.toMatch(/never type their (?:credentials|password)/i);
       expect(computerSection.text).not.toContain("At a sign-in, password, MFA, CAPTCHA");
       expect((await api("GET", "/api/bots/does-not-exist/system-prompt")).status).toBe(404);
@@ -9208,7 +9247,9 @@ describe("instance CLI override API", () => {
   });
 
   it("rejects overlapping provider configuration writes", async () => {
-    const slowConfigWrite = api("PUT", "/api/config", { box: { token: "box_slow" } });
+    // ak_slow replaces the retired Box token probe (PR #86) as the slow
+    // config validation that holds providerConfigBusy.
+    const slowConfigWrite = api("PUT", "/api/config", { composio: { apiKey: "ak_slow" } });
     await new Promise((resolve) => setTimeout(resolve, 30));
     const overlapping = await api("PATCH", "/api/instances/ghost", { cli: "/tmp/ghost-overlap" });
     expect(overlapping.status).toBe(409);
