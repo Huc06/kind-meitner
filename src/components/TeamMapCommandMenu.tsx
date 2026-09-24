@@ -81,8 +81,6 @@ export function TeamMapCommandMenu({
   const [query, setQuery] = React.useState("");
   const [rawActive, setRawActive] = React.useState(0);
 
-  const modDownRef = React.useRef(false);
-  const armedRef = React.useRef(false);
   const listRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const key = hotkey.toLowerCase();
@@ -106,47 +104,30 @@ export function TeamMapCommandMenu({
     );
   }, []);
 
-  // Global hotkey: ⌘K or Ctrl+K
+  // Global hotkey: ⌘K or Ctrl+K - immediate trigger on keydown
   React.useEffect(() => {
-    const usesMod = (e: KeyboardEvent) => (isMac ? e.metaKey : e.ctrlKey);
-    const isMod = (k: string) => k === "control" || k === "meta";
-
     const onKeyDown = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (isMod(k)) modDownRef.current = true;
-      if (k === key && usesMod(e)) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === key) {
         e.preventDefault();
+        e.stopPropagation();
         setCombo(true);
-        armedRef.current = true;
-      }
-    };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      const released = armedRef.current && (isMod(k) || k === key);
-      if (isMod(k)) modDownRef.current = false;
-      if (released) {
-        armedRef.current = false;
-        setCombo(false);
         setOpen(!isOpen);
       }
     };
 
-    const reset = () => {
-      armedRef.current = false;
-      modDownRef.current = false;
-      setCombo(false);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === key || e.key === "Meta" || e.key === "Control") {
+        setCombo(false);
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", reset);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", reset);
     };
-  }, [isMac, key, isOpen, setOpen]);
+  }, [key, isOpen, setOpen]);
 
   // Squeeze keys inside open menu
   React.useEffect(() => {
@@ -251,13 +232,15 @@ export function TeamMapCommandMenu({
           aria-label="Open command palette"
           onClick={() => setOpen(true)}
           className={cn(
-            "group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#16191E]/80 backdrop-blur-md px-3 py-1.5 text-xs text-white/60 transition hover:border-white/[0.18] hover:bg-[#1C2026] hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+            "group flex items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/15 backdrop-blur-md px-3.5 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:border-accent/60 hover:bg-accent/25 hover:shadow-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer",
             className,
           )}
         >
-          <Search className="size-3.5 shrink-0 text-white/40 group-hover:text-accent transition-colors" aria-hidden="true" />
-          <span className="truncate">{triggerPlaceholder}</span>
-          <span className="flex items-center gap-1 ml-1.5">
+          <div className="flex items-center gap-2 truncate">
+            <span className="text-accent font-bold">⚡</span>
+            <span className="truncate font-semibold tracking-tight">{triggerPlaceholder}</span>
+          </div>
+          <span className="flex items-center gap-1 shrink-0">
             <Kbd pressed={combo}>{modLabel}</Kbd>
             <Kbd pressed={combo} className="uppercase">
               {key}

@@ -192,7 +192,7 @@ export function TeamMapPage() {
   void deletingTeam;
 
   // View Mode & Operational Toolbar State (Default is Board View)
-  const [viewMode, setViewMode] = useState<"board" | "map">("board");
+  const [viewMode, setViewMode] = useState<"board" | "map">("map");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [onlyNeedsAttention, setOnlyNeedsAttention] = useState(false);
@@ -525,14 +525,14 @@ export function TeamMapPage() {
           <TeamMapCommandMenu
             items={commandItems}
             className="w-full"
-            triggerPlaceholder="Search agents, use cases, or type ⌘K…"
+            triggerPlaceholder="⚡ Action Menu & Use Cases (⌘K)"
           />
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
           <div className="md:hidden">
-            <TeamMapCommandMenu items={commandItems} triggerPlaceholder="⌘K" />
+            <TeamMapCommandMenu items={commandItems} triggerPlaceholder="⚡ ⌘K" />
           </div>
           {!remoteClient && (
             <details
