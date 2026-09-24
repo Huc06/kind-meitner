@@ -1276,10 +1276,13 @@ export function reducer(state: AppState, action: Action): AppState {
     case "configStatus":
       return { ...state, config: action.config };
     case "select": {
+      const isTeamMap = state.activeView === "team-map" ||
+        (typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("view") === "team-map" || window.location.hash === "#team-map"));
+      const targetView = isTeamMap ? "team-map" : "chat";
       if (state.groups.some((g) => g.id === action.id)) {
         return {
           ...state,
-          activeView: "chat",
+          activeView: targetView,
           selectedId: action.id,
           botSettingsSection: action.id !== state.selectedId ? "overview" : state.botSettingsSection,
           groups: state.groups.map((g) => (g.id === action.id ? { ...g, unread: false } : g)),
@@ -1289,7 +1292,7 @@ export function reducer(state: AppState, action: Action): AppState {
         withMascotMotion(
           {
             ...state,
-            activeView: "chat",
+            activeView: targetView,
             selectedId: action.id,
             botSettingsSection: action.id !== state.selectedId ? "overview" : state.botSettingsSection,
           },
@@ -1935,7 +1938,7 @@ export const initialState: AppState = {
   instances: [],
   config: null,
   selectedId: "",
-  activeView: "chat",
+  activeView: (typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("view") === "team-map" || window.location.hash === "#team-map")) ? "team-map" : "chat",
   routines: [],
   routineRuns: [],
   routinesLoadState: "loading",

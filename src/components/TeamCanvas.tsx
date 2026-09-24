@@ -61,18 +61,18 @@ function BotCard({
   const isBlocked = workflow?.presence === "blocked" || workflow?.taskState === "blocked";
   const isReviewing = workflow?.presence === "reviewing" || workflow?.taskState === "reviewing";
 
-  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 rounded-xl border backdrop-blur-md shadow-lg transition-all",
+  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 rounded-lg border bg-[#16191E] shadow-sm transition-all",
     isBlocked
-      ? "border-danger/80 bg-danger/15 ring-1 ring-danger/40 shadow-danger/10"
+      ? "border-danger/60 ring-1 ring-danger/30"
       : isReviewing
-        ? "border-accent bg-accent/15 ring-1 ring-accent/30 shadow-[0_0_16px_rgba(99,102,241,0.25)]"
+        ? "border-accent/60 ring-1 ring-accent/25"
         : isWorking
-          ? "border-accent/80 bg-[#191D24]/80 shadow-[0_0_16px_rgba(99,102,241,0.25)]"
+          ? "border-white/[0.14]"
           : selected || highlighted
-            ? "border-accent/80 bg-[#20252E]/85 ring-2 ring-accent/30"
+            ? "border-accent ring-2 ring-accent/30"
             : connected
-              ? "border-accent/40 bg-[#191D24]/75"
-              : "border-white/[0.08] bg-[#191D24]/70 hover:border-white/[0.18] hover:bg-[#20252E]/80",
+              ? "border-accent/40"
+              : "border-white/[0.08] hover:border-white/[0.16] hover:bg-[#191D24]",
     moving && "opacity-35")}>
     <button data-bot-id={bot.id} aria-label={t("canvas.editBot", { name: bot.name })}
       onClick={() => {
@@ -127,31 +127,31 @@ function BotCard({
         </div>
       )}
     </button>
-    <div className="flex h-[43px] items-center gap-1 border-t border-hairline/30 px-2">
-      <button className={cn(iconButton, "size-8")} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
+    <div className="flex h-9 items-center gap-1 border-t border-white/[0.06] bg-black/20 px-2">
+      <button className={cn(iconButton, "size-7 rounded-md text-white/60 hover:text-white hover:bg-white/10")} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
         onClick={() => dispatch({ type: "select", id: bot.id })}><MessageCircle size={13} /></button>
-      {onLogs && <button className={cn(iconButton, "size-8")} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
-      <span className="flex items-center gap-1.5 text-[10px] text-ink-secondary" title={workflow?.presence ?? status.label}>
-        <span className={cn("size-1.5 rounded-full",
-          isBlocked ? "bg-danger animate-pulse" : isWorking ? "bg-success" : isReviewing ? "bg-accent" : "bg-ink-secondary/35")} />
-        <span className="capitalize">{workflow?.presence ?? status.label}</span>
+      {onLogs && <button className={cn(iconButton, "size-7 rounded-md text-white/60 hover:text-white hover:bg-white/10")} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
+      <span className="flex items-center gap-1.5 text-[10px] text-white/60 ml-0.5" title={workflow?.presence ?? status.label}>
+        <span className={cn("size-1.5 rounded-full shrink-0",
+          isBlocked ? "bg-danger" : isWorking ? "bg-emerald-400" : isReviewing ? "bg-accent" : "bg-white/30")} />
+        <span className="capitalize truncate max-w-[65px]">{workflow?.presence ?? status.label}</span>
       </span>
       {workflow?.hasIncomingHelp && (
-        <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-warning" title="Help requested">
+        <span className="rounded px-1.5 py-0.2 text-[9.5px] font-semibold text-warning border border-warning/30 bg-warning/10" title="Help requested">
           Help
         </span>
       )}
       {workflow?.reviewRequested && (
-        <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent" title="Review pending">
+        <span className="rounded px-1.5 py-0.2 text-[9.5px] font-semibold text-accent border border-accent/30 bg-accent/10" title="Review pending">
           Review
         </span>
       )}
-      {selected && onComputer && <button className={cn(iconButton, "size-8")} aria-label={t("canvas.botComputer", { name: bot.name })} title={t("computer.tab.computer")}
+      {selected && onComputer && <button className={cn(iconButton, "size-7 rounded-md text-white/60 hover:text-white hover:bg-white/10")} aria-label={t("canvas.botComputer", { name: bot.name })} title={t("computer.tab.computer")}
         onClick={() => onComputer(bot)}><Monitor size={13} /></button>}
       <button aria-label={t("canvas.changeModel", { name: bot.name })} title={`${t("canvas.defaultModel")}: ${model}`}
         onClick={() => dispatch({ type: "toggleSettings", botId: bot.id, section: "model", open: true })}
-        className="ml-auto flex h-8 min-w-0 max-w-[130px] items-center gap-1.5 rounded-md px-2 text-[10px] text-ink-secondary hover:bg-control hover:text-ink focus-visible:outline-2 focus-visible:outline-accent">
-        <span className="flex size-3.5 shrink-0 items-center justify-center"><ProviderMark driverKind={instance?.driverKind ?? ""} size={13} /></span>
+        className="ml-auto flex h-7 min-w-0 max-w-[110px] items-center gap-1.5 rounded-md px-1.5 text-[10px] text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-accent">
+        <span className="flex size-3.5 shrink-0 items-center justify-center"><ProviderMark driverKind={instance?.driverKind ?? ""} size={12} /></span>
         <span className="truncate">{model || t("canvas.defaultModel")}</span>
       </button>
     </div>

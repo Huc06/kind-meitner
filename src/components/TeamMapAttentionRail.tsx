@@ -132,7 +132,7 @@ export function TeamMapAttentionRail({
         role="region"
         aria-label="Urgent attention summary"
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 text-[11.5px]",
+          "flex h-8 w-full items-center justify-between gap-3 rounded-md border border-danger/30 bg-danger/10 px-3 text-[11.5px]",
           className,
         )}
       >
@@ -159,7 +159,7 @@ export function TeamMapAttentionRail({
   return (
     <section
       aria-label="Actionable attention items"
-      className={cn("space-y-1.5 rounded-2xl border border-white/[0.08] bg-[#15171A] p-3", className)}
+      className={cn("space-y-1.5 rounded-lg border border-white/[0.08] bg-[#16191E] p-2.5", className)}
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export function TeamMapAttentionRail({
               aria-selected={isSelected}
               onClick={() => onSelectItem(item)}
               className={cn(
-                "group flex w-full flex-col justify-between gap-2 rounded-xl border p-2.5 text-left outline-none transition-all cursor-pointer sm:flex-row sm:items-center",
+                "group flex w-full flex-col justify-between gap-2 rounded-md border p-2 text-left outline-none transition-all cursor-pointer sm:flex-row sm:items-center",
                 config.bg,
                 config.border,
                 isSelected ? "ring-2 ring-accent" : "",

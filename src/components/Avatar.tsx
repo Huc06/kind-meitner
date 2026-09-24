@@ -7,7 +7,7 @@ import { BotAvatar as LibBotAvatar } from "bot-avatars";
 import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
 import { mascotBodyToType, mausColorToHex, mausStateToBotState } from "@/lib/bot-avatar-bridge";
 import { botAvatarProfile, type BotAvatarCrop } from "../../shared/bot-avatar";
-import type { MascotBodyId } from "../../shared/mascot-bodies";
+import { MASCOT_BODY_IDS, type MascotBodyId } from "../../shared/mascot-bodies";
 
 /**
  * What a one-shot motion does while it plays. bot-avatars has no imperative
@@ -223,13 +223,56 @@ export function resolveBotAvatarOutcome(params: {
  * values and images that fail to load both fall back to the animated mascot,
  * so an old/corrupt profile can never leave a broken-image icon in the app.
  */
-function defaultMascotBodyForBot(bot: { name?: string; mascotBody?: MascotBodyId | null }): MascotBodyId {
+function stableHash(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+export function defaultMascotBodyForBot(bot: {
+  id?: string;
+  name?: string;
+  title?: string;
+  mascotBody?: MascotBodyId | null;
+  okxImport?: { kind?: string; externalAgentId?: string };
+}): MascotBodyId {
   if (bot.mascotBody) return bot.mascotBody;
-  const name = (bot.name ?? "").toLowerCase();
-  if (name.includes("spend") || name.includes("scout")) return "shield"; // droid
-  if (name.includes("coach") || name.includes("listing")) return "squircle"; // pebble
-  if (name.includes("market")) return "star"; // star
-  return "cursor"; // ghost
+
+  // 1. Known external OKX catalog IDs
+  const extId = bot.okxImport?.externalAgentId ?? "";
+  if (extId === "okx-market-scout-v1") return "star";
+  if (extId === "okx-listing-coach") return "squircle";
+  if (extId === "okx-spend-scout") return "shield";
+
+  // 2. Known standard bot IDs
+  const botId = (bot.id ?? "").toLowerCase();
+  if (botId === "tuli") return "cursor";
+  if (botId === "atlas") return "capsule";
+  if (botId === "markets") return "star";
+  if (botId === "listing-coach") return "squircle";
+  if (botId === "spend-scout") return "shield";
+  if (botId === "risk-inspector") return "hexagon";
+  if (botId === "approval-agent" || botId === "approval-gate") return "diamond";
+  if (botId === "scheduler-bot") return "drop";
+
+  // 3. Domain role keywords
+  const text = `${bot.name ?? ""} ${bot.title ?? ""}`.toLowerCase();
+  if (text.includes("spend") || text.includes("scout") || text.includes("treasury") || text.includes("guard")) return "shield";
+  if (text.includes("coach") || text.includes("listing") || text.includes("terms") || text.includes("quality")) return "squircle";
+  if (text.includes("market") || text.includes("discovery") || text.includes("radar") || text.includes("intel")) return "star";
+  if (text.includes("risk") || text.includes("compliance") || text.includes("security") || text.includes("fraud")) return "hexagon";
+  if (text.includes("approval") || text.includes("jury") || text.includes("arbitration") || text.includes("governance")) return "diamond";
+  if (text.includes("settlement") || text.includes("escrow") || text.includes("vault") || text.includes("payout")) return "capsule";
+  if (text.includes("schedule") || text.includes("routine") || text.includes("cron") || text.includes("automation")) return "drop";
+  if (text.includes("coordinator") || text.includes("lead") || text.includes("chief") || text.includes("tuli")) return "cursor";
+
+  // 4. Stable deterministic hash fallback based on bot ID or name
+  const seed = bot.id || bot.name || "default";
+  const index = stableHash(seed) % MASCOT_BODY_IDS.length;
+  return MASCOT_BODY_IDS[index] ?? "cursor";
 }
 
 export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {

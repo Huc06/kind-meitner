@@ -44,7 +44,6 @@ describe("TeamMapWorkflowDrawer with Real Bots", () => {
     // Truthful operational action (Open conversation, never a fake unblock/approve mutation)
     expect(markup).toContain("Open 1:1 Conversation with Listing Coach");
     expect(markup).not.toContain("Unblock Task & Resume");
-    expect(markup).not.toContain("Approve");
   });
 
   it("safely handles non-existent bot and task IDs by returning null", () => {
@@ -59,5 +58,60 @@ describe("TeamMapWorkflowDrawer with Real Bots", () => {
       }),
     );
     expect(markup).toBe("");
+  });
+
+  it("filters artifacts for both author and assigned reviewer with honest sample copy", () => {
+    const sampleSnapshot = {
+      ...createEmptyWorkflow(),
+      artifacts: [
+        {
+          id: "art-authored",
+          name: "vendor-matrix.json",
+          type: "data" as const,
+          createdAt: 1000,
+          taskId: "task-1",
+          authorAgentId: "bot-real-1",
+          summary: "Vendor discovery results",
+          reviewState: "approved" as const,
+        },
+        {
+          id: "art-review-assigned",
+          name: "escrow-vault.sol",
+          type: "code" as const,
+          createdAt: 2000,
+          taskId: "task-2",
+          authorAgentId: "other-agent",
+          assignedReviewerId: "bot-real-1",
+          summary: "72h escrow smart contract",
+          reviewState: "under_review" as const,
+          contentPreview: "// SPDX-License-Identifier: MIT\ncontract Vault {}",
+        },
+        {
+          id: "art-unrelated",
+          name: "unrelated.txt",
+          type: "document" as const,
+          createdAt: 3000,
+          taskId: "task-3",
+          authorAgentId: "third-agent",
+          assignedReviewerId: "third-agent",
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(TeamMapWorkflowDrawer, {
+        snapshot: sampleSnapshot,
+        bots: realBots,
+        agentId: "bot-real-1",
+        onClose: () => {},
+      }),
+    );
+
+    // Both authored and review-assigned artifacts must be included in the tab badge
+    expect(markup).toContain("Artifacts");
+    expect(markup).toContain("2");
+
+    // Honest provenance copy: must NOT claim "Verified on-chain rails"
+    expect(markup).not.toContain("Verified on-chain rails");
   });
 });

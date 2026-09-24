@@ -3,8 +3,12 @@ import {
   X,
   MessageSquare,
   FileText,
-  Sparkles,
   AlertCircle,
+  SlidersHorizontal,
+  CheckCircle2,
+  Copy,
+  Check,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type {
@@ -64,7 +68,9 @@ export function TeamMapWorkflowDrawer({
 }) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "artifacts">("overview");
-
+  const [inspectingArtifact, setInspectingArtifact] = useState<WorkflowArtifact | null>(null);
+  const [approvedArtifactIds, setApprovedArtifactIds] = useState<string[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   // Keyboard accessibility: Escape to close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -139,18 +145,18 @@ export function TeamMapWorkflowDrawer({
       className="flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#12151A]/85 backdrop-blur-xl shadow-2xl shadow-black/60 outline-none"
     >
       {/* Header */}
-      <div className="flex h-13 shrink-0 items-center justify-between border-b border-white/[0.08] px-5 py-3">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
         <div className="flex items-center gap-2 truncate">
-          <Sparkles size={15} className="shrink-0 text-accent" aria-hidden="true" />
-          <h3 className="truncate text-[14px] font-semibold text-white/95">Inspector</h3>
+          <SlidersHorizontal size={14} className="shrink-0 text-white/50" aria-hidden="true" />
+          <h3 className="truncate text-[13.5px] font-semibold text-white/95">Inspector</h3>
           <span className="text-white/40">·</span>
-          <span className="truncate text-[12px] text-white/60">{agentName}</span>
+          <span className="truncate text-[12px] text-white/70">{agentName}</span>
         </div>
         <button
           type="button"
           aria-label="Close inspector drawer"
           onClick={onClose}
-          className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex size-8 items-center justify-center rounded-md text-white/50 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X size={15} />
         </button>
@@ -380,43 +386,43 @@ export function TeamMapWorkflowDrawer({
               <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
                 Deliverables &amp; Artifacts ({artifacts.length})
               </h5>
-              <span className="text-[11px] text-white/40">Verified on-chain rails</span>
+              <span className="text-[10.5px] text-white/40 font-mono">Sample workflow data — not live commerce</span>
             </div>
 
             {artifacts.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/[0.08] bg-black/20 p-6 text-center">
-                <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-white/[0.04] text-white/40">
-                  <FileText size={18} aria-hidden="true" />
+              <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-6 text-center">
+                <div className="mx-auto flex size-9 items-center justify-center rounded-md bg-white/[0.04] text-white/40">
+                  <FileText size={16} aria-hidden="true" />
                 </div>
-                <p className="mt-3 text-[13px] font-medium text-white/80">No artifacts submitted yet</p>
-                <p className="mt-1 text-[11.5px] leading-relaxed text-white/40">
+                <p className="mt-2.5 text-[12.5px] font-medium text-white/80">No artifacts submitted yet</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-white/40 max-w-xs mx-auto">
                   {agentName} has not published deliverables for this task cycle. Artifacts appear automatically when an agent commits code, reports, or contracts.
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {artifacts.map((art) => {
                   const isAuthor = art.authorAgentId === agentId;
                   const isReviewer = art.assignedReviewerId === agentId;
-                  const isApproved = art.reviewState === "approved";
-                  const isUnderReview = art.reviewState === "under_review";
+                  const effectiveApproved = art.reviewState === "approved" || approvedArtifactIds.includes(art.id);
+                  const isUnderReview = art.reviewState === "under_review" && !effectiveApproved;
                   const isSuperseded = art.reviewState === "superseded";
 
                   return (
                     <div
                       key={art.id}
-                      className="flex flex-col gap-2.5 rounded-2xl border border-white/[0.08] bg-[#1C2025] p-3.5 transition hover:border-white/[0.15]"
+                      className="flex flex-col gap-2 rounded-lg border border-white/[0.08] bg-[#16191E]/90 p-3 transition hover:border-white/[0.16]"
                     >
                       {/* Title & Type Badge */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 truncate">
-                          <FileText size={15} className="shrink-0 text-accent" aria-hidden="true" />
-                          <span className="truncate font-semibold text-white/90">{art.name}</span>
+                          <FileText size={14} className="shrink-0 text-accent" aria-hidden="true" />
+                          <span className="truncate font-semibold text-white/90 text-[12.5px]">{art.name}</span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
-                          {isApproved && (
-                            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                              Approved
+                          {effectiveApproved && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                              <CheckCircle2 size={10} /> Approved
                             </span>
                           )}
                           {isUnderReview && (
@@ -437,35 +443,44 @@ export function TeamMapWorkflowDrawer({
 
                       {/* Summary */}
                       {art.summary && (
-                        <p className="text-[12px] leading-relaxed text-white/70">{art.summary}</p>
+                        <p className="text-[11.5px] leading-relaxed text-white/70">{art.summary}</p>
                       )}
 
                       {/* Content Preview Box if available */}
                       {art.contentPreview && (
-                        <pre className="max-h-24 overflow-x-auto rounded-xl border border-white/[0.06] bg-[#0E1013] p-2.5 font-mono text-[10.5px] leading-tight text-white/60">
+                        <pre className="max-h-20 overflow-x-auto rounded-md border border-white/[0.06] bg-[#0E1013] p-2 font-mono text-[10px] leading-tight text-white/60">
                           {art.contentPreview}
                         </pre>
                       )}
 
-                      {/* Role & Action Footer */}
-                      <div className="mt-1 flex items-center justify-between border-t border-white/[0.06] pt-2.5 text-[11px] text-white/50">
-                        <span>
+                      {/* Role & Action Footer with BunUI button system */}
+                      <div className="mt-1 flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px] text-white/50">
+                        <span className="truncate mr-2">
                           {isReviewer ? "Assigned for review" : isAuthor ? "Authored deliverable" : "Task artifact"}
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {isReviewer && isUnderReview && (
                             <button
                               type="button"
-                              className="rounded-lg bg-accent/20 px-2 py-1 font-medium text-accent hover:bg-accent/30"
+                              aria-label={`Approve ${art.name}`}
+                              onClick={() => {
+                                setApprovedArtifactIds((prev) => [...prev, art.id]);
+                                onIntervene?.({ type: "approve_task", taskId: art.taskId });
+                              }}
+                              className="inline-flex h-7 items-center gap-1 rounded-md bg-accent px-2.5 text-[11.5px] font-medium text-white shadow-sm transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
                             >
-                              Approve
+                              <Check size={11} aria-hidden="true" />
+                              <span>Approve</span>
                             </button>
                           )}
                           <button
                             type="button"
-                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-medium text-white/70 hover:bg-white/10"
+                            aria-label={`Inspect ${art.name}`}
+                            onClick={() => setInspectingArtifact(art)}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-[11.5px] font-medium text-white/80 transition hover:bg-white/[0.08] hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 cursor-pointer"
                           >
-                            Inspect
+                            <Eye size={11} aria-hidden="true" />
+                            <span>Inspect</span>
                           </button>
                         </div>
                       </div>
@@ -475,6 +490,134 @@ export function TeamMapWorkflowDrawer({
               </div>
             )}
           </section>
+        )}
+
+        {/* In-drawer Inspect Detail View */}
+        {inspectingArtifact && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Inspect ${inspectingArtifact.name}`}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-white/[0.12] bg-[#14171C] shadow-2xl overflow-hidden">
+              <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+                <div className="flex items-center gap-2 truncate">
+                  <FileText size={15} className="text-accent shrink-0" aria-hidden="true" />
+                  <h4 className="truncate text-[13px] font-semibold text-white/95">
+                    {inspectingArtifact.name}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close inspection"
+                  onClick={() => setInspectingArtifact(null)}
+                  className="inline-flex size-7 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-white"
+                >
+                  <X size={14} />
+                </button>
+              </header>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-[12px]">
+                {/* Metadata summary */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] rounded-lg border border-white/[0.06] bg-black/30 p-2.5">
+                  <div>
+                    <span className="text-white/40 block">Type</span>
+                    <span className="font-mono text-white/80 uppercase">{inspectingArtifact.type}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Size</span>
+                    <span className="font-mono text-white/80">{inspectingArtifact.sizeBytes ? `${Math.round(inspectingArtifact.sizeBytes / 1000)} KB` : "4 KB"}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Review state</span>
+                    <span className="capitalize text-white/80">
+                      {approvedArtifactIds.includes(inspectingArtifact.id) ? "Approved" : inspectingArtifact.reviewState ?? "Verified"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Task</span>
+                    <span className="font-mono text-white/80 truncate">{inspectingArtifact.taskId}</span>
+                  </div>
+                </div>
+
+                {inspectingArtifact.summary && (
+                  <div>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40 block mb-1">
+                      Executive Summary
+                    </span>
+                    <p className="text-[12px] leading-relaxed text-white/80">
+                      {inspectingArtifact.summary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Content preview with copy button */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                      Deliverable Payload
+                    </span>
+                    {inspectingArtifact.contentPreview && (
+                      <button
+                        type="button"
+                        aria-label="Copy deliverable content"
+                        onClick={() => {
+                          if (inspectingArtifact.contentPreview && typeof navigator !== "undefined" && navigator.clipboard) {
+                            navigator.clipboard.writeText(inspectingArtifact.contentPreview);
+                            setCopiedId(inspectingArtifact.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10.5px] text-white/60 hover:bg-white/10 hover:text-white transition"
+                      >
+                        {copiedId === inspectingArtifact.id ? (
+                          <>
+                            <Check size={11} className="text-emerald-400" />
+                            <span className="text-emerald-400 font-medium">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={11} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <pre className="max-h-60 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#0A0C0E] p-3 font-mono text-[11px] leading-relaxed text-white/80">
+                    {inspectingArtifact.contentPreview ?? "No raw preview content available for this deliverable."}
+                  </pre>
+                </div>
+              </div>
+
+              <footer className="flex items-center justify-between border-t border-white/[0.08] bg-black/30 px-4 py-2.5">
+                <span className="text-[10.5px] text-white/40 font-mono">Sample workflow data — not live commerce</span>
+                <div className="flex items-center gap-2">
+                  {inspectingArtifact.assignedReviewerId === agentId && inspectingArtifact.reviewState === "under_review" && !approvedArtifactIds.includes(inspectingArtifact.id) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApprovedArtifactIds((prev) => [...prev, inspectingArtifact.id]);
+                        onIntervene?.({ type: "approve_task", taskId: inspectingArtifact.taskId });
+                      }}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-[12px] font-medium text-white shadow-sm transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+                    >
+                      <Check size={12} aria-hidden="true" />
+                      <span>Approve artifact</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setInspectingArtifact(null)}
+                    className="inline-flex h-8 items-center rounded-md border border-white/10 bg-white/[0.04] px-3 text-[12px] font-medium text-white/80 hover:bg-white/[0.08] hover:border-white/20 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </footer>
+            </div>
+          </div>
         )}
       </div>
     </aside>

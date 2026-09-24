@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   BotAvatar,
   MausAvatar,
+  defaultMascotBodyForBot,
   resolveBotAvatarOutcome,
   type BotAvatarProps,
   type MausAvatarProps,
@@ -114,5 +115,30 @@ describe("catalog bot avatars", () => {
     expect(coach).toContain('data-bot-avatar="pebble"');
     // Markets maps to star -> star
     expect(markets).toContain('data-bot-avatar="star"');
+  });
+
+  it("maps catalog and local bots deterministically via defaultMascotBodyForBot", () => {
+    // Known external catalog IDs
+    expect(defaultMascotBodyForBot({ okxImport: { externalAgentId: "okx-market-scout-v1" } })).toBe("star");
+    expect(defaultMascotBodyForBot({ okxImport: { externalAgentId: "okx-listing-coach" } })).toBe("squircle");
+    expect(defaultMascotBodyForBot({ okxImport: { externalAgentId: "okx-spend-scout" } })).toBe("shield");
+
+    // Known local bot IDs
+    expect(defaultMascotBodyForBot({ id: "tuli" })).toBe("cursor");
+    expect(defaultMascotBodyForBot({ id: "atlas" })).toBe("capsule");
+    expect(defaultMascotBodyForBot({ id: "risk-inspector" })).toBe("hexagon");
+    expect(defaultMascotBodyForBot({ id: "approval-agent" })).toBe("diamond");
+    expect(defaultMascotBodyForBot({ id: "scheduler-bot" })).toBe("drop");
+
+    // Semantic roles in title or name
+    expect(defaultMascotBodyForBot({ name: "Treasury Guard" })).toBe("shield");
+    expect(defaultMascotBodyForBot({ title: "Compliance Auditor" })).toBe("hexagon");
+    expect(defaultMascotBodyForBot({ name: "Jury Arbitrator" })).toBe("diamond");
+
+    // Stable deterministic fallback
+    const shape1 = defaultMascotBodyForBot({ id: "custom-agent-42" });
+    const shape2 = defaultMascotBodyForBot({ id: "custom-agent-42" });
+    expect(shape1).toBe(shape2);
+    expect(typeof shape1).toBe("string");
   });
 });

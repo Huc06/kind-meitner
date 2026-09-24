@@ -60,27 +60,27 @@ export function TeamMapToolbar({
       role="toolbar"
       aria-label="Team Map controls"
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#15171A] px-6 py-2.5 text-[12px]",
+        "flex flex-wrap items-center justify-between gap-2.5 border-b border-white/[0.08] bg-[#121519] px-6 py-1.5 text-[12px]",
         className,
       )}
     >
       {/* Left: View Switcher (Board vs Map) */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-lg border border-white/[0.1] bg-black/40 p-0.5" role="group" aria-label="View mode">
+        <div className="flex items-center rounded-md border border-white/[0.1] bg-black/40 p-0.5" role="group" aria-label="View mode">
           <button
             type="button"
             role="radio"
             aria-checked={viewMode === "board"}
             onClick={() => onViewModeChange("board")}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent",
+              "flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[11.5px] font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent",
               viewMode === "board"
-                ? "bg-[#1C2025] text-white shadow-sm"
+                ? "bg-white/[0.12] text-white shadow-sm"
                 : "text-white/60 hover:text-white/90",
             )}
           >
-            <LayoutGrid size={13} aria-hidden="true" />
-            <span>Board view</span>
+            <LayoutGrid size={12} aria-hidden="true" />
+            <span>Board</span>
           </button>
           <button
             type="button"
@@ -88,13 +88,13 @@ export function TeamMapToolbar({
             aria-checked={viewMode === "map"}
             onClick={() => onViewModeChange("map")}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent",
+              "flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[11.5px] font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent",
               viewMode === "map"
-                ? "bg-[#1C2025] text-white shadow-sm"
+                ? "bg-white/[0.12] text-white shadow-sm"
                 : "text-white/60 hover:text-white/90",
             )}
           >
-            <MapIcon size={13} aria-hidden="true" />
+            <MapIcon size={12} aria-hidden="true" />
             <span>Spatial map</span>
           </button>
         </div>
@@ -105,10 +105,10 @@ export function TeamMapToolbar({
           aria-pressed={onlyNeedsAttention}
           onClick={onToggleOnlyAttention}
           className={cn(
-            "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent",
+            "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent",
             onlyNeedsAttention
               ? "border-danger/60 bg-danger/15 text-danger font-semibold"
-              : "border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white",
+              : "border-white/[0.08] bg-white/[0.03] text-white/60 hover:bg-white/[0.06] hover:text-white",
           )}
         >
           <AlertCircle size={12} aria-hidden="true" />
@@ -181,7 +181,7 @@ export function TeamMapToolbar({
                 type="button"
                 aria-label="Fit all teams to view"
                 onClick={onFitView}
-                className="flex h-8 items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.04] px-2 text-[11.5px] text-white/70 hover:bg-white/[0.08] hover:text-white"
+                className="flex h-7 items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.04] px-2 text-[11px] text-white/70 hover:bg-white/[0.08] hover:text-white"
               >
                 <Maximize2 size={12} aria-hidden="true" />
                 <span>Fit</span>
@@ -192,7 +192,7 @@ export function TeamMapToolbar({
                 type="button"
                 aria-label="Zoom out"
                 onClick={onZoomOut}
-                className="flex size-8 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
+                className="flex size-7 items-center justify-center rounded-md border border-white/[0.1] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
               >
                 <Minus size={13} aria-hidden="true" />
               </button>
@@ -202,7 +202,7 @@ export function TeamMapToolbar({
                 type="button"
                 aria-label="Reset zoom scale"
                 onClick={onResetZoom}
-                className="h-8 px-1.5 font-mono text-[11px] text-white/70 hover:text-white"
+                className="h-7 px-1.5 font-mono text-[11px] text-white/70 hover:text-white"
               >
                 {Math.round(zoomPercent)}%
               </button>
@@ -212,7 +212,7 @@ export function TeamMapToolbar({
                 type="button"
                 aria-label="Zoom in"
                 onClick={onZoomIn}
-                className="flex size-8 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
+                className="flex size-7 items-center justify-center rounded-md border border-white/[0.1] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
               >
                 <Plus size={13} aria-hidden="true" />
               </button>

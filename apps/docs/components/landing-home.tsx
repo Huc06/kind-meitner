@@ -6,8 +6,21 @@ import { InviteSpec } from "./invite-deep-dive";
 import { ThemeToggle } from "./theme-toggle";
 
 const releasesUrl = "https://github.com/harrymove-ctrl/kind-meitner/releases/latest";
-const localAppUrl = "http://127.0.0.1:5199/";
+const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
+export function resolveLandingAppUrl(origin?: string): string {
+  if (configuredAppUrl) return configuredAppUrl;
+  if (!origin) return releasesUrl;
+  try {
+    const url = new URL(origin);
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      return url.port === "5199" ? origin : `${url.protocol}//${url.hostname}:5199/`;
+    }
+  } catch {
+    // Fall back to releases
+  }
+  return releasesUrl;
+}
 const PILLARS = [
   {
     title: "Evaluator ASP",
@@ -37,11 +50,10 @@ export function LandingHome() {
     if (new URLSearchParams(window.location.search).has("guide")) setOpen(true);
   }, []);
 
-  // Direct link to the running product application with fallback to latest releases
-  const appUrl = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-    ? localAppUrl
-    : releasesUrl;
-
+  // Dynamic link to the running product application with fallback to latest releases
+  const appUrl = typeof window !== "undefined"
+    ? resolveLandingAppUrl(window.location.origin)
+    : (configuredAppUrl || releasesUrl);
   return (
     <main className={open ? "flex flex-1 flex-col bg-[#f7f4ef] text-[#3d3834]" : "flex flex-1 flex-col bg-zinc-100 text-zinc-950"}>
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 pt-6">
