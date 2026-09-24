@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowRight,
   BookOpen,
   Loader2,
   Network,
@@ -19,13 +18,14 @@ import {
   buildTeamMapSections,
   type TeamMapSnapshot,
 } from "@/lib/team-map";
-import { cn } from "@/lib/cn";
+
 import { TeamCanvas, type BotWorkflowInfo } from "./TeamCanvas";
 import { TeamDialog } from "./TeamDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
 import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
+import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
 import {
   buildSampleWorkflowSnapshot,
   SAMPLE_WORKFLOW_LABEL,
@@ -33,72 +33,6 @@ import {
 } from "@/lib/team-map-sample-workflow";
 import type { ActivityKind } from "@/lib/team-map-demo-ui";
 import { t } from "@/lib/i18n";
-
-function StructuredHandoffRow({
-  fromName,
-  toName,
-  taskTitle,
-  reason,
-  messagesTransferred = 4,
-  artifactsTransferred = 2,
-  decisionsTransferred = 1,
-  progress = 68,
-  timeStr = "12:43 PM",
-  active,
-  onClick,
-}: {
-  fromName: string;
-  toName: string;
-  taskTitle: string;
-  reason: string;
-  messagesTransferred?: number;
-  artifactsTransferred?: number;
-  decisionsTransferred?: number;
-  progress?: number;
-  timeStr?: string;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full flex-col gap-1.5 rounded-xl border p-3 text-left transition-all",
-        active
-          ? "border-accent bg-accent/10 shadow-md ring-1 ring-accent/30"
-          : "border-hairline/50 bg-card hover:border-ink-secondary/40 hover:bg-raised/30",
-      )}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline/30 pb-2">
-        <div className="flex items-center gap-2 text-[12.5px] font-semibold text-ink">
-          <span>Task: {taskTitle}</span>
-          <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] text-accent">Ownership Handoff</span>
-        </div>
-        <span className="text-[11px] tabular-nums text-ink-secondary">{timeStr}</span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 text-[12px]">
-        <span className="font-semibold text-ink">{fromName}</span>
-        <ArrowRight size={13} className="text-accent" />
-        <span className="font-semibold text-ink">{toName}</span>
-        <span className="text-ink-secondary">·</span>
-        <span className="text-ink-secondary">Status: Resumed at {progress}%</span>
-      </div>
-
-      <p className="line-clamp-2 text-[11px] text-ink-secondary">
-        <strong className="text-ink">Reason:</strong> {reason}
-      </p>
-
-      <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg bg-inset/60 px-2.5 py-1 text-[10.5px] text-ink-secondary">
-        <span>Context transferred:</span>
-        <span className="font-medium text-ink">
-          {messagesTransferred} messages, {artifactsTransferred} artifacts, {decisionsTransferred} decision
-        </span>
-      </div>
-    </button>
-  );
-}
 
 function SectionContextDialog({ section, label, onClose }: { section: string; label: string; onClose: () => void }) {
   const [text, setText] = useState("");
@@ -253,8 +187,7 @@ export function TeamMapPage() {
   const [selectedWorkflowTaskId, setSelectedWorkflowTaskId] = useState<string | null>(null);
   const [highlightBotIds, setHighlightBotIds] = useState<string[]>([]);
   const [factsFilter, setFactsFilter] = useState<ActivityKind | "all">("all");
-  const [metricExplanation, setMetricExplanation] = useState<string | null>(null);
-
+  const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
   pendingMoveRef.current = pendingMove;
@@ -353,48 +286,53 @@ export function TeamMapPage() {
     }
   }, [pendingMove]);
 
+  // Deduplicate and unify handoffs and persistent connections
+  const unifiedHandoffs = useMemo(() => {
+    return deduplicateHandoffs(workflowSnapshot.transfers, edges, bots);
+  }, [workflowSnapshot.transfers, edges, bots]);
+
   // Handle metric click drill-down
-  const handleSelectMetric = useCallback((metricKey: string) => {
-    switch (metricKey) {
-      case "branch":
-        setFactsFilter("branch");
-        setHighlightBotIds([botRoleMapping.discoveryId, botRoleMapping.listingCoachId, botRoleMapping.escrowId]);
-        setMetricExplanation("Parallel branches: 3 independent streams executed simultaneously across Discovery, Terms, and Escrow.");
-        break;
-      case "transfer":
-        setFactsFilter("transfer");
-        setHighlightBotIds([botRoleMapping.coordinatorId, botRoleMapping.escrowId]);
-        setMetricExplanation("Ownership transfer: Tuli transferred escrow-prep to Atlas with 4 messages, 2 artifacts, and 1 decision preserved.");
-        if (workflowSnapshot.transfers[0]) {
-          setSelectedWorkflowTaskId(workflowSnapshot.transfers[0].taskId);
-        }
-        break;
-      case "help":
-        setFactsFilter("help");
-        setHighlightBotIds([botRoleMapping.listingCoachId, botRoleMapping.discoveryId]);
-        setMetricExplanation("Blocked recovery: Listing Coach was blocked on counterparty data, asked Markets for help, and resumed immediately.");
-        break;
-      case "review":
-        setFactsFilter("review");
-        setHighlightBotIds([botRoleMapping.listingCoachId, botRoleMapping.reviewerId]);
-        setMetricExplanation("Review convergence: Spend Scout requested 1 adjustment (72h lockup), Listing Coach updated the spec, and Spend Scout approved.");
-        break;
-      case "message":
-        setFactsFilter("message");
-        setHighlightBotIds(bots.map((b) => b.id));
-        setMetricExplanation("Messages: Agent-to-agent communication history recorded across all parallel branches.");
-        break;
-      case "task":
-        setFactsFilter("task");
-        setHighlightBotIds([botRoleMapping.discoveryId, botRoleMapping.listingCoachId, botRoleMapping.escrowId]);
-        setMetricExplanation("Tasks completed: All 3 branches reached 100% completion and delivered verified artifacts.");
-        break;
-      default:
-        setFactsFilter("all");
-        setHighlightBotIds([]);
-        setMetricExplanation(null);
-    }
-  }, [botRoleMapping, bots, workflowSnapshot]);
+  const handleSelectMetric = useCallback(
+    (metric: { id: string; filterKind?: ActivityKind; explanation: string }) => {
+      setActiveMetricId(metric.id);
+      setFactsFilter(metric.filterKind ?? "all");
+
+      switch (metric.id) {
+        case "branches":
+          setHighlightBotIds([botRoleMapping.discoveryId, botRoleMapping.listingCoachId, botRoleMapping.escrowId]);
+          break;
+        case "transfers":
+          setHighlightBotIds([botRoleMapping.coordinatorId, botRoleMapping.escrowId]);
+          if (workflowSnapshot.transfers[0]) {
+            setSelectedWorkflowTaskId(workflowSnapshot.transfers[0].taskId);
+          }
+          break;
+        case "blocked":
+          setHighlightBotIds([botRoleMapping.listingCoachId, botRoleMapping.discoveryId]);
+          break;
+        case "reviews":
+          setHighlightBotIds([botRoleMapping.listingCoachId, botRoleMapping.reviewerId]);
+          break;
+        case "tasks":
+          setHighlightBotIds([botRoleMapping.discoveryId, botRoleMapping.listingCoachId, botRoleMapping.escrowId]);
+          break;
+        case "messages":
+        case "agents":
+        case "concurrent":
+          setHighlightBotIds(bots.map((b) => b.id));
+          break;
+        default:
+          setHighlightBotIds([]);
+      }
+    },
+    [botRoleMapping, bots, workflowSnapshot],
+  );
+
+  const handleResetMetric = useCallback(() => {
+    setActiveMetricId(null);
+    setFactsFilter("all");
+    setHighlightBotIds([]);
+  }, []);
 
   return (
     <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-app text-ink">
@@ -511,109 +449,43 @@ export function TeamMapPage() {
         )}
       </div>
 
-      {/* Bottom Area: Upgraded Agent Handoffs, Activity Feed, and Interactive Workflow Facts */}
-      <footer className="shrink-0 border-t border-hairline/40 bg-panel">
-        <div className="max-h-[380px] overflow-y-auto px-6 py-4 space-y-4">
-          {/* 1. Metric Calculation Explanation (appears when a fact is clicked) */}
-          {metricExplanation && (
-            <div className="flex items-center justify-between rounded-xl border border-accent/40 bg-accent/10 px-4 py-2 text-[12px] text-accent">
-              <div className="flex items-center gap-2">
-                <Sparkles size={14} className="shrink-0" />
-                <span>{metricExplanation}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setMetricExplanation(null);
-                  setFactsFilter("all");
-                  setHighlightBotIds([]);
-                }}
-                className="text-[11px] underline hover:opacity-80"
-              >
-                Reset drill-down
-              </button>
-            </div>
-          )}
-
-          {/* 2. Upgraded Structured Agent Handoffs */}
-          <details
-            ref={(node) => {
-              if (node && node.dataset.opened === undefined) {
-                node.dataset.opened = "1";
-                node.open = true;
+      {/* Bottom Area: Redesigned Handoffs, Responsive Facts Grid, and Activity Feed */}
+      <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
+        <div className="max-h-[420px] overflow-y-auto px-6 py-5 space-y-4">
+          {/* 1. Unified, Deduplicated Agent Handoffs */}
+          <TeamMapHandoffList
+            items={unifiedHandoffs}
+            selectedTaskId={selectedWorkflowTaskId}
+            onSelectHandoff={(item: UnifiedHandoffItem) => {
+              if (item.taskId) {
+                setSelectedWorkflowTaskId(item.taskId);
+                setSelectedWorkflowBotId(null);
+              } else {
+                setSelectedWorkflowBotId(item.fromBotId);
+                setSelectedWorkflowTaskId(null);
               }
+              setHighlightBotIds([item.fromBotId, item.toBotId]);
             }}
-            className="rounded-xl border border-hairline/40 bg-card p-3"
-          >
-            <summary className="cursor-pointer text-[12.5px] font-semibold text-ink">
-              Agent handoffs &amp; Ownership Transfers ({workflowSnapshot.transfers.length + edges.length})
-            </summary>
+          />
 
-            <div className="mt-3 space-y-2">
-              {/* Structured Context-Preserved Transfer Card */}
-              {workflowSnapshot.transfers.map((xfer) => {
-                const fromBot = bots.find((b) => b.id === xfer.fromAgentId) ?? { name: "Tuli" };
-                const toBot = bots.find((b) => b.id === xfer.toAgentId) ?? { name: "Atlas" };
-                const isSelected = selectedWorkflowTaskId === xfer.taskId;
+          {/* 2. Responsive Interactive Workflow Facts Grid */}
+          <TeamMapWowFacts
+            facts={wowFacts}
+            activeMetricId={activeMetricId}
+            onSelectMetric={handleSelectMetric}
+            onResetMetric={handleResetMetric}
+          />
 
-                return (
-                  <StructuredHandoffRow
-                    key={xfer.id}
-                    fromName={fromBot.name}
-                    toName={toBot.name}
-                    taskTitle="Prepare payment protection"
-                    reason={xfer.reason}
-                    messagesTransferred={xfer.messagesTransferred ?? 4}
-                    artifactsTransferred={xfer.artifactsTransferred ?? 2}
-                    decisionsTransferred={xfer.decisionsTransferred ?? 1}
-                    progress={xfer.progressAtTransfer ?? 68}
-                    active={isSelected}
-                    onClick={() => {
-                      setSelectedWorkflowTaskId(xfer.taskId);
-                      setSelectedWorkflowBotId(null);
-                      setHighlightBotIds([xfer.fromAgentId, xfer.toAgentId]);
-                    }}
-                  />
-                );
-              })}
-
-              {/* Edge rows from server */}
-              {edges.map((edge) => {
-                const src = bots.find((b) => b.id === edge.sourceBotId);
-                const tgt = bots.find((b) => b.id === edge.targetBotId);
-                if (!src || !tgt) return null;
-                return (
-                  <div
-                    key={`${edge.sourceBotId}:${edge.targetBotId}`}
-                    className="flex items-center justify-between rounded-lg border border-hairline/40 bg-inset/50 px-3 py-2 text-[11.5px]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-ink">{src.name}</span>
-                      <ArrowRight size={12} className="text-ink-secondary" />
-                      <span className="font-semibold text-ink">{tgt.name}</span>
-                    </div>
-                    <span className="rounded bg-control px-2 py-0.5 text-[10.5px] text-ink-secondary capitalize">
-                      {edge.state}
-                    </span>
-                  </div>
-                );
-              })}
+          {/* 3. Compact Activity Feed */}
+          <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]">
+            <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-5">
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="text-accent" aria-hidden="true" />
+                <h4 className="text-[15px] font-semibold text-white/90">Collaboration Activity</h4>
+              </div>
+              <span className="text-[12px] text-white/45 hidden sm:inline">Chronological event trail</span>
             </div>
-          </details>
-
-          {/* 3. Interactive Workflow Facts (Click Metric to Drill Down) */}
-          <div className="rounded-xl border border-hairline/40 bg-card p-3">
-            <TeamMapWowFacts
-              facts={wowFacts}
-              activeFilter={factsFilter}
-              onSelectFilter={handleSelectMetric}
-            />
-          </div>
-
-          {/* 4. Compact Collaboration Activity Feed */}
-          <div className="rounded-xl border border-hairline/40 bg-card p-3">
-            <h4 className="mb-2 text-[12px] font-semibold text-ink">Collaboration Activity Feed</h4>
-            <div className="h-[200px]">
+            <div className="h-[220px]">
               <TeamMapActivityFeed
                 snapshot={workflowSnapshot}
                 kindFilter={factsFilter}
