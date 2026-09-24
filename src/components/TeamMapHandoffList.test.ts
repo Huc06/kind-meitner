@@ -115,6 +115,7 @@ describe("TeamMapHandoffList & Deduplication", () => {
       createElement(TeamMapHandoffList, {
         items,
         selectedTaskId: "task-escrow",
+        defaultOpen: true,
         onSelectHandoff: () => {},
       }),
     );
@@ -140,6 +141,35 @@ describe("TeamMapHandoffList & Deduplication", () => {
     expect(markup).toContain("2 artifacts");
     expect(markup).toContain("1 decision");
     expect(markup).toContain("68% preserved");
+  });
+
+  it("is closed by default with aria-expanded false", () => {
+    const items: UnifiedHandoffItem[] = [
+      {
+        id: "xfer-1",
+        kind: "transfer",
+        taskId: "task-escrow",
+        taskTitle: "Prepare payment protection",
+        fromBotId: "tuli",
+        fromName: "Tuli",
+        toBotId: "atlas",
+        toName: "Atlas",
+        statusText: "Resumed · 68%",
+        progress: 68,
+        timeStr: "12:43 PM",
+      },
+    ];
+
+    const markup = renderToStaticMarkup(
+      createElement(TeamMapHandoffList, {
+        items,
+        onSelectHandoff: () => {},
+      }),
+    );
+
+    expect(markup).toContain("Agent handoffs");
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).not.toContain("id=\"handoff-list-content\"");
   });
 
   it("renders empty state gracefully without crashing", () => {
