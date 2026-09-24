@@ -29,7 +29,7 @@ import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
 import { TeamMapAttentionRail } from "./TeamMapAttentionRail";
-import { TeamMapUseCaseBanner } from "./TeamMapUseCaseBanner";
+import { TeamMapCommandMenu, type CommandMenuItem } from "./TeamMapCommandMenu";
 import {
   deriveAttentionItems,
   getTeamMapDataMode,
@@ -37,7 +37,6 @@ import {
 } from "@/lib/team-map-attention";
 import {
   buildSampleWorkflowSnapshot,
-  SAMPLE_WORKFLOW_LABEL,
   type BotRoleMapping,
 } from "@/lib/team-map-sample-workflow";
 import { createEmptyWorkflow, computeWowFacts } from "@/lib/team-map-workflow";
@@ -345,6 +344,118 @@ export function TeamMapPage() {
     return deduplicateHandoffs(workflowSnapshot.transfers, edges, bots, workflowSnapshot.tasks);
   }, [workflowSnapshot.transfers, workflowSnapshot.tasks, edges, bots]);
 
+  // Command Palette Items (Agents, Actions, Use Cases, Views)
+  const commandItems = useMemo<CommandMenuItem[]>(() => {
+    const list: CommandMenuItem[] = [];
+
+    // 1. Actions / Interventions
+    attentionItems.forEach((item) => {
+      list.push({
+        id: `att-${item.id}`,
+        label: `Inspect ${item.agentName}: ${item.summary}`,
+        description: `Action: ${item.actionLabel}`,
+        group: "Immediate Interventions",
+        keywords: ["blocked", "urgent", "attention", item.agentName],
+        onSelect: () => {
+          if (item.taskId) setSelectedWorkflowTaskId(item.taskId);
+          else setSelectedWorkflowBotId(item.agentId);
+          setHighlightBotIds([item.agentId]);
+        },
+      });
+    });
+
+    // 2. Agents
+    bots.forEach((bot) => {
+      const wf = workflowMap[bot.id];
+      list.push({
+        id: `bot-${bot.id}`,
+        label: bot.name,
+        description: wf?.taskTitle ? `${wf.taskTitle} (${wf.presence ?? "ready"})` : bot.title || "Agent",
+        group: "Team Agents",
+        keywords: [bot.name, bot.id, wf?.taskTitle ?? ""],
+        onSelect: () => {
+          setSelectedWorkflowBotId(bot.id);
+          setSelectedWorkflowTaskId(null);
+          setHighlightBotIds([bot.id]);
+        },
+      });
+    });
+
+    // 3. Use Cases / Commercial Pipelines
+    list.push(
+      {
+        id: "scenario-b2b",
+        label: "Autonomous B2B Sourcing & Vault Settlement",
+        description: "Vendor discovery -> Terms SLA -> Treasury check -> 72h Escrow",
+        group: "Commercial Pipelines",
+        keywords: ["b2b", "sourcing", "escrow", "orion"],
+        onSelect: () => {
+          const first = bots.find((b) => /market/i.test(b.name))?.id ?? bots[0]?.id;
+          if (first) {
+            setSelectedWorkflowBotId(first);
+            setHighlightBotIds([first]);
+          }
+        },
+      },
+      {
+        id: "scenario-gate",
+        label: "Free A2MCP Pre-Listing Readiness Gate",
+        description: "Pre-listing automated scanner catching Vercel shape or DNS issues",
+        group: "Commercial Pipelines",
+        keywords: ["gate", "readiness", "a2mcp", "listing"],
+        onSelect: () => {
+          const coach = bots.find((b) => /coach/i.test(b.name))?.id ?? bots[0]?.id;
+          if (coach) {
+            setSelectedWorkflowBotId(coach);
+            setHighlightBotIds([coach]);
+          }
+        },
+      },
+      {
+        id: "scenario-dispute",
+        label: "3-Agent Dispute Arbitration & Jury Quorum",
+        description: "Decentralized consensus resolving buyer-seller delivery claims",
+        group: "Commercial Pipelines",
+        keywords: ["dispute", "jury", "arbitration"],
+        onSelect: () => {
+          const rev = bots.find((b) => /spend|scout/i.test(b.name))?.id ?? bots[0]?.id;
+          if (rev) {
+            setSelectedWorkflowBotId(rev);
+            setHighlightBotIds([rev]);
+          }
+        },
+      }
+    );
+
+    // 4. Navigation & Views
+    list.push(
+      {
+        id: "nav-spatial",
+        label: "Switch to Spatial Map View",
+        description: "Interactive visual nodes and handoff lines",
+        group: "Views & Controls",
+        shortcut: "M",
+        onSelect: () => setViewMode("map"),
+      },
+      {
+        id: "nav-board",
+        label: "Switch to Board View",
+        description: "Structured card columns by team",
+        group: "Views & Controls",
+        shortcut: "B",
+        onSelect: () => setViewMode("board"),
+      },
+      {
+        id: "nav-attention-toggle",
+        label: "Toggle Only Needs Attention",
+        description: onlyNeedsAttention ? "Show all agents" : "Filter to blocked & waiting agents only",
+        group: "Views & Controls",
+        onSelect: () => setOnlyNeedsAttention((p) => !p),
+      }
+    );
+
+    return list;
+  }, [attentionItems, bots, workflowMap, onlyNeedsAttention]);
   // Handle metric click drill-down
   const handleSelectMetric = useCallback(
     (metric: { id: string; filterKind?: ActivityKind; explanation: string }) => {
@@ -391,36 +502,38 @@ export function TeamMapPage() {
   return (
     <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#0B0C0E] text-ink">
       {/* 1. Header (Primary operational title & data state badge) */}
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#15171A] px-6 py-3.5 max-md:pl-12">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <Network size={18} className="text-white/60" />
-            <h1 className="text-[17px] font-semibold text-white/95">Team map</h1>
-            <span className="ml-1 text-[11px] text-white/50">{t("canvas.botCount", { count: bots.length })}</span>
-
-            {/* Authoritative Data State Indicator */}
-            {dataMode === "sample" ? (
-              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10.5px] font-medium text-accent">
-                {SAMPLE_WORKFLOW_LABEL}
-              </span>
-            ) : dataMode === "live" ? (
-              <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[10.5px] font-medium text-success">
-                Live workflow
-              </span>
-            ) : dataMode === "unavailable" ? (
-              <span className="rounded-full bg-danger/15 px-2.5 py-0.5 text-[10.5px] font-medium text-danger">
-                Workflow status unavailable
-              </span>
-            ) : (
-              <span className="rounded-full bg-white/[0.08] px-2.5 py-0.5 text-[10.5px] font-medium text-white/70">
-                No active workflow data
-              </span>
-            )}
+      {/* 1. Ultra-Clean Operational Header with ⌘K Command Palette */}
+      <header className="flex h-13 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#15171A] px-6 py-2.5 max-md:pl-12">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Network size={17} className="text-accent" />
+            <h1 className="text-[15px] font-bold text-white tracking-tight">Team map</h1>
+            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] text-white/60">
+              {bots.length} agents
+            </span>
           </div>
-          <p className="mt-0.5 text-[12px] text-white/50">{t("canvas.description")}</p>
+
+          {/* Active Scenario Minimal Pill */}
+          <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400 sm:inline-flex">
+            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>B2B Sourcing &amp; Escrow Pipeline</span>
+          </span>
         </div>
 
+        {/* Middle: ⌘K Command Palette Trigger with Squeeze Effect */}
+        <div className="flex-1 max-w-sm mx-auto hidden md:block">
+          <TeamMapCommandMenu
+            items={commandItems}
+            className="w-full"
+            triggerPlaceholder="Search agents, use cases, or type ⌘K…"
+          />
+        </div>
+
+        {/* Right: Actions */}
         <div className="flex items-center gap-2">
+          <div className="md:hidden">
+            <TeamMapCommandMenu items={commandItems} triggerPlaceholder="⌘K" />
+          </div>
           {!remoteClient && (
             <details
               className="relative"
@@ -436,12 +549,12 @@ export function TeamMapPage() {
             >
               <summary
                 aria-label="Add to team map"
-                className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/[0.1] bg-[#1C2025] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
+                className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/[0.1] bg-[#1C2025] px-2.5 py-1 text-[11.5px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
               >
-                <Plus size={14} /> Add
+                <Plus size={13} /> Add
               </summary>
               <div
-                className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
+                className="absolute right-0 top-full z-40 mt-2 w-48 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
                 onClick={(event) => {
                   const details = event.currentTarget.closest("details");
                   details?.querySelector("summary")?.focus();
@@ -460,16 +573,6 @@ export function TeamMapPage() {
           )}
         </div>
       </header>
-      {/* 2. Commercial Use Case Banner with Interactive Pipeline Stepper */}
-      <TeamMapUseCaseBanner
-        onSelectStepAgent={(agentId) => {
-          const resolvedId = bots.find((b) => b.id === agentId || b.name.toLowerCase().includes(agentId.toLowerCase()))?.id ?? agentId;
-          setSelectedWorkflowBotId(resolvedId);
-          setSelectedWorkflowTaskId(null);
-          setHighlightBotIds([resolvedId]);
-        }}
-      />
-
       {/* 3. Compact Canvas Toolbar (Board vs Map switch, Search, Status filter) */}
       <TeamMapToolbar
         viewMode={viewMode}
