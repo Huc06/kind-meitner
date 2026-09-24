@@ -13,8 +13,7 @@
 // turned it into `node <script>` on Windows too, so the e2e half now runs
 // everywhere alongside the mention-resolution units.
 import { spawn, type ChildProcess } from "node:child_process";
-import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -132,29 +131,6 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
     chmodSync(FAKE_CLI, 0o755);
     home = mkdtempSync(join(tmpdir(), "kind-meitner-comms-test-"));
     gateFile = join(home, "helper-gate");
-    const antigravityDirectory = join(home, "fake-antigravity");
-    const antigravityCli = join(antigravityDirectory, "agy_acp_server.ts");
-    const antigravityHarness = join(
-      antigravityDirectory,
-      process.platform === "win32" ? "localharness_external.exe" : "localharness_external",
-    );
-    mkdirSync(antigravityDirectory, { recursive: true });
-    copyFileSync(FAKE_CLI, antigravityCli);
-    copyFileSync(FAKE_CLI, antigravityHarness);
-    if (process.platform !== "win32") {
-      chmodSync(antigravityCli, 0o755);
-      chmodSync(antigravityHarness, 0o755);
-    }
-    const antigravityProfile = join(
-      home,
-      ".kind-meitner",
-      "providers",
-      "antigravity",
-      createHash("sha256").update("geminiAsker").digest("hex"),
-      "antigravity-acp",
-    );
-    mkdirSync(antigravityProfile, { recursive: true });
-    writeFileSync(join(antigravityProfile, "acp_token.json"), "{}\n");
     mkdirSync(join(home, ".kind-meitner"), { recursive: true });
     writeFileSync(
       join(home, ".kind-meitner", "config.json"),
@@ -167,18 +143,6 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
             driver: "grokAgent",
             environment: { FAKE_ACP_MODE: "ask-peer" },
             config: { cli: FAKE_CLI, fullAuto: true },
-          },
-          // Antigravity uses Google's official ACP server. This instance
-          // proves its session-scoped MCP mount reaches the same agents proxy.
-          geminiAsker: {
-            driver: "antigravityAgent",
-            environment: {
-              FAKE_ACP_MODE: "ask-peer",
-              FAKE_ACP_AUTH_METHOD: "oauth-personal",
-              FAKE_ACP_MODELS: "gemini-3.8-flash-high",
-              FAKE_ACP_MODES: "default,yolo",
-            },
-            config: { cli: antigravityCli, fullAuto: true },
           },
           // a separate asker instance for the async-handoff e2e. B can stay
           // on `grok` because its depth-1 turn runs without the agents
@@ -376,23 +340,23 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
   );
 
   it(
-    "lets a Gemini Antigravity bot call a peer through the temporary agents MCP mount",
+    "lets a Grok bot call a peer through the temporary agents MCP mount",
     async () => {
-      // A unique section makes list_bots deterministic even though this
-      // suite deliberately keeps earlier bots around to exercise the real
-      // persisted fleet. Only these two teammates can see one another.
-      const section = "Gemini agents MCP e2e";
+      // Antigravity was retired in dcec921; Grok exercises the same agents
+      // proxy path with the fake ACP CLI. A unique section makes list_bots
+      // deterministic even though this suite keeps earlier bots around.
+      const section = "Grok agents MCP e2e";
       const helper = (await api("POST", "/api/bots")).body.bot;
       await api("PATCH", `/api/bots/${helper.id}`, {
-        name: "Gemini Helper",
+        name: "Grok Helper",
         section,
         modelSelection: { instanceId: "grok", model: "fake-model" },
       });
       const asker = (await api("POST", "/api/bots")).body.bot;
       await api("PATCH", `/api/bots/${asker.id}`, {
-        name: "Gemini Asker",
+        name: "Grok Asker",
         section,
-        modelSelection: { instanceId: "geminiAsker", model: "gemini-3.8-flash-high" },
+        modelSelection: { instanceId: "grok", model: "fake-model" },
       });
 
       const send = await startRoutine(asker.id, "Ask the other bot for a status check.");
@@ -410,7 +374,7 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
           (message: any) =>
             message.kind === "text"
             && message.role === "bot"
-            && message.text?.includes("peer says: Gemini Helper replied:"),
+            && message.text?.includes("peer says: Grok Helper replied:"),
         );
         const helperReplied = helperBot.messages.some(
           (message: any) =>
@@ -421,7 +385,7 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
         if (peerReply && helperReplied && !askerBot.busy && !helperBot.busy) break;
         if (Date.now() > deadline) {
           throw new Error(
-            `Gemini never got its peer reply. asker tail: ${JSON.stringify(askerBot.messages.slice(-8))}\n`
+            `Asker never got its peer reply. asker tail: ${JSON.stringify(askerBot.messages.slice(-8))}\n`
               + `helper tail: ${JSON.stringify(helperBot.messages.slice(-6))}\n`
               + `stderr: ${stderr.slice(-2000)}`,
           );
@@ -435,7 +399,7 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
       const askerReply = askerBot.messages.findLast(
         (message: any) => message.kind === "text" && message.role === "bot",
       );
-      expect(askerReply.text).toContain("peer says: Gemini Helper replied:");
+      expect(askerReply.text).toContain("peer says: Grok Helper replied:");
       expect(askerReply.text).toContain("hello from fake acp");
       const helperReply = helperBot.messages.findLast(
         (message: any) => message.kind === "text" && message.role === "bot",
@@ -446,12 +410,8 @@ describe("legacy routine comms e2e (fake ACP fleet)", () => {
       const inbound = helperBot.messages.find(
         (message: any) => message.kind === "text" && message.role === "user",
       );
-      expect(inbound.text).toContain("[Message from @Gemini Asker");
+      expect(inbound.text).toContain("[Message from @Grok Asker");
       expect(inbound.text).toContain("ping from fake");
-
-      // Official ACP receives the agents server in session/new. It must never
-      // write the capability or its bearer token to a user's global config.
-      expect(existsSync(join(home, ".gemini", "config", "mcp_config.json"))).toBe(false);
     },
     45_000,
   );
