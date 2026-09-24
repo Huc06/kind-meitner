@@ -1,8 +1,65 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
-import {
-  aspectFitNativeViewBounds,
-  nativeViewOverlayIntersects,
-} from "@/lib/local-vm-workspace";
+
+interface NativeViewRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+interface NativeViewOverlayCandidate {
+  rect: NativeViewRect;
+  explicit: boolean;
+  visible: boolean;
+  zIndex: number | null;
+}
+
+interface NativeViewBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function aspectFitNativeViewBounds(bounds: NativeViewBounds, aspectRatio: number): NativeViewBounds {
+  const widthFromHeight = Math.max(1, Math.floor(bounds.height * aspectRatio));
+  if (widthFromHeight <= bounds.width) {
+    return {
+      x: bounds.x + Math.floor((bounds.width - widthFromHeight) / 2),
+      y: bounds.y,
+      width: widthFromHeight,
+      height: bounds.height,
+    };
+  }
+  const heightFromWidth = Math.max(1, Math.floor(bounds.width / aspectRatio));
+  return {
+    x: bounds.x,
+    y: bounds.y + Math.floor((bounds.height - heightFromWidth) / 2),
+    width: bounds.width,
+    height: heightFromWidth,
+  };
+}
+
+function nativeViewOverlayIntersects(
+  hostRects: readonly NativeViewRect[],
+  candidates: readonly NativeViewOverlayCandidate[],
+): boolean {
+  const intersects = (left: NativeViewRect, right: NativeViewRect) =>
+    left.left < right.right &&
+    left.right > right.left &&
+    left.top < right.bottom &&
+    left.bottom > right.top;
+  return candidates.some(
+    (candidate) =>
+      candidate.visible &&
+      candidate.rect.width > 0 &&
+      candidate.rect.height > 0 &&
+      (candidate.explicit || (candidate.zIndex !== null && candidate.zIndex >= 10)) &&
+      hostRects.some((host) => intersects(candidate.rect, host)),
+  );
+}
 
 const EXPLICIT_OVERLAY_SELECTOR =
   '[aria-modal="true"], [role="dialog"], [role="menu"], [popover], [data-native-view-overlay]';

@@ -20,7 +20,8 @@ describe("named Claude accounts", () => {
     expect(first.instances[first.instanceId].environment).toBeUndefined();
     expect(first.instances[first.instanceId].config).toMatchObject({ cli: "claude-wrapper" });
     expect(first.instances.ghost).toMatchObject({ driver: "future" });
-    expect(newClaudeAccount({}, { displayName: "Work" }).instances.codex).toBeDefined();
+    expect(newClaudeAccount({}, { displayName: "Work" }).instances.grok).toBeDefined();
+    expect(newClaudeAccount({}, { displayName: "Work" }).instances.codex).toBeUndefined();
     expect(() => newClaudeAccount({ instances: first.instances }, { displayName: "Duplicate", configDir: (first.instances[first.instanceId].config as { configDir: string }).configDir })).toThrow(/already configured/);
     expect(() => newClaudeAccount(cfg, { displayName: "Invalid", configDir: "relative/path" })).toThrow(/absolute/);
     expect(createClaudeAccountSchema.safeParse({ displayName: " ", environment: { SECRET: "no" } }).success).toBe(false);

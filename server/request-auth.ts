@@ -391,6 +391,15 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
     return { auth: { kind: "loopback", scopes: LOOPBACK_SCOPES }, status: 401, error: "" };
   }
 
+  // Public access mode: allow anonymous read-only access for remote browsers
+  // when KIND_MEITNER_PUBLIC_ACCESS is enabled. This lets anyone view the UI
+  // without pairing, while still protecting mutation endpoints.
+  const publicAccess = process.env.KIND_MEITNER_PUBLIC_ACCESS === "true";
+  if (publicAccess && method === "GET") {
+    // Allow read-only access (static files and GET API endpoints) without authentication
+    return { auth: { kind: "loopback", scopes: ["client"] }, status: 401, error: "" };
+  }
+
   if (proxied) {
     return deny(403, "forbidden: this request came through a proxy (pair this device to use the server remotely)");
   }

@@ -101,6 +101,7 @@ describe("resolveBotAvatarOutcome", () => {
   });
 });
 
+
 describe("catalog chart avatars", () => {
   it("renders an imported OKX catalog agent as a chart mark, never as a mascot", () => {
     const markup = renderBot({

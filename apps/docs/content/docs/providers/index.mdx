@@ -14,16 +14,7 @@ Agent engines are local runtime. They start a CLI on this computer. They are not
 | Engine | Authentication shape | Notes |
 |---|---|---|
 | Claude | Claude CLI login | Strong support for tools, approvals, sessions, and local computer use |
-| Codex | Codex CLI login | Model discovery, approvals, steering, and computer tools |
-| Grok | Grok CLI login | ACP-based local model catalog and session support |
-| Cursor | Cursor Agent CLI login or API key | ACP driver with live model discovery |
-| Kimi | Kimi CLI login | ACP integration |
-| Droid | Factory Droid CLI login | ACP integration |
-| Antigravity | Google account through the official ACP server | Managed install, isolated accounts, live models, and approval cards |
-| OpenCode | Existing OpenCode provider login or optional API key | Live Zen, Go, third-party, and local model discovery through ACP |
-| Qwen | Qwen CLI login | ACP integration |
-| Hermes | Hermes CLI login | ACP integration |
-| Pi | Pi CLI login | Native driver |
+| Grok | Grok CLI login, or an xAI API key | ACP-based local model catalog and session support. The API-key driver is available when an instance is configured; the default fleet uses the CLI |
 
 Additional driver instances can be declared in local configuration. Unavailable engines remain visible with a reason instead of crashing the provider fleet.
 

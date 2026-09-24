@@ -50,7 +50,7 @@ ranges using your distribution's instructions. Run as a regular user:
 ```sh
 cd deploy/podman
 sh setup.sh
-# Edit .env; for example ENGINES=@anthropic-ai/claude-code @openai/codex
+# Edit .env; for example ENGINES=@anthropic-ai/claude-code
 PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env -f compose.yaml up -d --build
 ```
 

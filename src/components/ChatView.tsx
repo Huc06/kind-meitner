@@ -54,6 +54,7 @@ import { OkxGateToolResult } from "./OkxGateToolResult";
 import { ToolActivity } from "./ToolActivity";
 import { ThreadRefText } from "./ThreadRefs";
 import { OptionCard, shouldHideOnboardingCard } from "./OptionCard";
+import { FirstConversationWelcome } from "./FirstConversationWelcome";
 import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
 import { Composer } from "./Composer";
@@ -655,26 +656,7 @@ const MessagesList = memo(function MessagesList({
   return (
     <>
       {messages.length === 0 && !bot.busy && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
-          <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} />
-          <RenameTitle
-            value={bot.name}
-            onCommit={(name) => {
-              if (window.ogb?.remoteClient?.active) {
-                void api(`/api/bots/${bot.id}/profile`, { method: "PATCH", body: JSON.stringify({ name }) })
-                  .then(({ bot: updated }) => dispatch({ type: "botPatched", bot: updated }))
-                  .catch((cause) => dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }));
-              } else {
-                dispatch({ type: "updateBot", botId: bot.id, patch: { name } });
-              }
-            }}
-            className="text-[17px] font-semibold text-ink"
-            inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
-          />
-          <div className="max-w-[360px] text-[14px] text-ink-secondary">
-            {bot.description || t("chat.emptyPrompt")}
-          </div>
-        </div>
+        <FirstConversationWelcome bot={bot} messageCount={messages.length} />
       )}
       {items.map((item, i) => {
         const previous = items[i - 1];
@@ -1152,7 +1134,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         className={cn(
           // @container so the chips on the right can fold to icon bubbles
           // when the column is narrow (side panel open, small window)
-          "@container/chathead flex items-center justify-between px-5 py-3",
+          "@container/chathead flex items-center justify-between border-b border-hairline/15 px-5 py-2.5",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
         )}
@@ -1160,14 +1142,14 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-raised/50"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-raised/30"
             title={t("chat.openProfile")}
             aria-label={t("chat.openProfileAria", { name: bot.name })}
           >
             <BotAvatar
               bot={bot}
               state={stateForBot({ ...bot, messages })}
-              size={28}
+              size={30}
               motion={mascotMotion?.kind ?? "none"}
               motionKey={mascotMotion?.nonce ?? 0}
             />
@@ -1338,7 +1320,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       >
         <div
           ref={transcriptRef}
-          className="flex w-full flex-col gap-3"
+          className="mx-auto flex min-h-full w-full max-w-[52rem] flex-col gap-3 pt-1"
           style={{ paddingBottom: composerDock.pad }}
           role="log"
           aria-live="polite"
@@ -1431,7 +1413,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           the transcript pad, the jump pill and bottom-follow all move with
           it. */}
       {lastRunStep && showRun(recordedRun) && runDismissed.get(transcriptKey) !== lastRunStep.id && (
-        <div className="flex justify-end px-5 pb-2">
+        <div className="mx-auto flex w-full max-w-[52rem] justify-end px-5 pb-2">
           <VerifyCard
             key={transcriptKey}
             steps={recordedRun}
