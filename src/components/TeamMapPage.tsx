@@ -6,9 +6,9 @@ import {
   Network,
   Plus,
   Save,
-  Sparkles,
   Users,
   X,
+  Sparkles,
 } from "lucide-react";
 
 import { api, useStore, type Bot } from "@/state/store";
@@ -18,20 +18,27 @@ import {
   buildTeamMapSections,
   type TeamMapSnapshot,
 } from "@/lib/team-map";
-
 import { TeamCanvas, type BotWorkflowInfo } from "./TeamCanvas";
+import { TeamMapBoardView } from "./TeamMapBoardView";
+import { TeamMapToolbar } from "./TeamMapToolbar";
 import { TeamDialog } from "./TeamDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
 import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapHandoffList, deduplicateHandoffs, type UnifiedHandoffItem } from "./TeamMapHandoffList";
-import { TeamMapAttentionRail, type AttentionItem } from "./TeamMapAttentionRail";
+import { TeamMapAttentionRail } from "./TeamMapAttentionRail";
+import {
+  deriveAttentionItems,
+  getTeamMapDataMode,
+  type TeamMapDataMode,
+} from "@/lib/team-map-attention";
 import {
   buildSampleWorkflowSnapshot,
   SAMPLE_WORKFLOW_LABEL,
   type BotRoleMapping,
 } from "@/lib/team-map-sample-workflow";
+import { createEmptyWorkflow, computeWowFacts } from "@/lib/team-map-workflow";
 import type { ActivityKind } from "@/lib/team-map-demo-ui";
 import { t } from "@/lib/i18n";
 
@@ -49,7 +56,7 @@ function SectionContextDialog({ section, label, onClose }: { section: string; la
     setLoading(true);
     setError(null);
     api(`/api/sidebar-sections?section=${encodeURIComponent(section)}`)
-      .then((body) => {
+      .then((body: { text?: string }) => {
         if (cancelled) return;
         setText(body?.text ?? "");
         setDirty(false);
@@ -183,12 +190,20 @@ export function TeamMapPage() {
   void refreshError;
   void deletingTeam;
 
+  // View Mode & Operational Toolbar State (Default is Board View)
+  const [viewMode, setViewMode] = useState<"board" | "map">("board");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [onlyNeedsAttention, setOnlyNeedsAttention] = useState(false);
+  const [zoomPercent, setZoomPercent] = useState(100);
+
   // Workflow Drawer & Inspection States
   const [selectedWorkflowBotId, setSelectedWorkflowBotId] = useState<string | null>(null);
   const [selectedWorkflowTaskId, setSelectedWorkflowTaskId] = useState<string | null>(null);
   const [highlightBotIds, setHighlightBotIds] = useState<string[]>([]);
   const [factsFilter, setFactsFilter] = useState<ActivityKind | "all">("all");
   const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
+
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
   pendingMoveRef.current = pendingMove;
@@ -196,7 +211,16 @@ export function TeamMapPage() {
 
   const bots = useMemo(() => state.bots.filter((bot) => !bot.hidden), [state.bots]);
 
-  // Map workspace bots into sample workflow roles
+  // Determine Authoritative Data Mode (Default is Live/Empty, Sample requires explicit fixture flag)
+  const dataMode = useMemo<TeamMapDataMode>(() => {
+    return getTeamMapDataMode({
+      search: typeof window !== "undefined" ? window.location.search : "",
+      hasLiveWorkflow: false,
+      isError: Boolean(refreshError),
+    });
+  }, [refreshError]);
+
+  // Map workspace bots into sample roles ONLY when explicit sample mode is active
   const botRoleMapping = useMemo<BotRoleMapping>(() => {
     const findBot = (pattern: RegExp) => bots.find((b) => pattern.test(b.name) || pattern.test(b.id))?.id;
     return {
@@ -208,114 +232,69 @@ export function TeamMapPage() {
     };
   }, [bots]);
 
-  // Always compute deterministic sample workflow backed by real bot IDs
-  const { snapshot: workflowSnapshot, facts: wowFacts } = useMemo(
-    () => buildSampleWorkflowSnapshot(botRoleMapping),
-    [botRoleMapping],
-  );
+  // Only generate sample workflow when explicitly requested via fixture flag; otherwise keep empty
+  const { workflowSnapshot, wowFacts } = useMemo(() => {
+    if (dataMode === "sample") {
+      const sample = buildSampleWorkflowSnapshot(botRoleMapping);
+      return { workflowSnapshot: sample.snapshot, wowFacts: sample.facts };
+    }
+    const empty = createEmptyWorkflow();
+    return { workflowSnapshot: empty, wowFacts: computeWowFacts(empty) };
+  }, [dataMode, botRoleMapping]);
+
+  // Derive prioritized attention items for Team Lead operational intervention
+  const attentionItems = useMemo(() => {
+    return deriveAttentionItems(workflowSnapshot, bots);
+  }, [workflowSnapshot, bots]);
 
   // Derive compact workflow info for each bot card
   const workflowMap = useMemo<Record<string, BotWorkflowInfo>>(() => {
     const result: Record<string, BotWorkflowInfo> = {};
     for (const bot of bots) {
-      // Check if this bot is assigned to any role in the workflow
-      let roleId: string | undefined;
-      if (bot.id === botRoleMapping.coordinatorId) roleId = botRoleMapping.coordinatorId;
-      else if (bot.id === botRoleMapping.discoveryId) roleId = botRoleMapping.discoveryId;
-      else if (bot.id === botRoleMapping.listingCoachId) roleId = botRoleMapping.listingCoachId;
-      else if (bot.id === botRoleMapping.escrowId) roleId = botRoleMapping.escrowId;
-      else if (bot.id === botRoleMapping.reviewerId) roleId = botRoleMapping.reviewerId;
+      if (dataMode === "sample") {
+        let roleId: string | undefined;
+        if (bot.id === botRoleMapping.coordinatorId) roleId = botRoleMapping.coordinatorId;
+        else if (bot.id === botRoleMapping.discoveryId) roleId = botRoleMapping.discoveryId;
+        else if (bot.id === botRoleMapping.listingCoachId) roleId = botRoleMapping.listingCoachId;
+        else if (bot.id === botRoleMapping.escrowId) roleId = botRoleMapping.escrowId;
+        else if (bot.id === botRoleMapping.reviewerId) roleId = botRoleMapping.reviewerId;
 
-      if (!roleId) continue;
+        if (roleId) {
+          const agent = workflowSnapshot.agents.find((a) => a.id === roleId);
+          const task = workflowSnapshot.tasks.find((t) => t.ownerAgentId === roleId);
+          const hasHelp = workflowSnapshot.messages.some(
+            (m) => (m.kind === "help" || m.kind === "help_requested") && m.toAgentId === roleId,
+          );
+          const isReviewer = roleId === botRoleMapping.reviewerId;
+          const reviewPending = isReviewer && workflowSnapshot.tasks.some((t) => t.state === "reviewing");
+          const isBlocked = task?.state === "blocked";
 
-      const agent = workflowSnapshot.agents.find((a) => a.id === roleId);
-      const task = workflowSnapshot.tasks.find((t) => t.ownerAgentId === roleId);
+          result[bot.id] = {
+            taskTitle: task?.title,
+            taskState: task?.state,
+            progress: task?.progress,
+            presence: agent?.presence ?? (isBlocked ? "blocked" : task ? "working" : "idle"),
+            waitingReason: isBlocked ? "Waiting for counterparty risk data" : undefined,
+            hasIncomingHelp: hasHelp,
+            reviewRequested: reviewPending,
+          };
+          continue;
+        }
+      }
 
-      const hasHelp = workflowSnapshot.messages.some(
-        (m) => (m.kind === "help" || m.kind === "help_requested") && m.toAgentId === roleId,
-      );
-      const isReviewer = roleId === botRoleMapping.reviewerId;
-      const reviewPending = isReviewer && workflowSnapshot.tasks.some((t) => t.state === "reviewing");
-
-      const isBlocked = task?.state === "blocked";
-      const waitingReason = isBlocked ? "Waiting for counterparty risk data" : undefined;
-
+      // Default Live State derivation: derive strictly from authentic bot presence
       result[bot.id] = {
-        taskTitle: task?.title,
-        taskState: task?.state,
-        progress: task?.progress,
-        presence: agent?.presence ?? (isBlocked ? "blocked" : task ? "working" : "idle"),
-        waitingReason,
-        hasIncomingHelp: hasHelp,
-        reviewRequested: reviewPending,
+        presence: bot.activity === "working" || bot.busy ? "working" : bot.activity === "waiting-on-you" ? "waiting" : "idle",
       };
     }
     return result;
-  }, [bots, botRoleMapping, workflowSnapshot]);
+  }, [bots, botRoleMapping, workflowSnapshot, dataMode]);
 
   const sections = useMemo(() => {
     const names = [...new Set([...(state.sections ?? []), ...state.groups.flatMap((group) => group.section ? [group.section] : [])])];
     const order = (key: string) => key === "" ? -1 : names.includes(key) ? names.indexOf(key) : names.length;
     return buildTeamMapSections(bots, names).sort((a, b) => order(a.key) - order(b.key));
   }, [bots, state.sections, state.groups]);
-  // Derive prioritized attention items for Team Lead operational intervention
-  const attentionItems = useMemo<AttentionItem[]>(() => {
-    const items: AttentionItem[] = [];
-
-    // 1. Check for blocked tasks (P0)
-    for (const task of workflowSnapshot.tasks) {
-      if (task.state === "blocked") {
-        const owner = bots.find((b) => b.id === task.ownerAgentId) ?? { name: "Listing Coach" };
-        items.push({
-          id: `att-blocked-${task.id}`,
-          priority: "p0_blocked",
-          agentId: task.ownerAgentId,
-          agentName: owner.name,
-          taskId: task.id,
-          taskTitle: task.title,
-          summary: "Blocked on counterparty risk & reputation data from Vendor Orion",
-          recommendedAction: "Unblock",
-          ageStr: "2m ago",
-        });
-      }
-    }
-
-    // 2. Check for review requests (P2)
-    for (const task of workflowSnapshot.tasks) {
-      if (task.state === "reviewing") {
-        const rev = bots.find((b) => b.id === botRoleMapping.reviewerId) ?? { name: "Spend Scout" };
-        items.push({
-          id: `att-review-${task.id}`,
-          priority: "p2_review",
-          agentId: botRoleMapping.reviewerId,
-          agentName: rev.name,
-          taskId: task.id,
-          taskTitle: task.title,
-          summary: "Deal package submitted: inspection window & escrow terms ready",
-          recommendedAction: "Review",
-          ageStr: "just now",
-        });
-      }
-    }
-
-    // 3. Check for bots waiting on user input (P1)
-    for (const b of bots) {
-      if (b.activity === "waiting-on-you") {
-        items.push({
-          id: `att-input-${b.id}`,
-          priority: "p1_input",
-          agentId: b.id,
-          agentName: b.name,
-          taskTitle: "Awaiting operator prompt",
-          summary: "Agent finished previous turn and needs steering or approval",
-          recommendedAction: "Provide input",
-          ageStr: "live",
-        });
-      }
-    }
-
-    return items;
-  }, [workflowSnapshot.tasks, bots, botRoleMapping]);
 
   const edges = useMemo(() => buildTeamMapEdges(bots, snapshot), [bots, snapshot]);
 
@@ -345,10 +324,10 @@ export function TeamMapPage() {
     }
   }, [pendingMove]);
 
-  // Deduplicate and unify handoffs and persistent connections
+  // Deduplicate and unify handoffs and persistent connections cleanly
   const unifiedHandoffs = useMemo(() => {
-    return deduplicateHandoffs(workflowSnapshot.transfers, edges, bots);
-  }, [workflowSnapshot.transfers, edges, bots]);
+    return deduplicateHandoffs(workflowSnapshot.transfers, edges, bots, workflowSnapshot.tasks);
+  }, [workflowSnapshot.transfers, workflowSnapshot.tasks, edges, bots]);
 
   // Handle metric click drill-down
   const handleSelectMetric = useCallback(
@@ -394,19 +373,35 @@ export function TeamMapPage() {
   }, []);
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-app text-ink">
-      {/* Top Header */}
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-hairline/40 px-6 py-4 max-md:pl-12">
+    <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#0B0C0E] text-ink">
+      {/* 1. Header (Primary operational title & data state badge) */}
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#15171A] px-6 py-3.5 max-md:pl-12">
         <div>
           <div className="flex items-center gap-2.5">
-            <Network size={18} className="text-ink-secondary" />
-            <h1 className="text-[17px] font-semibold">Team map</h1>
-            <span className="ml-1 text-[11px] text-ink-secondary">{t("canvas.botCount", { count: bots.length })}</span>
-            <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10.5px] font-medium text-accent">
-              {SAMPLE_WORKFLOW_LABEL}
-            </span>
+            <Network size={18} className="text-white/60" />
+            <h1 className="text-[17px] font-semibold text-white/95">Team map</h1>
+            <span className="ml-1 text-[11px] text-white/50">{t("canvas.botCount", { count: bots.length })}</span>
+
+            {/* Authoritative Data State Indicator */}
+            {dataMode === "sample" ? (
+              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10.5px] font-medium text-accent">
+                {SAMPLE_WORKFLOW_LABEL}
+              </span>
+            ) : dataMode === "live" ? (
+              <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[10.5px] font-medium text-success">
+                Live workflow
+              </span>
+            ) : dataMode === "unavailable" ? (
+              <span className="rounded-full bg-danger/15 px-2.5 py-0.5 text-[10.5px] font-medium text-danger">
+                Workflow status unavailable
+              </span>
+            ) : (
+              <span className="rounded-full bg-white/[0.08] px-2.5 py-0.5 text-[10.5px] font-medium text-white/70">
+                All tracked agents healthy
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-[12px] text-ink-secondary">{t("canvas.description")}</p>
+          <p className="mt-0.5 text-[12px] text-white/50">{t("canvas.description")}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -425,12 +420,12 @@ export function TeamMapPage() {
             >
               <summary
                 aria-label="Add to team map"
-                className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-hairline/60 bg-panel px-3 py-2 text-[12px] font-medium hover:bg-control [&::-webkit-details-marker]:hidden"
+                className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/[0.1] bg-[#1C2025] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
               >
                 <Plus size={14} /> Add
               </summary>
               <div
-                className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-hairline/60 bg-panel p-1.5 shadow-xl"
+                className="absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
                 onClick={(event) => {
                   const details = event.currentTarget.closest("details");
                   details?.querySelector("summary")?.focus();
@@ -438,7 +433,7 @@ export function TeamMapPage() {
                 }}
               >
                 <button
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[12px] hover:bg-control"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-white/80 hover:bg-white/[0.08] hover:text-white"
                   onClick={() => setTeamEditor({})}
                 >
                   <Users size={14} />
@@ -450,41 +445,91 @@ export function TeamMapPage() {
         </div>
       </header>
 
-      {/* Main Canvas + Right-Side Detail Drawer */}
+      {/* 2. Compact Canvas Toolbar (Board vs Map switch, Search, Status filter) */}
+      <TeamMapToolbar
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onlyNeedsAttention={onlyNeedsAttention}
+        onToggleOnlyAttention={() => setOnlyNeedsAttention((prev) => !prev)}
+        zoomPercent={zoomPercent}
+        onResetZoom={() => setZoomPercent(100)}
+        onZoomIn={() => setZoomPercent((z) => Math.min(150, z * 1.2))}
+        onZoomOut={() => setZoomPercent((z) => Math.max(30, z / 1.2))}
+      />
+
+      {/* 3. Operational Attention Strip (Placed at top of canvas) */}
+      <div className="shrink-0 border-b border-white/[0.08] bg-[#0B0C0E] px-6 py-2.5">
+        <TeamMapAttentionRail
+          items={attentionItems}
+          selectedItemId={selectedWorkflowTaskId ? `attention-blocked-${selectedWorkflowTaskId}` : null}
+          onSelectItem={(item) => {
+            if (item.taskId) {
+              setSelectedWorkflowTaskId(item.taskId);
+              setSelectedWorkflowBotId(null);
+            } else {
+              setSelectedWorkflowBotId(item.agentId);
+              setSelectedWorkflowTaskId(null);
+            }
+            setHighlightBotIds([item.agentId]);
+          }}
+        />
+      </div>
+
+      {/* 4. Canvas Area: Board View (Default) or Spatial Map + Right-side Detail Drawer */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <TeamCanvas
-            sections={sections}
-            canManage={!remoteClient}
-            onMove={requestMove}
-            onLogs={setLogBot}
-            edges={edges}
-            workflowMap={workflowMap}
-            highlightBotIds={highlightBotIds}
-            onSelectBot={(botId) => {
-              setSelectedWorkflowBotId(botId);
-              setSelectedWorkflowTaskId(null);
-            }}
-            connectedBotIds={
-              state.settingsOpen
-                ? edges.flatMap((edge) =>
-                    edge.sourceBotId === state.selectedId
-                      ? [edge.targetBotId]
-                      : edge.targetBotId === state.selectedId
-                        ? [edge.sourceBotId]
-                        : [],
-                  )
-                : []
-            }
-            onComputer={(bot) => dispatch({ type: "toggleSettings", botId: bot.id, section: "access", open: true })}
-            onInstructions={(section, label) => setContextEditor({ section, label })}
-            onEditTeam={(section, rename) => setTeamEditor({ section, rename })}
-            onDeleteTeam={setDeletingTeam}
-            isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)}
-          />
+          {viewMode === "board" ? (
+            <TeamMapBoardView
+              sections={sections}
+              workflowMap={workflowMap}
+              highlightBotIds={highlightBotIds}
+              selectedBotId={selectedWorkflowBotId}
+              onSelectBot={(botId) => {
+                setSelectedWorkflowBotId(botId);
+                setSelectedWorkflowTaskId(null);
+              }}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              onlyNeedsAttention={onlyNeedsAttention}
+            />
+          ) : (
+            <TeamCanvas
+              sections={sections}
+              canManage={!remoteClient}
+              onMove={requestMove}
+              onLogs={setLogBot}
+              edges={edges}
+              workflowMap={workflowMap}
+              highlightBotIds={highlightBotIds}
+              onSelectBot={(botId) => {
+                setSelectedWorkflowBotId(botId);
+                setSelectedWorkflowTaskId(null);
+              }}
+              connectedBotIds={
+                state.settingsOpen
+                  ? edges.flatMap((edge) =>
+                      edge.sourceBotId === state.selectedId
+                        ? [edge.targetBotId]
+                        : edge.targetBotId === state.selectedId
+                          ? [edge.sourceBotId]
+                          : [],
+                    )
+                  : []
+              }
+              onComputer={(bot) => dispatch({ type: "toggleSettings", botId: bot.id, section: "access", open: true })}
+              onInstructions={(section, label) => setContextEditor({ section, label })}
+              onEditTeam={(section, rename) => setTeamEditor({ section, rename })}
+              onDeleteTeam={setDeletingTeam}
+              isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)}
+            />
+          )}
         </div>
 
-        {/* Right-side Detail Drawer */}
+        {/* Right-side Detail Drawer with 1-click Operator Interventions */}
         {(selectedWorkflowBotId || selectedWorkflowTaskId) && (
           <TeamMapWorkflowDrawer
             snapshot={workflowSnapshot}
@@ -519,28 +564,10 @@ export function TeamMapPage() {
         )}
       </div>
 
-      {/* Operational Attention Rail (Between canvas and footer) */}
-      <div className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E] px-6 py-3">
-        <TeamMapAttentionRail
-          items={attentionItems}
-          selectedItemId={selectedWorkflowTaskId ? `att-blocked-${selectedWorkflowTaskId}` : null}
-          onSelectItem={(item) => {
-            if (item.taskId) {
-              setSelectedWorkflowTaskId(item.taskId);
-              setSelectedWorkflowBotId(null);
-            } else {
-              setSelectedWorkflowBotId(item.agentId);
-              setSelectedWorkflowTaskId(null);
-            }
-            setHighlightBotIds([item.agentId]);
-          }}
-        />
-      </div>
-
-      {/* Bottom Area: Redesigned Handoffs, Responsive Facts Grid, and Activity Feed */}
+      {/* 5. Compact Lower Content (15-20% viewport max): Flat Handoffs + Collapsed Workflow Insights */}
       <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
-        <div className="max-h-[380px] overflow-y-auto px-6 py-4 space-y-4">
-          {/* 1. Unified, Deduplicated Agent Handoffs */}
+        <div className="max-h-[300px] overflow-y-auto px-6 py-4 space-y-3.5">
+          {/* Flat Structured Handoffs with Deduplicated Channels */}
           <TeamMapHandoffList
             items={unifiedHandoffs}
             selectedTaskId={selectedWorkflowTaskId}
@@ -556,24 +583,23 @@ export function TeamMapPage() {
             }}
           />
 
-          {/* 2. Collapsible Workflow Insights (Secondary Analytics & Event Trail) */}
+          {/* Collapsible Secondary Workflow Insights */}
           <details
             open={activeMetricId !== null}
             className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
           >
-            <summary className="flex h-12 cursor-pointer list-none items-center justify-between px-5 font-semibold text-[15px] text-white/90 hover:bg-white/[0.02]">
+            <summary className="flex h-11 cursor-pointer list-none items-center justify-between px-5 text-[13.5px] font-semibold text-white/85 hover:bg-white/[0.02]">
               <div className="flex items-center gap-2">
-                <Sparkles size={15} className="text-accent" aria-hidden="true" />
+                <Sparkles size={14} className="text-accent" aria-hidden="true" />
                 <span>Workflow insights</span>
-                <span className="text-[11px] text-white/45 font-normal">Secondary analytics &amp; event trail</span>
+                <span className="text-[11px] font-normal text-white/40">Historical metrics &amp; event audit</span>
               </div>
               <span className="text-[11.5px] font-normal text-white/45">
-                {activeMetricId ? "Filtering by metric" : "Click to view metrics"}
+                {activeMetricId ? "Filtering by metric" : "Expand metrics"}
               </span>
             </summary>
 
             <div className="space-y-4 border-t border-white/[0.08] p-4">
-              {/* Responsive Interactive Workflow Facts Grid */}
               <TeamMapWowFacts
                 facts={wowFacts}
                 activeMetricId={activeMetricId}
@@ -581,13 +607,12 @@ export function TeamMapPage() {
                 onResetMetric={handleResetMetric}
               />
 
-              {/* Compact Activity Feed */}
               <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0C0E]/50">
-                <div className="flex h-10 items-center justify-between border-b border-white/[0.06] px-4">
-                  <span className="text-[12px] font-semibold text-white/80">Activity Event Trail</span>
+                <div className="flex h-9 items-center justify-between border-b border-white/[0.06] px-4 text-[12px]">
+                  <span className="font-semibold text-white/80">Activity Event Trail</span>
                   <span className="text-[11px] text-white/40">Chronological</span>
                 </div>
-                <div className="h-[200px]">
+                <div className="h-[180px]">
                   <TeamMapActivityFeed
                     snapshot={workflowSnapshot}
                     kindFilter={factsFilter}

@@ -9,8 +9,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import type { AttentionKind, TruthfulAction } from "@/lib/team-map-attention";
 
-export type AttentionPriority = "p0_blocked" | "p1_input" | "p2_review" | "p3_warning";
+export type AttentionPriority = AttentionKind;
 
 export interface AttentionItem {
   id: string;
@@ -18,9 +19,11 @@ export interface AttentionItem {
   agentId: string;
   agentName: string;
   taskId?: string;
-  taskTitle: string;
+  taskTitle?: string;
   summary: string;
-  recommendedAction: string;
+  recommendedAction: TruthfulAction | string;
+  actionLabel?: string;
+  createdAt?: number;
   ageStr?: string;
 }
 
@@ -34,28 +37,35 @@ const PRIORITY_STYLES: Record<
     label: string;
   }
 > = {
-  p0_blocked: {
+  blocked: {
     border: "border-danger/50 hover:border-danger/80",
     bg: "bg-danger/10",
     badgeTone: "bg-danger/20 text-danger border-danger/30 font-bold",
     icon: AlertCircle,
     label: "Blocked",
   },
-  p1_input: {
+  failed: {
+    border: "border-danger/50 hover:border-danger/80",
+    bg: "bg-danger/10",
+    badgeTone: "bg-danger/20 text-danger border-danger/30 font-bold",
+    icon: AlertCircle,
+    label: "Failed",
+  },
+  input_needed: {
     border: "border-warning/50 hover:border-warning/80",
     bg: "bg-warning/10",
     badgeTone: "bg-warning/20 text-warning border-warning/30 font-semibold",
     icon: AlertTriangle,
     label: "Input needed",
   },
-  p2_review: {
+  review: {
     border: "border-accent/50 hover:border-accent/80",
     bg: "bg-accent/10",
     badgeTone: "bg-accent/20 text-accent border-accent/30 font-semibold",
     icon: UserCheck,
     label: "Review required",
   },
-  p3_warning: {
+  warning: {
     border: "border-hairline/60 hover:border-hairline",
     bg: "bg-inset/40",
     badgeTone: "bg-control text-ink-secondary border-hairline/40",
@@ -77,10 +87,11 @@ export function TeamMapAttentionRail({
 }) {
   const sortedItems = useMemo(() => {
     const rank: Record<AttentionPriority, number> = {
-      p0_blocked: 0,
-      p1_input: 1,
-      p2_review: 2,
-      p3_warning: 3,
+      blocked: 0,
+      failed: 1,
+      input_needed: 2,
+      review: 3,
+      warning: 4,
     };
     return [...items].sort((a, b) => rank[a.priority] - rank[b.priority]);
   }, [items]);
@@ -92,13 +103,13 @@ export function TeamMapAttentionRail({
         role="status"
         aria-label="Workspace health"
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#15171A] px-5 text-[12px] text-white/70",
+          "flex h-9 w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#15171A] px-4 text-[12px] text-white/70",
           className,
         )}
       >
         <div className="flex items-center gap-2">
-          <CheckCircle2 size={14} className="text-success" aria-hidden="true" />
-          <span className="font-medium text-white/90">All agents operational</span>
+          <CheckCircle2 size={13} className="text-success" aria-hidden="true" />
+          <span className="font-medium text-white/90">All tracked agents healthy</span>
           <span className="text-white/40">·</span>
           <span className="text-white/50">No blockers or pending reviews</span>
         </div>
@@ -110,12 +121,12 @@ export function TeamMapAttentionRail({
   return (
     <section
       aria-label="Actionable attention items"
-      className={cn("space-y-2 rounded-2xl border border-white/[0.08] bg-[#15171A] p-3.5", className)}
+      className={cn("space-y-1.5 rounded-2xl border border-white/[0.08] bg-[#15171A] p-3", className)}
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <ShieldAlert size={15} className="text-danger" aria-hidden="true" />
-          <h3 className="text-[13px] font-semibold text-white/95">Needs attention</h3>
+          <ShieldAlert size={14} className="text-danger" aria-hidden="true" />
+          <h3 className="text-[12.5px] font-semibold text-white/95">Needs attention</h3>
           <span
             className="flex h-4 min-w-4 items-center justify-center rounded-[6px] bg-danger/20 px-1.5 font-mono text-[10.5px] font-bold text-danger"
             aria-label={`${sortedItems.length} urgent items`}
@@ -123,7 +134,7 @@ export function TeamMapAttentionRail({
             {sortedItems.length}
           </span>
         </div>
-        <span className="text-[11.5px] text-white/45">Click item to intervene immediately</span>
+        <span className="text-[11px] text-white/45">Click item to intervene immediately</span>
       </div>
 
       <div className="space-y-1.5">
@@ -133,20 +144,13 @@ export function TeamMapAttentionRail({
           const isSelected = selectedItemId === item.id;
 
           return (
-            <div
+            <button
               key={item.id}
-              role="button"
-              tabIndex={0}
+              type="button"
               aria-selected={isSelected}
               onClick={() => onSelectItem(item)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelectItem(item);
-                }
-              }}
               className={cn(
-                "group flex flex-col justify-between gap-2 rounded-xl border p-3 text-left outline-none transition-all cursor-pointer sm:flex-row sm:items-center",
+                "group flex w-full flex-col justify-between gap-2 rounded-xl border p-2.5 text-left outline-none transition-all cursor-pointer sm:flex-row sm:items-center",
                 config.bg,
                 config.border,
                 isSelected ? "ring-2 ring-accent" : "",
@@ -161,7 +165,7 @@ export function TeamMapAttentionRail({
                     config.badgeTone,
                   )}
                 >
-                  <Icon size={12} aria-hidden="true" />
+                  <Icon size={11} aria-hidden="true" />
                   <span>{config.label}</span>
                 </span>
 
@@ -170,10 +174,14 @@ export function TeamMapAttentionRail({
                     <span className="truncate text-[13px] font-semibold text-white/90">
                       {item.agentName}
                     </span>
-                    <span className="text-white/30">·</span>
-                    <span className="truncate text-[12px] text-white/70">
-                      {item.taskTitle}
-                    </span>
+                    {item.taskTitle && (
+                      <>
+                        <span className="text-white/30">·</span>
+                        <span className="truncate text-[12px] text-white/70">
+                          {item.taskTitle}
+                        </span>
+                      </>
+                    )}
                   </div>
                   <p className="mt-0.5 truncate text-[11.5px] text-white/60">
                     {item.summary}
@@ -189,11 +197,11 @@ export function TeamMapAttentionRail({
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1 rounded-lg bg-white/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-white group-hover:bg-white/[0.15]">
-                  <span>{item.recommendedAction}</span>
+                  <span>{item.actionLabel ?? item.recommendedAction}</span>
                   <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

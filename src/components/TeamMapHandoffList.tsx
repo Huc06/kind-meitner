@@ -8,7 +8,7 @@ import {
   Scale,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { OwnershipTransfer } from "@/lib/team-map-workflow";
+import type { OwnershipTransfer, WorkflowTask } from "@/lib/team-map-workflow";
 import type { TeamMapEdge } from "@/lib/team-map";
 import type { Bot } from "@/state/store";
 
@@ -34,47 +34,54 @@ export function deduplicateHandoffs(
   transfers: OwnershipTransfer[],
   edges: TeamMapEdge[],
   bots: Bot[],
+  tasks: WorkflowTask[] = [],
 ): UnifiedHandoffItem[] {
   const result: UnifiedHandoffItem[] = [];
-  const handledPairs = new Set<string>();
+  const taskMap = new Map<string, WorkflowTask>(tasks.map((t) => [t.id, t]));
+  const activeTransferPairs = new Set<string>();
 
   // 1. Prioritize rich ownership transfers
   for (const xfer of transfers) {
-    const pairKey = [xfer.fromAgentId, xfer.toAgentId].sort().join(":");
-    handledPairs.add(pairKey);
+    // Stable directed key: source -> destination
+    const directedKey = `${xfer.fromAgentId}->${xfer.toAgentId}`;
+    activeTransferPairs.add(directedKey);
 
     const fromBot = bots.find((b) => b.id === xfer.fromAgentId);
     const toBot = bots.find((b) => b.id === xfer.toAgentId);
+    const task = taskMap.get(xfer.taskId);
 
     const timeDate = new Date(xfer.at);
     const timeStr = !isNaN(timeDate.getTime())
       ? timeDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-      : "12:43 PM";
+      : "Recent";
+
+    const progressPart = xfer.progressAtTransfer !== undefined ? ` · ${xfer.progressAtTransfer}%` : "";
+    const statusText = `Resumed${progressPart}`;
 
     result.push({
       id: xfer.id,
       kind: "transfer",
       taskId: xfer.taskId,
-      taskTitle: "Prepare payment protection",
+      taskTitle: task?.title || "Task transferred",
       fromBotId: xfer.fromAgentId,
-      fromName: fromBot?.name ?? "Tuli",
+      fromName: fromBot?.name ?? xfer.fromAgentId,
       toBotId: xfer.toAgentId,
-      toName: toBot?.name ?? "Atlas",
-      statusText: `Resumed · ${xfer.progressAtTransfer ?? 68}%`,
-      progress: xfer.progressAtTransfer ?? 68,
+      toName: toBot?.name ?? xfer.toAgentId,
+      statusText,
+      progress: xfer.progressAtTransfer,
       timeStr,
-      reason: xfer.reason,
-      messagesTransferred: xfer.messagesTransferred ?? 4,
-      artifactsTransferred: xfer.artifactsTransferred ?? 2,
-      decisionsTransferred: xfer.decisionsTransferred ?? 1,
+      reason: xfer.reason || undefined,
+      messagesTransferred: xfer.messagesTransferred,
+      artifactsTransferred: xfer.artifactsTransferred,
+      decisionsTransferred: xfer.decisionsTransferred,
     });
   }
 
-  // 2. Append genuine persistent edges only if not already represented by a transfer
+  // 2. Append genuine persistent edges only if not already represented by a directed transfer
   for (const edge of edges) {
-    const pairKey = [edge.sourceBotId, edge.targetBotId].sort().join(":");
-    if (handledPairs.has(pairKey)) {
-      // Deduplicate: same pair already has an active detailed ownership transfer row
+    const directedKey = `${edge.sourceBotId}->${edge.targetBotId}`;
+    if (activeTransferPairs.has(directedKey)) {
+      // Deduplicate: exact directed pair already has an active detailed ownership transfer row
       continue;
     }
 
@@ -83,7 +90,7 @@ export function deduplicateHandoffs(
     if (!fromBot || !toBot) continue;
 
     result.push({
-      id: `edge:${pairKey}`,
+      id: `edge:${directedKey}`,
       kind: "connection",
       taskTitle: "Direct agent channel",
       fromBotId: edge.sourceBotId,
@@ -95,7 +102,6 @@ export function deduplicateHandoffs(
       reason: edge.reason ?? "Direct peer-to-peer collaboration channel.",
     });
   }
-
   return result;
 }
 
@@ -173,59 +179,47 @@ export function TeamMapHandoffList({
                     : "hover:bg-[#20242A]/60 border-l-2 border-transparent",
                 )}
               >
-                {/* Main Row Click Target (~64-72px) */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={isExpanded}
-                  onClick={() => {
-                    onSelectHandoff(item);
-                    setExpandedId(isExpanded ? null : item.id);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelectHandoff(item);
-                      setExpandedId(isExpanded ? null : item.id);
-                    }
-                  }}
-                  className="flex min-h-[64px] cursor-pointer flex-col justify-center px-5 py-3 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:flex-row sm:items-center sm:justify-between"
-                >
-                  {/* Left Column: Task & Transfer path */}
-                  <div className="min-w-0 flex-1 pr-4">
-                    <h4 className="truncate text-[14px] font-semibold leading-snug text-white/90">
-                      {item.taskTitle}
-                    </h4>
-                    <div className="mt-1 flex items-center gap-2 text-[13px] text-white/60">
-                      <span className="font-medium text-white/80">{item.fromName}</span>
-                      <ArrowRight size={12} className="shrink-0 text-white/40" aria-hidden="true" />
-                      <span className="font-medium text-white/80">{item.toName}</span>
-                      <span className="text-white/30">·</span>
-                      <span className="text-[12px] text-white/50">{item.statusText}</span>
+                {/* Main Row: accessible select button and expand button */}
+                <div className="flex min-h-[64px] items-center justify-between px-5 py-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onSelectHandoff(item)}
+                    className="flex min-w-0 flex-1 flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    {/* Left Column: Task & Transfer path */}
+                    <div className="min-w-0 flex-1 pr-4">
+                      <h4 className="truncate text-[14px] font-semibold leading-snug text-white/90">
+                        {item.taskTitle}
+                      </h4>
+                      <div className="mt-1 flex items-center gap-2 text-[13px] text-white/60">
+                        <span className="font-medium text-white/80">{item.fromName}</span>
+                        <ArrowRight size={12} className="shrink-0 text-white/40" aria-hidden="true" />
+                        <span className="font-medium text-white/80">{item.toName}</span>
+                        <span className="text-white/30">·</span>
+                        <span className="text-[12px] text-white/50">{item.statusText}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Right Column: Metadata & chevron */}
-                  <div className="mt-2 flex shrink-0 items-center justify-between gap-3 sm:mt-0 sm:justify-end">
-                    <span className="rounded-[6px] bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
-                      {item.kind === "transfer" ? "Ownership transfer" : "Peer channel"}
-                    </span>
-                    <span className="font-mono text-[11px] tabular-nums text-white/45">
-                      {item.timeStr}
-                    </span>
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      aria-hidden="true"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedId(isExpanded ? null : item.id);
-                      }}
-                      className="text-white/40 hover:text-white/70"
-                    >
-                      {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                    </button>
-                  </div>
+                    {/* Right Column: Metadata */}
+                    <div className="mt-1.5 flex shrink-0 items-center gap-3 sm:mt-0">
+                      <span className="rounded-[6px] bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
+                        {item.kind === "transfer" ? "Ownership transfer" : "Peer channel"}
+                      </span>
+                      <span className="font-mono text-[11px] tabular-nums text-white/45">
+                        {item.timeStr}
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label={isExpanded ? "Collapse handoff details" : "Expand handoff details"}
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                    className="shrink-0 rounded-lg p-1.5 text-white/40 hover:bg-white/[0.08] hover:text-white/80 focus-visible:ring-2 focus-visible:ring-accent outline-none"
+                  >
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
                 </div>
 
                 {/* Expanded Details without nested bordered card */}
@@ -243,27 +237,36 @@ export function TeamMapHandoffList({
                       </div>
                     )}
 
-                    {/* Context Transferred Inline Metadata */}
-                    {item.kind === "transfer" && (
+                    {/* Context Transferred Inline Metadata (rendered only when data is present) */}
+                    {item.kind === "transfer" && (item.messagesTransferred !== undefined || item.artifactsTransferred !== undefined || item.decisionsTransferred !== undefined) && (
                       <div className="flex flex-wrap items-center gap-3 border-t border-white/[0.06] pt-2.5 text-[12px] text-white/60">
                         <span className="text-white/40">Context transferred:</span>
-                        <span className="inline-flex items-center gap-1 font-medium text-white/80">
-                          <MessageSquare size={13} className="text-accent" aria-hidden="true" />
-                          <span>{item.messagesTransferred} messages</span>
-                        </span>
-                        <span className="text-white/30">·</span>
-                        <span className="inline-flex items-center gap-1 font-medium text-white/80">
-                          <FileText size={13} className="text-accent" aria-hidden="true" />
-                          <span>{item.artifactsTransferred} artifacts</span>
-                        </span>
-                        <span className="text-white/30">·</span>
-                        <span className="inline-flex items-center gap-1 font-medium text-white/80">
-                          <Scale size={13} className="text-accent" aria-hidden="true" />
-                          <span>{item.decisionsTransferred} decision</span>
-                        </span>
+                        {item.messagesTransferred !== undefined && (
+                          <span className="inline-flex items-center gap-1 font-medium text-white/80">
+                            <MessageSquare size={13} className="text-accent" aria-hidden="true" />
+                            <span>{item.messagesTransferred} messages</span>
+                          </span>
+                        )}
+                        {item.artifactsTransferred !== undefined && (
+                          <>
+                            <span className="text-white/30">·</span>
+                            <span className="inline-flex items-center gap-1 font-medium text-white/80">
+                              <FileText size={13} className="text-accent" aria-hidden="true" />
+                              <span>{item.artifactsTransferred} artifacts</span>
+                            </span>
+                          </>
+                        )}
+                        {item.decisionsTransferred !== undefined && (
+                          <>
+                            <span className="text-white/30">·</span>
+                            <span className="inline-flex items-center gap-1 font-medium text-white/80">
+                              <Scale size={13} className="text-accent" aria-hidden="true" />
+                              <span>{item.decisionsTransferred} decision</span>
+                            </span>
+                          </>
+                        )}
                       </div>
                     )}
-
                     {/* Progress Line */}
                     {item.progress !== undefined && item.progress > 0 && (
                       <div className="flex items-center gap-3 pt-1">
