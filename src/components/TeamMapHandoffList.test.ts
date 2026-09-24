@@ -7,7 +7,7 @@ import {
   deduplicateHandoffs,
   type UnifiedHandoffItem,
 } from "./TeamMapHandoffList";
-import type { OwnershipTransfer } from "@/lib/team-map-workflow";
+import type { OwnershipTransfer, WorkflowTask } from "@/lib/team-map-workflow";
 import type { TeamMapEdge } from "@/lib/team-map";
 import type { Bot } from "@/state/store";
 
@@ -53,8 +53,11 @@ describe("TeamMapHandoffList & Deduplication", () => {
     },
   ];
 
-  it("deduplicates redundant persistent connection rows when an ownership transfer exists for the same pair", () => {
-    const unified = deduplicateHandoffs(transfers, edges, bots);
+  it("deduplicates redundant persistent connection rows when an ownership transfer exists for the same directed pair", () => {
+    const tasks: WorkflowTask[] = [
+      { id: "task-escrow", title: "Prepare payment protection", ownerAgentId: "atlas", state: "active", dependsOnTaskIds: [], progress: 68 },
+    ];
+    const unified = deduplicateHandoffs(transfers, edges, bots, tasks);
 
     // Exactly 2 items: 1 rich transfer (Tuli -> Atlas) + 1 distinct edge (Tuli -> Markets)
     expect(unified).toHaveLength(2);
@@ -71,6 +74,20 @@ describe("TeamMapHandoffList & Deduplication", () => {
     expect(marketsItems).toHaveLength(1);
     expect(marketsItems[0].kind).toBe("connection");
     expect(marketsItems[0].statusText).toBe("Running");
+  });
+
+  it("preserves reverse direction edges (B -> A) when only (A -> B) was transferred", () => {
+    const reverseEdge: TeamMapEdge = {
+      sourceBotId: "atlas",
+      targetBotId: "tuli",
+      state: "running",
+      reason: "Reverse status inquiry",
+    };
+    const unified = deduplicateHandoffs(transfers, [reverseEdge], bots);
+    // Both transfer (tuli -> atlas) and reverse connection (atlas -> tuli) should be kept
+    expect(unified).toHaveLength(2);
+    expect(unified.some((i) => i.fromBotId === "tuli" && i.toBotId === "atlas" && i.kind === "transfer")).toBe(true);
+    expect(unified.some((i) => i.fromBotId === "atlas" && i.toBotId === "tuli" && i.kind === "connection")).toBe(true);
   });
 
   it("renders structured handoff list with accessible attributes and clean hierarchy", () => {

@@ -16,7 +16,7 @@ describe("TeamMapAttentionRail", () => {
       }),
     );
 
-    expect(markup).toContain("All agents operational");
+    expect(markup).toContain("All tracked agents healthy");
     expect(markup).toContain("No blockers or pending reviews");
     expect(markup).toContain("Select any agent to inspect workload");
   });
@@ -25,7 +25,7 @@ describe("TeamMapAttentionRail", () => {
     const items: AttentionItem[] = [
       {
         id: "att-rev",
-        priority: "p2_review",
+        priority: "review",
         agentId: "spend-scout",
         agentName: "Spend Scout",
         taskTitle: "Review commercial terms",
@@ -34,7 +34,7 @@ describe("TeamMapAttentionRail", () => {
       },
       {
         id: "att-block",
-        priority: "p0_blocked",
+        priority: "blocked",
         agentId: "listing-coach",
         agentName: "Listing Coach",
         taskTitle: "Validate terms",
