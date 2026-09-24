@@ -12,8 +12,9 @@
 
 3. **Trust honesty**  
    - Fake id `99999` → NO_GO (`live-trust-nogo-99999.json`)  
-   - Our ASP `#13837` is currently **unpublished (HTTP 404)** → honest NO_GO even with endpoint PASS (`live-trust-nogo-13837.json`)  
-   - Continue-on-GO mechanics proven on public substitute ASP (`live-trust-go-substitute-8136.json`)
+   - Canonical ASP `#13851` (Kind Meitner Markets) → **HTTP 200 / GO** (`live-trust-go-13851.json`)  
+   - Historical unlisted test case `#13837` (HTTP 404) → honest NO_GO even with endpoint PASS (`live-trust-nogo-13837.json`)  
+   - Continue-on-GO mechanics also proven on public substitute ASP (`live-trust-go-substitute-8136.json`)
 
 4. **Desktop console**  
    Seed `#dev-day-gate` (Markets + Listing Coach + Spend Scout). Cards + locked CTAs: Apply host / Block spend / Continue (GO only) / Re-check. See issue #66 for desktop screenshot dump status.
