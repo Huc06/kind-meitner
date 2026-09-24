@@ -5811,6 +5811,10 @@ const okxEvaluator = new OkxDisputeEvaluator({
   storageFile: join(DATA_DIR, "okx-evaluator.json"),
 });
 const okxMcpRateLimits = new Map<string, number[]>();
+// MCP Streamable HTTP sessions for the free A2MCP endpoint. Strict MCP clients
+// (Claude Code's HTTP transport) require an `Mcp-Session-Id` handshake back on
+// `initialize`; without it they treat the connection as closed.
+const freeMcpSessions = new Map<string, { createdAt: number }>();
 const legacyEip3009PaidMcpEnabled = process.env.OKX_LEGACY_EIP3009_ENABLED === "true";
 function checkOkxMcpRateLimit(caller: string, limit = 60, windowMs = 60_000): { allowed: boolean; retryAfter: number } {
   const now = Date.now();
@@ -9390,6 +9394,12 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     // Pre-Auth Free A2MCP resource server. This is deliberately separate from
     // the legacy paid endpoint: no wallet, payment header, nonce, key, or
     // mainnet operation is accepted here.
+    if (method === "DELETE" && path === "/api/okx/free-mcp") {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+      if (sessionId) freeMcpSessions.delete(sessionId);
+      res.statusCode = 200;
+      return res.end();
+    }
     if (method === "POST" && path === "/api/okx/free-mcp") {
       const startTime = Date.now();
       const connectId = (req.headers["x-connect-id"] as string) || randomUUID();
@@ -9420,7 +9430,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         }
 
         const id = rpc?.id ?? null;
-        if (rpc?.method === "ping" || rpc?.method === "initialize") {
+        if (rpc?.method === "initialize") {
+          const sessionId = randomUUID();
+          freeMcpSessions.set(sessionId, { createdAt: startTime });
+          res.setHeader("mcp-session-id", sessionId);
           res.setHeader("x-time-to-session", String(Date.now() - startTime));
           return json(res, 200, {
             jsonrpc: "2.0",
@@ -9432,6 +9445,17 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
               instructions: "Free read-only OKX.AI resources. No payment, wallet, API key, or mainnet access is used.",
             },
           });
+        }
+
+        if (rpc?.method === "notifications/initialized") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          res.statusCode = 202;
+          return res.end();
+        }
+
+        if (rpc?.method === "ping") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, { jsonrpc: "2.0", id, result: {} });
         }
 
         if (rpc?.method === "tools/list") {
