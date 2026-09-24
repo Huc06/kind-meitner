@@ -12111,6 +12111,21 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       const group = createChannel(await readBody(req));
       return json(res, 201, { group: { ...publicGroupState(group), messages: [] } });
     }
+    if (method === "POST" && path === "/api/team-map/dm") {
+      const body = await readBody(req);
+      const fromId = body && typeof body === "object" && !Array.isArray(body) && typeof body.fromBotId === "string" ? body.fromBotId : "";
+      const toId = body && typeof body === "object" && !Array.isArray(body) && typeof body.toBotId === "string" ? body.toBotId : "";
+      const from = store.bot(fromId);
+      const target = store.bot(toId);
+      if (!from || !target || from.id === target.id) return json(res, 400, { error: "two different bots required" });
+      // Same gate as ask_bot: a hidden bot, or one behind a section boundary,
+      // must not be pulled into a pair channel by id alone.
+      if (from.hidden || target.hidden || !canAccessTeam(from, target.section)) {
+        return json(res, 403, { error: "that bot belongs to a different section" });
+      }
+      const channel = getOrCreateChannel(store, from, target);
+      return json(res, 201, { groupId: channel.id, dm: channel.dm === true });
+    }
     if (method === "POST" && path === "/api/teams/export") {
       const body = await readBody(req);
       const profileName = cfg.profile?.name?.trim();

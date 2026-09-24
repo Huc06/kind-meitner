@@ -125,7 +125,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
                     busy && i !== RESEARCHER && "opacity-45",
                   )}
                 >
-                  <MausAvatar color={m.color} state={active ? "working" : "happy"} size={24} animated={!still && active} trackPointer={false} />
+                  <MausAvatar color={m.color} state={active ? "working" : "happy"} size={24} animated={!still && active} />
                   {active && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border border-app bg-accent" />}
                 </span>
               );
@@ -146,7 +146,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
           {(thinking || replied) && (
             <div className="animate-rise flex items-start gap-2">
               <div className="mt-0.5 shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]">
-                <MausAvatar color="blue" state={replied ? "writing" : "working"} size={26} animated={!still} trackPointer={false} />
+                <MausAvatar color="blue" state={replied ? "writing" : "working"} size={26} animated={!still} />
               </div>
               <div className="min-w-0">
                 <div className="mb-0.5 text-[10.5px] font-medium text-ink-secondary">Researcher</div>
@@ -171,7 +171,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
             <div className="animate-spot-in absolute bottom-[48px] left-3.5 z-20 w-[210px] origin-bottom-left rounded-xl border border-hairline/50 bg-panel p-1 shadow-[0_18px_44px_-16px_rgba(0,0,0,0.7)]">
               {[MEMBERS[RESEARCHER]!, MEMBERS[2]!].map((m, i) => (
                 <div key={m.name} className={cn("flex items-center gap-2 rounded-lg px-2 py-1", i === 0 ? "bg-accent/10" : "")}>
-                  <MausAvatar color={m.color} state="happy" size={20} animated={false} trackPointer={false} />
+                  <MausAvatar color={m.color} state="happy" size={20} animated={false} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[11.5px] font-medium text-ink">{m.name}</span>
                     <span className="block truncate text-[9.5px] text-ink-secondary">{m.title}</span>
@@ -205,7 +205,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
       {/* the guide keeps its distance: this room belongs to the members */}
       <div className="flex h-11 shrink-0 items-center justify-center">
         <div className="drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)]">
-          <MausAvatar color="green" state={replied ? "proud" : busy ? "listening" : "idle"} size={28} animated={!still} trackPointer={false} />
+          <MausAvatar color="green" state={replied ? "proud" : busy ? "listening" : "idle"} size={28} animated={!still} />
         </div>
       </div>
     </div>

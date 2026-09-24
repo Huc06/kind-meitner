@@ -119,7 +119,7 @@ export function FirstConversationWelcome({
     return (
       <div className="grid min-h-full flex-1 place-items-center px-4 py-10 text-center">
         <div className="flex flex-col items-center gap-3">
-          <BotAvatar bot={bot} state="idle" size={72} motion="none" motionKey={0} emphasis="hero" />
+          <BotAvatar bot={bot} state="idle" size={72} motion="none" motionKey={0} />
           <RenameTitle
             value={bot.name}
             onCommit={rename}
@@ -141,7 +141,7 @@ export function FirstConversationWelcome({
         className="w-full max-w-[520px] rounded-2xl border border-hairline/35 bg-card p-5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.05)]"
       >
         <div className="mb-4 flex items-center gap-3.5">
-          <BotAvatar bot={bot} state="idle" size={52} motion="none" motionKey={0} emphasis="hero" />
+          <BotAvatar bot={bot} state="idle" size={52} motion="none" motionKey={0} />
           <div className="min-w-0 flex-1 text-left">
             <RenameTitle
               value={bot.name}

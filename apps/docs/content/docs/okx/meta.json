@@ -1,0 +1,5 @@
+{
+  "title": "OKX agents",
+  "icon": "Bot",
+  "pages": ["index", "agents", "rooms"]
+}

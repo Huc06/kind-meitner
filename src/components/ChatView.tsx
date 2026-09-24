@@ -1393,9 +1393,6 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
                 bot={bot}
                 state={toolInFlight ? "working" : "thinking"}
                 size={36}
-                forward={false}
-                lookAround={1}
-                trackPointer={false}
               />
             }
             visible={presenceVisible}

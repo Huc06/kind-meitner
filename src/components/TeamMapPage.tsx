@@ -247,6 +247,56 @@ function SectionContextDialog({ section, label, onClose }: { section: string; la
   );
 }
 
+const calledListings = [
+  { id: "2023", name: "Onchain Data Explorer" },
+  { id: "8705", name: "Arbitrage Casebook" },
+] as const;
+
+function SessionLog({ bot, onClose }: { bot: Bot; onClose: () => void }) {
+  const { dispatch } = useStore();
+  const [lines, setLines] = useState<Array<{ id: string; role: string; text: string }>>([]);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setFailed(false);
+    setLines([]);
+    api(`/api/threads/${bot.threadId}/messages?limit=8`)
+      .then((body) => {
+        if (cancelled) return;
+        setLines((body.messages ?? []).slice(-6).map((message: { id: string; role: string; text?: string; kind: string }) => ({
+          id: message.id,
+          role: message.role,
+          text: message.text?.trim() || message.kind,
+        })));
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [bot.id, bot.threadId]);
+  return (
+    <section className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3" aria-label={`Session log for ${bot.name}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[12px] font-medium">{bot.name} session log</p>
+        <div className="flex items-center gap-2">
+          <button className="text-[12px] text-accent" onClick={() => dispatch({ type: "select", id: bot.id })}>Open session</button>
+          <button aria-label="Close session log" className="rounded p-1 text-ink-secondary hover:bg-control" onClick={onClose}><X size={14} /></button>
+        </div>
+      </div>
+      <p className="mt-1 text-[11px] text-ink-secondary">Our transcript only. Not a remote ASP process log.</p>
+      {failed && <p className="mt-2 text-[12px] text-danger">Could not load the transcript.</p>}
+      <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
+        {lines.length === 0 && !failed && <li className="text-[12px] text-ink-secondary">No transcript lines yet.</li>}
+        {lines.map((line) => <li key={line.id} className="truncate text-[12px]"><span className="text-ink-secondary">{line.role}</span> {line.text}</li>)}
+      </ul>
+      <p className="mt-3 text-[11px] text-ink-secondary">Listings stay outside this session. We do not host them.</p>
+      <ul className="mt-1 flex flex-wrap gap-3 text-[12px]">
+        {calledListings.map((listing) => (
+          <li key={listing.id}><a className="text-accent hover:underline" href={`https://www.okx.ai/agents/${listing.id}`} target="_blank" rel="noreferrer">{listing.name}</a></li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function TeamMapPage() {
   const { state, dispatch } = useStore();
   const remoteClient = window.ogb?.remoteClient?.active === true;
@@ -256,6 +306,7 @@ export function TeamMapPage() {
   const [contextEditor, setContextEditor] = useState<{ section: string; label: string } | null>(null);
   const [teamEditor, setTeamEditor] = useState<{ section?: string; rename?: boolean } | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<string | null>(null);
+  const [logBot, setLogBot] = useState<Bot | null>(null);
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
   pendingMoveRef.current = pendingMove;
@@ -339,7 +390,7 @@ export function TeamMapPage() {
         <button aria-label={t("common.close")} className="rounded p-1 hover:bg-danger/10" onClick={() => { setError(null); setRefreshError(null); }}><X size={14} /></button>
       </div>}
       <div className="relative flex min-h-0 flex-1">
-      <TeamCanvas sections={sections} canManage={!remoteClient} onMove={requestMove}
+      <TeamCanvas sections={sections} canManage={!remoteClient} onMove={requestMove} onLogs={setLogBot} edges={edges}
         connectedBotIds={state.settingsOpen ? edges.flatMap((edge) => edge.sourceBotId === state.selectedId ? [edge.targetBotId] : edge.targetBotId === state.selectedId ? [edge.sourceBotId] : []) : []}
         onComputer={(bot) => dispatch({ type: "toggleSettings", botId: bot.id, section: "access", open: true })}
         onInstructions={(section, label) => setContextEditor({ section, label })}
@@ -347,10 +398,18 @@ export function TeamMapPage() {
         onDeleteTeam={setDeletingTeam}
         isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)} />
       </div>
-      {edges.length > 0 && <details className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3">
+      {logBot && <SessionLog bot={logBot} onClose={() => setLogBot(null)} />}
+      {/* Uncontrolled: React re-forces a literal `open` on every render, which
+          would make the tray impossible to collapse. Open it once on mount. */}
+      <details ref={(node) => { if (node && node.dataset.opened === undefined) { node.dataset.opened = "1"; node.open = true; } }} className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3">
         <summary className="cursor-pointer text-[12px] text-ink-secondary">{t("canvas.handoffs")} · {edges.length}</summary>
-        <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">{edges.slice(0, 12).map((edge) => <EdgeRow key={`${edge.sourceBotId}:${edge.targetBotId}`} edge={edge} bots={bots} />)}</div>
-      </details>}
+        {edges.length === 0
+          ? <div className="mt-2 flex flex-wrap items-center gap-3">
+              <p className="text-[12px] text-ink-secondary">No handoffs yet. A line appears for a 1:1 DM or an active delegation, not because bots share a column.</p>
+              {bots.length >= 2 && <button className="rounded-lg border border-hairline/60 px-3 py-1.5 text-[12px] hover:bg-control" onClick={() => void api("/api/team-map/dm", { method: "POST", body: JSON.stringify({ fromBotId: bots[0].id, toBotId: bots[1].id }) }).then(() => refresh())}>Start 1:1</button>}
+            </div>
+          : <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">{edges.slice(0, 12).map((edge) => <EdgeRow key={`${edge.sourceBotId}:${edge.targetBotId}`} edge={edge} bots={bots} />)}</div>}
+      </details>
       {contextEditor && (
         <SectionContextDialog
           section={contextEditor.section}
