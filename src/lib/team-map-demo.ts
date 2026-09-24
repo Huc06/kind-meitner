@@ -30,12 +30,12 @@ export interface DemoAgentSpec {
 
 /** Six distinct marketplace roles. */
 export const DEMO_AGENTS: readonly DemoAgentSpec[] = [
-  { id: "coordinator", name: "Coordinator", role: "Coordinator", avatarHint: "lead" },
-  { id: "discovery", name: "Discovery", role: "Discovery", avatarHint: "search" },
-  { id: "risk", name: "Risk", role: "Risk", avatarHint: "shield" },
-  { id: "negotiation", name: "Negotiation", role: "Negotiation", avatarHint: "handshake" },
-  { id: "escrow", name: "Escrow", role: "Escrow", avatarHint: "lock" },
-  { id: "reviewer", name: "Reviewer", role: "Reviewer", avatarHint: "check" },
+  { id: "coordinator", name: "Coordinator", role: "Coordinator", avatarHint: "star" },
+  { id: "discovery", name: "Discovery", role: "Discovery", avatarHint: "cloud" },
+  { id: "risk", name: "Risk", role: "Risk", avatarHint: "hexagon" },
+  { id: "negotiation", name: "Negotiation", role: "Negotiation", avatarHint: "flower" },
+  { id: "escrow", name: "Escrow", role: "Escrow", avatarHint: "mech" },
+  { id: "reviewer", name: "Reviewer", role: "Reviewer", avatarHint: "clover" },
 ] as const;
 
 export interface DemoTimelineStep {

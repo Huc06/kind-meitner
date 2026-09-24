@@ -26,6 +26,7 @@ import {
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
+import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
 
 const PRESENCE_OPTIONS: Array<AgentPresence | "all"> = [
   "all",
@@ -62,22 +63,6 @@ function usePrefersReducedMotion(): boolean {
     return () => mq.removeEventListener("change", onChange);
   }, []);
   return reduced;
-}
-
-function presenceDot(presence: AgentPresence): string {
-  switch (presence) {
-    case "working":
-      return "bg-success";
-    case "blocked":
-      return "bg-danger";
-    case "waiting":
-    case "reviewing":
-      return "bg-warning";
-    case "completed":
-      return "bg-success/60";
-    default:
-      return "bg-ink-secondary/35";
-  }
 }
 
 function taskDot(state: TaskState): string {
@@ -324,7 +309,13 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
                             !reducedMotion && hot && "motion-safe:shadow-md",
                           )}
                         >
-                          <span className={cn("size-2 shrink-0 rounded-full", presenceDot(agent.presence))} />
+                          <TeamMapAgentAvatar
+                            agentId={agent.id}
+                            name={agent.name}
+                            presence={agent.presence}
+                            size={36}
+                            interactive={false}
+                          />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[13px] font-medium text-ink">{agent.name}</span>
                             <span className="block truncate text-[11px] capitalize text-ink-secondary">

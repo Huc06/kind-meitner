@@ -1,4 +1,4 @@
-import { X, User, ListTodo, ArrowLeftRight, MessageSquare } from "lucide-react";
+import { X, ListTodo, ArrowLeftRight, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   getOwnershipTransfers,
@@ -7,6 +7,7 @@ import {
   type WorkflowTask,
 } from "@/lib/team-map-workflow";
 import { buildActivityItems } from "@/lib/team-map-demo-ui";
+import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
 
 function presenceTone(presence: WorkflowAgent["presence"]): string {
   switch (presence) {
@@ -92,16 +93,37 @@ export function TeamMapWorkflowDrawer({
       className="flex h-full w-full max-w-[360px] flex-col border-l border-hairline/40 bg-panel shadow-xl"
     >
       <header className="flex items-start justify-between gap-3 border-b border-hairline/40 px-4 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {agent ? <User size={15} className="text-accent" /> : <ListTodo size={15} className="text-accent" />}
-            <h2 className="truncate text-[14px] font-semibold text-ink">
-              {agent?.name ?? task?.title}
-            </h2>
+        <div className="flex min-w-0 items-start gap-3">
+          {agent ? (
+            <TeamMapAgentAvatar
+              agentId={agent.id}
+              name={agent.name}
+              presence={agent.presence}
+              size={56}
+              interactive
+            />
+          ) : owner ? (
+            <TeamMapAgentAvatar
+              agentId={owner.id}
+              name={owner.name}
+              presence={owner.presence}
+              size={56}
+              interactive
+            />
+          ) : (
+            <ListTodo size={15} className="mt-1 text-accent" />
+          )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              {!agent && !owner && <ListTodo size={15} className="text-accent" />}
+              <h2 className="truncate text-[14px] font-semibold text-ink">
+                {agent?.name ?? task?.title}
+              </h2>
+            </div>
+            <p className="mt-1 text-[11.5px] text-ink-secondary">
+              {agent ? agent.role : task ? `Owner: ${owner?.name ?? task.ownerAgentId}` : ""}
+            </p>
           </div>
-          <p className="mt-1 text-[11.5px] text-ink-secondary">
-            {agent ? agent.role : task ? `Owner: ${owner?.name ?? task.ownerAgentId}` : ""}
-          </p>
         </div>
         <button
           type="button"
