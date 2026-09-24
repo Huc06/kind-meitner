@@ -48,6 +48,9 @@ export function getTeamMapDataMode(params?: {
   const search = params?.search ?? (typeof window !== "undefined" ? window.location.search : "");
   if (search) {
     const urlParams = new URLSearchParams(search);
+    if (urlParams.get("fixture") === "empty" || urlParams.get("mode") === "empty") {
+      return "empty";
+    }
     if (urlParams.get("fixture") === "sample" || urlParams.get("sample") === "1") {
       return "sample";
     }
@@ -57,7 +60,7 @@ export function getTeamMapDataMode(params?: {
     return "live";
   }
 
-  return "empty";
+  return "sample";
 }
 
 /**

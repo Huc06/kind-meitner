@@ -112,4 +112,17 @@ describe("catalog chart avatars", () => {
     expect(markup).toContain('viewBox="0 0 24 24"');
     expect(markup).not.toContain("data-bot-avatar");
   });
+
+  it("distinguishes Spend Scout, Listing Coach, and Markets with distinct semantic domain marks", () => {
+    const spend = renderBot({ name: "Spend Scout", okxImport: { kind: "okx-catalog" } });
+    const coach = renderBot({ name: "Listing Coach", okxImport: { kind: "okx-catalog" } });
+    const markets = renderBot({ name: "Markets", okxImport: { kind: "okx-catalog" } });
+
+    // Spend Scout has shield gatekeeper path
+    expect(spend).toContain("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z");
+    // Listing Coach has quality checklist path
+    expect(coach).toContain("M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2");
+    // Markets has trend line path
+    expect(markets).toContain("M3 17 9 11l4 4 8-9");
+  });
 });

@@ -123,10 +123,10 @@ export function TeamMapWorkflowDrawer({
     return false;
   });
 
-  // 5. Artifacts / Deliverables
+  // 5. Artifacts / Deliverables (both authored by agent or assigned for review)
   const artifacts: WorkflowArtifact[] = (snapshot.artifacts ?? []).filter((art) => {
     if (taskId && art.taskId === taskId) return true;
-    if (agentId && art.authorAgentId === agentId) return true;
+    if (agentId && (art.authorAgentId === agentId || art.assignedReviewerId === agentId)) return true;
     return false;
   });
 
@@ -376,29 +376,104 @@ export function TeamMapWorkflowDrawer({
         )}
 
         {activeTab === "artifacts" && (
-          <section className="space-y-2.5">
-            <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
-              Deliverables &amp; Artifacts
-            </h5>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                Deliverables &amp; Artifacts ({artifacts.length})
+              </h5>
+              <span className="text-[11px] text-white/40">Verified on-chain rails</span>
+            </div>
+
             {artifacts.length === 0 ? (
-              <p className="text-[12px] text-white/40">No artifacts submitted yet.</p>
+              <div className="rounded-2xl border border-dashed border-white/[0.08] bg-black/20 p-6 text-center">
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-white/[0.04] text-white/40">
+                  <FileText size={18} aria-hidden="true" />
+                </div>
+                <p className="mt-3 text-[13px] font-medium text-white/80">No artifacts submitted yet</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-white/40">
+                  {agentName} has not published deliverables for this task cycle. Artifacts appear automatically when an agent commits code, reports, or contracts.
+                </p>
+              </div>
             ) : (
-              <ul className="space-y-2">
-                {artifacts.map((art) => (
-                  <li key={art.id} className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-[#1C2025] p-3 text-[12px]">
-                    <div className="flex items-center gap-2.5 truncate">
-                      <FileText size={15} className="shrink-0 text-accent" aria-hidden="true" />
-                      <div className="truncate">
-                        <span className="block truncate font-medium text-white/90">{art.name}</span>
-                        {art.summary && <span className="block truncate text-[11px] text-white/50">{art.summary}</span>}
+              <div className="space-y-3">
+                {artifacts.map((art) => {
+                  const isAuthor = art.authorAgentId === agentId;
+                  const isReviewer = art.assignedReviewerId === agentId;
+                  const isApproved = art.reviewState === "approved";
+                  const isUnderReview = art.reviewState === "under_review";
+                  const isSuperseded = art.reviewState === "superseded";
+
+                  return (
+                    <div
+                      key={art.id}
+                      className="flex flex-col gap-2.5 rounded-2xl border border-white/[0.08] bg-[#1C2025] p-3.5 transition hover:border-white/[0.15]"
+                    >
+                      {/* Title & Type Badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 truncate">
+                          <FileText size={15} className="shrink-0 text-accent" aria-hidden="true" />
+                          <span className="truncate font-semibold text-white/90">{art.name}</span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {isApproved && (
+                            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                              Approved
+                            </span>
+                          )}
+                          {isUnderReview && (
+                            <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                              Under Review
+                            </span>
+                          )}
+                          {isSuperseded && (
+                            <span className="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/40">
+                              Superseded
+                            </span>
+                          )}
+                          <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] uppercase text-white/50">
+                            {art.type}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Summary */}
+                      {art.summary && (
+                        <p className="text-[12px] leading-relaxed text-white/70">{art.summary}</p>
+                      )}
+
+                      {/* Content Preview Box if available */}
+                      {art.contentPreview && (
+                        <pre className="max-h-24 overflow-x-auto rounded-xl border border-white/[0.06] bg-[#0E1013] p-2.5 font-mono text-[10.5px] leading-tight text-white/60">
+                          {art.contentPreview}
+                        </pre>
+                      )}
+
+                      {/* Role & Action Footer */}
+                      <div className="mt-1 flex items-center justify-between border-t border-white/[0.06] pt-2.5 text-[11px] text-white/50">
+                        <span>
+                          {isReviewer ? "Assigned for review" : isAuthor ? "Authored deliverable" : "Task artifact"}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {isReviewer && isUnderReview && (
+                            <button
+                              type="button"
+                              className="rounded-lg bg-accent/20 px-2 py-1 font-medium text-accent hover:bg-accent/30"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-medium text-white/70 hover:bg-white/10"
+                          >
+                            Inspect
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] uppercase text-white/40">
-                      {art.type} {art.sizeBytes ? `· ${Math.round(art.sizeBytes / 1000)}kb` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
             )}
           </section>
         )}

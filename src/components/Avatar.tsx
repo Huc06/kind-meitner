@@ -137,25 +137,46 @@ export const MausAvatar = memo(forwardRef(MausAvatarComponent));
 export function ChartAvatar({
   color,
   size = 44,
+  name,
   label = "OKX.AI catalog agent",
 }: {
   color: MausColor;
   size?: number;
+  name?: string;
   label?: string;
 }) {
   const [highlight, fill] = gradientFor(color);
+  const isSpend = name && /spend|scout|risk|vault/i.test(name);
+  const isCoach = name && /coach|listing|terms/i.test(name);
+
   return (
     <span
       role="img"
       aria-label={label}
       title={label}
-      className="inline-flex shrink-0 items-center justify-center rounded-full border border-app-bg/70 text-ink"
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-app-bg/70 text-ink shadow-sm"
       style={{ width: size, height: size, background: `linear-gradient(135deg, ${highlight}99, ${fill}66)` }}
     >
-      <svg aria-hidden="true" width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 17 9 11l4 4 8-9" />
-        <path d="M15 6h6v6" />
-      </svg>
+      {isSpend ? (
+        /* Shield / Treasury gatekeeper icon for Spend Scout */
+        <svg aria-hidden="true" width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      ) : isCoach ? (
+        /* Quality / Coach verification mark for Listing Coach */
+        <svg aria-hidden="true" width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+          <path d="m9 14 2 2 4-4" />
+        </svg>
+      ) : (
+        /* Financial market trend line for Markets / Intelligence */
+        <svg aria-hidden="true" width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 17 9 11l4 4 8-9" />
+          <path d="M15 6h6v6" />
+        </svg>
+      )}
     </span>
   );
 }
@@ -204,7 +225,7 @@ export function resolveBotAvatarOutcome(params: {
  */
 export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
   if (bot.okxImport?.kind === "okx-catalog") {
-    return <ChartAvatar color={bot.color} size={size} label={label ?? (bot.name ? `${bot.name}, OKX.AI catalog agent` : undefined)} />;
+    return <ChartAvatar color={bot.color} size={size} name={bot.name} label={label ?? (bot.name ? `${bot.name}, OKX.AI catalog agent` : undefined)} />;
   }
 
   const profile = botAvatarProfile(bot);

@@ -84,6 +84,11 @@ export interface WorkflowArtifact {
   createdAt: number;
   taskId: string;
   authorAgentId: string;
+  reviewState?: "under_review" | "approved" | "rejected" | "superseded";
+  assignedReviewerId?: string;
+  contentPreview?: string;
+  status?: "pending" | "in_progress" | "completed" | "verified";
+  actionUrl?: string;
 }
 
 export type WorkflowEvent =

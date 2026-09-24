@@ -55,6 +55,10 @@ function Shell() {
       window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
       open();
     }
+    const viewParam = url.searchParams.get("view");
+    if (viewParam === "team-map" || window.location.hash === "#team-map") {
+      dispatch({ type: "showTeamMap" });
+    }
     return window.ogb.environments.onOpenSettings?.(open);
   }, [dispatch]);
   // Mobile-only drawer state. Above md, none of these properties are emitted
