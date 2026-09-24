@@ -26,6 +26,7 @@ import {
 import { TeamMapActivityFeed } from "./TeamMapActivityFeed";
 import { TeamMapWowFacts } from "./TeamMapWowFacts";
 import { TeamMapWorkflowDrawer } from "./TeamMapWorkflowDrawer";
+import { TeamMapWorkflowGraph } from "./TeamMapWorkflowGraph";
 import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
 
 const PRESENCE_OPTIONS: Array<AgentPresence | "all"> = [
@@ -285,12 +286,32 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 space-y-6">
+            {/* 1. Spatial 2D Workflow DAG Map */}
+            <TeamMapWorkflowGraph
+              snapshot={snapshot}
+              currentStep={step}
+              selectedTaskId={selectedTaskId}
+              selectedAgentId={selectedAgentId}
+              onSelectTask={selectTask}
+              onSelectAgent={selectAgent}
+            />
+
+            {/* 2. Interactive Facts with Metric Drill-down to Feed */}
+            <div>
+              <TeamMapWowFacts
+                facts={facts}
+                activeFilter={kindFilter}
+                onSelectFilter={(kind) => setKindFilter(kind)}
+              />
+            </div>
+
+            {/* 3. Detailed Agent & Task Overview */}
             <div className="grid gap-4 lg:grid-cols-2">
               <section aria-label="Demo agents">
                 <div className="mb-2 flex items-center gap-2">
                   <Users size={14} className="text-ink-secondary" />
-                  <h3 className="text-[12px] font-semibold text-ink">Agents</h3>
+                  <h3 className="text-[12px] font-semibold text-ink">Agents Overview</h3>
                   <span className="text-[10.5px] text-ink-secondary">{agents.length}</span>
                 </div>
                 <ul className="grid gap-2 sm:grid-cols-2">
@@ -335,7 +356,7 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
               <section aria-label="Demo tasks">
                 <div className="mb-2 flex items-center gap-2">
                   <ListTodo size={14} className="text-ink-secondary" />
-                  <h3 className="text-[12px] font-semibold text-ink">Tasks</h3>
+                  <h3 className="text-[12px] font-semibold text-ink">Task Pipeline</h3>
                   <span className="text-[10.5px] text-ink-secondary">{tasks.length}</span>
                 </div>
                 <ul className="space-y-2">
@@ -386,10 +407,6 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
                   )}
                 </ul>
               </section>
-            </div>
-
-            <div className="mt-5">
-              <TeamMapWowFacts facts={facts} />
             </div>
 
             <div className="mt-5 h-[280px]">
