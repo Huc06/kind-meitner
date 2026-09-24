@@ -203,6 +203,7 @@ export function TeamMapPage() {
   const [highlightBotIds, setHighlightBotIds] = useState<string[]>([]);
   const [factsFilter, setFactsFilter] = useState<ActivityKind | "all">("all");
   const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
+  const [unblockedTaskIds, setUnblockedTaskIds] = useState<string[]>([]);
 
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
@@ -236,11 +237,24 @@ export function TeamMapPage() {
   const { workflowSnapshot, wowFacts } = useMemo(() => {
     if (dataMode === "sample") {
       const sample = buildSampleWorkflowSnapshot(botRoleMapping);
-      return { workflowSnapshot: sample.snapshot, wowFacts: sample.facts };
+      const tasks = sample.snapshot.tasks.map((t) => {
+        if (unblockedTaskIds.includes(t.id)) {
+          return { ...t, state: "active" as const, progress: 100 };
+        }
+        return t;
+      });
+      const agents = sample.snapshot.agents.map((a) => {
+        const ownedTask = tasks.find((t) => t.ownerAgentId === a.id);
+        if (ownedTask && unblockedTaskIds.includes(ownedTask.id)) {
+          return { ...a, presence: "working" as const };
+        }
+        return a;
+      });
+      return { workflowSnapshot: { ...sample.snapshot, tasks, agents }, wowFacts: sample.facts };
     }
     const empty = createEmptyWorkflow();
     return { workflowSnapshot: empty, wowFacts: computeWowFacts(empty) };
-  }, [dataMode, botRoleMapping]);
+  }, [dataMode, botRoleMapping, unblockedTaskIds]);
 
   // Derive prioritized attention items for Team Lead operational intervention
   const attentionItems = useMemo(() => {
@@ -552,12 +566,16 @@ export function TeamMapPage() {
             onIntervene={(action) => {
               if (action.type === "open_chat" && action.agentId) {
                 dispatch({ type: "select", id: action.agentId });
-              } else if (action.type === "unblock") {
-                setHighlightBotIds([]);
+              } else if (action.type === "unblock" && action.taskId) {
+                setUnblockedTaskIds((prev) => [...prev, action.taskId!]);
                 setSelectedWorkflowTaskId(null);
-              } else if (action.type === "approve") {
+                setSelectedWorkflowBotId(null);
                 setHighlightBotIds([]);
+              } else if (action.type === "approve" && action.taskId) {
+                setUnblockedTaskIds((prev) => [...prev, action.taskId!]);
                 setSelectedWorkflowTaskId(null);
+                setSelectedWorkflowBotId(null);
+                setHighlightBotIds([]);
               }
             }}
           />
