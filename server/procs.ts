@@ -19,6 +19,8 @@ import {
   type SpawnOptions,
 } from "node:child_process";
 import type { Readable, Writable } from "node:stream";
+import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveCliSpawn, type ResolvedSpawn } from "./env-path.ts";
 
@@ -225,12 +227,15 @@ async function stopCliTree(child: ChildProcess, pid: number, timeoutMs: number):
   });
 }
 
-/** Per-turn broker channel: unix socket on POSIX, named pipe on Windows
- * (Node can't listen on a filesystem socket path there — EACCES). */
+/** Per-turn broker channel: Unix sockets use a short data-directory-scoped
+ * path on POSIX (macOS limits `sun_path` to 104 bytes); Windows uses a named
+ * pipe because filesystem sockets are unsupported there. */
 export function brokerSocketPath(dataDir: string, tag: string): string {
-  return process.platform === "win32"
+  if (process.platform === "win32") {
     // Named pipes share a global namespace; DATA_DIR cannot isolate two
     // concurrent app instances the way a POSIX socket directory does.
-    ? `\\\\.\\pipe\\kind-meitner-perm-${process.pid}-${tag}`
-    : join(dataDir, `perm-${tag}.sock`);
+    return `\\\\.\\pipe\\kind-meitner-perm-${process.pid}-${tag}`;
+  }
+  const scope = createHash("sha256").update(`${dataDir}\0${tag}`).digest("hex").slice(0, 20);
+  return join(tmpdir(), `kind-meitner-perm-${scope}.sock`);
 }

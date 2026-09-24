@@ -10,7 +10,8 @@ export function baseOptions(): BaseLayoutProps {
       transparentMode: 'none',
     },
     links: [
-      { text: 'Website', url: 'https://www.kind-meitner.com', external: true },
+      { text: 'OKX agent suite', url: '/', external: false },
+      { text: 'Features', url: '/docs/features' },
       { text: 'Changelog', url: '/docs/changelog' },
       { type: 'button', text: 'Download', url: 'https://github.com/harrymove-ctrl/kind-meitner/releases/latest', external: true },
     ],

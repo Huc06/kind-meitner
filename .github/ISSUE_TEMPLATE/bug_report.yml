@@ -14,7 +14,7 @@ body:
       options:
         - Chat UI (src/)
         - Harness server / API (server/)
-        - Provider drivers (claude / codex / grok)
+        - Provider drivers (claude / grok)
         - Computer use (cloud box / local)
         - Connected apps (Composio)
         - Desktop shell / packaging (electron/)

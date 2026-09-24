@@ -987,6 +987,9 @@ function QuickComposer({
 }) {
   const { dispatch } = useStore();
   const [kind, setKind] = useState<EventKind>(routinesOnly ? "routine" : seed.kind);
+  const [scheduledAt, setScheduledAt] = useState(seed.at);
+  const [dateInput, setDateInput] = useState(() => toLocalDateInput(seed.at));
+  const [timeInput, setTimeInput] = useState(() => toLocalTimeInput(seed.at));
   const [name, setName] = useState(seed.name ?? "");
   const [description, setDescription] = useState(seed.description ?? "");
   const [botIds, setBotIds] = useState(seed.botIds.length ? seed.botIds : bots[0] ? [bots[0].id] : []);
@@ -1038,7 +1041,7 @@ function QuickComposer({
             botId: botIds[0],
             runOn: "maus",
             enabled: true,
-            schedule: { type: "once", at: seed.at },
+            schedule: { type: "once", at: scheduledAt },
             durationMinutes,
             attachments: [],
             resultsThreadId,
@@ -1052,7 +1055,7 @@ function QuickComposer({
             name,
             description,
             botIds,
-            schedule: { type: "once", at: seed.at },
+            schedule: { type: "once", at: scheduledAt },
             durationMinutes,
           } satisfies CalendarCallInput),
         });
@@ -1081,9 +1084,43 @@ function QuickComposer({
             <button type="button" onClick={() => setKind("call")} className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium", kind === "call" ? "bg-accent/15 text-accent" : "text-ink-secondary hover:bg-raised hover:text-ink")}>Call</button>
           </div>
         )}
-        <div className="flex items-start gap-3 text-[12.5px] text-ink">
-          <Clock3 size={16} className="mt-0.5 shrink-0 text-ink-secondary" />
-          <div><div>{niceDate(seed.at)}</div><div className="mt-0.5 text-ink-secondary">{niceTime(seed.at)}{kind === "call" ? ` – ${niceTime(seed.at + durationMinutes * 60_000)}` : ""}</div></div>
+        <div className="flex items-center gap-3 text-[12.5px] text-ink">
+          <Clock3 size={16} className="shrink-0 text-ink-secondary" />
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              aria-label="Event date"
+              value={dateInput}
+              onChange={(event) => {
+                const nextDate = event.target.value;
+                setDateInput(nextDate);
+                if (nextDate && timeInput) {
+                  const ms = fromLocalDateAndTime(nextDate, timeInput);
+                  if (!Number.isNaN(ms)) setScheduledAt(ms);
+                }
+              }}
+              className="rounded-lg border border-hairline/50 bg-inset px-2 py-1 text-[12px] text-ink outline-none focus:border-accent"
+            />
+            <input
+              type="time"
+              aria-label="Event time"
+              value={timeInput}
+              onChange={(event) => {
+                const nextTime = event.target.value;
+                setTimeInput(nextTime);
+                if (dateInput && nextTime) {
+                  const ms = fromLocalDateAndTime(dateInput, nextTime);
+                  if (!Number.isNaN(ms)) setScheduledAt(ms);
+                }
+              }}
+              className="rounded-lg border border-hairline/50 bg-inset px-2 py-1 text-[12px] text-ink outline-none focus:border-accent"
+            />
+            {kind === "call" && (
+              <span className="text-[11px] text-ink-secondary">
+                ({durationMinutes}m)
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-start gap-3">
           <UserRoundPlus size={16} className="mt-2.5 shrink-0 text-ink-secondary" />
@@ -1109,7 +1146,7 @@ function QuickComposer({
         {error && <div className="rounded-lg bg-danger/10 px-3 py-2 text-[11.5px] text-danger">{error}</div>}
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-hairline/40 px-4 py-3">
-        <button onClick={() => onMore({ ...seed, kind, botIds, name, description, durationMinutes, resultsThreadId })} title="Choose repeating schedules and other options" className="rounded-lg px-3 py-2 text-[12px] font-medium text-accent hover:bg-accent/10">More options</button>
+        <button onClick={() => onMore({ ...seed, at: scheduledAt, kind, botIds, name, description, durationMinutes, resultsThreadId })} title="Choose repeating schedules and other options" className="rounded-lg px-3 py-2 text-[12px] font-medium text-accent hover:bg-accent/10">More options</button>
         <button onClick={save} disabled={!valid || working} className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-40">{working && <Loader2 size={13} className="animate-spin" />}Save</button>
       </div>
     </div>
@@ -1152,7 +1189,19 @@ function CalendarEventCard({
   const canMove = isCall || Boolean(routine && !run && routine.schedule.type !== "cron");
   const schedule = isCall ? item.call.schedule : routine?.schedule;
   const recurring = Boolean(schedule && schedule.type !== "once");
-  const intervalCadence = schedule?.type === "interval" ? intervalLabel(schedule.everyMinutes) : null;
+  const recurrenceLabel = schedule && schedule.type !== "once"
+    ? schedule.type === "interval"
+      ? intervalLabel(schedule.everyMinutes)
+      : schedule.type === "cron"
+        ? "Recurring"
+        : schedule.weekdays.length === 7
+          ? "Every day"
+          : schedule.weekdays.join(",") === "1,2,3,4,5"
+            ? "Every weekday"
+            : schedule.weekdays.length === 1
+              ? `Weekly on ${DAY_NAMES[schedule.weekdays[0]]}`
+              : schedule.weekdays.map((day) => DAY_NAMES[day]).join(", ")
+    : null;
 
   const beginResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -1195,7 +1244,7 @@ function CalendarEventCard({
         left: `calc(${(layout.column / layout.columns) * 100}% + 2px)`,
         width: `calc(${100 / layout.columns}% - 4px)`,
         top: `${((new Date(item.at).getHours() * 60 + new Date(item.at).getMinutes()) / 60) * HOUR_HEIGHT}px`,
-        height: `${Math.max(16, (previewDuration / 60) * HOUR_HEIGHT)}px`,
+        height: `${Math.max(previewDuration >= 30 ? 44 : 16, (previewDuration / 60) * HOUR_HEIGHT)}px`,
         background: `linear-gradient(110deg, color-mix(in srgb, ${color} 58%, #242424), color-mix(in srgb, ${color} 28%, #181818))`,
         borderColor: `color-mix(in srgb, ${color} 70%, transparent)`,
       }}
@@ -1204,7 +1253,7 @@ function CalendarEventCard({
         {previewDuration >= 30 && (isCall ? <Video size={compact ? 11 : 13} className="mt-0.5 shrink-0" /> : primary ? <BotAvatar bot={primary} state={status ? statusState(status) : "idle"} size={compact ? 22 : 26} animated={status === "running" || status === "waiting"} /> : null)}
         <div className="min-w-0 flex-1">
           <div className={cn("truncate text-[11px] font-semibold", previewDuration < 30 ? "leading-none" : "leading-tight")}>{name}</div>
-          {previewDuration >= 30 && <div className="mt-0.5 truncate text-[9.5px] text-white/75">{niceTime(item.at)} · {intervalCadence ?? (isCall ? `${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? `Team goal · ${room?.name ?? "Group"}${statusLabel ? ` · ${statusLabel}` : ""}` : statusLabel ?? primary?.name)}</div>}
+          {previewDuration >= 30 && <div className="mt-0.5 truncate text-[9.5px] text-white/75">{niceTime(item.at)}{statusLabel ? ` · ${statusLabel}` : recurrenceLabel ? ` · ${recurrenceLabel}` : isCall ? ` · ${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? ` · Team goal${room?.name ? ` · ${room.name}` : ""}` : ""}</div>}
         </div>
         {previewDuration >= 30 && ownerBots.length > 1 && <span className="rounded bg-black/20 px-1 py-0.5 text-[8px]">+{ownerBots.length - 1}</span>}
       </div>

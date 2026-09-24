@@ -917,66 +917,18 @@ function injectedEnvironment(cfg: AppConfig, driver: string): Map<string, string
   return environment;
 }
 
-// Default fleet: one instance per built-in driver (upstream
-// defaultInstanceIdForDriver — instanceId defaults to the driver kind).
-// Config-file keys are injected as per-instance environment so drivers
-// see them without needing real process env vars — but only into the
-// driver that consumes each key (injectedEnvironment above).
-export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
-  // The default `grok` instance rides the `grokAgent` driver, not the API-key
-  // one: like claude and codex it needs no credential from us, just the CLI
-  // installed and logged in (it shows up unavailable otherwise). The API-key
-  // `grok` driver stays registered but out of the default fleet — that key is
-  // a credential Milind doesn't want to manage; an `instances` entry brings
-  // it back anytime.
-  //
-  // Google rides `antigravityAgent` (the official Google ACP server), not
-  // `geminiAgent`:
-  // Google retired Gemini CLI for the free/Pro/Ultra tiers on 2026-06-18
-  // (developers.googleblog.com, "transitioning Gemini CLI to Antigravity
-  // CLI"), so a default `gemini` instance could only ever show unavailable.
-  // The driver stays registered for enterprise licences, which keep Gemini
-  // CLI — `{"instances": {"gemini": {"driver": "geminiAgent"}}}` restores it.
+  // Default fleet: Claude and the Grok CLI. The API-key `grok` driver stays
+  // registered but out of the default fleet — an `instances` entry brings it
+  // back. Config-file keys are injected as per-instance environment so drivers
+  // see them without needing real process env vars — but only into the
+  // driver that consumes each key (injectedEnvironment above).
+  export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
   const DEFAULT_FLEET: InstanceConfigMap = {
     grok: { driver: "grokAgent" },
-    kimi: { driver: "kimiAgent" },
-    droid: { driver: "droidAgent" },
-    cursor: { driver: "cursorAgent" },
     claude: { driver: "claudeAgent" },
-    codex: { driver: "codex" },
-    antigravity: { driver: "antigravityAgent" },
-    opencodeGo: { driver: "opencodeGo" },
-    computer: { driver: "boxAgent" },
-    openaiCompat: { driver: "openai-compat" },
-    qwen: { driver: "qwenAgent" },
-    hermes: { driver: "hermesAgent" },
-    pi: { driver: "piAgent" },
   };
-  const CUSTOM_ONLY = {
-    qwen: { driver: "qwenAgent" },
-    hermes: { driver: "hermesAgent" },
-    pi: { driver: "piAgent" },
-  } as const;
-  // New default-fleet engines that existing product configs would otherwise
-  // never see. Custom-only engines stay in CUSTOM_ONLY so a one-off test map
-  // is not expanded, matching the claude/grok/codex product-fleet probe.
-  const PRODUCT_FLEET_ADDITIONS = {
-    cursor: { driver: "cursorAgent" },
-    openaiCompat: { driver: "openai-compat" },
-    ...CUSTOM_ONLY,
-  } as const;
   const configured = cfg.instances && Object.keys(cfg.instances).length ? cfg.instances : null;
   const map: InstanceConfigMap = configured ? { ...configured } : { ...DEFAULT_FLEET };
-  // Product fleets pick up newly shipped engines. A one-off test/shadow map
-  // (no claude/grok/codex) is left exactly as written.
-  if (
-    configured &&
-    (Object.hasOwn(configured, "claude") || Object.hasOwn(configured, "grok") || Object.hasOwn(configured, "codex"))
-  ) {
-    for (const [id, entry] of Object.entries(PRODUCT_FLEET_ADDITIONS)) {
-      if (!Object.hasOwn(map, id)) map[id] = { ...entry };
-    }
-  }
   for (const [id, sourceEntry] of Object.entries(map)) {
     // instanceConfigs() builds a transient runtime map. Never mutate the
     // caller's persisted entries while injecting workspace defaults: doing so

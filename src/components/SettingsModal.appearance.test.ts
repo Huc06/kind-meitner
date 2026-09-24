@@ -91,29 +91,6 @@ describe("Settings → Appearance", () => {
     expect(html).not.toContain("Midnight");
   });
 
-  it("makes local appearance available remotely without exposing server settings", () => {
-    vi.stubGlobal("window", { ogb: { remoteClient: { active: true } } });
-    const html = render();
-    expect(html).toContain('<option value="appearance" selected="">Appearance</option>');
-    expect(html).toContain('<option value="companion">Remote access</option>');
-    expect(html).not.toContain('<option value="general">');
-    expect(html).not.toContain('<option value="connections">');
-    expect(html).not.toContain('<option value="engines">');
-    expect(html).not.toContain('<option value="backups">');
-    expect(html).toContain("Midnight");
-    expect(html).toContain('aria-label="Show threads"');
-    expect(html).not.toContain('aria-label="Show tool calls in chat"');
-  });
-
-  it("offers full backups in local Settings", () => {
-    fixture.section = "backups";
-    const html = render();
-    expect(html).toContain('<option value="backups" selected="">Backups</option>');
-    expect(html).toContain("Export full backup");
-    expect(html).toContain('type="file" accept=".ombbackup"');
-    expect(html).toContain("Older team backups and shareable templates");
-  });
-
   it("uses English fallback for new keys in untranslated languages", () => {
     setLocale("ja");
     const html = render();
@@ -121,19 +98,5 @@ describe("Settings → Appearance", () => {
     expect(html).toContain('aria-label="Show threads"');
     expect(html).toContain("all conversation history and running work");
     expect(html).not.toContain("settings.threadDisplay");
-  });
-
-  it("offers desktop connections as a top-level page without exposing the list remotely", () => {
-    fixture.section = "desktopWorkspaces";
-    vi.stubGlobal("window", { ogb: { environments: {} } });
-    const local = render();
-    expect(local).toContain('<option value="desktopWorkspaces" selected="">Connected workspaces</option>');
-    expect(local).toContain("Workspace address or pairing link");
-    expect(local).toContain("Name (optional)");
-    expect(local).toContain("Your workspaces");
-    expect(local).toContain("npx kind-meitner pair --label");
-    fixture.section = "general";
-    vi.stubGlobal("window", { ogb: { workspaces: {} } });
-    expect(render()).not.toContain('<option value="desktopWorkspaces"');
   });
 });

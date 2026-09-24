@@ -26,7 +26,7 @@ export interface RequestAuthResult {
   error: string;
 }
 
-const LOOPBACK_SCOPES: readonly Scope[] = ["admin", "client"];
+export const LOOPBACK_SCOPES: readonly Scope[] = ["admin", "client"];
 
 export function isLoopbackHost(host: string | undefined): boolean {
   if (!host) return false;
@@ -388,6 +388,14 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
     ) {
       return deny(403, "forbidden: this change must come from the desktop app or a paired device");
     }
+    return { auth: { kind: "loopback", scopes: LOOPBACK_SCOPES }, status: 401, error: "" };
+  }
+
+  // Public access mode: allow full access for remote browsers when
+  // KIND_MEITNER_PUBLIC_ACCESS is enabled. This lets users view the UI,
+  // chat, create bots, clone agents, and run routines without pairing.
+  const publicAccess = process.env.KIND_MEITNER_PUBLIC_ACCESS === "true";
+  if (publicAccess) {
     return { auth: { kind: "loopback", scopes: LOOPBACK_SCOPES }, status: 401, error: "" };
   }
 

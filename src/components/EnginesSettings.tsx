@@ -13,7 +13,6 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { EngineSetup, EngineUpdateNotice } from "./EngineSetup";
 import { AddClaudeAccount, ClaudeAccountSettings } from "./ClaudeAccountSettings";
-import { CodexAccountSettings } from "./CodexAccountSettings";
 
 interface ProbeResult {
   ok: boolean;
@@ -254,12 +253,8 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
       {!engineReady(instance) && <EngineSetup instance={instance} intent={instance.access === "custom" ? "inject" : "cloud"} unframed />}
       {instance.snapshot.update && <EngineUpdateNotice update={instance.snapshot.update} instance={instance} className="mt-3" />}
       {instance.claudeAccount && <ClaudeAccountSettings instance={instance} />}
-      {engineReady(instance) && instance.snapshot.authenticated === true && (
-        instance.authentication?.method === "device-code"
-          ? <CodexAccountSettings instance={instance} />
-          : instance.authentication?.method === "paste-code" && !instance.claudeAccount && (
-            <p className="flex items-center gap-1.5 text-[12px] text-success"><Check size={13} />{t("engineSetup.claude.connectedAccount")}</p>
-          )
+      {engineReady(instance) && instance.snapshot.authenticated === true && instance.authentication?.method === "paste-code" && !instance.claudeAccount && (
+        <p className="flex items-center gap-1.5 text-[12px] text-success"><Check size={13} />{t("engineSetup.claude.connectedAccount")}</p>
       )}
       <details className="mt-3 rounded-xl border border-hairline/40 px-3 py-2.5">
         <summary className="cursor-pointer text-[12px] font-medium text-ink-secondary hover:text-ink">{t("engines.library.advanced")}</summary>

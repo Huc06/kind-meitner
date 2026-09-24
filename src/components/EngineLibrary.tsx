@@ -11,10 +11,7 @@ export function engineReady(instance: InstanceInfo): boolean {
 }
 
 const providers: Record<string, string> = {
-  claudeAgent: "Anthropic", codex: "OpenAI", grok: "xAI", grokAgent: "xAI",
-  kimiAgent: "Moonshot AI", droidAgent: "Factory", cursorAgent: "Cursor",
-  antigravityAgent: "Google", opencodeGo: "OpenCode", qwenAgent: "Qwen",
-  hermesAgent: "Nous Research", piAgent: "pi.dev",
+  claudeAgent: "Anthropic", grok: "xAI", grokAgent: "xAI",
 };
 
 /** One disclosure, not a second settings dialog. Keep its children mounted so

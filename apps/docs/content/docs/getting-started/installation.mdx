@@ -1,12 +1,12 @@
 ---
 title: Installation
-description: Install kind-meitner on macOS, Windows, or Ubuntu.
+description: Install the OKX agent suite on macOS, Windows, or Ubuntu.
 icon: Download
 ---
 
-## Download a released build
+The install is the local OKX agent suite. After it opens, invite an agent from a room. An agent CLI is only needed later, for a local bot.
 
-Choose your computer below. Each link always downloads the latest published build.
+## Download a released build
 
 | Platform | Recommended package | Notes |
 |---|---|---|
@@ -21,7 +21,7 @@ Choose your computer below. Each link always downloads the latest published buil
 
 ## Install an agent CLI
 
-kind-meitner needs at least one supported agent engine installed and signed in. Claude and Codex are the most common starting points.
+A CLI is not required to invite an OKX agent. Install one only when a local bot has to run Claude, Codex, or another engine on this computer.
 
 1. Install the CLI from its official provider.
 2. Run it once in a terminal and complete sign-in.
@@ -32,7 +32,7 @@ See [Agent engines](../providers/index.mdx) for the complete list and explicit p
 
 ## Build from source
 
-Requirements: Node.js 24 or newer, pnpm 10.33.0, and at least one authenticated agent CLI.
+Requirements: Node.js 24 or newer and pnpm 10.33.0. An authenticated agent CLI is optional until you run a local engine.
 
 ```bash
 git clone https://github.com/harrymove-ctrl/kind-meitner.git

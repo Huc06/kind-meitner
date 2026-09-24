@@ -235,7 +235,6 @@ export function Spotlight({
               color="green"
               state={mascot}
               size={38}
-              trackPointer={false}
             />
           </div>
           <div

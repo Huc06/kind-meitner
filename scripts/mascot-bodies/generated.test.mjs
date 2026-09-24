@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -18,8 +18,16 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 // by `swift test`), not ios/App (the Xcode app target, which `swift test` never
 // builds) — see swift-catalog.test.mjs.
 const TS_PATH = "../../shared/mascot-bodies.ts";
-const SWIFT_PATH = "../../ios/Sources/CompanionCore/MausBodies.swift";
-const KOTLIN_PATH = "../../android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt";
+const nativeCatalogs = [
+  ...(existsSync(new URL("../../ios/Package.swift", import.meta.url))
+    ? [{ label: "ios/Sources/CompanionCore/MausBodies.swift", path: "../../ios/Sources/CompanionCore/MausBodies.swift" }]
+    : []),
+  ...(existsSync(new URL("../../android/gradlew", import.meta.url))
+    && (existsSync(new URL("../../android/settings.gradle", import.meta.url))
+      || existsSync(new URL("../../android/settings.gradle.kts", import.meta.url)))
+    ? [{ label: "android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt", path: "../../android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt" }]
+    : []),
+];
 
 // Normalised to LF. .gitattributes pins both catalogs to LF so this should be a
 // no-op, but a clone whose git config disagrees would otherwise fail this guard
@@ -52,8 +60,7 @@ describe("generated catalogs", () => {
   it("match a fresh run of the generator", () => {
     const before = {
       ts: read(TS_PATH),
-      swift: read(SWIFT_PATH),
-      kotlin: read(KOTLIN_PATH),
+      native: nativeCatalogs.map((catalog) => ({ ...catalog, contents: read(catalog.path) })),
     };
 
     try {
@@ -74,22 +81,19 @@ describe("generated catalogs", () => {
 
     const after = {
       ts: read(TS_PATH),
-      swift: read(SWIFT_PATH),
-      kotlin: read(KOTLIN_PATH),
+      native: before.native.map((catalog) => ({ ...catalog, contents: read(catalog.path) })),
     };
 
-    // The generator just rewrote both tracked files in place. Whether this assertion
-    // passes or fails, restore the checked-in bytes so a failing run never leaves the
-    // working tree silently modified — the developer sees the diff below, not a
-    // dirty `git status` they have to go discover on their own.
+    // The generator just rewrote each available tracked target in place. Whether this
+    // assertion passes or fails, restore the checked-in bytes so a failing run never
+    // leaves the working tree silently modified.
     write(TS_PATH, before.ts);
-    write(SWIFT_PATH, before.swift);
-    write(KOTLIN_PATH, before.kotlin);
+    for (const catalog of before.native) write(catalog.path, catalog.contents);
 
     const drifts = [
       describeDrift("shared/mascot-bodies.ts", before.ts, after.ts),
-      describeDrift("ios/Sources/CompanionCore/MausBodies.swift", before.swift, after.swift),
-      describeDrift("android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt", before.kotlin, after.kotlin),
+      ...before.native.map((catalog, index) =>
+        describeDrift(catalog.label, catalog.contents, after.native[index].contents)),
     ].filter(Boolean);
 
     if (drifts.length > 0) {

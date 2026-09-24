@@ -9,7 +9,6 @@ import {
   type BotAvatarProps,
   type MausAvatarProps,
 } from "./Avatar";
-import { MASCOT_BODIES } from "../../shared/mascot-bodies";
 
 const render = (props: Partial<MausAvatarProps>) =>
   renderToStaticMarkup(createElement(MausAvatar, { color: "green", animated: false, ...props }));
@@ -20,30 +19,29 @@ const renderBot = (bot: Partial<BotAvatarProps["bot"]>) =>
   );
 
 describe("MausAvatar body", () => {
-  it("wears the cursor when no body is given", () => {
-    expect(render({})).toContain(MASCOT_BODIES.cursor.fit);
+  it("wears the ghost when no body is given", () => {
+    expect(render({})).toContain('data-bot-avatar="ghost"');
   });
 
-  it("wears the body it is given", () => {
-    const markup = render({ bodyId: "star" });
-    expect(markup).toContain(MASCOT_BODIES.star.fit);
+  it("wears the mapped body it is given", () => {
+    expect(render({ bodyId: "star" })).toContain('data-bot-avatar="star"');
+    expect(render({ bodyId: "squircle" })).toContain('data-bot-avatar="pebble"');
   });
 
-  it("falls back to the cursor for an unknown body", () => {
+  it("falls back to the ghost for an unknown body", () => {
     // SAFETY: "hexagram" is deliberately not a valid MascotBodyId — this
-    // exercises the runtime schema fallback for a value that could arrive
-    // from persisted/streamed data, which the type system would otherwise
-    // rule out at this call site.
+    // exercises the runtime fallback for a value that could arrive from
+    // persisted/streamed data, which the type system would otherwise rule
+    // out at this call site.
     expect(render({ bodyId: "hexagram" as MausAvatarProps["bodyId"] })).toContain(
-      MASCOT_BODIES.cursor.fit,
+      'data-bot-avatar="ghost"',
     );
   });
 
-  it("paints the body with the per-bot gradient, never a flat black fill", () => {
-    const markup = render({ bodyId: "circle" });
-    expect(markup).not.toContain('fill="#000000"');
-    expect(markup).not.toContain("{{GRADIENT}}");
-    expect(markup).toContain("url(#");
+  it("collapses app states onto the library's three states", () => {
+    expect(render({ state: "idle" })).toContain('data-state="sleeping"');
+    expect(render({ state: "working" })).toContain('data-state="working"');
+    expect(render({ state: "happy" })).toContain('data-state="default"');
   });
 });
 
@@ -51,26 +49,25 @@ describe("BotAvatar's two avatar outcomes", () => {
   it("renders a flat cropped image for circle/rounded/square, with no mascot at all", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "circle" });
     expect(markup).toContain("<img");
-    expect(markup).not.toContain("<svg");
+    expect(markup).not.toContain("<canvas");
   });
 
   it("shows the image as it is, with no mascot face painted on it", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "square" });
     expect(markup).toContain("<img");
-    expect(markup).not.toContain("<image");
-    expect(markup).not.toContain("radialGradient");
+    expect(markup).not.toContain("data-bot-avatar");
   });
 
-  it("renders the gradient mascot when the crop is mascot, image or not", () => {
+  it("renders the mascot when the crop is mascot, image or not", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "mascot" });
     expect(markup).not.toContain("<img");
-    expect(markup).toContain("<svg");
+    expect(markup).toContain("<canvas");
   });
 
-  it("falls back to the gradient mascot when a flat crop has no valid image", () => {
+  it("falls back to the mascot when a flat crop has no valid image", () => {
     const markup = renderBot({ avatarUrl: undefined, avatarCrop: "circle" });
     expect(markup).not.toContain("<img");
-    expect(markup).toContain("<svg");
+    expect(markup).toContain("<canvas");
   });
 });
 
@@ -101,5 +98,18 @@ describe("resolveBotAvatarOutcome", () => {
     expect(
       resolveBotAvatarOutcome({ avatarCrop: "square", hasUrl: false, imageFailed: false }),
     ).toBe("gradientMascot");
+  });
+});
+
+
+describe("catalog chart avatars", () => {
+  it("renders an imported OKX catalog agent as a chart mark, never as a mascot", () => {
+    const markup = renderBot({
+      name: "Listing Coach",
+      okxImport: { kind: "okx-catalog" },
+    });
+    expect(markup).toContain('aria-label="Listing Coach, OKX.AI catalog agent"');
+    expect(markup).toContain('viewBox="0 0 24 24"');
+    expect(markup).not.toContain("data-bot-avatar");
   });
 });

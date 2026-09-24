@@ -263,6 +263,67 @@ export function Composer({
       label: "/setup",
       description: t("composer.command.setupDesc"),
     });
+
+    // OKX Quick Commands for Dev Day
+    const clonedBot = members?.find(
+      (m) =>
+        m.okxImport &&
+        !["okx-market-scout-v1", "okx-listing-coach", "okx-spend-scout"].includes(
+          m.okxImport.externalAgentId,
+        ),
+    );
+
+    available.push(
+      {
+        id: "scan",
+        label: "/scan",
+        description: "Scan Railway Free-MCP endpoint (PASS · ASP #13837)",
+      },
+      {
+        id: "scan-vercel",
+        label: "/scan-vercel",
+        description: "Scan Vercel endpoint (FAIL · serverless pitfall)",
+      },
+      {
+        id: "trust",
+        label: "/trust",
+        description: "Check OKX Marketplace Agent Trust (e.g. #3598 MoonFinder, #2023, #1965 CertiK)",
+      },
+      {
+        id: "block",
+        label: "/block",
+        description: "Check Broken Backend (Charlie #896 · NO_GO / Block)",
+      },
+      {
+        id: "services",
+        label: "/services",
+        description: clonedBot
+          ? `Ask ${clonedBot.name} what services it provides`
+          : "Ask Markets what OKX agent services are available",
+      },
+      {
+        id: "chains",
+        label: "/chains",
+        description: clonedBot
+          ? `Query ${clonedBot.name} for supported chains & RPCs`
+          : "Query supported chains and canonical RPCs",
+      },
+      {
+        id: "research",
+        label: "/research",
+        description: clonedBot
+          ? `Ask ${clonedBot.name} to execute market research report`
+          : "Generate Bloomberg Market Intelligence & Risk Report",
+      },
+      {
+        id: "benchmarks",
+        label: "/benchmarks",
+        description: clonedBot
+          ? `Ask ${clonedBot.name} to query Category Pricing & Volume Benchmarks`
+          : "Query Category Pricing & Volume Benchmarks",
+      },
+    );
+
     const query = slash.query.toLowerCase();
     return available.filter(
       (command) =>
@@ -318,7 +379,41 @@ export function Composer({
 
   const pickCommand = (command: ComposerSlashCommand) => {
     if (!slash) return;
-    const replacement = command.id === "learn" ? "/learn " : command.id === "setup" ? "/setup " : "";
+    const clonedBot = members?.find(
+      (m) =>
+        m.okxImport &&
+        !["okx-market-scout-v1", "okx-listing-coach", "okx-spend-scout"].includes(
+          m.okxImport.externalAgentId,
+        ),
+    );
+    let replacement = "";
+    if (command.id === "learn") replacement = "/learn ";
+    else if (command.id === "setup") replacement = "/setup ";
+    else if (command.id === "scan") replacement = '@Markets scan endpoint https://kind-meitner-production.up.railway.app/api/okx/free-mcp agentId="13837"';
+    else if (command.id === "scan-vercel") replacement = "@Markets scan endpoint https://demo.vercel.app/api/okx/free-mcp";
+    else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="3598"';
+    else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
+    else if (command.id === "services") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} What services do you provide on OKX.ai and how can you assist our team in this workspace?`
+        : "@Markets What OKX.ai agent services and categories are currently available?";
+    }
+    else if (command.id === "chains") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} List all supported EVM and SVM chain IDs, network names, and canonical RPCs for X Layer, Solana, and Ethereum.`
+        : "@Markets List all supported EVM and SVM chain IDs, network names, and canonical RPCs.";
+    }
+    else if (command.id === "research") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} Execute your specialized analysis service: generate a comprehensive market intelligence report for the team.`
+        : "@Markets Generate a comprehensive Bloomberg Market Intelligence and Risk Report for OKX.ai agent categories.";
+    }
+    else if (command.id === "benchmarks") {
+      replacement = clonedBot
+        ? `@${clonedBot.name} Query competitive pricing benchmarks, reject rates, and volume statistics for OKX.ai agent categories.`
+        : "@Markets Query competitive pricing benchmarks, reject rates, and volume statistics for all OKX.ai agent categories.";
+    }
+
     const next = replaceComposerSlashTrigger(text, slash, replacement);
     editText(next.text);
     setCaret(next.caret);
@@ -623,7 +718,7 @@ export function Composer({
   };
 
   return (
-    <div className="pointer-events-none relative px-5 pb-3">
+    <div className="pointer-events-none relative mx-auto w-full max-w-[52rem] px-5 pb-3">
       {/* No fill or hairline on this wrapper — those were the black frame
           in the pill's top corners. The dock overlays the transcript. */}
       {speechError && (
@@ -800,7 +895,7 @@ export function Composer({
             data-composer-backdrop
             className="pointer-events-none absolute -left-5 -right-5 -bottom-3 top-1/2 bg-app"
           />
-        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-2 py-1.5 ring-1 ring-composer-ring">
+        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-2.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)] ring-1 ring-composer-ring">
         <div className="flex items-end gap-1">
           <input
             ref={fileInput}
