@@ -10,7 +10,7 @@ describe("DevDayGateStarters", () => {
     expect(markup).toContain("Three agents, one gate");
     expect(markup).toContain("Enter to send.");
     expect(markup.match(/<button/g)).toHaveLength(4);
-    for (const label of ["Scan a vercel URL", "Scan our Railway Free MCP", "Trust agent 99999", "Trust agent 13837"]) {
+    for (const label of ["Scan a vercel URL", "Scan our Railway Free MCP", "Trust agent 99999", "Trust agent 13851"]) {
       expect(markup).toContain(label);
     }
   });
