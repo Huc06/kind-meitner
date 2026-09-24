@@ -44,16 +44,14 @@ describe("TeamMapWorkflowGraph Component", () => {
     const markup = renderToStaticMarkup(
       createElement(TeamMapWowFacts, {
         facts,
-        activeFilter: "branch",
-        onSelectFilter: () => {},
+        activeMetricId: "parallel-branches",
       }),
     );
 
     expect(markup).toContain("Workflow facts");
-    expect(markup).toContain("Click metric to filter event trail");
     expect(markup).toContain("Parallel branches");
     expect(markup).toContain("Ownership transfers");
-    expect(markup).toContain("Speedup");
+    expect(markup).toContain("Parallel speedup");
     expect(markup).toContain("Time saved");
   });
 });
