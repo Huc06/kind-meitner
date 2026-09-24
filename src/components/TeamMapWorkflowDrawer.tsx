@@ -1,50 +1,36 @@
-import { X, ListTodo, ArrowLeftRight, MessageSquare } from "lucide-react";
-import { cn } from "@/lib/cn";
 import {
-  getOwnershipTransfers,
-  type WorkflowAgent,
-  type WorkflowSnapshot,
-  type WorkflowTask,
+  X,
+  MessageSquare,
+  FileText,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
+import { cn } from "@/lib/cn";
+import type {
+  WorkflowSnapshot,
+  WorkflowTask,
+  WorkflowAgent,
+  OwnershipTransfer,
+  WorkflowArtifact,
 } from "@/lib/team-map-workflow";
-import { buildActivityItems } from "@/lib/team-map-demo-ui";
 import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
 
-function presenceTone(presence: WorkflowAgent["presence"]): string {
+function presenceBadge(presence?: string): { label: string; tone: string } {
   switch (presence) {
     case "working":
-      return "bg-success/15 text-success";
+      return { label: "Working", tone: "bg-success/20 text-success border-success/30" };
     case "blocked":
-      return "bg-danger/15 text-danger";
+      return { label: "BLOCKED", tone: "bg-danger/20 text-danger border-danger/40 animate-pulse font-bold" };
     case "waiting":
-      return "bg-warning/15 text-warning";
+      return { label: "Waiting", tone: "bg-warning/20 text-warning border-warning/30" };
     case "reviewing":
-      return "bg-accent/15 text-accent";
+      return { label: "Reviewing", tone: "bg-accent/20 text-accent border-accent/40 font-semibold" };
     case "completed":
-      return "bg-success/10 text-success";
+      return { label: "Completed", tone: "bg-success/10 text-success/80 border-success/20" };
     case "offline":
-      return "bg-control text-ink-secondary";
+      return { label: "Offline", tone: "bg-control text-ink-secondary border-hairline/40" };
     default:
-      return "bg-inset text-ink-secondary";
-  }
-}
-
-function stateTone(state: WorkflowTask["state"]): string {
-  switch (state) {
-    case "active":
-      return "bg-success/15 text-success";
-    case "blocked":
-      return "bg-danger/15 text-danger";
-    case "waiting":
-    case "queued":
-      return "bg-warning/15 text-warning";
-    case "reviewing":
-      return "bg-accent/15 text-accent";
-    case "completed":
-      return "bg-success/10 text-success";
-    case "failed":
-      return "bg-danger/15 text-danger";
-    default:
-      return "bg-inset text-ink-secondary";
+      return { label: "Ready", tone: "bg-inset text-ink-secondary border-hairline/40" };
   }
 }
 
@@ -53,7 +39,7 @@ export function TeamMapWorkflowDrawer({
   agentId,
   taskId,
   onClose,
-  onSelectAgent,
+  onSelectAgent: _onSelectAgent,
   onSelectTask,
 }: {
   snapshot: WorkflowSnapshot;
@@ -63,134 +49,175 @@ export function TeamMapWorkflowDrawer({
   onSelectAgent?: (id: string) => void;
   onSelectTask?: (id: string) => void;
 }) {
-  const agent = agentId ? snapshot.agents.find((a) => a.id === agentId) : undefined;
-  const task = taskId ? snapshot.tasks.find((t) => t.id === taskId) : undefined;
-  if (!agent && !task) return null;
+  const agent: WorkflowAgent | undefined = agentId
+    ? snapshot.agents.find((a) => a.id === agentId)
+    : undefined;
 
-  const transfers = getOwnershipTransfers(snapshot).filter((x) => {
-    if (agent) return x.fromAgentId === agent.id || x.toAgentId === agent.id;
-    if (task) return x.taskId === task.id;
+  // Find task: explicit taskId or agent's current task
+  const task: WorkflowTask | undefined = taskId
+    ? snapshot.tasks.find((t) => t.id === taskId)
+    : agent?.currentTaskId
+      ? snapshot.tasks.find((t) => t.id === agent.currentTaskId)
+      : snapshot.tasks.find((t) => t.ownerAgentId === agent?.id);
+
+  const currentOwner: WorkflowAgent | undefined = task
+    ? snapshot.agents.find((a) => a.id === task.ownerAgentId)
+    : agent;
+
+  // 1. Ownership History
+  const transfers: OwnershipTransfer[] = snapshot.transfers.filter((x) => {
+    if (task && x.taskId === task.id) return true;
+    if (agent && (x.fromAgentId === agent.id || x.toAgentId === agent.id)) return true;
     return false;
   });
 
-  const recent = buildActivityItems(snapshot)
-    .filter((item) => {
-      if (agent) return item.agentId === agent.id || (agent.currentTaskId && item.taskId === agent.currentTaskId);
-      if (task) return item.taskId === task.id || item.agentId === task.ownerAgentId;
-      return false;
-    })
-    .slice(-12)
-    .reverse();
+  // 2. Collaboration messages & help requests
+  const messages = snapshot.messages.filter((m) => {
+    if (task && m.taskId === task.id) return true;
+    if (agent && (m.fromAgentId === agent.id || m.toAgentId === agent.id)) return true;
+    return false;
+  });
 
-  const currentTask = agent?.currentTaskId
-    ? snapshot.tasks.find((t) => t.id === agent.currentTaskId)
-    : undefined;
-  const owner = task ? snapshot.agents.find((a) => a.id === task.ownerAgentId) : undefined;
+  // 3. Artifacts / Deliverables
+  const artifacts: WorkflowArtifact[] = (snapshot.artifacts ?? []).filter((art) => {
+    if (task && art.taskId === task.id) return true;
+    if (agent && art.authorAgentId === agent.id) return true;
+    return false;
+  });
+
+  // 4. Review events
+  const reviewEvents = snapshot.events.filter((e) => {
+    if (e.type === "review_requested" || e.type === "review_started" || e.type === "review_approved" || e.type === "review_changes_requested") {
+      if (task && "taskId" in e && e.taskId === task.id) return true;
+      if (agent && "reviewerAgentId" in e && e.reviewerAgentId === agent.id) return true;
+    }
+    return false;
+  });
+
+  if (!agent && !task) return null;
 
   return (
     <aside
-      aria-label="Workflow detail"
-      className="flex h-full w-full max-w-[360px] flex-col border-l border-hairline/40 bg-panel shadow-xl"
+      aria-label="Workflow details"
+      className="flex w-96 shrink-0 flex-col overflow-hidden border-l border-hairline/40 bg-panel shadow-2xl"
     >
-      <header className="flex items-start justify-between gap-3 border-b border-hairline/40 px-4 py-3">
-        <div className="flex min-w-0 items-start gap-3">
-          {agent ? (
-            <TeamMapAgentAvatar
-              agentId={agent.id}
-              name={agent.name}
-              presence={agent.presence}
-              size={56}
-              interactive
-            />
-          ) : owner ? (
-            <TeamMapAgentAvatar
-              agentId={owner.id}
-              name={owner.name}
-              presence={owner.presence}
-              size={56}
-              interactive
-            />
-          ) : (
-            <ListTodo size={15} className="mt-1 text-accent" />
-          )}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              {!agent && !owner && <ListTodo size={15} className="text-accent" />}
-              <h2 className="truncate text-[14px] font-semibold text-ink">
-                {agent?.name ?? task?.title}
-              </h2>
-            </div>
-            <p className="mt-1 text-[11.5px] text-ink-secondary">
-              {agent ? agent.role : task ? `Owner: ${owner?.name ?? task.ownerAgentId}` : ""}
-            </p>
-          </div>
+      {/* Drawer Header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-hairline/40 px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-accent" />
+          <h3 className="text-[13.5px] font-semibold text-ink">Collaboration Details</h3>
         </div>
         <button
           type="button"
-          aria-label="Close detail"
+          aria-label="Close drawer"
           onClick={onClose}
-          className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
+          className="rounded-lg p-1 text-ink-secondary hover:bg-control hover:text-ink"
         >
-          <X size={16} />
+          <X size={15} />
         </button>
-      </header>
+      </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3">
-        {agent && (
-          <div className="space-y-2">
-            <p className="text-[10.5px] uppercase tracking-wide text-ink-secondary">Presence</p>
-            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", presenceTone(agent.presence))}>
-              {agent.presence}
-            </span>
-            {currentTask && (
-              <button
-                type="button"
-                onClick={() => onSelectTask?.(currentTask.id)}
-                className="mt-2 block w-full rounded-lg border border-hairline/40 bg-card px-3 py-2 text-left hover:bg-raised/50"
-              >
-                <p className="text-[10.5px] text-ink-secondary">Current task</p>
-                <p className="text-[12.5px] font-medium text-ink">{currentTask.title}</p>
-                <p className="mt-0.5 text-[11px] capitalize text-ink-secondary">{currentTask.state} · {currentTask.progress}%</p>
-              </button>
-            )}
-          </div>
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5 text-[12px] leading-relaxed">
+        {/* 1. AGENT IDENTITY */}
+        {currentOwner && (
+          <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-secondary">
+                1. Agent Identity
+              </span>
+              <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", presenceBadge(currentOwner.presence).tone)}>
+                {presenceBadge(currentOwner.presence).label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <TeamMapAgentAvatar
+                agentId={currentOwner.id}
+                name={currentOwner.name}
+                presence={currentOwner.presence}
+                size={40}
+              />
+              <div className="min-w-0 flex-1">
+                <h4 className="truncate text-[14px] font-semibold text-ink">{currentOwner.name}</h4>
+                <p className="truncate text-[11px] text-ink-secondary">{currentOwner.role}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 border-t border-hairline/30 pt-2.5 text-[11px]">
+              <div>
+                <span className="text-ink-secondary">Active Task:</span>{" "}
+                <span className="font-medium text-ink">{task?.title ?? "None"}</span>
+              </div>
+              <div>
+                <span className="text-ink-secondary">Workload:</span>{" "}
+                <span className="font-medium text-ink">
+                  {task ? `${task.progress}% in progress` : "Ready for work"}
+                </span>
+              </div>
+            </div>
+          </section>
         )}
 
+        {/* 2. CURRENT TASK */}
         {task && (
-          <div className="space-y-2">
-            <p className="text-[10.5px] uppercase tracking-wide text-ink-secondary">Task state</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", stateTone(task.state))}>
+          <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-secondary">
+                2. Current Task
+              </span>
+              <span className={cn("rounded-md border px-2 py-0.5 text-[10px] capitalize font-medium",
+                task.state === "blocked" ? "bg-danger/20 text-danger border-danger/40 animate-pulse font-bold" :
+                task.state === "active" ? "bg-success/20 text-success border-success/30" :
+                task.state === "reviewing" ? "bg-accent/20 text-accent border-accent/40 font-semibold" :
+                task.state === "completed" ? "bg-success/10 text-success/80 border-success/20" :
+                "bg-inset text-ink-secondary border-hairline/40"
+              )}>
                 {task.state}
               </span>
-              <span className="text-[11px] tabular-nums text-ink-secondary">{task.progress}%</span>
-              {task.branchId && (
-                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10.5px] text-accent">{task.branchId}</span>
+            </div>
+
+            <div>
+              <h4 className="text-[13.5px] font-semibold text-ink">{task.title}</h4>
+              {snapshot.objective && (
+                <p className="mt-1 text-[11px] text-ink-secondary">
+                  <span className="font-medium text-ink/80">Objective:</span> {snapshot.objective}
+                </p>
               )}
             </div>
-            {owner && (
-              <button
-                type="button"
-                onClick={() => onSelectAgent?.(owner.id)}
-                className="block text-[12px] text-accent hover:underline"
-              >
-                Owner: {owner.name}
-              </button>
-            )}
+
+            {/* Progress bar */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-ink-secondary">
+                <span>Progress</span>
+                <span className="font-semibold tabular-nums text-ink">{task.progress}%</span>
+              </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-inset">
+                <div
+                  className={cn("h-full transition-all duration-300",
+                    task.state === "blocked" ? "bg-danger" :
+                    task.state === "completed" ? "bg-success" :
+                    "bg-accent"
+                  )}
+                  style={{ width: `${task.progress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Dependencies */}
             {task.dependsOnTaskIds.length > 0 && (
-              <div>
-                <p className="text-[10.5px] text-ink-secondary">Depends on</p>
-                <ul className="mt-1 space-y-1">
-                  {task.dependsOnTaskIds.map((id) => {
-                    const dep = snapshot.tasks.find((t) => t.id === id);
+              <div className="rounded-lg bg-inset/60 p-2 text-[11px]">
+                <span className="font-medium text-ink">Dependencies:</span>
+                <ul className="mt-1 list-inside list-disc text-ink-secondary">
+                  {task.dependsOnTaskIds.map((depId) => {
+                    const dep = snapshot.tasks.find((t) => t.id === depId);
                     return (
-                      <li key={id}>
+                      <li key={depId}>
                         <button
                           type="button"
-                          onClick={() => onSelectTask?.(id)}
-                          className="text-[12px] text-accent hover:underline"
+                          onClick={() => onSelectTask?.(depId)}
+                          className="text-accent hover:underline"
                         >
-                          {dep?.title ?? id}
+                          {dep?.title ?? depId} ({dep?.state ?? "queued"})
                         </button>
                       </li>
                     );
@@ -198,48 +225,169 @@ export function TeamMapWorkflowDrawer({
                 </ul>
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-[10.5px] uppercase tracking-wide text-ink-secondary">
-            <ArrowLeftRight size={12} /> Ownership transfers
+        {/* 3. COLLABORATION (MESSAGES, HELP REQUESTS, ARTIFACTS) */}
+        <section className="space-y-3 rounded-2xl border border-hairline/50 bg-card p-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-secondary">
+              3. Collaboration & Communication
+            </span>
+            <span className="text-[10.5px] text-ink-secondary">
+              {messages.length} messages · {artifacts.length} artifacts
+            </span>
           </div>
-          {transfers.length === 0 ? (
-            <p className="text-[12px] text-ink-secondary">None involving this selection.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {transfers.map((x) => (
-                <li key={x.id} className="rounded-lg border border-hairline/40 bg-card px-2.5 py-2 text-[12px] text-ink">
-                  <p className="font-medium">
-                    {snapshot.agents.find((a) => a.id === x.fromAgentId)?.name ?? x.fromAgentId}
-                    {" → "}
-                    {snapshot.agents.find((a) => a.id === x.toAgentId)?.name ?? x.toAgentId}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-ink-secondary">{x.reason}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
 
-        <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-[10.5px] uppercase tracking-wide text-ink-secondary">
-            <MessageSquare size={12} /> Recent activity
-          </div>
-          {recent.length === 0 ? (
-            <p className="text-[12px] text-ink-secondary">No recent messages or events.</p>
+          {/* Help Requests & Agent Messages */}
+          {messages.length === 0 ? (
+            <p className="text-[11px] text-ink-secondary">No recorded messages yet for this context.</p>
           ) : (
-            <ul className="space-y-1">
-              {recent.map((item) => (
-                <li key={item.id} className="rounded-lg border border-hairline/30 bg-inset/60 px-2.5 py-1.5 text-[11.5px] text-ink">
-                  <span className="capitalize text-ink-secondary">{item.label} · </span>
-                  {item.text}
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-2">
+              {messages.slice(-4).map((msg) => {
+                const fromAgent = snapshot.agents.find((a) => a.id === msg.fromAgentId);
+                const toAgent = snapshot.agents.find((a) => a.id === msg.toAgentId);
+                const isHelp = msg.kind === "help" || msg.kind === "help_requested";
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "rounded-xl border p-2.5 text-[11px]",
+                      isHelp
+                        ? "border-warning/40 bg-warning/10 text-warning"
+                        : "border-hairline/40 bg-inset/50 text-ink",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1 font-semibold">
+                      <div className="flex items-center gap-1.5">
+                        <MessageSquare size={12} className={isHelp ? "text-warning" : "text-accent"} />
+                        <span>{fromAgent?.name ?? msg.fromAgentId}</span>
+                        {toAgent && (
+                          <>
+                            <span className="text-ink-secondary">→</span>
+                            <span>{toAgent.name}</span>
+                          </>
+                        )}
+                      </div>
+                      {isHelp && (
+                        <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[9.5px] uppercase">
+                          Help Request
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 leading-relaxed">{msg.text}</p>
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </div>
+
+          {/* Deliverables / Artifacts */}
+          {artifacts.length > 0 && (
+            <div className="border-t border-hairline/30 pt-2.5">
+              <span className="text-[11px] font-medium text-ink">Artifacts & Deliverables:</span>
+              <ul className="mt-1.5 space-y-1.5">
+                {artifacts.map((art) => (
+                  <li
+                    key={art.id}
+                    className="flex items-center justify-between rounded-lg border border-hairline/40 bg-inset/70 px-2.5 py-1.5 text-[11px]"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText size={13} className="shrink-0 text-accent" />
+                      <span className="truncate font-medium text-ink">{art.name}</span>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-ink-secondary uppercase">
+                      {art.type} {art.sizeBytes ? `· ${Math.round(art.sizeBytes / 1000)}kb` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        {/* 4. OWNERSHIP HISTORY (TRANSFERS) */}
+        {transfers.length > 0 && (
+          <section className="space-y-3 rounded-2xl border border-warning/40 bg-warning/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-warning">
+                4. Ownership Transfer History
+              </span>
+              <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+                Context Preserved
+              </span>
+            </div>
+
+            {transfers.map((xfer) => {
+              const fromAgent = snapshot.agents.find((a) => a.id === xfer.fromAgentId);
+              const toAgent = snapshot.agents.find((a) => a.id === xfer.toAgentId);
+              return (
+                <div key={xfer.id} className="space-y-2 rounded-xl border border-warning/30 bg-card/80 p-3 text-[11px]">
+                  <div className="flex items-center justify-between font-semibold text-ink">
+                    <span>{fromAgent?.name ?? xfer.fromAgentId} → {toAgent?.name ?? xfer.toAgentId}</span>
+                    <span className="text-[10px] text-ink-secondary">
+                      Resumed at {xfer.progressAtTransfer ?? 68}%
+                    </span>
+                  </div>
+
+                  <p className="text-ink-secondary">
+                    <strong className="text-ink">Reason:</strong> {xfer.reason}
+                  </p>
+
+                  <div className="rounded-lg bg-inset/70 p-2 text-[10.5px]">
+                    <p className="font-medium text-ink">Context Transferred:</p>
+                    <p className="text-ink-secondary">
+                      {xfer.messagesTransferred ?? 4} messages, {xfer.artifactsTransferred ?? 2} artifacts, {xfer.decisionsTransferred ?? 1} decision
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        )}
+
+        {/* 5. REVIEW & CONVERGENCE */}
+        {reviewEvents.length > 0 && (
+          <section className="space-y-3 rounded-2xl border border-accent/40 bg-accent/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-accent">
+                5. Convergence & Review
+              </span>
+              <CheckCircle2 size={14} className="text-accent" />
+            </div>
+
+            <div className="space-y-2">
+              {reviewEvents.map((rev, idx) => {
+                const isApproved = rev.type === "review_approved";
+                const isChanges = rev.type === "review_changes_requested" || rev.type === "review_rejected";
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "rounded-xl border p-2.5 text-[11px]",
+                      isApproved ? "border-success/40 bg-success/10 text-success" :
+                      isChanges ? "border-danger/40 bg-danger/10 text-danger" :
+                      "border-accent/40 bg-accent/10 text-accent",
+                    )}
+                  >
+                    <div className="flex items-center justify-between font-semibold">
+                      <span>{rev.type.replace(/_/g, " ").toUpperCase()}</span>
+                      <span className="text-[10px] opacity-75">{new Date(rev.at).toLocaleTimeString()}</span>
+                    </div>
+
+                    {isApproved && "findings" in rev && rev.findings && (
+                      <p className="mt-1 text-[10.5px] leading-relaxed">{rev.findings}</p>
+                    )}
+
+                    {isChanges && "reason" in rev && (
+                      <p className="mt-1 text-[10.5px] leading-relaxed">{rev.reason}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </aside>
   );

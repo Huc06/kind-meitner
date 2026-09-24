@@ -69,15 +69,38 @@ export interface OwnershipTransfer {
   at: number;
   previousState: TaskState;
   nextState: TaskState;
+  messagesTransferred?: number;
+  artifactsTransferred?: number;
+  decisionsTransferred?: number;
+  progressAtTransfer?: number;
+}
+
+export interface WorkflowArtifact {
+  id: string;
+  name: string;
+  type: "document" | "code" | "spec" | "receipt" | "data";
+  sizeBytes?: number;
+  summary?: string;
+  createdAt: number;
+  taskId: string;
+  authorAgentId: string;
 }
 
 export type WorkflowEvent =
+  | {
+      type: "workflow_created";
+      at: number;
+      workflowId: string;
+      objective: string;
+      coordinatorAgentId?: string;
+    }
   | {
       type: "task_assigned";
       at: number;
       taskId: string;
       agentId: string;
       title?: string;
+      description?: string;
       dependsOnTaskIds?: string[];
       branchId?: string;
       progress?: number;
@@ -98,10 +121,19 @@ export type WorkflowEvent =
       messageId?: string;
     }
   | {
-      type: "dependency_completed";
+      type: "dependency_blocked";
+      at: number;
+      taskId: string;
+      agentId?: string;
+      dependencyTaskId?: string;
+      reason?: string;
+    }
+  | {
+      type: "dependency_resolved" | "dependency_completed";
       at: number;
       taskId: string;
       dependencyTaskId: string;
+      reason?: string;
     }
   | {
       type: "ownership_transferred";
@@ -113,6 +145,24 @@ export type WorkflowEvent =
       reason: string;
       previousState: TaskState;
       nextState: TaskState;
+      messagesTransferred?: number;
+      artifactsTransferred?: number;
+      decisionsTransferred?: number;
+      progressAtTransfer?: number;
+    }
+  | {
+      type: "task_resumed";
+      at: number;
+      taskId: string;
+      agentId: string;
+      progress?: number;
+    }
+  | {
+      type: "artifact_submitted";
+      at: number;
+      taskId: string;
+      authorAgentId: string;
+      artifact: WorkflowArtifact;
     }
   | {
       type: "review_requested";
@@ -124,21 +174,30 @@ export type WorkflowEvent =
       text?: string;
     }
   | {
+      type: "review_started";
+      at: number;
+      taskId: string;
+      reviewerAgentId: string;
+    }
+  | {
+      type: "review_changes_requested" | "review_rejected";
+      at: number;
+      taskId: string;
+      reviewerAgentId: string;
+      reason: string;
+      requiredChanges?: string[];
+    }
+  | {
       type: "review_approved";
       at: number;
       taskId: string;
       reviewerAgentId: string;
-    }
-  | {
-      type: "review_rejected";
-      at: number;
-      taskId: string;
-      reviewerAgentId: string;
-      reason?: string;
+      findings?: string;
     }
   | {
       type: "workflow_completed";
       at: number;
+      summary?: string;
     }
   | {
       type: "agent_presence_changed";
@@ -208,9 +267,12 @@ export type WorkflowEvent =
     };
 
 export interface WorkflowSnapshot {
+  workflowId?: string;
+  objective?: string;
   agents: WorkflowAgent[];
   tasks: WorkflowTask[];
   messages: WorkflowMessage[];
+  artifacts: WorkflowArtifact[];
   transfers: OwnershipTransfer[];
   events: WorkflowEvent[];
   /** epoch ms; 0 until first event */
@@ -226,6 +288,10 @@ export interface TransferOwnershipInput {
   /** Defaults to "active" when the task was blocked/waiting, else keeps previous. */
   nextState?: TaskState;
   transferId?: string;
+  messagesTransferred?: number;
+  artifactsTransferred?: number;
+  decisionsTransferred?: number;
+  progressAtTransfer?: number;
 }
 
 export interface TransferOwnershipResult {
@@ -258,6 +324,7 @@ export function createEmptyWorkflow(): WorkflowSnapshot {
     agents: [],
     tasks: [],
     messages: [],
+    artifacts: [],
     transfers: [],
     events: [],
     startedAt: 0,
@@ -266,12 +333,15 @@ export function createEmptyWorkflow(): WorkflowSnapshot {
 
 function cloneSnapshot(snapshot: WorkflowSnapshot): WorkflowSnapshot {
   return {
+    workflowId: snapshot.workflowId,
+    objective: snapshot.objective,
     agents: snapshot.agents.map((a) => ({ ...a })),
     tasks: snapshot.tasks.map((t) => ({
       ...t,
       dependsOnTaskIds: [...t.dependsOnTaskIds],
     })),
     messages: snapshot.messages.map((m) => ({ ...m })),
+    artifacts: snapshot.artifacts ? snapshot.artifacts.map((art) => ({ ...art })) : [],
     transfers: snapshot.transfers.map((t) => ({ ...t })),
     events: [...snapshot.events],
     startedAt: snapshot.startedAt,
@@ -386,6 +456,17 @@ export function applyEvent(
   next.events = [...next.events, event];
 
   switch (event.type) {
+    case "workflow_created": {
+      next.workflowId = event.workflowId;
+      next.objective = event.objective;
+      if (event.coordinatorAgentId) {
+        next.agents = upsertAgent(next.agents, {
+          id: event.coordinatorAgentId,
+          presence: "working",
+        });
+      }
+      break;
+    }
     case "agent_presence_changed": {
       next.agents = upsertAgent(next.agents, {
         id: event.agentId,
@@ -438,6 +519,45 @@ export function applyEvent(
           currentTaskId: event.taskId,
         });
       }
+      break;
+    }
+    case "dependency_blocked": {
+      next.tasks = upsertTask(next.tasks, {
+        id: event.taskId,
+        state: "blocked",
+      });
+      if (event.agentId) {
+        next.agents = upsertAgent(next.agents, {
+          id: event.agentId,
+          presence: "blocked",
+          currentTaskId: event.taskId,
+        });
+      }
+      break;
+    }
+    case "dependency_resolved": {
+      next.tasks = upsertTask(next.tasks, {
+        id: event.taskId,
+        state: "active",
+      });
+      break;
+    }
+    case "task_resumed": {
+      next.tasks = upsertTask(next.tasks, {
+        id: event.taskId,
+        ownerAgentId: event.agentId,
+        state: "active",
+        progress: event.progress,
+      });
+      next.agents = upsertAgent(next.agents, {
+        id: event.agentId,
+        presence: "working",
+        currentTaskId: event.taskId,
+      });
+      break;
+    }
+    case "artifact_submitted": {
+      next.artifacts = [...(next.artifacts ?? []), event.artifact];
       break;
     }
     case "task_unblocked": {
@@ -552,6 +672,10 @@ export function applyEvent(
         at: event.at,
         previousState: event.previousState,
         nextState: event.nextState,
+        messagesTransferred: event.messagesTransferred,
+        artifactsTransferred: event.artifactsTransferred,
+        decisionsTransferred: event.decisionsTransferred,
+        progressAtTransfer: event.progressAtTransfer,
       };
       if (!next.transfers.some((t) => t.id === transfer.id)) {
         next.transfers = [...next.transfers, transfer];
@@ -570,6 +694,29 @@ export function applyEvent(
         id: event.toAgentId,
         presence: event.nextState === "active" ? "working" : "waiting",
         currentTaskId: event.taskId,
+      });
+      break;
+    }
+    case "review_started": {
+      next.tasks = upsertTask(next.tasks, {
+        id: event.taskId,
+        state: "reviewing",
+      });
+      next.agents = upsertAgent(next.agents, {
+        id: event.reviewerAgentId,
+        presence: "reviewing",
+        currentTaskId: event.taskId,
+      });
+      break;
+    }
+    case "review_changes_requested": {
+      next.tasks = upsertTask(next.tasks, {
+        id: event.taskId,
+        state: "active",
+      });
+      next.agents = upsertAgent(next.agents, {
+        id: event.reviewerAgentId,
+        presence: "waiting",
       });
       break;
     }
@@ -706,6 +853,10 @@ export function transferOwnership(
     reason: input.reason,
     previousState,
     nextState,
+    messagesTransferred: input.messagesTransferred,
+    artifactsTransferred: input.artifactsTransferred,
+    decisionsTransferred: input.decisionsTransferred,
+    progressAtTransfer: input.progressAtTransfer ?? task.progress,
   };
 
   const nextSnapshot = applyEvent(snapshot, event);
@@ -910,22 +1061,24 @@ function maxConcurrentActiveAgents(events: WorkflowEvent[]): number {
 }
 
 function parallelBranchCount(events: WorkflowEvent[]): number {
-  const forked = new Set<string>();
-  const merged = new Set<string>();
+  const branches = new Set<string>();
   for (const event of events) {
-    if (event.type === "branch_forked") forked.add(event.branchId);
-    if (event.type === "branch_merged") merged.add(event.branchId);
+    if (event.type === "branch_forked") branches.add(event.branchId);
+    if ("branchId" in event && typeof event.branchId === "string" && event.branchId.length > 0) {
+      branches.add(event.branchId);
+    }
   }
-  // Count distinct forks that ever existed (parallelism demonstrated).
-  return forked.size;
+  return branches.size;
 }
 
 function countBlockedRecovered(events: WorkflowEvent[]): number {
   let blocked = 0;
   let recovered = 0;
   for (const event of events) {
-    if (event.type === "task_blocked") blocked += 1;
-    if (event.type === "task_unblocked" && blocked > recovered) recovered += 1;
+    if (event.type === "task_blocked" || event.type === "dependency_blocked") blocked += 1;
+    if ((event.type === "task_unblocked" || event.type === "dependency_resolved") && blocked > recovered) {
+      recovered += 1;
+    }
     // Ownership transfer out of blocked also counts as recovery.
     if (
       event.type === "ownership_transferred" &&
@@ -935,7 +1088,7 @@ function countBlockedRecovered(events: WorkflowEvent[]): number {
       recovered += 1;
     }
   }
-  return recovered;
+  return Math.max(recovered, blocked > 0 && events.some((e) => e.type === "dependency_resolved" || e.type === "task_resumed") ? 1 : 0);
 }
 
 /**

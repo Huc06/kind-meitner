@@ -19,53 +19,133 @@ type Gesture = {
 const iconButton = "flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-ink focus-visible:outline-2 focus-visible:outline-accent";
 const menuButton = "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[12px] text-ink-secondary hover:bg-control hover:text-ink";
 
-function BotCard({ bot, selected, moving, connected, onComputer, onArrange, onLogs }: {
+export interface BotWorkflowInfo {
+  taskTitle?: string;
+  taskState?: "queued" | "active" | "waiting" | "blocked" | "reviewing" | "completed" | "failed";
+  progress?: number;
+  presence?: "idle" | "working" | "waiting" | "blocked" | "reviewing" | "completed" | "offline";
+  waitingReason?: string;
+  hasIncomingHelp?: boolean;
+  reviewRequested?: boolean;
+  unreadMessages?: number;
+}
+
+function BotCard({
+  bot,
+  selected,
+  moving,
+  connected,
+  highlighted,
+  workflow,
+  onComputer,
+  onArrange,
+  onLogs,
+  onSelect,
+}: {
   bot: Bot;
   selected: boolean;
   moving: boolean;
   connected: boolean;
+  highlighted?: boolean;
+  workflow?: BotWorkflowInfo;
   onComputer?: (bot: Bot) => void;
   onArrange?: (bot: Bot, delta: number) => void;
   onLogs?: (bot: Bot) => void;
+  onSelect?: (botId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const status = teamMapStatus(bot);
   const instance = state.instances.find((item) => item.instanceId === bot.modelSelection.instanceId);
   const model = instance?.models.options.find((item) => item.id === bot.modelSelection.model)?.label ?? bot.modelSelection.model;
-  return <article className={cn("relative h-[126px] w-[236px] shrink-0 rounded-xl border bg-card shadow-sm transition-colors",
-    selected ? "border-accent/60 ring-1 ring-accent/15" : connected ? "border-accent/40" : "border-hairline/50 hover:border-ink-secondary/40", moving && "opacity-35")}>
+  const isWorking = workflow?.presence === "working" || status.tone === "success";
+  const isBlocked = workflow?.presence === "blocked" || workflow?.taskState === "blocked";
+  const isReviewing = workflow?.presence === "reviewing" || workflow?.taskState === "reviewing";
+
+  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 rounded-xl border bg-card shadow-sm transition-all",
+    isBlocked
+      ? "border-danger/70 bg-danger/5 ring-1 ring-danger/25"
+      : isReviewing
+        ? "border-accent ring-1 ring-accent/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+        : isWorking
+          ? "border-accent/80 shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+          : selected || highlighted
+            ? "border-accent/60 ring-2 ring-accent/25"
+            : connected
+              ? "border-accent/40"
+              : "border-hairline/50 hover:border-ink-secondary/40",
+    moving && "opacity-35")}>
     <button data-bot-id={bot.id} aria-label={t("canvas.editBot", { name: bot.name })}
-      onClick={() => dispatch({ type: "toggleSettings", botId: bot.id, section: "identity", open: true })}
+      onClick={() => {
+        if (onSelect) onSelect(bot.id);
+        else dispatch({ type: "toggleSettings", botId: bot.id, section: "identity", open: true });
+      }}
       title={onArrange ? t("canvas.reorderHint") : undefined}
       onKeyDown={(event) => {
         if (!onArrange || !event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
         event.preventDefault(); event.stopPropagation();
         onArrange(bot, event.key === "ArrowUp" ? -1 : 1);
       }}
-      className="flex h-[82px] w-full cursor-grab items-center gap-3 rounded-t-xl px-4 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent">
-      <BotAvatar
-        bot={bot}
-        size={38}
-        motion="none"
-        motionKey={0}
-        interactive={false}
-        animated={status.tone !== "idle"}
-        state={status.tone === "idle" ? "happy" : status.tone === "danger" ? "sad" : "working"}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5"><span className="truncate text-[14px] font-semibold">{bot.name}</span>
-          {bot.chiefOfStaff && <Crown size={12} className="shrink-0 text-warning" aria-label={t("chat.chiefOfStaff")} />}</span>
-        <span className="mt-1 block truncate text-[11px] text-ink-secondary">{bot.okxImport?.kind === "okx-catalog" ? `${bot.title || "OKX.ai Agent"} · Free · read-only` : bot.title || (bot.chiefOfStaff ? t("chat.chiefOfStaff") : t("canvas.bot"))}</span>
-      </span>
+      className="flex min-h-[88px] w-full cursor-grab flex-col justify-start rounded-t-xl p-3 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent">
+      <div className="flex w-full items-start gap-3">
+        <BotAvatar
+          bot={bot}
+          size={38}
+          motion="none"
+          motionKey={0}
+          interactive={false}
+          animated={isWorking}
+          state={isBlocked ? "sad" : isWorking ? "working" : "happy"}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-[13.5px] font-semibold text-ink">{bot.name}</span>
+            {bot.chiefOfStaff && <Crown size={12} className="shrink-0 text-warning" aria-label={t("chat.chiefOfStaff")} />}
+          </span>
+          <span className="mt-0.5 block truncate text-[11px] text-ink-secondary">
+            {bot.okxImport?.kind === "okx-catalog" ? `${bot.title || "OKX.ai Agent"} · Free · read-only` : bot.title || (bot.chiefOfStaff ? t("chat.chiefOfStaff") : t("canvas.bot"))}
+          </span>
+        </span>
+      </div>
+
+      {/* Compact Workflow Task Chip */}
+      {workflow?.taskTitle && (
+        <div className="mt-2 w-full rounded-md bg-inset/70 px-2 py-1 text-[10.5px]">
+          <div className="flex items-center justify-between gap-1">
+            <span className="truncate font-medium text-ink">{workflow.taskTitle}</span>
+            {workflow.progress !== undefined && (
+              <span className="shrink-0 tabular-nums text-ink-secondary">{workflow.progress}%</span>
+            )}
+          </div>
+          {workflow.progress !== undefined && workflow.progress > 0 && workflow.progress < 100 && (
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-hairline/40">
+              <div className="h-full bg-accent transition-all duration-300" style={{ width: `${workflow.progress}%` }} />
+            </div>
+          )}
+          {workflow.waitingReason && (
+            <p className="mt-0.5 truncate text-[10px] text-danger">{workflow.waitingReason}</p>
+          )}
+        </div>
+      )}
     </button>
     <div className="flex h-[43px] items-center gap-1 border-t border-hairline/30 px-2">
       <button className={cn(iconButton, "size-8")} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
         onClick={() => dispatch({ type: "select", id: bot.id })}><MessageCircle size={13} /></button>
       {onLogs && <button className={cn(iconButton, "size-8")} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
-      <span className="flex items-center gap-1.5 text-[10px] text-ink-secondary" title={status.label}>
-        <span className={cn("size-1.5 rounded-full", status.tone === "success" ? "bg-success" : status.tone === "warning" ? "bg-warning" : status.tone === "danger" ? "bg-danger" : "bg-ink-secondary/35")} />
-        {status.label}
+      <span className="flex items-center gap-1.5 text-[10px] text-ink-secondary" title={workflow?.presence ?? status.label}>
+        <span className={cn("size-1.5 rounded-full",
+          isBlocked ? "bg-danger animate-pulse" : isWorking ? "bg-success" : isReviewing ? "bg-accent" : "bg-ink-secondary/35")} />
+        <span className="capitalize">{workflow?.presence ?? status.label}</span>
       </span>
+      {workflow?.hasIncomingHelp && (
+        <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-warning" title="Help requested">
+          Help
+        </span>
+      )}
+      {workflow?.reviewRequested && (
+        <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent" title="Review pending">
+          Review
+        </span>
+      )}
       {selected && onComputer && <button className={cn(iconButton, "size-8")} aria-label={t("canvas.botComputer", { name: bot.name })} title={t("computer.tab.computer")}
         onClick={() => onComputer(bot)}><Monitor size={13} /></button>}
       <button aria-label={t("canvas.changeModel", { name: bot.name })} title={`${t("canvas.defaultModel")}: ${model}`}
@@ -78,7 +158,25 @@ function BotCard({ bot, selected, moving, connected, onComputer, onArrange, onLo
   </article>;
 }
 
-export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEditTeam, onDeleteTeam, isEmpty, onComputer, onComputerDrop, onTeamComputer, teamComputers = {}, connectedBotIds = [], onLogs, edges = [] }: {
+export function TeamCanvas({
+  sections,
+  canManage,
+  onMove,
+  onInstructions,
+  onEditTeam,
+  onDeleteTeam,
+  isEmpty,
+  onComputer,
+  onComputerDrop,
+  onTeamComputer,
+  teamComputers = {},
+  connectedBotIds = [],
+  onLogs,
+  edges = [],
+  workflowMap = {},
+  highlightBotIds = [],
+  onSelectBot,
+}: {
   sections: TeamMapSection<Bot>[];
   canManage: boolean;
   onMove: (bot: Bot, destination: string) => Promise<boolean | void>;
@@ -93,6 +191,9 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
   connectedBotIds?: string[];
   onLogs?: (bot: Bot) => void;
   edges?: TeamMapEdge[];
+  workflowMap?: Record<string, BotWorkflowInfo>;
+  highlightBotIds?: string[];
+  onSelectBot?: (botId: string) => void;
 }) {
   const { state } = useStore();
   const viewport = useRef<HTMLDivElement>(null);
@@ -407,8 +508,18 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
         const computer = Object.hasOwn(teamComputers, section.key) ? teamComputers[section.key] : undefined;
         const renderBot = (bot: Bot) => <div key={bot.id} className="relative">
           {insertion?.botId === bot.id && <div className={cn("pointer-events-none absolute inset-x-1 h-0.5 rounded bg-accent", insertion.after ? "-bottom-[9px]" : "-top-[9px]")} />}
-          <BotCard bot={bot} selected={state.selectedId === bot.id && state.settingsOpen} moving={dragged?.bot.id === bot.id || moving === bot.id}
-            connected={connectedBotIds.includes(bot.id)} onComputer={onComputer} onArrange={layoutLoaded ? arrangeBot : undefined} onLogs={onLogs} />
+          <BotCard
+            bot={bot}
+            selected={state.selectedId === bot.id && state.settingsOpen}
+            moving={dragged?.bot.id === bot.id || moving === bot.id}
+            connected={connectedBotIds.includes(bot.id)}
+            highlighted={highlightBotIds.includes(bot.id)}
+            workflow={workflowMap[bot.id] ?? workflowMap[bot.okxImport?.externalAgentId ?? ""]}
+            onComputer={onComputer}
+            onArrange={layoutLoaded ? arrangeBot : undefined}
+            onLogs={onLogs}
+            onSelect={onSelectBot}
+          />
         </div>;
         return <section key={section.key} data-team-key={section.key} aria-label={t("canvas.teamRegion", { name: section.name })}
           className={cn("absolute rounded-2xl border bg-panel/90 shadow-sm has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-hairline/50")}
