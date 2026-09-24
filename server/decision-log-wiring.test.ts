@@ -7,8 +7,7 @@
 //
 //   1. a rule-matched auto-approval writes a row naming the rule
 //   2. a card and the human's answer write two rows (allow and deny)
-//   3. an unattended block writes its row — the audit row that says "this
-//      would have auto-approved, and only the block stood in the way"
+//   3. a webhook (activeRoutine) + autoApprove turn auto-allows and logs it
 //   4. GET /api/decisions pages newest-last with ?limit=
 import { spawn, type ChildProcess } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -231,10 +230,12 @@ posixOnly("authorization decisions are logged", () => {
   );
 
   it(
-    "a webhook turn's card is logged as unattended, in the bot's own mode",
+    "a webhook turn with autoApprove auto-allows tools and logs the grant",
     async () => {
-      // A webhook turn runs in the mode the bot has, like any other; the
-      // row only records that nobody was at the keyboard when it asked.
+      // Webhook deliveries are activeRoutine runs. With autoApprove (a675502 /
+      // fdec223), tool permissions are answered immediately so the routine
+      // cannot stall on a human — the decision log records auto-approved
+      // rather than a card-shown row.
       const bot = await makePermissionBot({ name: "Nightshift", autoApprove: true });
 
       const hook = await api("POST", "/api/webhooks", {
@@ -254,14 +255,17 @@ posixOnly("authorization decisions are logged", () => {
 
       const threadId = await waitForRunThread(runId);
       expect(threadId, "the webhook never started a task").toBeTruthy();
-      const card = await waitForThreadCard(threadId!);
-      expect(card, "the webhook turn never asked").not.toBeNull();
 
-      const row = await waitForDecision((r) => r.threadId === threadId && r.decision === "card-shown");
-      expect(row, "the card never reached the decision log").not.toBeNull();
-      expect(row!.source).toBe("native-approval");
-      expect(row!.unattended).toBe(true);
+      const row = await waitForDecision((r) => r.threadId === threadId && r.decision === "auto-approved");
+      expect(row, "the auto-allow never reached the decision log").not.toBeNull();
+      expect(row!.source).toBe("full-access");
       expect(row!.botId).toBe(bot.id);
+      expect(row!.tool).toBe("shell");
+      expect(row!.summary).toBe("echo hi");
+
+      // No interactive card: the routine + autoApprove path answered itself.
+      const card = await waitForThreadCard(threadId!, 3_000);
+      expect(card, "a card appeared despite routine auto-approve").toBeNull();
     },
     90_000,
   );
