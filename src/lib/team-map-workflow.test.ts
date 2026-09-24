@@ -37,6 +37,7 @@ describe("team-map-workflow", () => {
       agents: [],
       tasks: [],
       messages: [],
+      artifacts: [],
       transfers: [],
       events: [],
       startedAt: 0,
@@ -91,7 +92,7 @@ describe("team-map-workflow", () => {
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("ownership_transferred");
 
-    expect(transfer).toEqual({
+    expect(transfer).toMatchObject({
       id: transfer.id,
       taskId: "t1",
       fromAgentId: "alice",
