@@ -622,14 +622,18 @@ function EventEditor({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={existingRoutine || existingCall ? "Edit calendar event" : "Create calendar event"} tabIndex={-1} className="max-h-[94vh] w-full max-w-[760px] overflow-y-auto rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-hairline/40 bg-panel/95 px-5 py-3.5 backdrop-blur">
-          <div className="text-[15px] font-semibold text-ink">{existingRoutine || existingCall ? "Edit event" : "New event"}</div>
-          <button onClick={onClose} className="rounded-full p-2 text-ink-secondary hover:bg-raised hover:text-ink" aria-label="Close"><X size={18} /></button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={existingRoutine || existingCall ? "Edit calendar event" : "Create calendar event"} tabIndex={-1} className="max-h-[94vh] w-full max-w-[760px] overflow-y-auto rounded-2xl border border-hairline/70 bg-panel/95 shadow-2xl backdrop-blur-md p-1.5">
+        <div className="rounded-xl border border-hairline/50 bg-card overflow-hidden">
+          <div className="sticky top-0 z-20 flex items-center justify-between border-b border-hairline/40 bg-card/95 px-6 py-4 backdrop-blur">
+            <div>
+              <h2 className="text-[15px] font-semibold tracking-tight text-ink">{existingRoutine || existingCall ? "Edit Schedule" : "New Schedule"}</h2>
+              <p className="mt-0.5 text-[11.5px] text-ink-secondary">Configure repeating schedule rules, timeout limits, and execution target.</p>
+            </div>
+            <button onClick={onClose} className="rounded-lg p-1.5 text-ink-secondary hover:bg-raised hover:text-ink transition-colors" aria-label="Close"><X size={16} /></button>
+          </div>
 
-        <div className="space-y-5 px-5 py-5 sm:px-8">
+          <div className="space-y-5 px-5 py-5 sm:px-8">
           {canSwitchKind && (
             <div className="ml-10 inline-flex rounded-lg bg-inset p-1">
               <button type="button" onClick={() => { setKind("routine"); setBotIds((ids) => ids.slice(0, 1)); }} className={cn("rounded-md px-4 py-1.5 text-[12.5px] font-medium", kind === "routine" ? "bg-raised text-ink shadow" : "text-ink-secondary")}>Routine</button>
@@ -959,12 +963,13 @@ function EventEditor({
           {error && <div className="ml-10 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-[12.5px] text-danger"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-hairline/40 bg-panel/95 px-5 py-3.5 backdrop-blur">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink">Cancel</button>
-          <button onClick={save} disabled={saving || attachmentPending || !valid} className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-40">{(saving || attachmentPending) && <Loader2 size={14} className="animate-spin" />}{attachmentPending ? "Attaching…" : existingRoutine || existingCall ? "Save" : kind === "call" ? "Schedule call" : isRoomGoal ? "Schedule team goal" : "Schedule routine"}</button>
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-hairline/40 bg-card/95 px-6 py-3.5 backdrop-blur">
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-[12.5px] font-medium text-ink-secondary hover:bg-raised hover:text-ink transition-colors">Cancel</button>
+          <button type="button" onClick={save} disabled={saving || attachmentPending || !valid} className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-[12.5px] font-semibold text-white shadow-xs hover:brightness-110 active:scale-[0.98] disabled:opacity-40 transition">{(saving || attachmentPending) && <Loader2 size={14} className="animate-spin" />}{attachmentPending ? "Attaching…" : existingRoutine || existingCall ? "Save" : kind === "call" ? "Schedule call" : isRoomGoal ? "Schedule team goal" : "Schedule routine"}</button>
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
@@ -1002,7 +1007,8 @@ function QuickComposer({
   const [error, setError] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const [dialogPosition, setDialogPosition] = useState<{ left: number; top: number } | null>(null);
-  const durationMinutes = kind === "routine" ? 30 : seed.durationMinutes;
+  const [durationMinutes, setDurationMinutes] = useState(kind === "routine" ? (seed.routine?.durationMinutes ?? 30) : seed.durationMinutes);
+  const selectedBot = bots.find((b) => b.id === botIds[0]);
 
   useLayoutEffect(() => {
     if (!seed.anchor) {
@@ -1070,84 +1076,267 @@ function QuickComposer({
   };
 
   const valid = Boolean(name.trim() && botIds.length && (kind === "call" || description.trim()));
+  const DURATION_CHIPS = [15, 30, 45, 60, 120];
+
   return (
-    <div ref={dialogRef} role="dialog" aria-label="Quick create" style={dialogPosition ?? undefined} className={cn("fixed z-50 max-h-[calc(100vh-24px)] w-[min(430px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-hairline/60 bg-panel shadow-2xl", !dialogPosition && "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2")}>
-      <div className="flex items-center justify-between bg-raised/70 px-4 py-2.5">
-        <div className="text-[12px] font-medium text-ink-secondary">New calendar event</div>
-        <button onClick={onClose} className="rounded-full p-1.5 text-ink-secondary hover:bg-inset hover:text-ink" aria-label="Close"><X size={16} /></button>
-      </div>
-      <div className="space-y-3 p-4">
-        <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Add title" onKeyDown={(event) => { if (event.key === "Enter" && valid) void save(); }} className="w-full border-b border-hairline/60 bg-transparent pb-2 text-[18px] font-medium text-ink outline-none placeholder:text-ink-secondary/55 focus:border-accent" />
-        {!routinesOnly && (
-          <div className="flex items-center gap-1 border-b border-hairline/35 pb-2">
-            <button type="button" onClick={() => { setKind("routine"); setBotIds((ids) => ids.slice(0, 1)); }} className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium", kind === "routine" ? "bg-accent/15 text-accent" : "text-ink-secondary hover:bg-raised hover:text-ink")}>Routine</button>
-            <button type="button" onClick={() => setKind("call")} className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium", kind === "call" ? "bg-accent/15 text-accent" : "text-ink-secondary hover:bg-raised hover:text-ink")}>Call</button>
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-label="Quick create"
+      style={dialogPosition ?? undefined}
+      className={cn(
+        "fixed z-50 max-h-[calc(100vh-24px)] w-[min(480px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-hairline/70 bg-panel/95 p-1.5 shadow-2xl backdrop-blur-md",
+        !dialogPosition && "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+      )}
+    >
+      <div className="rounded-xl border border-hairline/50 bg-card p-4 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-hairline/40 pb-3">
+          <div>
+            <h3 className="text-[14px] font-semibold tracking-tight text-ink">
+              {kind === "routine" ? "New Scheduled Task" : "New Scheduled Call"}
+            </h3>
+            <p className="mt-0.5 text-[11px] text-ink-secondary">
+              {kind === "routine" ? "Schedule an automated routine for your team agents." : "Bring team agents together at a scheduled time."}
+            </p>
           </div>
-        )}
-        <div className="flex items-center gap-3 text-[12.5px] text-ink">
-          <Clock3 size={16} className="shrink-0 text-ink-secondary" />
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="date"
-              aria-label="Event date"
-              value={dateInput}
-              onChange={(event) => {
-                const nextDate = event.target.value;
-                setDateInput(nextDate);
-                if (nextDate && timeInput) {
-                  const ms = fromLocalDateAndTime(nextDate, timeInput);
-                  if (!Number.isNaN(ms)) setScheduledAt(ms);
-                }
-              }}
-              className="rounded-lg border border-hairline/50 bg-inset px-2 py-1 text-[12px] text-ink outline-none focus:border-accent"
-            />
-            <input
-              type="time"
-              aria-label="Event time"
-              value={timeInput}
-              onChange={(event) => {
-                const nextTime = event.target.value;
-                setTimeInput(nextTime);
-                if (dateInput && nextTime) {
-                  const ms = fromLocalDateAndTime(dateInput, nextTime);
-                  if (!Number.isNaN(ms)) setScheduledAt(ms);
-                }
-              }}
-              className="rounded-lg border border-hairline/50 bg-inset px-2 py-1 text-[12px] text-ink outline-none focus:border-accent"
-            />
-            {kind === "call" && (
-              <span className="text-[11px] text-ink-secondary">
-                ({durationMinutes}m)
-              </span>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+            aria-label="Close"
+          >
+            <X size={15} />
+          </button>
         </div>
-        <div className="flex items-start gap-3">
-          <UserRoundPlus size={16} className="mt-2.5 shrink-0 text-ink-secondary" />
-          {bots.length === 0 ? (
-            <button type="button" onClick={() => { dispatch({ type: "toggleNewBot", open: true }); onClose(); }} className="min-w-0 flex-1 rounded-xl border border-dashed border-accent/45 bg-accent/[0.06] px-3 py-3 text-left hover:bg-accent/10">
-              <div className="text-[12px] font-medium text-accent">Create your first bot</div>
-              <div className="mt-0.5 text-[10.5px] text-ink-secondary">Then come back to schedule it.</div>
-            </button>
-          ) : kind === "routine" ? (
-            <select value={botIds[0] ?? ""} onChange={(event) => selectBots([event.target.value])} className="min-w-0 flex-1 rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent">
-              <option value="">Assign a bot</option>
-              {bots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}
-            </select>
-          ) : (
-            <div className="min-w-0 flex-1"><BotPicker bots={bots} selected={botIds} multiple onChange={selectBots} /></div>
+
+        <div className="space-y-3.5">
+          {/* Task Name */}
+          <div>
+            <label htmlFor="quick-task-name" className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+              Task Name
+            </label>
+            <input
+              id="quick-task-name"
+              autoFocus
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. Daily Market Intelligence Report"
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && valid) void save();
+              }}
+              className="mt-1 h-9 w-full rounded-lg border border-hairline/60 bg-inset px-3 text-[13px] font-medium text-ink outline-none placeholder:text-ink-secondary/40 focus:border-accent"
+            />
+          </div>
+
+          {/* Type Toggle: Routine vs Call */}
+          {!routinesOnly && (
+            <div>
+              <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+                Type
+              </label>
+              <div className="mt-1 flex items-center rounded-lg border border-hairline/50 bg-inset p-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKind("routine");
+                    setBotIds((ids) => ids.slice(0, 1));
+                  }}
+                  className={cn(
+                    "flex-1 rounded-md py-1.5 text-[12px] font-medium transition-all text-center",
+                    kind === "routine" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+                  )}
+                >
+                  Routine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKind("call")}
+                  className={cn(
+                    "flex-1 rounded-md py-1.5 text-[12px] font-medium transition-all text-center",
+                    kind === "call" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+                  )}
+                >
+                  Call
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Assigned Agent (Attendee Chip style from scheduling-3) */}
+          <div>
+            <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+              {kind === "routine" ? "Assigned Agent" : "Attendees"}
+            </label>
+            <div className="mt-1">
+              {bots.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch({ type: "toggleNewBot", open: true });
+                    onClose();
+                  }}
+                  className="flex w-full items-center justify-center rounded-lg border border-dashed border-accent/40 bg-accent/[0.04] p-3 text-center hover:bg-accent/10 transition-colors"
+                >
+                  <div className="text-[12px] font-medium text-accent">Create your first bot</div>
+                </button>
+              ) : kind === "routine" ? (
+                <div className="flex items-center gap-2 rounded-lg border border-hairline/60 bg-inset px-3 py-1.5">
+                  {selectedBot && (
+                    <div className="shrink-0">
+                      <BotAvatar bot={selectedBot} size={20} />
+                    </div>
+                  )}
+                  <select
+                    value={botIds[0] ?? ""}
+                    onChange={(event) => selectBots([event.target.value])}
+                    className="min-w-0 flex-1 bg-transparent text-[12.5px] font-medium text-ink outline-none cursor-pointer"
+                  >
+                    <option value="">Select an agent</option>
+                    {bots.map((bot) => (
+                      <option key={bot.id} value={bot.id}>
+                        {bot.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <BotPicker bots={bots} selected={botIds} multiple onChange={selectBots} />
+              )}
+            </div>
+          </div>
+
+          {/* Schedule Time & Duration Presets (from scheduling-2 & scheduling-3) */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+                Date & Time
+              </label>
+              <div className="flex items-center gap-1">
+                {DURATION_CHIPS.map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setDurationMinutes(mins)}
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                      durationMinutes === mins
+                        ? "bg-accent/20 text-accent font-semibold"
+                        : "text-ink-secondary hover:bg-raised hover:text-ink",
+                    )}
+                  >
+                    {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-inset px-2.5 py-1.5">
+                <CalendarDays size={13} className="text-ink-secondary shrink-0" />
+                <input
+                  type="date"
+                  aria-label="Event date"
+                  value={dateInput}
+                  onChange={(event) => {
+                    const nextDate = event.target.value;
+                    setDateInput(nextDate);
+                    if (nextDate && timeInput) {
+                      const ms = fromLocalDateAndTime(nextDate, timeInput);
+                      if (!Number.isNaN(ms)) setScheduledAt(ms);
+                    }
+                  }}
+                  className="bg-transparent text-[12px] font-medium text-ink outline-none cursor-pointer"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-inset px-2.5 py-1.5">
+                <Clock3 size={13} className="text-ink-secondary shrink-0" />
+                <input
+                  type="time"
+                  aria-label="Event time"
+                  value={timeInput}
+                  onChange={(event) => {
+                    const nextTime = event.target.value;
+                    setTimeInput(nextTime);
+                    if (dateInput && nextTime) {
+                      const ms = fromLocalDateAndTime(dateInput, nextTime);
+                      if (!Number.isNaN(ms)) setScheduledAt(ms);
+                    }
+                  }}
+                  className="bg-transparent text-[12px] font-medium font-mono text-ink outline-none cursor-pointer"
+                />
+              </div>
+              <span className="text-[11px] font-medium text-ink-secondary font-mono">
+                ({durationMinutes} min)
+              </span>
+            </div>
+          </div>
+
+          {/* Instructions & Prompt */}
+          <div>
+            <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+              {kind === "routine" ? "Prompt & Deliverable" : "Description (optional)"}
+            </label>
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={3}
+              placeholder={
+                kind === "routine"
+                  ? "What should the bot do? e.g. Analyze liquidity benchmarks and publish a markdown report."
+                  : "Add notes or agenda for this call."
+              }
+              className="mt-1 w-full resize-none rounded-lg border border-hairline/60 bg-inset p-2.5 text-[12.5px] leading-relaxed text-ink outline-none placeholder:text-ink-secondary/40 focus:border-accent"
+            />
+          </div>
+
+          {/* Results Destination */}
+          {kind === "routine" && (
+            <ResultsDestination
+              bot={bots.find((bot) => bot.id === botIds[0])}
+              value={resultsThreadId}
+              onChange={(threadId) => setResultsThreadId(threadId ?? null)}
+            />
+          )}
+
+          {error && (
+            <div className="rounded-lg bg-danger/10 border border-danger/20 px-3 py-2 text-[11.5px] text-danger">
+              {error}
+            </div>
           )}
         </div>
-        <div className="flex items-start gap-3">
-          <FileText size={16} className="mt-2.5 shrink-0 text-ink-secondary" />
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder={kind === "routine" ? "What should the bot do?" : "Add a description (optional)"} className="min-w-0 flex-1 resize-none rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] leading-relaxed text-ink outline-none placeholder:text-ink-secondary/55 focus:border-accent" />
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between border-t border-hairline/40 pt-3">
+          <button
+            type="button"
+            onClick={() =>
+              onMore({ ...seed, at: scheduledAt, kind, botIds, name, description, durationMinutes, resultsThreadId })
+            }
+            title="Choose repeating schedules, timeout, and attachments"
+            className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-accent hover:bg-accent/10 transition-colors"
+          >
+            More options...
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-ink-secondary hover:bg-raised transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={!valid || working}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-white shadow-xs hover:brightness-110 active:scale-[0.98] disabled:opacity-40 transition"
+            >
+              {working && <Loader2 size={13} className="animate-spin" />}
+              Save Schedule
+            </button>
+          </div>
         </div>
-        {kind === "routine" && <ResultsDestination bot={bots.find((bot) => bot.id === botIds[0])} value={resultsThreadId} onChange={(threadId) => setResultsThreadId(threadId ?? null)} />}
-        {error && <div className="rounded-lg bg-danger/10 px-3 py-2 text-[11.5px] text-danger">{error}</div>}
-      </div>
-      <div className="flex items-center justify-end gap-2 border-t border-hairline/40 px-4 py-3">
-        <button onClick={() => onMore({ ...seed, at: scheduledAt, kind, botIds, name, description, durationMinutes, resultsThreadId })} title="Choose repeating schedules and other options" className="rounded-lg px-3 py-2 text-[12px] font-medium text-accent hover:bg-accent/10">More options</button>
-        <button onClick={save} disabled={!valid || working} className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-40">{working && <Loader2 size={13} className="animate-spin" />}Save</button>
       </div>
     </div>
   );
@@ -1239,25 +1428,90 @@ function CalendarEventCard({
         event.dataTransfer.setData(EVENT_DRAG_TYPE, JSON.stringify({ kind: item.kind, id: isCall ? item.call.id : routine!.id, at: item.at }));
       }}
       onClick={(event) => { event.stopPropagation(); onOpen(); }}
-      className={cn("group absolute z-10 overflow-hidden rounded-md border text-left shadow-sm transition hover:z-20 hover:brightness-110 focus:z-20 focus:outline-none focus:ring-2 focus:ring-accent", previewDuration < 30 ? "px-1.5 py-0" : "px-2 py-1.5", status === "cancelled" && "opacity-55", (status === "failed" || status === "missed") && "border-danger/60")}
+      className={cn(
+        "group absolute z-10 overflow-hidden rounded-lg border text-left shadow-xs transition-all hover:z-20 hover:shadow-md hover:scale-[1.01] focus:z-20 focus:outline-none focus:ring-2 focus:ring-accent",
+        previewDuration < 30 ? "px-1.5 py-0.5" : "px-2.5 py-2",
+        status === "cancelled" && "opacity-50",
+        (status === "failed" || status === "missed") && "border-danger/60 bg-danger/10",
+      )}
       style={{
         left: `calc(${(layout.column / layout.columns) * 100}% + 2px)`,
         width: `calc(${100 / layout.columns}% - 4px)`,
         top: `${((new Date(item.at).getHours() * 60 + new Date(item.at).getMinutes()) / 60) * HOUR_HEIGHT}px`,
-        height: `${Math.max(previewDuration >= 30 ? 44 : 16, (previewDuration / 60) * HOUR_HEIGHT)}px`,
-        background: `linear-gradient(110deg, color-mix(in srgb, ${color} 58%, #242424), color-mix(in srgb, ${color} 28%, #181818))`,
-        borderColor: `color-mix(in srgb, ${color} 70%, transparent)`,
+        height: `${Math.max(previewDuration >= 30 ? 46 : 18, (previewDuration / 60) * HOUR_HEIGHT)}px`,
+        background: `color-mix(in srgb, ${color} 15%, var(--color-card, #1c1c1e))`,
+        borderColor: `color-mix(in srgb, ${color} 38%, var(--color-hairline, rgba(255,255,255,0.12)))`,
+        borderLeftWidth: "3.5px",
+        borderLeftColor: color,
       }}
     >
-      <div className="flex min-w-0 items-start gap-1.5 text-white">
-        {previewDuration >= 30 && (isCall ? <Video size={compact ? 11 : 13} className="mt-0.5 shrink-0" /> : primary ? <BotAvatar bot={primary} state={status ? statusState(status) : "idle"} size={compact ? 22 : 26} animated={status === "running" || status === "waiting"} /> : null)}
+      <div className="flex min-w-0 items-start gap-2">
+        {previewDuration >= 30 && (
+          isCall ? (
+            <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
+              <Video size={11} />
+            </div>
+          ) : primary ? (
+            <div className="shrink-0 mt-0.5">
+              <BotAvatar bot={primary} state={status ? statusState(status) : "idle"} size={compact ? 20 : 22} animated={status === "running" || status === "waiting"} />
+            </div>
+          ) : null
+        )}
         <div className="min-w-0 flex-1">
-          <div className={cn("truncate text-[11px] font-semibold", previewDuration < 30 ? "leading-none" : "leading-tight")}>{name}</div>
-          {previewDuration >= 30 && <div className="mt-0.5 truncate text-[9.5px] text-white/75">{niceTime(item.at)}{statusLabel ? ` · ${statusLabel}` : recurrenceLabel ? ` · ${recurrenceLabel}` : isCall ? ` · ${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? ` · Team goal${room?.name ? ` · ${room.name}` : ""}` : ""}</div>}
+          <div className="flex items-center gap-1.5">
+            <span className={cn("truncate text-[11.5px] text-ink", previewDuration < 30 ? "font-medium leading-none" : "font-semibold leading-tight")}>
+              {name}
+            </span>
+            {status && status !== "completed" && (
+              <span className={cn(
+                "inline-flex shrink-0 items-center rounded px-1 py-0.2 text-[8px] font-semibold uppercase tracking-wider",
+                status === "failed" ? "bg-danger/20 text-danger" : status === "running" ? "bg-accent/20 text-accent animate-pulse" : "bg-warning/20 text-warning"
+              )}>
+                {status}
+              </span>
+            )}
+          </div>
+          {previewDuration >= 30 && (
+            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] text-ink-secondary">
+              <span className="font-mono font-medium">{niceTime(item.at)}</span>
+              {statusLabel && (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span className="truncate">{statusLabel}</span>
+                </>
+              )}
+              {recurrenceLabel && !statusLabel && (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span className="truncate">{recurrenceLabel}</span>
+                </>
+              )}
+              {isCall && (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span>{ownerBots.length} {ownerBots.length === 1 ? "bot" : "bots"}</span>
+                </>
+              )}
+              {isRoomGoal && room?.name && (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span className="truncate">{room.name}</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
-        {previewDuration >= 30 && ownerBots.length > 1 && <span className="rounded bg-black/20 px-1 py-0.5 text-[8px]">+{ownerBots.length - 1}</span>}
+        {previewDuration >= 30 && ownerBots.length > 1 && (
+          <span className="rounded bg-black/20 px-1 py-0.5 text-[8px] font-medium text-ink-secondary shrink-0">
+            +{ownerBots.length - 1}
+          </span>
+        )}
       </div>
-      {isCall && <div onPointerDown={beginResize} className="absolute inset-x-1 bottom-0 h-1.5 cursor-ns-resize rounded-full opacity-0 transition group-hover:opacity-100" aria-label="Resize event"><div className="mx-auto mt-0.5 h-0.5 w-5 rounded-full bg-white/55" /></div>}
+      {isCall && (
+        <div onPointerDown={beginResize} className="absolute inset-x-1 bottom-0 h-1.5 cursor-ns-resize rounded-full opacity-0 transition group-hover:opacity-100" aria-label="Resize event">
+          <div className="mx-auto mt-0.5 h-0.5 w-5 rounded-full bg-white/55" />
+        </div>
+      )}
     </button>
   );
 }
@@ -1349,17 +1603,50 @@ function CalendarGrid({
 
   return (
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto border-l border-t border-hairline/40 bg-app">
-      <div className="sticky top-0 z-30 grid bg-app/95 backdrop-blur" style={{ gridTemplateColumns, minWidth }}>
-        <div className="border-b border-r border-hairline/40 px-2 py-3 text-center text-[9px] uppercase tracking-wider text-ink-secondary">{formatGmtOffset(-new Date(anchor).getTimezoneOffset())}</div>
+      <div className="sticky top-0 z-30 grid border-b border-hairline/40 bg-card/90 backdrop-blur-md" style={{ gridTemplateColumns, minWidth }}>
+        <div className="flex flex-col items-center justify-center border-r border-hairline/40 px-2 py-2 text-center">
+          <span className="text-[9px] font-mono font-medium uppercase tracking-wider text-ink-secondary">
+            {formatGmtOffset(-new Date(anchor).getTimezoneOffset())}
+          </span>
+        </div>
         {starts.map((start) => {
           const date = new Date(start);
           const isToday = start === today;
-          return <div key={start} role="columnheader" className={cn("border-b border-r border-hairline/40 px-2 py-2 text-center last:border-r-0", isToday && "bg-accent/[0.035]")}><div className={cn("text-[10px] font-medium uppercase tracking-[0.14em]", isToday ? "text-accent" : "text-ink-secondary")}>{DAY_NAMES[date.getDay()]}</div><div className={cn("mx-auto mt-1 flex size-8 items-center justify-center rounded-full text-[15px] font-medium", isToday ? "bg-accent text-white" : "text-ink")}>{date.getDate()}</div></div>;
+          return (
+            <div
+              key={start}
+              role="columnheader"
+              className={cn(
+                "flex flex-col items-center justify-center border-r border-hairline/40 py-2.5 transition-colors last:border-r-0",
+                isToday && "bg-accent/[0.04]",
+              )}
+            >
+              <span className={cn("text-[11px] font-medium tracking-tight", isToday ? "text-accent font-semibold" : "text-ink-secondary")}>
+                {DAY_NAMES[date.getDay()]}
+              </span>
+              <span
+                className={cn(
+                  "mt-0.5 inline-flex size-7 items-center justify-center rounded-full text-[13px] font-semibold tabular-nums transition-transform",
+                  isToday ? "bg-accent text-white shadow-xs" : "text-ink hover:bg-raised",
+                )}
+              >
+                {date.getDate()}
+              </span>
+            </div>
+          );
         })}
       </div>
       <div role="grid" aria-label="Routine and call calendar" onDragEnd={() => setDragPreview(null)} className="relative grid" style={{ height: HOUR_HEIGHT * 24, gridTemplateColumns, minWidth }}>
-        <div className="relative border-r border-hairline/40">
-          {Array.from({ length: 24 }, (_, hour) => <div key={hour} className="absolute right-2 -translate-y-1/2 text-[9.5px] tabular-nums text-ink-secondary/70" style={{ top: hour * HOUR_HEIGHT }}>{hour === 0 ? "" : new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: "numeric" })}</div>)}
+        <div className="relative border-r border-hairline/40 bg-card/10">
+          {Array.from({ length: 24 }, (_, hour) => (
+            <div
+              key={hour}
+              className="absolute right-2.5 -translate-y-1/2 text-[10px] font-mono tabular-nums text-ink-secondary/65"
+              style={{ top: hour * HOUR_HEIGHT }}
+            >
+              {hour === 0 ? "" : new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: "numeric" }).toLowerCase()}
+            </div>
+          ))}
         </div>
         {starts.map((start) => {
           const now = new Date();
@@ -1369,12 +1656,63 @@ function CalendarGrid({
           const selected = selection?.day === start ? selection : null;
           const preview = dragPreview?.day === start ? dragPreview : null;
           return (
-            <div key={start} role="gridcell" aria-label={`${niceDate(start)} calendar`} onPointerDown={(event) => beginSelection(event, start)} onDragOver={(event) => previewDrop(event, start)} onDragLeave={(event) => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDragPreview(null); }} onDrop={(event) => drop(event, start)} className={cn("relative border-r border-hairline/40 last:border-r-0", start === today && "bg-accent/[0.025]")}>
-              {Array.from({ length: 48 }, (_, half) => <div key={half} className={cn("pointer-events-none absolute inset-x-0 border-t", half % 2 === 0 ? "border-hairline/30" : "border-hairline/10")} style={{ top: (half / 2) * HOUR_HEIGHT }} />)}
-              {start === today && <div className="pointer-events-none absolute inset-x-0 z-20 flex items-center" style={{ top: nowTop }}><span className="-ml-1 size-2 rounded-full bg-danger" /><span className="h-px flex-1 bg-danger/80" /></div>}
-              {selected && <div className="pointer-events-none absolute inset-x-1 z-10 rounded-md border border-accent/70 bg-accent/20" style={{ top: ((new Date(selected.start).getHours() * 60 + new Date(selected.start).getMinutes()) / 60) * HOUR_HEIGHT, height: Math.max(16, ((selected.end - selected.start) / 3_600_000) * HOUR_HEIGHT) }} />}
-              {preview && <div className="pointer-events-none absolute inset-x-1 z-20 rounded-md border border-accent/80 bg-accent/25 shadow-sm" style={{ top: ((new Date(preview.at).getHours() * 60 + new Date(preview.at).getMinutes()) / 60) * HOUR_HEIGHT, height: HOUR_HEIGHT / 2 }}><div className="px-2 py-1 text-[9.5px] font-medium text-accent">{niceTime(preview.at)}</div></div>}
-              {dayItems.map((item) => <CalendarEventCard key={item.id} item={item} bots={bots} groups={groups} compact={days === 7} layout={collisionLayouts.get(item.id) ?? { column: 0, columns: 1 }} onOpen={() => onOpen(item)} onResize={(minutes) => onResize(item, minutes)} />)}
+            <div
+              key={start}
+              role="gridcell"
+              aria-label={`${niceDate(start)} calendar`}
+              onPointerDown={(event) => beginSelection(event, start)}
+              onDragOver={(event) => previewDrop(event, start)}
+              onDragLeave={(event) => {
+                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDragPreview(null);
+              }}
+              onDrop={(event) => drop(event, start)}
+              className={cn("relative border-r border-hairline/35 last:border-r-0", start === today && "bg-accent/[0.02]")}
+            >
+              {Array.from({ length: 48 }, (_, half) => (
+                <div
+                  key={half}
+                  className={cn("pointer-events-none absolute inset-x-0 border-t", half % 2 === 0 ? "border-hairline/30" : "border-hairline/10")}
+                  style={{ top: (half / 2) * HOUR_HEIGHT }}
+                />
+              ))}
+              {start === today && (
+                <div className="pointer-events-none absolute inset-x-0 z-20 flex items-center" style={{ top: nowTop }}>
+                  <span className="-ml-1 size-2 rounded-full bg-danger shadow-xs" />
+                  <span className="h-px flex-1 bg-danger/80" />
+                </div>
+              )}
+              {selected && (
+                <div
+                  className="pointer-events-none absolute inset-x-1 z-10 rounded-lg border border-accent/70 bg-accent/15 backdrop-blur-xs"
+                  style={{
+                    top: ((new Date(selected.start).getHours() * 60 + new Date(selected.start).getMinutes()) / 60) * HOUR_HEIGHT,
+                    height: Math.max(20, ((selected.end - selected.start) / 3_600_000) * HOUR_HEIGHT),
+                  }}
+                />
+              )}
+              {preview && (
+                <div
+                  className="pointer-events-none absolute inset-x-1 z-20 rounded-lg border border-accent/80 bg-accent/20 shadow-xs"
+                  style={{
+                    top: ((new Date(preview.at).getHours() * 60 + new Date(preview.at).getMinutes()) / 60) * HOUR_HEIGHT,
+                    height: HOUR_HEIGHT / 2,
+                  }}
+                >
+                  <div className="px-2 py-1 text-[10px] font-mono font-medium text-accent">{niceTime(preview.at)}</div>
+                </div>
+              )}
+              {dayItems.map((item) => (
+                <CalendarEventCard
+                  key={item.id}
+                  item={item}
+                  bots={bots}
+                  groups={groups}
+                  compact={days === 7}
+                  layout={collisionLayouts.get(item.id) ?? { column: 0, columns: 1 }}
+                  onOpen={() => onOpen(item)}
+                  onResize={(minutes) => onResize(item, minutes)}
+                />
+              ))}
             </div>
           );
         })}
@@ -1495,62 +1833,234 @@ export function EventDetails({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-[2px]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Calendar event details" className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <div className="flex items-start gap-4 border-b border-hairline/40 px-5 py-4">
-          <span className={cn("mt-1 size-4 shrink-0 rounded", isCall ? "bg-[#6d7cff]" : "bg-accent")} />
-          <div className="min-w-0 flex-1">
-            <div className="text-[19px] font-semibold text-ink">{title}</div>
-            <div className="mt-1 text-[12.5px] text-ink-secondary">
-              {niceDate(item.at)} · {niceTime(item.at)}{isCall ? ` – ${niceTime(item.at + item.durationMinutes * 60_000)}` : ""}
-            </div>
-            {(routine || call) && <div className="mt-1 text-[11.5px] text-ink-secondary">{scheduleLabel((routine ?? call)!.schedule)}</div>}
-            {routine?.schedule.type === "cron" && <div className="mt-3"><CronSchedulePreview schedule={routine.schedule} paused={!routine.enabled} /></div>}
-          </div>
-          <button onClick={onClose} className="rounded-full p-2 text-ink-secondary hover:bg-raised hover:text-ink" aria-label="Close"><X size={17} /></button>
-        </div>
-
-        <div className="max-h-[58vh] space-y-4 overflow-y-auto px-5 py-4">
-          <div className="flex items-start gap-3">
-            {isRoomGoal ? <Target size={17} className="mt-1 shrink-0 text-ink-secondary" /> : <UserRoundPlus size={17} className="mt-1 shrink-0 text-ink-secondary" />}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Calendar event details"
+        className="w-full max-w-[540px] overflow-hidden rounded-2xl border border-hairline/70 bg-panel/95 p-1.5 shadow-2xl backdrop-blur-md"
+      >
+        <div className="rounded-xl border border-hairline/50 bg-card">
+          <div className="flex items-start gap-3.5 border-b border-hairline/40 px-5 py-4">
+            <span
+              className={cn("mt-1.5 size-3.5 shrink-0 rounded-full", isCall ? "bg-[#6d7cff]" : "bg-accent")}
+            />
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">{isCall ? "Bots invited" : isRoomGoal ? "Lead coordinator" : "Assigned bot"}</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {invited.map((bot) => <div key={bot.id} className="flex items-center gap-2 rounded-full border border-hairline/50 bg-inset py-1 pl-1 pr-2.5"><BotAvatar bot={bot} state="idle" size={26} animated={false} /><span className="text-[11.5px] text-ink">{bot.name}</span></div>)}
+              <h2 className="text-[17px] font-semibold tracking-tight text-ink">{title}</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink-secondary">
+                <span className="font-medium text-ink">{niceDate(item.at)}</span>
+                <span className="opacity-40">·</span>
+                <span className="font-mono">{niceTime(item.at)}{isCall ? ` – ${niceTime(item.at + item.durationMinutes * 60_000)}` : ""}</span>
+                {(routine || call) && (
+                  <>
+                    <span className="opacity-40">·</span>
+                    <span className="rounded bg-inset px-1.5 py-0.5 text-[11px] font-medium text-ink-secondary">
+                      {scheduleLabel((routine ?? call)!.schedule)}
+                    </span>
+                  </>
+                )}
               </div>
+              {routine?.schedule.type === "cron" && (
+                <div className="mt-2.5">
+                  <CronSchedulePreview schedule={routine.schedule} paused={!routine.enabled} />
+                </div>
+              )}
             </div>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
           </div>
-          {isRoomGoal && (
-            <div className="flex items-start gap-3">
-              <UsersRound size={17} className="mt-1 shrink-0 text-ink-secondary" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">Team goal group</div>
-                <div className="mt-1 text-[12.5px] text-ink">{goalGroup?.name ?? "Group unavailable"}</div>
+
+          <div className="max-h-[55vh] space-y-4 overflow-y-auto p-5">
+            <div>
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary mb-1.5">
+                {isCall ? "Attendees" : isRoomGoal ? "Lead Coordinator" : "Assigned Agent"}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {invited.map((bot) => (
+                  <div
+                    key={bot.id}
+                    className="flex items-center gap-2 rounded-lg border border-hairline/60 bg-inset py-1 pl-1.5 pr-2.5"
+                  >
+                    <BotAvatar bot={bot} state="idle" size={22} animated={false} />
+                    <span className="text-[12px] font-medium text-ink">{bot.name}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-          {description && <div className="flex items-start gap-3"><FileText size={17} className="mt-1 shrink-0 text-ink-secondary" /><div className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">{description}</div></div>}
-          {attachments.length > 0 && <div className="flex items-start gap-3"><Paperclip size={17} className="mt-1 shrink-0 text-ink-secondary" /><div className="min-w-0 flex-1 space-y-2"><AttachmentChips attachments={attachments} />{call && <div className="text-[11px] leading-relaxed text-ink-secondary">{call.botIds.length > 1 ? "These references will be shared in the group when the event starts." : "These references stay with the event and are available when you join the group."}</div>}</div></div>}
-          {!isCall && <div className="flex items-start gap-3"><Clock3 size={17} className="mt-1 shrink-0 text-ink-secondary" /><div><div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">Run limit</div><div className="mt-1 text-[12.5px] text-ink">{safetyLimit == null ? "No time limit" : `Stops if still running after ${durationLabel(safetyLimit)}`}</div></div></div>}
-          {run && <div className="rounded-xl border border-hairline/40 bg-inset p-3"><div className="flex items-center gap-2 text-[12px] font-medium text-ink">{run.status === "running" && <Loader2 size={13} className="animate-spin text-accent" />}{routineRunLabel(run)}</div>{run.output && <div className="mt-2 whitespace-pre-wrap text-[11.5px] leading-relaxed text-ink-secondary">{run.output}</div>}{run.error && <div className="mt-2 text-[11.5px] text-danger">{run.error}</div>}</div>}
-          {run?.attention && <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning"><CircleAlert size={15} className="mt-0.5 shrink-0" /><div className="min-w-0 whitespace-pre-wrap text-[11.5px] leading-relaxed">{run.attention}</div></div>}
-          {run?.status === "waiting" && !run.attention && <div className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-[11.5px] text-warning">This run is waiting. Open its execution thread for more context.</div>}
-          {error && <div className="rounded-lg bg-danger/10 px-3 py-2 text-[11.5px] text-danger">{error}</div>}
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-hairline/40 px-4 py-3">
-          {roomId && <button onClick={() => onOpenRoom(roomId)} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110"><ExternalLink size={13} />Join group</button>}
-          {call && call.botIds.length > 1 && <button onClick={joinRoom} disabled={working} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-50"><ExternalLink size={13} />Join group</button>}
-          {isRoomGoal && goalGroup && !executionThreadId && <button onClick={() => { onOpenRoom(goalGroup.id); onClose(); }} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110"><ExternalLink size={13} />Open group</button>}
-          {routine && <button onClick={runRoutineNow} disabled={working} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-50"><Play size={13} />Run now</button>}
-          {canOpenExecution && <button onClick={openRunTask} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"><ExternalLink size={13} />{isRoomGoal ? "Open group thread" : "Open thread"}</button>}
-          {canOpenResults && resultsThreadId && <button type="button" onClick={() => { openNotificationTarget(dispatch, { botId: botIds[0], threadId: resultsThreadId }, state); onClose(); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"><ExternalLink size={13} />{t("routines.results.open")}</button>}
-          {routine && <button type="button" onClick={() => { dispatch({ type: "showRoutines", section: "logs", routineId: routine.id, botId: routine.botId }); onClose(); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"><FileText size={13} />{t("routines.logs")}</button>}
-          {run && ["queued", "running", "waiting"].includes(run.status) && <button onClick={() => void invoke(`/api/routine-runs/${run.id}/cancel`)} disabled={working} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"><X size={13} />Cancel run</button>}
-          <div className="ml-auto flex items-center gap-1">
-            {(routine || call) && <button onClick={onEdit} className="rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink">Edit</button>}
-            {routine && <button disabled={working} onClick={() => void invoke(`/api/routines/${routine.id}`, "PATCH", { enabled: !routine.enabled })} className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40" title={routine.enabled ? "Pause routine" : "Resume routine"}>{routine.enabled ? <Pause size={15} /> : <Play size={15} />}</button>}
-            {(routine || call) && <button onClick={() => void deleteEvent()} className="rounded-lg p-2 text-ink-secondary hover:bg-danger/10 hover:text-danger" title="Delete"><Trash2 size={15} /></button>}
+            {isRoomGoal && (
+              <div className="rounded-lg border border-hairline/40 bg-inset/50 p-2.5">
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+                  Team Goal Group
+                </div>
+                <div className="mt-0.5 text-[12.5px] font-medium text-ink">{goalGroup?.name ?? "Group unavailable"}</div>
+              </div>
+            )}
+
+            {description && (
+              <div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary mb-1">
+                  {isCall ? "Agenda & Notes" : "Prompt & Task Instructions"}
+                </div>
+                <div className="rounded-lg border border-hairline/50 bg-inset/60 p-3 text-[12.5px] leading-relaxed text-ink whitespace-pre-wrap">
+                  {description}
+                </div>
+              </div>
+            )}
+
+            {attachments.length > 0 && (
+              <div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary mb-1.5">
+                  Attachments & References
+                </div>
+                <AttachmentChips attachments={attachments} />
+              </div>
+            )}
+
+            {!isCall && (
+              <div className="flex items-center gap-2 text-[12px] text-ink-secondary">
+                <Clock3 size={14} className="shrink-0" />
+                <span>Run limit: {safetyLimit == null ? "No time limit" : `Stops if still running after ${durationLabel(safetyLimit)}`}</span>
+              </div>
+            )}
+
+            {run && (
+              <div className="rounded-xl border border-hairline/60 bg-inset/70 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[12px] font-semibold text-ink">
+                    {run.status === "running" && <Loader2 size={13} className="animate-spin text-accent" />}
+                    {routineRunLabel(run)}
+                  </div>
+                  <span
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                      run.status === "completed"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : run.status === "failed"
+                          ? "bg-danger/15 text-danger"
+                          : "bg-accent/15 text-accent",
+                    )}
+                  >
+                    {run.status}
+                  </span>
+                </div>
+                {run.output && (
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-hairline/40 bg-card p-2.5 font-mono text-[11px] leading-relaxed text-ink-secondary whitespace-pre-wrap">
+                    {run.output}
+                  </div>
+                )}
+                {run.error && (
+                  <div className="rounded-lg bg-danger/10 p-2.5 text-[11.5px] text-danger">
+                    {run.error}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {run?.attention && (
+              <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
+                <CircleAlert size={15} className="mt-0.5 shrink-0" />
+                <div className="min-w-0 whitespace-pre-wrap text-[11.5px] leading-relaxed">{run.attention}</div>
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-lg bg-danger/10 border border-danger/20 p-2.5 text-[11.5px] text-danger">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline/40 px-5 py-3.5 bg-inset/20">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={deleteEvent}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-danger hover:bg-danger/10 transition-colors"
+              >
+                <Trash2 size={13} />
+                Delete
+              </button>
+              {(routine || call) && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {roomId && (
+                <button onClick={() => onOpenRoom(roomId)} className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-raised px-3 py-1.5 text-[12px] font-semibold text-ink hover:bg-raised/80">
+                  <ExternalLink size={13} />Join group
+                </button>
+              )}
+              {call && call.botIds.length > 1 && (
+                <button onClick={joinRoom} disabled={working} className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-raised px-3 py-1.5 text-[12px] font-semibold text-ink hover:bg-raised/80 disabled:opacity-50">
+                  <ExternalLink size={13} />Join group
+                </button>
+              )}
+              {isRoomGoal && goalGroup && !executionThreadId && (
+                <button onClick={() => { onOpenRoom(goalGroup.id); onClose(); }} className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-raised px-3 py-1.5 text-[12px] font-semibold text-ink hover:bg-raised/80">
+                  <ExternalLink size={13} />Open group
+                </button>
+              )}
+              {routine && (
+                <button
+                  type="button"
+                  onClick={() => { dispatch({ type: "showRoutines", section: "logs", routineId: routine.id, botId: routine.botId }); onClose(); }}
+                  className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-raised/80 transition-colors"
+                >
+                  <FileText size={13} />
+                  Logs
+                </button>
+              )}
+              {canOpenExecution && (
+                <button
+                  onClick={openRunTask}
+                  className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-raised/80 transition-colors"
+                >
+                  <ExternalLink size={13} />
+                  {isRoomGoal ? "Open group thread" : "Open thread"}
+                </button>
+              )}
+              {canOpenResults && resultsThreadId && (
+                <button
+                  type="button"
+                  onClick={() => { openNotificationTarget(dispatch, { botId: botIds[0], threadId: resultsThreadId }, state); onClose(); }}
+                  className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-raised/80 transition-colors"
+                >
+                  <ExternalLink size={13} />
+                  {t("routines.results.open")}
+                </button>
+              )}
+              {run && ["queued", "running", "waiting"].includes(run.status) && (
+                <button onClick={() => void invoke(`/api/routine-runs/${run.id}/cancel`)} disabled={working} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40">
+                  <X size={13} />Cancel run
+                </button>
+              )}
+              {routine && (
+                <button
+                  onClick={runRoutineNow}
+                  disabled={working}
+                  className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-white shadow-xs hover:brightness-110 active:scale-[0.98] disabled:opacity-50 transition"
+                >
+                  {working ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+                  Run now
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1575,28 +2085,44 @@ function PausedList({
 }) {
   const { dispatch } = useStore();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Paused routines" className="w-full max-w-[520px] rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <div className="flex items-center justify-between border-b border-hairline/40 px-5 py-4"><div><div className="text-[16px] font-semibold text-ink">Paused routines</div><div className="mt-0.5 text-[11.5px] text-ink-secondary">History is kept; no new tasks will run.</div></div><button onClick={onClose} className="rounded-full p-2 text-ink-secondary hover:bg-raised"><X size={17} /></button></div>
-        <div className="max-h-[55vh] space-y-1 overflow-y-auto p-3">
-          {routines.map((routine) => {
-            const bot = bots.find((candidate) => candidate.id === routine.botId);
-            const room = routine.target === "room-goal"
-              ? groups.find((candidate) => candidate.id === routine.groupId)
-              : undefined;
-            return (
-              <div key={routine.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-raised/60">
-                {room ? <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent"><UsersRound size={17} /></span> : bot && <BotAvatar bot={bot} state="sleeping" size={36} animated={false} />}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-medium text-ink">{routine.name}</div>
-                  <div className="mt-0.5 truncate text-[10.5px] text-ink-secondary">{room ? `Team goal · ${room.name} · ` : ""}{scheduleLabel(routine.schedule)}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Paused routines" className="w-full max-w-[520px] rounded-2xl border border-hairline/70 bg-panel/95 p-1.5 shadow-2xl backdrop-blur-md">
+        <div className="rounded-xl border border-hairline/50 bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-hairline/40 px-5 py-4">
+            <div>
+              <div className="text-[15px] font-semibold text-ink">Paused routines</div>
+              <div className="mt-0.5 text-[11.5px] text-ink-secondary">History is kept; no new tasks will run.</div>
+            </div>
+            <button onClick={onClose} className="rounded-lg p-1.5 text-ink-secondary hover:bg-raised hover:text-ink transition-colors" aria-label="Close">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="max-h-[55vh] space-y-1.5 overflow-y-auto p-3">
+            {routines.map((routine) => {
+              const bot = bots.find((candidate) => candidate.id === routine.botId);
+              const room = routine.target === "room-goal"
+                ? groups.find((candidate) => candidate.id === routine.groupId)
+                : undefined;
+              return (
+                <div key={routine.id} className="flex items-center gap-3 rounded-lg border border-hairline/40 bg-inset/40 px-3 py-2.5 hover:bg-raised/60 transition-colors">
+                  {room ? (
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent">
+                      <UsersRound size={15} />
+                    </span>
+                  ) : (
+                    bot && <BotAvatar bot={bot} state="sleeping" size={32} animated={false} />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[12.5px] font-medium text-ink">{routine.name}</div>
+                    <div className="mt-0.5 truncate text-[10.5px] text-ink-secondary">{room ? `Team goal · ${room.name} · ` : ""}{scheduleLabel(routine.schedule)}</div>
+                  </div>
+                  {room && <button onClick={() => { onOpenRoom(room.id); onClose(); }} className="rounded-lg px-2.5 py-1 text-[11px] text-ink-secondary hover:bg-raised">Group</button>}
+                  <button onClick={() => dispatch({ type: "updateRoutine", routineId: routine.id, patch: { enabled: true } })} className="rounded-lg bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/25">Resume</button>
+                  <button onClick={() => onEdit(routine)} className="rounded-lg px-2.5 py-1 text-[11px] text-ink-secondary hover:bg-raised">Edit</button>
                 </div>
-                {room && <button onClick={() => { onOpenRoom(room.id); onClose(); }} className="rounded-lg px-2 py-1.5 text-[11px] text-ink-secondary hover:bg-inset">Group</button>}
-                <button onClick={() => dispatch({ type: "updateRoutine", routineId: routine.id, patch: { enabled: true } })} className="rounded-lg bg-accent/15 px-2.5 py-1.5 text-[11px] font-medium text-accent">Resume</button>
-                <button onClick={() => onEdit(routine)} className="rounded-lg px-2 py-1.5 text-[11px] text-ink-secondary hover:bg-inset">Edit</button>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -1782,69 +2308,272 @@ export function RoutinesPage({ onBack, onOpenRoom }: { onBack: () => void; onOpe
   return (
     <main className="flex h-full min-w-0 flex-1 flex-col bg-app animate-workspace-in">
       <header
-        className={cn("shrink-0 border-b border-hairline/35 bg-app py-3 pr-4", macInset ? "pl-[86px]" : "pl-4")}
+        className={cn("shrink-0 border-b border-hairline/35 bg-card/60 backdrop-blur-sm py-2.5 pr-4 transition-colors", macInset ? "pl-[86px]" : "pl-4")}
         style={windowDragStyle}
       >
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             ref={backButtonRef}
             onClick={onBack}
             aria-label="Back"
             title="Back"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-raised hover:text-ink"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
             style={windowNoDragStyle}
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
           </button>
-          <div data-tour="automations-page" className="mr-2 flex items-center gap-2"><CalendarDays size={21} className="text-accent" /><h1 className="text-[18px] font-semibold tracking-tight text-ink">Automations</h1></div>
-          <div className="flex items-center rounded-lg border border-hairline/50 bg-panel p-0.5" style={windowNoDragStyle} aria-label="Automation type">
-            <button type="button" aria-pressed={section === "calendar"} onClick={() => setSection("calendar")} className={cn("rounded-md px-3 py-1.5 text-[11.5px] font-medium", section === "calendar" ? "bg-raised text-ink shadow-sm" : "text-ink-secondary hover:text-ink")}>{routinesOnly ? "Scheduled routines" : "Schedule"}</button>
-            <button type="button" aria-pressed={section === "logs"} onClick={() => { setSection("logs"); setRoutineFilter(undefined); }} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11.5px] font-medium", section === "logs" ? "bg-raised text-ink shadow-sm" : "text-ink-secondary hover:text-ink")}><FileText size={12} />{t("routines.logs")}{unseenFailures > 0 && <span className="rounded-full bg-danger/10 px-1.5 text-[9px] text-danger">{unseenFailures}</span>}</button>
-            {!routinesOnly && <button type="button" aria-pressed={section === "webhooks"} onClick={() => setSection("webhooks")} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11.5px] font-medium", section === "webhooks" ? "bg-raised text-ink shadow-sm" : "text-ink-secondary hover:text-ink")}><Webhook size={12} />Webhooks{state.webhooks.length > 0 && <span className="rounded-full bg-accent/15 px-1.5 text-[9px] text-accent">{state.webhooks.length}</span>}</button>}
+
+          <div data-tour="automations-page" className="mr-1 flex items-center gap-2">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-accent/15 text-accent">
+              <CalendarDays size={16} />
+            </div>
+            <h1 className="text-[15px] font-semibold tracking-tight text-ink">Automations</h1>
           </div>
-          <details ref={newMenuRef} className="group relative ml-auto" style={windowNoDragStyle}>
-            <summary role="button" aria-label="Create an automation" className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[12px] font-semibold text-white hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60">
-              <Plus size={15} aria-hidden="true" />New
-            </summary>
-            <div role="group" aria-label="New automation" className="absolute right-0 top-full z-40 mt-1.5 w-[280px] rounded-xl border border-hairline/60 bg-card p-1.5 shadow-2xl">
-              <button type="button" aria-label="Create a scheduled task" onClick={() => { newMenuRef.current?.removeAttribute("open"); setSection("calendar"); openCreate({ kind: "routine" }); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-raised">
-                <Clock3 size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
-                <span><span className="block text-[12.5px] font-medium text-ink">Scheduled task</span><span className="mt-0.5 block text-[10.5px] leading-relaxed text-ink-secondary">Ask a bot to do something later.</span></span>
+
+          {/* Section Switcher (Schedule | Logs | Webhooks) - Segmented Control Pill */}
+          <div className="flex items-center rounded-lg border border-hairline/50 bg-inset/60 p-0.5" style={windowNoDragStyle} aria-label="Automation type">
+            <button
+              type="button"
+              aria-pressed={section === "calendar"}
+              onClick={() => setSection("calendar")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-[12px] font-medium transition-all",
+                section === "calendar" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+              )}
+            >
+              {routinesOnly ? "Scheduled routines" : "Schedule"}
+            </button>
+            <button
+              type="button"
+              aria-pressed={section === "logs"}
+              onClick={() => { setSection("logs"); setRoutineFilter(undefined); }}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all",
+                section === "logs" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+              )}
+            >
+              <FileText size={12} />
+              {t("routines.logs")}
+              {unseenFailures > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[9px] font-bold text-danger">{unseenFailures}</span>}
+            </button>
+            {!routinesOnly && (
+              <button
+                type="button"
+                aria-pressed={section === "webhooks"}
+                onClick={() => setSection("webhooks")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all",
+                  section === "webhooks" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+                )}
+              >
+                <Webhook size={12} />
+                Webhooks
+                {state.webhooks.length > 0 && <span className="rounded-full bg-accent/20 px-1.5 text-[9px] font-bold text-accent">{state.webhooks.length}</span>}
               </button>
-              {!routinesOnly && <button type="button" aria-label="Create a scheduled call" onClick={() => { newMenuRef.current?.removeAttribute("open"); setSection("calendar"); openCreate({ kind: "call" }); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-raised">
-                <Video size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
-                <span><span className="block text-[12.5px] font-medium text-ink">Scheduled call</span><span className="mt-0.5 block text-[10.5px] leading-relaxed text-ink-secondary">Bring bots together at a set time.</span></span>
-              </button>}
-              {!routinesOnly && <button type="button" aria-label="Create a webhook" disabled={visibleBots.length === 0} onClick={() => { newMenuRef.current?.removeAttribute("open"); setSection("webhooks"); setWebhookCreateRequest((request) => request + 1); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-raised disabled:cursor-not-allowed disabled:opacity-40">
-                <Webhook size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
-                <span><span className="block text-[12.5px] font-medium text-ink">Webhook</span><span className="mt-0.5 block text-[10.5px] leading-relaxed text-ink-secondary">Start a task when another app sends an event.</span></span>
-              </button>}
+            )}
+          </div>
+
+          {/* New Action Dropdown */}
+          <details ref={newMenuRef} className="group relative ml-auto" style={windowNoDragStyle}>
+            <summary
+              role="button"
+              aria-label="Create an automation"
+              className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-white shadow-xs transition hover:brightness-110 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            >
+              <Plus size={14} aria-hidden="true" />
+              New
+            </summary>
+            <div role="group" aria-label="New automation" className="absolute right-0 top-full z-40 mt-1.5 w-[280px] rounded-xl border border-hairline/60 bg-card p-1.5 shadow-2xl backdrop-blur-md">
+              <button
+                type="button"
+                aria-label="Create a scheduled task"
+                onClick={() => { newMenuRef.current?.removeAttribute("open"); setSection("calendar"); openCreate({ kind: "routine" }); }}
+                className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-raised transition-colors"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent mt-0.5">
+                  <Clock3 size={15} />
+                </div>
+                <span>
+                  <span className="block text-[12.5px] font-medium text-ink">Scheduled task</span>
+                  <span className="mt-0.5 block text-[11px] leading-relaxed text-ink-secondary">Ask a bot to do something later.</span>
+                </span>
+              </button>
+              {!routinesOnly && (
+                <button
+                  type="button"
+                  aria-label="Create a scheduled call"
+                  onClick={() => { newMenuRef.current?.removeAttribute("open"); setSection("calendar"); openCreate({ kind: "call" }); }}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-raised transition-colors"
+                >
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent mt-0.5">
+                    <Video size={15} />
+                  </div>
+                  <span>
+                    <span className="block text-[12.5px] font-medium text-ink">Scheduled call</span>
+                    <span className="mt-0.5 block text-[11px] leading-relaxed text-ink-secondary">Bring bots together at a set time.</span>
+                  </span>
+                </button>
+              )}
+              {!routinesOnly && (
+                <button
+                  type="button"
+                  aria-label="Create a webhook"
+                  disabled={visibleBots.length === 0}
+                  onClick={() => { newMenuRef.current?.removeAttribute("open"); setSection("webhooks"); setWebhookCreateRequest((request) => request + 1); }}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-raised transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent mt-0.5">
+                    <Webhook size={15} />
+                  </div>
+                  <span>
+                    <span className="block text-[12.5px] font-medium text-ink">Webhook</span>
+                    <span className="mt-0.5 block text-[11px] leading-relaxed text-ink-secondary">Start a task when another app sends an event.</span>
+                  </span>
+                </button>
+              )}
             </div>
           </details>
         </div>
-        {section !== "webhooks" && <div className="mt-2 flex flex-wrap items-center gap-2" style={windowNoDragStyle}>
-          {section === "calendar" && <div className="flex items-center rounded-lg border border-hairline/50 bg-panel p-0.5" aria-label="Schedule view">
-            <button type="button" aria-pressed={scheduleView === "list"} onClick={() => setScheduleView("list")} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px]", scheduleView === "list" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink")}><List size={13} />List</button>
-            <button type="button" aria-pressed={scheduleView === "calendar"} onClick={() => setScheduleView("calendar")} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px]", scheduleView === "calendar" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink")}><CalendarDays size={13} />Calendar</button>
-          </div>}
-          {section === "calendar" && scheduleView === "calendar" && <><div className="flex items-center rounded-lg border border-hairline/50 bg-panel p-0.5">
-            <button onClick={() => setAnchor((current) => addDays(current, -viewDays))} className="rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink" aria-label="Previous dates"><ChevronLeft size={16} /></button>
-            <button onClick={goToday} className="rounded-md px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-raised">Today</button>
-            <button onClick={() => setAnchor((current) => addDays(current, viewDays))} className="rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink" aria-label="Next dates"><ChevronRight size={16} /></button>
+
+        {/* Sub-toolbar: Date Navigator, Range Heading, View Switchers from scheduling-6 */}
+        {section !== "webhooks" && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-hairline/25 pt-2" style={windowNoDragStyle}>
+            {section === "calendar" && scheduleView === "calendar" && (
+              <>
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center rounded-lg border border-hairline/50 bg-inset/40 p-0.5">
+                    <button
+                      onClick={() => setAnchor((current) => addDays(current, -viewDays))}
+                      className="inline-flex size-7 items-center justify-center rounded-md text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+                      aria-label="Previous dates"
+                    >
+                      <ChevronLeft size={15} />
+                    </button>
+                    <button
+                      onClick={() => setAnchor((current) => addDays(current, viewDays))}
+                      className="inline-flex size-7 items-center justify-center rounded-md text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+                      aria-label="Next dates"
+                    >
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={goToday}
+                    className="inline-flex h-8 items-center rounded-lg border border-hairline/50 bg-inset/40 px-2.5 text-[12px] font-medium text-ink hover:bg-raised transition-colors active:scale-[0.98]"
+                  >
+                    Today
+                  </button>
+                </div>
+
+                <h2 className="min-w-[180px] px-2 text-[13.5px] font-semibold tabular-nums text-ink">
+                  {calendarRangeLabel(rangeStart, viewDays)}
+                </h2>
+              </>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              {section === "calendar" && (
+                <div className="flex items-center rounded-lg border border-hairline/50 bg-inset/60 p-0.5" aria-label="Schedule view">
+                  <button
+                    type="button"
+                    aria-pressed={scheduleView === "calendar"}
+                    onClick={() => setScheduleView("calendar")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-all",
+                      scheduleView === "calendar" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+                    )}
+                  >
+                    <CalendarDays size={12} />
+                    Calendar
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={scheduleView === "list"}
+                    onClick={() => setScheduleView("list")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-all",
+                      scheduleView === "list" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+                    )}
+                  >
+                    <List size={12} />
+                    List
+                  </button>
+                </div>
+              )}
+
+              {section === "calendar" && scheduleView === "calendar" && (
+                <div className="hidden sm:flex items-center rounded-lg border border-hairline/50 bg-inset/60 p-0.5" aria-label="View days">
+                  {([1, 3, 7] as const).map((daysOption) => (
+                    <button
+                      key={daysOption}
+                      type="button"
+                      onClick={() => setView(daysOption)}
+                      className={cn(
+                        "rounded-md px-2 py-1 text-[11.5px] font-medium transition-all",
+                        viewDays === daysOption ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
+                      )}
+                    >
+                      {daysOption === 1 ? "Day" : daysOption === 3 ? "3 Days" : "Week"}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {running > 0 && (
+                <span className="hidden items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 text-[10.5px] font-medium text-accent sm:flex">
+                  <Loader2 size={11} className="animate-spin" />
+                  {running} active
+                </span>
+              )}
+              {unseenFailures > 0 && (
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: "showRoutines", section: "logs" })}
+                  className="hidden items-center gap-1.5 rounded-full bg-danger/10 px-2.5 py-1 text-[10.5px] font-medium text-danger sm:flex"
+                  title="Open failed run logs"
+                  aria-label="Open failed run logs"
+                >
+                  <CircleAlert size={11} />
+                  {unseenFailures}
+                </button>
+              )}
+              {paused.length > 0 && (
+                <button
+                  onClick={() => setPausedOpen(true)}
+                  aria-label="View paused routines"
+                  className="hidden items-center gap-1.5 rounded-full border border-hairline/50 px-2.5 py-1 text-[10.5px] text-ink-secondary hover:bg-raised sm:flex"
+                >
+                  <Pause size={11} />
+                  {paused.length}
+                </button>
+              )}
+
+              <select
+                aria-label="Filter schedule by bot"
+                value={botFilter}
+                onChange={(event) => { setBotFilter(event.target.value); setRoutineFilter(undefined); }}
+                className="max-w-[160px] rounded-lg border border-hairline/50 bg-inset/50 px-2.5 py-1.5 text-[11.5px] text-ink outline-none focus:border-accent"
+              >
+                <option value="all">All agents</option>
+                {visibleBots.map((bot) => (
+                  <option key={bot.id} value={bot.id}>
+                    {bot.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {error && (
+              <button onClick={() => setError("")} className="flex items-center gap-1.5 rounded-lg bg-danger/10 px-2.5 py-1.5 text-[10.5px] text-danger">
+                <CircleAlert size={11} />
+                {error}
+                <X size={11} />
+              </button>
+            )}
+            {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "error" && <p role="alert" className="w-full text-[11.5px] text-danger">{t("routines.loadError")}</p>}
+            {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "loading" && state.routines.length === 0 && <p role="status" className="w-full text-[11.5px] text-ink-secondary">{t("routines.loading")}</p>}
           </div>
-          <div className="min-w-[220px] px-2 text-[15px] font-medium text-ink">{calendarRangeLabel(rangeStart, viewDays)}</div></>}
-          <div className="ml-auto flex items-center gap-2">
-            {running > 0 && <span className="hidden items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1.5 text-[10.5px] text-accent sm:flex"><Loader2 size={11} className="animate-spin" />{running} active</span>}
-            {unseenFailures > 0 && <button type="button" onClick={() => dispatch({ type: "showRoutines", section: "logs" })} className="hidden items-center gap-1.5 rounded-full bg-danger/10 px-2.5 py-1.5 text-[10.5px] text-danger sm:flex" title="Open failed run logs" aria-label="Open failed run logs"><CircleAlert size={11} />{unseenFailures}</button>}
-            {paused.length > 0 && <button onClick={() => setPausedOpen(true)} aria-label="View paused routines" className="hidden items-center gap-1.5 rounded-full border border-hairline/50 px-2.5 py-1.5 text-[10.5px] text-ink-secondary hover:bg-raised sm:flex"><Pause size={11} />{paused.length}</button>}
-            <select aria-label="Filter schedule by bot" value={botFilter} onChange={(event) => { setBotFilter(event.target.value); setRoutineFilter(undefined); }} className="max-w-[180px] rounded-lg border border-hairline/50 bg-panel px-2.5 py-2 text-[11.5px] text-ink outline-none focus:border-accent"><option value="all">All bots</option>{visibleBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}</select>
-            {section === "calendar" && scheduleView === "calendar" && <select aria-label="Schedule range" value={viewDays} onChange={(event) => setView(Number(event.target.value) as 1 | 3 | 7)} className="rounded-lg border border-hairline/50 bg-panel px-2.5 py-2 text-[11.5px] text-ink outline-none focus:border-accent"><option value={1}>Day</option><option value={3}>3 days</option><option value={7}>Week</option></select>}
-          </div>
-          {error && <button onClick={() => setError("")} className="flex items-center gap-1.5 rounded-lg bg-danger/10 px-2.5 py-1.5 text-[10.5px] text-danger"><CircleAlert size={11} />{error}<X size={11} /></button>}
-          {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "error" && <p role="alert" className="w-full text-[11.5px] text-danger">{t("routines.loadError")}</p>}
-          {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "loading" && state.routines.length === 0 && <p role="status" className="w-full text-[11.5px] text-ink-secondary">{t("routines.loading")}</p>}
-        </div>}
+        )}
       </header>
 
       {section === "webhooks" ? <WebhooksPanel bots={visibleBots} createRequest={webhookCreateRequest} onCreateHandled={handleWebhookCreateHandled} /> : section === "logs" ? (
