@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Check, Copy, Play, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Ban, Check, Copy, Loader2, Play, RefreshCw, UserPlus, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import {
@@ -32,6 +32,7 @@ export function TrustCard({
   onBlockSpend,
   onContinue,
   onRecheck,
+  onCloneAgent,
   busy = false,
   ranAt,
 }: {
@@ -40,6 +41,8 @@ export function TrustCard({
   /** Enabled only when decision === GO. */
   onContinue?: (agentId: string) => void;
   onRecheck?: (agentId: string) => void;
+  /** Clone/import this agent into the workspace team. */
+  onCloneAgent?: (agentId: string) => Promise<void> | void;
   /** True while a Markets / Free-MCP tool call is in flight. */
   busy?: boolean;
   /** Transcript message time for the last-run age line. */
@@ -47,6 +50,8 @@ export function TrustCard({
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [cloned, setCloned] = useState(false);
   const evidenceId = useId();
   const actionLocked = useRef(false);
   const continueEnabled = data.decision === "GO" && !busy && Boolean(onContinue);
@@ -94,9 +99,13 @@ export function TrustCard({
           {data.decision}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[13px] font-medium text-ink">{t("okxGate.trust.title")}</h3>
+          <h3 className="text-[13px] font-medium text-ink">
+            {data.agentName ? `${data.agentName} (#${data.agentId})` : t("okxGate.trust.title")}
+          </h3>
           <p className="mt-0.5 text-[12px] text-ink-secondary">
-            {t("okxGate.trust.agent", { agentId: data.agentId })}
+            {data.agentName
+              ? `OKX.ai Marketplace Agent${data.score ? ` · ⭐ ${data.score}/5.0` : ""}`
+              : t("okxGate.trust.agent", { agentId: data.agentId })}
           </p>
           {lastRunSummary && (
             <p className="mt-1 text-[11.5px] text-ink-secondary">
@@ -108,6 +117,21 @@ export function TrustCard({
       <p className="mt-3 border-t border-hairline/70 pt-3 text-[12px] leading-relaxed text-ink-secondary">
         {data.summary}
       </p>
+      {data.services && data.services.length > 0 && (
+        <div className="mt-2.5 rounded-xl border border-hairline/60 bg-inset/50 p-2.5">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">
+            Verified Services on OKX ({data.services.length})
+          </div>
+          <div className="mt-1.5 space-y-1">
+            {data.services.slice(0, 3).map((s) => (
+              <div key={s.serviceId} className="flex items-center justify-between text-[11.5px] text-ink">
+                <span className="truncate">{s.name}</span>
+                <span className="ml-2 shrink-0 font-mono text-[10.5px] text-ink-secondary">{s.price} USDT</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <ul aria-label={t("okxGate.trust.signals")} className="mt-2 space-y-1.5">
         {data.signals.map((signal) => (
           <li key={`${signal.id}:${signal.detail}`} className="flex items-start gap-2 text-[12px] leading-relaxed">
@@ -188,6 +212,34 @@ export function TrustCard({
         >
           {t("okxGate.evidence")}
         </button>
+        {onCloneAgent && (
+          <button
+            type="button"
+            disabled={busy || cloned || cloning}
+            onClick={async () => {
+              if (cloning || cloned) return;
+              setCloning(true);
+              try {
+                await onCloneAgent(data.agentId);
+                setCloned(true);
+              } catch (err) {
+                console.error("Failed to clone agent:", err);
+              } finally {
+                setCloning(false);
+              }
+            }}
+            aria-label="Clone to Team"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-semibold transition-all",
+              cloned
+                ? "bg-success/15 text-success border border-success/30"
+                : "bg-accent text-white hover:brightness-110 shadow-sm",
+            )}
+          >
+            {cloning ? <Loader2 size={13} className="animate-spin" /> : cloned ? <Check size={13} /> : <UserPlus size={13} />}
+            {cloned ? "In Team" : "Clone to Team"}
+          </button>
+        )}
       </div>
       {evidenceOpen && (
         <pre

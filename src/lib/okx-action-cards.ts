@@ -30,6 +30,11 @@ export type ReadinessRunCardData = {
 export type TrustCardData = {
   kind: "trust";
   agentId: string;
+  agentName?: string;
+  description?: string;
+  score?: string;
+  avatarUrl?: string;
+  services?: Array<{ serviceId: number | string; name: string; description: string; price: string }>;
   decision: TrustDecision;
   summary: string;
   signals: GateSignal[];
@@ -110,6 +115,27 @@ export function extractGateLastRun(
   };
 }
 
+export function extractCardPayload(parsed: unknown): Record<string, unknown> | null {
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    const first = parsed[0];
+    if (isRecord(first)) {
+      if (isRecord(first.text)) return extractCardPayload(first.text);
+      if (typeof first.text === "string") {
+        try {
+          return extractCardPayload(JSON.parse(first.text));
+        } catch {
+          /* not json string */
+        }
+      }
+      return extractCardPayload(first);
+    }
+  }
+  if (!isRecord(parsed)) return null;
+  if (isRecord(parsed.data)) return parsed.data;
+  if (isRecord(parsed.result)) return extractCardPayload(parsed.result);
+  return parsed;
+}
+
 /** The provider records a completed MCP result as a string in `tool.output`.
  * Accept the real `{ resource, data }` envelope and a bare `data` object for
  * older transcripts, but never fabricate a verdict/decision from malformed data. */
@@ -121,8 +147,8 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   } catch {
     return null;
   }
-  if (!isRecord(parsed)) return null;
-  const data = isRecord(parsed.data) ? parsed.data : parsed;
+  const data = extractCardPayload(parsed);
+  if (!data) return null;
   const rawJson = tool.output.length <= 20_000 ? tool.output : tool.output.slice(0, 20_000);
 
   if (isReadinessTool(tool.name)) {
@@ -144,6 +170,23 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   }
 
   const agentId = text(data.agentId, 128);
+  const agentName = text(data.agentName, 200);
+  const description = text(data.description, 2000);
+  const score = text(data.score, 20);
+  const avatarUrl = text(data.avatarUrl, 500);
+  const services = Array.isArray(data.services)
+    ? data.services.slice(0, 10).flatMap((s: any) => {
+        if (!isRecord(s)) return [];
+        const name = text(s.name, 100);
+        if (!name) return [];
+        return [{
+          serviceId: typeof s.serviceId === "number" || typeof s.serviceId === "string" ? s.serviceId : String(s.serviceId ?? ""),
+          name,
+          description: text(s.description, 500) ?? "",
+          price: text(s.price, 20) ?? "0",
+        }];
+      })
+    : undefined;
   const decision = text(data.decision, 20);
   const summary = text(data.summary);
   const signalsList = signals(data.signals);
@@ -155,6 +198,11 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   return {
     kind: "trust",
     agentId,
+    ...(agentName ? { agentName } : {}),
+    ...(description ? { description } : {}),
+    ...(score ? { score } : {}),
+    ...(avatarUrl ? { avatarUrl } : {}),
+    ...(services && services.length > 0 ? { services } : {}),
     decision: decision as TrustDecision,
     summary,
     signals: signalsList,

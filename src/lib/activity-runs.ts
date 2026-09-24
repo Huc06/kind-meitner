@@ -6,6 +6,7 @@
 // text between two stretches breaks the run, so the bot's words always
 // separate one run from the next.
 import type { Message } from "@/state/store";
+import { isOkxGateTool } from "@/lib/okx-action-cards";
 import { formatElapsed } from "@/lib/working-time";
 import { t } from "@/lib/i18n";
 
@@ -25,6 +26,7 @@ function foldable(message: Message): boolean {
   const tool = message.tool;
   if (message.kind !== "activity" || !tool) return false;
   if (message.comm || message.threadRef) return false;
+  if (isOkxGateTool(tool.name)) return false;
   if (tool.ok !== true) return false;
   return !tool.name.startsWith("error:");
 }

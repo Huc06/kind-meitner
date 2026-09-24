@@ -100,4 +100,23 @@ describe("OKX action-card payload parsing", () => {
     });
     expect(parsed).toMatchObject({ kind: "readiness", lastRun: { latencyMs: 88, toolCount: 7 } });
   });
+
+  it("accepts Claude-style array-wrapped tool output", () => {
+    const arrayOutput = [
+      {
+        type: "text",
+        text: readiness,
+      },
+    ];
+    const parsed = parseOkxActionCard({
+      name: "mcp__agents__scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify(arrayOutput),
+    });
+    expect(parsed).toMatchObject({
+      kind: "readiness",
+      verdict: "FAIL",
+      endpointUrl: readiness.data.endpointUrl,
+    });
+  });
 });

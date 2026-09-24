@@ -653,6 +653,19 @@ const MessagesList = memo(function MessagesList({
   // row out of the DOM, and there is nothing for the scroll to land on.
   const focus = state.focusMessage;
   const focusedId = focus && !focus.consumed && focus.threadId === bot.threadId ? focus.messageId : null;
+
+  const handleCloneOkxAgent = useCallback(async (agentId: string) => {
+    const targetRoom = state.groups.find((g) => g.name === "#dev-day-gate" || g.name === "Dev Day Gate") || state.groups[0];
+    if (!targetRoom) return;
+    await api("/api/okx/agents/import", {
+      method: "POST",
+      body: JSON.stringify({
+        agentId,
+        roomId: targetRoom.id,
+        requestId: `import-${Date.now()}`,
+      }),
+    });
+  }, [state.groups]);
   return (
     <>
       {messages.length === 0 && !bot.busy && (
@@ -705,6 +718,7 @@ const MessagesList = memo(function MessagesList({
                       enabled={showGateCards}
                       busy={bot.busy}
                       composerDraftId={`bot:${bot.id}:${bot.threadId}`}
+                      onCloneAgent={handleCloneOkxAgent}
                       fallback={<ActivityChip message={step} />}
                     />
                   </div>
@@ -771,6 +785,7 @@ const MessagesList = memo(function MessagesList({
                   enabled={showGateCards}
                   busy={bot.busy}
                   composerDraftId={`bot:${bot.id}:${bot.threadId}`}
+                  onCloneAgent={handleCloneOkxAgent}
                   fallback={<ActivityChip message={m} />}
                 />
               );

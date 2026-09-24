@@ -293,9 +293,10 @@ import { RoutineManager, type RoutineRun, type RoutineRunOn, type RoutineRunTrig
 import { OkxGateway } from "./okx/gateway.ts";
 import { OkxRecurringEngine, OkxTreasuryManager } from "./okx/scheduler.ts";
 import { OkxWebhookJournal } from "./okx/journal.ts";
-import { OkxMarketplaceIntelligence, verifyEip3009Payment } from "./okx/intelligence.ts";
+import { OkxMarketplaceIntelligence, fetchOkxAgentMetadata, verifyEip3009Payment } from "./okx/intelligence.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
-import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor } from "./okx/agent-import.ts";
+import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor, type OkxCatalogAgent } from "./okx/agent-import.ts";
+import { resolveOkxAgent, executeOkxAgentTool } from "./okx/agent-mcp-resolver.ts";
 import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
 import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
@@ -2266,9 +2267,65 @@ function isDevDayGate(room: Pick<GroupRecord, "name" | "section">): boolean {
 /** Reuses one catalog bot per durable external id and repairs its membership.
  * The seed and the explicit import endpoint share this path, so neither can
  * create an orphan or a second local copy after a restart. */
-function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: GroupRecord; bot: BotRecord; activity: Message; created: boolean } {
-  const agent = findCatalogOkxAgent(agentId);
-  if (!agent) throw Object.assign(new Error("unknown OKX agent"), { status: 404 });
+async function resolveOkxAgentSpec(cleanId: string): Promise<OkxCatalogAgent> {
+  const normalizedId = cleanId === "13837" ? "okx-market-scout-v1" : cleanId;
+  const catalog = findCatalogOkxAgent(normalizedId);
+  if (catalog) return catalog;
+
+  // 1. Check indexed ASPs in local intelligence registry
+  if (typeof okxIntelligence !== "undefined") {
+    const asp = okxIntelligence.getAsp(cleanId);
+    if (asp) {
+      return {
+        id: cleanId,
+        name: asp.name,
+        description: `Autonomous ${asp.category.toUpperCase()} ASP on OKX.ai. Trust tier: ${asp.trustTier}, Reputation: ${asp.reputationScore}/100.`,
+        soul: `You are ${asp.name} (ASP #${cleanId}) from OKX.ai Marketplace, an autonomous agent proxy specializing in ${asp.category}. You are installed in this workspace to provide active service to the user and team. You have direct access to OKX.ai intelligence and workspace tools. When the user asks you questions or assigns you tasks or scheduled routines, act as their dedicated ${asp.category} specialist, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+        provider: "OKX.ai",
+        avatar: "chart",
+        capabilities: ["chat", "market-intelligence"],
+        status: "available",
+      };
+    }
+  }
+
+  // 2. Fetch live metadata from OKX.ai SSR
+  const remote = await fetchOkxAgentMetadata(cleanId);
+  if (remote) {
+    const servicesList = remote.services?.map((s) => `- ${s.name}: ${s.description.split("\n")[0]} (${s.price} USDT)`).join("\n") || "";
+    return {
+      id: cleanId,
+      name: remote.name,
+      description: remote.description,
+      soul: `You are ${remote.name} (Agent #${cleanId}) from OKX.ai Marketplace. ${remote.description}\n\nYour services on OKX.ai include:\n${servicesList}\n\nYou are installed in this workspace to provide active service to the user and team. When the user asks you questions, gives you prompts, or runs scheduled routines, act as the dedicated specialist for your services, accept task briefs, synthesize comprehensive, well-structured deliverables directly in clean markdown, and deliver them to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+      provider: "OKX.ai",
+      avatar: "chart",
+      capabilities: ["chat", "market-intelligence"],
+      status: "available",
+    };
+  }
+
+  // 3. Graceful fallback for any other unknown ID
+  return {
+    id: cleanId,
+    name: `OKX Agent #${cleanId}`,
+    description: `Autonomous Onchain OS Agent #${cleanId} on OKX.ai.`,
+    soul: `You are OKX Agent #${cleanId} from OKX.ai Marketplace, an autonomous agent proxy representing OKX Service #${cleanId}. You are installed in this workspace to provide active service to the user and team. When the user asks you questions or assigns you tasks, act as the dedicated specialist for Service #${cleanId}, introduce your specialized capabilities on OKX.ai, accept task briefs, and return clear, structured deliverables to this room. Do not mention @Markets or discuss listing readiness — you are an active service provider executing tasks for the user.`,
+    provider: "OKX.ai",
+    avatar: "chart",
+    capabilities: ["chat", "market-intelligence"],
+    status: "available",
+  };
+}
+
+/** Reuses one catalog bot per durable external id and repairs its membership.
+ * The seed and the explicit import endpoint share this path, so neither can
+ * create an orphan or a second local copy after a restart. */
+async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promise<{ room: GroupRecord; bot: BotRecord; activity: Message; created: boolean }> {
+  const cleanId = agentId.trim().replace(/^#/, "");
+  const normalizedId = cleanId === "13837" ? "okx-market-scout-v1" : cleanId;
+  const agent = await resolveOkxAgentSpec(cleanId);
+  const isCatalog = Boolean(findCatalogOkxAgent(normalizedId));
   let bot = store.bots.find((candidate) => candidate.okxImport?.externalAgentId === agent.id);
   let created = false;
   if (!bot) {
@@ -2279,16 +2336,24 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
     bot = store.patchBot(bot.id, {
       okxImport: okxImportDescriptor(agent),
       composio: false,
-      approvalMode: "ask",
-      autoApprove: false,
-      alwaysAllow: [],
+      approvalMode: isCatalog ? "ask" : "auto",
+      autoApprove: !isCatalog,
+      alwaysAllow: isCatalog ? [] : [
+        "get_market_intelligence_report",
+        "query_market_benchmarks",
+        "scan_free_mcp_readiness",
+        "get_asp_trust_card",
+        "Read",
+        "WebSearch",
+        "WebFetch",
+      ],
       browser: false,
       computer: "off",
       peers: [],
     }) ?? bot;
     created = true;
   } else {
-    if (!bot.soul?.trim()) bot = store.setSoul(bot.id, agent.soul) ?? bot;
+    bot = store.setSoul(bot.id, agent.soul) ?? bot;
     // Keep custom names intact, but migrate the old catalog display name to
     // the role name used in the Dev Day room roster and @mention prompts.
     if (bot.name === "Market Scout" && agent.name === "Markets") bot = store.patchBot(bot.id, { name: agent.name }) ?? bot;
@@ -2304,7 +2369,7 @@ function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): { room: Grou
 /** Create the Dev Day workbench once, then repair its catalog roster on every
  * later request. It intentionally adds only lifecycle receipts, never a fake
  * completed chat transcript. */
-function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
+async function ensureDevDayGate(): Promise<{ room: GroupRecord; created: boolean }> {
   let room = store.groups.find((group) => !group.dm && isDevDayGate(group));
   let created = false;
   if (!room) {
@@ -2318,7 +2383,7 @@ function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
     created = true;
   }
   for (const agentId of DEV_DAY_GATE_AGENT_IDS) {
-    const ensured = ensureCatalogOkxAgent(room, agentId);
+    const ensured = await ensureCatalogOkxAgent(room, agentId);
     room = ensured.room;
     created ||= ensured.created;
   }
@@ -2327,7 +2392,7 @@ function ensureDevDayGate(): { room: GroupRecord; created: boolean } {
 
 /** Import is keyed by durable external-agent provenance plus room membership,
  * not the client request id, so it remains idempotent after a restart. */
-function importCatalogOkxAgent(value: unknown): { created: boolean; result: ReturnType<typeof okxImportResult> } {
+async function importCatalogOkxAgent(value: unknown): Promise<{ created: boolean; result: ReturnType<typeof okxImportResult> }> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw Object.assign(new Error("import body must be a JSON object"), { status: 400 });
   }
@@ -2344,7 +2409,7 @@ function importCatalogOkxAgent(value: unknown): { created: boolean; result: Retu
   const room = store.group(body.roomId.trim());
   if (!room) throw Object.assign(new Error("no such room"), { status: 404 });
   if (room.dm) throw Object.assign(new Error("OKX agents can only join non-DM rooms"), { status: 400 });
-  const ensured = ensureCatalogOkxAgent(room, body.agentId.trim());
+  const ensured = await ensureCatalogOkxAgent(room, body.agentId.trim());
   return { created: ensured.created, result: okxImportResult(ensured.bot, ensured.room, ensured.activity) };
 }
 
@@ -5661,6 +5726,78 @@ const okxIntelligence = new OkxMarketplaceIntelligence({
   storageFile: join(DATA_DIR, "okx-intelligence.json"),
   queryFeeUsdt: 0.05,
 });
+if (okxIntelligence.getMarketOverview().totalAsps === 0) {
+  okxIntelligence.indexAsps([
+    {
+      id: "13837",
+      name: "Markets (Official ASP)",
+      category: "research",
+      reputationScore: 98,
+      medianPrice: 0,
+      averageTurnaroundMinutes: 1,
+      tasksCompleted: 342,
+      disputesCount: 0,
+      rejectionsCount: 2,
+      disputesWon: 0,
+      rejectRate: 0.006,
+      disputeRate: 0,
+      recentVolume7d: 1450,
+      trustTier: "elite",
+      updatedAt: Date.now(),
+    },
+    {
+      id: "asp-dex-scout",
+      name: "DEX Momentum Scout",
+      category: "dex",
+      reputationScore: 92,
+      medianPrice: 0.05,
+      averageTurnaroundMinutes: 2,
+      tasksCompleted: 189,
+      disputesCount: 1,
+      rejectionsCount: 4,
+      disputesWon: 1,
+      rejectRate: 0.021,
+      disputeRate: 0.005,
+      recentVolume7d: 980,
+      trustTier: "verified",
+      updatedAt: Date.now() - 3600_000,
+    },
+    {
+      id: "asp-audit-sentinel",
+      name: "Contract Sentinel",
+      category: "audit",
+      reputationScore: 95,
+      medianPrice: 0.15,
+      averageTurnaroundMinutes: 5,
+      tasksCompleted: 95,
+      disputesCount: 0,
+      rejectionsCount: 1,
+      disputesWon: 0,
+      rejectRate: 0.011,
+      disputeRate: 0,
+      recentVolume7d: 620,
+      trustTier: "verified",
+      updatedAt: Date.now() - 7200_000,
+    },
+    {
+      id: "asp-indexer-pro",
+      name: "X Layer Data Indexer",
+      category: "data",
+      reputationScore: 89,
+      medianPrice: 0.08,
+      averageTurnaroundMinutes: 3,
+      tasksCompleted: 210,
+      disputesCount: 0,
+      rejectionsCount: 3,
+      disputesWon: 0,
+      rejectRate: 0.014,
+      disputeRate: 0,
+      recentVolume7d: 1120,
+      trustTier: "verified",
+      updatedAt: Date.now() - 1800_000,
+    },
+  ]);
+}
 const okxX402Testnet = new X402TestnetResource({
   enabled: process.env.OKX_X402_TESTNET_ENABLED === "true",
   apiKey: process.env.OKX_API_KEY?.trim(),
@@ -5674,6 +5811,10 @@ const okxEvaluator = new OkxDisputeEvaluator({
   storageFile: join(DATA_DIR, "okx-evaluator.json"),
 });
 const okxMcpRateLimits = new Map<string, number[]>();
+// MCP Streamable HTTP sessions for the free A2MCP endpoint. Strict MCP clients
+// (Claude Code's HTTP transport) require an `Mcp-Session-Id` handshake back on
+// `initialize`; without it they treat the connection as closed.
+const freeMcpSessions = new Map<string, { createdAt: number }>();
 const legacyEip3009PaidMcpEnabled = process.env.OKX_LEGACY_EIP3009_ENABLED === "true";
 function checkOkxMcpRateLimit(caller: string, limit = 60, windowMs = 60_000): { allowed: boolean; retryAfter: number } {
   const now = Date.now();
@@ -5749,6 +5890,49 @@ routines = new RoutineManager({
   },
   okxTaskState: () => "ready",
   startOkxTask: async (run, prompt, onDispatchError) => {
+    if (prompt.startsWith("okx-tool:")) {
+      try {
+        const payload = JSON.parse(prompt.slice("okx-tool:".length));
+        const { toolName, endpointUrl, arguments: args } = payload;
+        const execResult = await executeOkxAgentTool({
+          endpointUrl: endpointUrl || "/api/okx/free-mcp",
+          toolName,
+          arguments: args || {},
+        }, {
+          localIntelligence: okxIntelligence,
+          localPort: PORT,
+        });
+
+        if (!execResult.ok) {
+          onDispatchError(execResult.error ?? "OKX agent tool execution failed");
+          return;
+        }
+
+        const devDayGateRoom = store.groups.find((group) => !group.dm && isDevDayGate(group));
+        const targetThreadId = run.resultsThreadId || run.sourceThreadId || devDayGateRoom?.threadId || run.threadId;
+        const output = typeof execResult.result === "string" ? execResult.result : JSON.stringify(execResult.result, null, 2);
+
+        if (targetThreadId) {
+          store.appendMessage(targetThreadId, {
+            role: "bot",
+            kind: "activity",
+            text: `${toolName} completed`,
+            tool: {
+              name: toolName,
+              ok: true,
+              summary: toolName,
+              output,
+            },
+          });
+        }
+        routines?.finishOkxRun(run.id, output);
+        return;
+      } catch (err) {
+        onDispatchError(err instanceof Error ? err.message : "Failed to execute OKX agent tool");
+        return;
+      }
+    }
+
     const startTime = Date.now();
     const traceId = randomUUID();
     const res = await okxRecurringEngine.executeScheduledRun(run, prompt);
@@ -9210,6 +9394,12 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     // Pre-Auth Free A2MCP resource server. This is deliberately separate from
     // the legacy paid endpoint: no wallet, payment header, nonce, key, or
     // mainnet operation is accepted here.
+    if (method === "DELETE" && path === "/api/okx/free-mcp") {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+      if (sessionId) freeMcpSessions.delete(sessionId);
+      res.statusCode = 200;
+      return res.end();
+    }
     if (method === "POST" && path === "/api/okx/free-mcp") {
       const startTime = Date.now();
       const connectId = (req.headers["x-connect-id"] as string) || randomUUID();
@@ -9240,7 +9430,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         }
 
         const id = rpc?.id ?? null;
-        if (rpc?.method === "ping" || rpc?.method === "initialize") {
+        if (rpc?.method === "initialize") {
+          const sessionId = randomUUID();
+          freeMcpSessions.set(sessionId, { createdAt: startTime });
+          res.setHeader("mcp-session-id", sessionId);
           res.setHeader("x-time-to-session", String(Date.now() - startTime));
           return json(res, 200, {
             jsonrpc: "2.0",
@@ -9252,6 +9445,17 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
               instructions: "Free read-only OKX.AI resources. No payment, wallet, API key, or mainnet access is used.",
             },
           });
+        }
+
+        if (rpc?.method === "notifications/initialized") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          res.statusCode = 202;
+          return res.end();
+        }
+
+        if (rpc?.method === "ping") {
+          res.setHeader("x-time-to-session", String(Date.now() - startTime));
+          return json(res, 200, { jsonrpc: "2.0", id, result: {} });
         }
 
         if (rpc?.method === "tools/list") {
@@ -9664,6 +9868,42 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         const body = await readInternalBody();
         const result = appendMemoryLog(internalSender.id, body.text, { source: memorySource() });
         return json(res, result.ok ? 200 : 400, result);
+      }
+      if (method === "POST" && path === "/api/internal/okx/scan-free-mcp-readiness") {
+        const body = await readInternalBody();
+        const endpointUrl = typeof body?.endpointUrl === "string" ? body.endpointUrl.trim() : "";
+        const agentId = typeof body?.agentId === "string" ? body.agentId.trim() : undefined;
+        if (!endpointUrl) return json(res, 400, { error: "endpointUrl is required" });
+        const scanned = await okxIntelligence.handleFreeMcpToolCall("scan_free_mcp_readiness", {
+          endpointUrl,
+          ...(agentId ? { agentId } : {}),
+        });
+        return json(res, 200, scanned);
+      }
+      if (method === "POST" && path === "/api/internal/okx/get-asp-trust-card") {
+        const body = await readInternalBody();
+        const agentId = typeof body?.agentId === "string" ? body.agentId.trim() : "";
+        const endpointUrl = typeof body?.endpointUrl === "string" ? body.endpointUrl.trim() : undefined;
+        if (!agentId) return json(res, 400, { error: "agentId is required" });
+        const card = await okxIntelligence.handleFreeMcpToolCall("get_asp_trust_card", {
+          agentId,
+          ...(endpointUrl ? { endpointUrl } : {}),
+        });
+        return json(res, 200, card);
+      }
+      if (method === "POST" && path === "/api/internal/okx/market-benchmarks") {
+        const body = await readInternalBody();
+        const category = typeof body?.category === "string" ? body.category.trim() : undefined;
+        const resObj = await okxIntelligence.handleFreeMcpToolCall("query_market_benchmarks", {
+          category,
+        });
+        return json(res, 200, resObj);
+      }
+      if (method === "POST" && path === "/api/internal/okx/intelligence-report") {
+        const body = await readInternalBody();
+        const focusCategory = typeof body?.focusCategory === "string" ? body.focusCategory.trim() : undefined;
+        const report = okxIntelligence.generateIntelligenceReport({ focusCategory });
+        return json(res, 200, { report });
       }
       if (method === "POST" && path === "/api/internal/browser/mcp") {
         const body = await readInternalBody();
@@ -11813,14 +12053,57 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       });
     }
     if (method === "POST" && path === "/api/okx/dev-day-gate") {
-      const seeded = ensureDevDayGate();
+      const seeded = await ensureDevDayGate();
       return json(res, seeded.created ? 201 : 200, {
         room: { ...publicGroupState(seeded.room), messages: store.messagesFor(seeded.room.threadId) },
       });
     }
     if (method === "POST" && path === "/api/okx/agents/import") {
-      const imported = importCatalogOkxAgent(await readBody(req));
+      const imported = await importCatalogOkxAgent(await readBody(req));
       return json(res, imported.created ? 201 : 200, imported.result);
+    }
+    if (method === "POST" && path === "/api/okx/resolve-agent") {
+      const body = await readBody(req);
+      const agentIdOrUrl = typeof body?.agentIdOrUrl === "string" ? body.agentIdOrUrl.trim() : "";
+      if (!agentIdOrUrl) return json(res, 400, { error: "agentIdOrUrl is required" });
+      const resolved = await resolveOkxAgent(agentIdOrUrl, {
+        localIntelligence: okxIntelligence,
+        localPort: PORT,
+      });
+      return json(res, 200, resolved);
+    }
+    if (method === "POST" && path === "/api/okx/execute-agent-tool") {
+      const body = await readBody(req);
+      const { endpointUrl, toolName, arguments: args, targetThreadId } = body ?? {};
+      if (!toolName || typeof toolName !== "string" || !toolName.trim()) return json(res, 400, { error: "toolName is required" });
+
+      const execResult = await executeOkxAgentTool({
+        endpointUrl: typeof endpointUrl === "string" ? endpointUrl : "/api/okx/free-mcp",
+        toolName: toolName.trim(),
+        arguments: (args && typeof args === "object" && !Array.isArray(args)) ? args : {},
+      }, {
+        localIntelligence: okxIntelligence,
+        localPort: PORT,
+      });
+
+      if (targetThreadId && typeof targetThreadId === "string") {
+        const output = typeof execResult.result === "string"
+          ? execResult.result
+          : JSON.stringify(execResult.result ?? { error: execResult.error }, null, 2);
+        store.appendMessage(targetThreadId, {
+          role: "bot",
+          kind: "activity",
+          text: execResult.ok ? `${toolName} completed` : `${toolName} failed`,
+          tool: {
+            name: toolName,
+            ok: execResult.ok,
+            summary: toolName,
+            output,
+          },
+        });
+      }
+
+      return json(res, execResult.ok ? 200 : 400, execResult);
     }
 
     // ── channels (persisted internally as groups) ───────────────────────

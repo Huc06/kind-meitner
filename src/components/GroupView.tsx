@@ -201,6 +201,17 @@ const Transcript = memo(function Transcript({
   const newestUserMessageId = [...messages].reverse().find((message) => message.role === "user")?.id;
   const focus = state.focusMessage;
   const focusedId = focus && !focus.consumed && focus.threadId === group.threadId ? focus.messageId : null;
+
+  const handleCloneOkxAgent = useCallback(async (agentId: string) => {
+    await api("/api/okx/agents/import", {
+      method: "POST",
+      body: JSON.stringify({
+        agentId,
+        roomId: group.id,
+        requestId: `import-${Date.now()}`,
+      }),
+    });
+  }, [group.id]);
   return (
     <>
       {items.map((item, i) => {
@@ -231,6 +242,7 @@ const Transcript = memo(function Transcript({
                       enabled={showGateCards}
                       busy={gateBusy}
                       composerDraftId={`group:${group.id}:${group.threadId}`}
+                      onCloneAgent={handleCloneOkxAgent}
                       fallback={<RoomToolChip message={step} roomId={group.id} />}
                     />
                   </div>
@@ -289,13 +301,14 @@ const Transcript = memo(function Transcript({
             </div>
           ) : m.kind === "activity" && m.tool ? (
             roomActivityVisible(m, showToolCalls) || isOkxGateTool(m.tool.name) ? (
-              <OkxGateToolResult
-                message={m}
-                enabled={showGateCards}
-                busy={gateBusy}
-                composerDraftId={`group:${group.id}:${group.threadId}`}
-                fallback={<RoomToolChip message={m} roomId={group.id} />}
-              />
+                <OkxGateToolResult
+                  message={m}
+                  enabled={showGateCards}
+                  busy={gateBusy}
+                  composerDraftId={`group:${group.id}:${group.threadId}`}
+                  onCloneAgent={handleCloneOkxAgent}
+                  fallback={<RoomToolChip message={m} roomId={group.id} />}
+                />
             ) : null
           ) : m.kind === "text" && (m.text || m.attachments?.length) ? (
             <div className={cn("group flex w-full flex-col", user ? "items-end" : "items-start")}>

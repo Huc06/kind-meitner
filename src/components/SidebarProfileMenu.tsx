@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Settings as SettingsIcon,
   Smartphone,
+  Wallet,
 } from "lucide-react";
 
 import { InitialsAvatar } from "./Avatar";
@@ -212,6 +213,12 @@ export function SidebarProfileMenu() {
       label: t("sidebar.menu.settings"),
       icon: <SettingsIcon size={18} />,
       onSelect: () => dispatch({ type: "toggleAppSettings" }),
+    },
+    {
+      key: "okx-treasury",
+      label: "OKX Treasury & Budget",
+      icon: <Wallet size={18} />,
+      onSelect: () => dispatch({ type: "toggleOkxSettings", open: true }),
     },
     {
       key: "shortcuts",
