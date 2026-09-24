@@ -109,15 +109,17 @@ export function TeamMapHandoffList({
   items,
   selectedTaskId,
   onSelectHandoff,
+  defaultOpen = false,
   className,
 }: {
   items: UnifiedHandoffItem[];
   selectedTaskId?: string | null;
   onSelectHandoff: (item: UnifiedHandoffItem) => void;
+  defaultOpen?: boolean;
   className?: string;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(items[0]?.id ?? null);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   if (items.length === 0) {
     return (
@@ -164,7 +166,7 @@ export function TeamMapHandoffList({
 
       {/* Structured List Rows */}
       {isOpen && (
-        <div id="handoff-list-content" className="divide-y divide-white/[0.06] border-t border-white/[0.08]">
+        <div id="handoff-list-content" className="max-h-[50vh] overflow-y-auto divide-y divide-white/[0.06] border-t border-white/[0.08]">
           {items.map((item) => {
             const isSelected = selectedTaskId === item.taskId;
             const isExpanded = expandedId === item.id;

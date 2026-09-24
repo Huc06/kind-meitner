@@ -584,11 +584,12 @@ export function TeamMapPage() {
 
       {/* 5. Compact Lower Content (15-20% viewport max): Flat Handoffs + Collapsed Workflow Insights */}
       <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
-        <div className="max-h-[300px] overflow-y-auto px-6 py-4 space-y-3.5">
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-4 space-y-3.5">
           {/* Flat Structured Handoffs with Deduplicated Channels */}
           <TeamMapHandoffList
             items={unifiedHandoffs}
             selectedTaskId={selectedWorkflowTaskId}
+            defaultOpen={false}
             onSelectHandoff={(item: UnifiedHandoffItem) => {
               if (item.taskId) {
                 setSelectedWorkflowTaskId(item.taskId);
