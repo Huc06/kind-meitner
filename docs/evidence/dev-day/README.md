@@ -12,6 +12,7 @@ No invented PASS/GO. Desktop room screenshots and ASP `#13837` listing HTTP 200 
 | `live-scan-fail-vercel.json` | Vercel host → readiness **FAIL** + remediation |
 | `live-scan-pass-railway.json` | Railway Free-MCP → readiness **PASS** |
 | `live-trust-nogo-99999.json` | Trust agent `99999` → **NO_GO** (Block path) |
+| `live-trust-go-13851.json` | Trust canonical `#13851` (Kind Meitner Markets) → **HTTP 200 + endpoint PASS → GO** |
 | `live-trust-nogo-13837.json` | Trust `#13837` + Railway → listing **404** + endpoint PASS → honest **NO_GO** |
 | `live-trust-go-substitute-8136.json` | Continue-on-GO mechanics via public substitute ASP `8136` |
 | `live-trust-go-substitute-11167.json` | Continue-on-GO mechanics via public substitute ASP `11167` |
@@ -42,12 +43,12 @@ Captured 2026-09-22 via `scripts/testing/dev-day-gate-visual.e2e.test.ts` using 
 
 | Item | Blocker | Owner |
 | --- | --- | --- |
-| ASP `#13837` public listing HTTP 200 | #18 ops/listing publish | Ops / owner |
 | Demo video 2–4 min room-scroll | Needs human capture from desktop | #27 / #68 |
 | Submission form package | Needs video + product link | #25 / #68 |
 
 ## Honest limits
 
-- Do **not** claim `#13837` is GO while listing is 404.
+- Canonical ASP `#13851` is live (HTTP 200) and verified GO.
+- Unlisted test case `#13837` remains historical proof that listing 404 yields NO_GO even when endpoint passes.
 - Substitute GO agents (`8136` / `11167`) prove CTA mechanics only; VO must say they are not Kind Meitner Markets.
-- Product-link fallback for submit: Railway Free-MCP URL + note `ASP #13837 under review / unpublished`.
+- Official product listing for submit: https://www.okx.ai/agents/13851.

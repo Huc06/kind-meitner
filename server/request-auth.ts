@@ -26,7 +26,7 @@ export interface RequestAuthResult {
   error: string;
 }
 
-const LOOPBACK_SCOPES: readonly Scope[] = ["admin", "client"];
+export const LOOPBACK_SCOPES: readonly Scope[] = ["admin", "client"];
 
 export function isLoopbackHost(host: string | undefined): boolean {
   if (!host) return false;
@@ -391,13 +391,12 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
     return { auth: { kind: "loopback", scopes: LOOPBACK_SCOPES }, status: 401, error: "" };
   }
 
-  // Public access mode: allow anonymous read-only access for remote browsers
-  // when KIND_MEITNER_PUBLIC_ACCESS is enabled. This lets anyone view the UI
-  // without pairing, while still protecting mutation endpoints.
+  // Public access mode: allow full access for remote browsers when
+  // KIND_MEITNER_PUBLIC_ACCESS is enabled. This lets users view the UI,
+  // chat, create bots, clone agents, and run routines without pairing.
   const publicAccess = process.env.KIND_MEITNER_PUBLIC_ACCESS === "true";
-  if (publicAccess && method === "GET") {
-    // Allow read-only access (static files and GET API endpoints) without authentication
-    return { auth: { kind: "loopback", scopes: ["client"] }, status: 401, error: "" };
+  if (publicAccess) {
+    return { auth: { kind: "loopback", scopes: LOOPBACK_SCOPES }, status: 401, error: "" };
   }
 
   if (proxied) {

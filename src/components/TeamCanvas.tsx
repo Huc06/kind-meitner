@@ -54,10 +54,10 @@ function BotCard({ bot, selected, moving, connected, onComputer, onArrange, onLo
       <button className={cn(iconButton, "size-8")} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
         onClick={() => dispatch({ type: "select", id: bot.id })}><MessageCircle size={13} /></button>
       {onLogs && <button className={cn(iconButton, "size-8")} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
-      {status.tone !== "idle" && <span className="flex items-center gap-1.5 text-[10px] text-ink-secondary" title={status.label}>
+      <span className="flex items-center gap-1.5 text-[10px] text-ink-secondary" title={status.label}>
         <span className={cn("size-1.5 rounded-full", status.tone === "success" ? "bg-success" : status.tone === "warning" ? "bg-warning" : status.tone === "danger" ? "bg-danger" : "bg-ink-secondary/35")} />
         {status.label}
-      </span>}
+      </span>
       {selected && onComputer && <button className={cn(iconButton, "size-8")} aria-label={t("canvas.botComputer", { name: bot.name })} title={t("computer.tab.computer")}
         onClick={() => onComputer(bot)}><Monitor size={13} /></button>}
       <button aria-label={t("canvas.changeModel", { name: bot.name })} title={`${t("canvas.defaultModel")}: ${model}`}
