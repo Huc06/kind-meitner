@@ -399,7 +399,9 @@ export function TeamMapPage() {
         isEmpty={(key) => ![...state.bots, ...state.groups].some((record) => record.section?.trim() === key)} />
       </div>
       {logBot && <SessionLog bot={logBot} onClose={() => setLogBot(null)} />}
-      <details open className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3">
+      {/* Uncontrolled: React re-forces a literal `open` on every render, which
+          would make the tray impossible to collapse. Open it once on mount. */}
+      <details ref={(node) => { if (node && node.dataset.opened === undefined) { node.dataset.opened = "1"; node.open = true; } }} className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3">
         <summary className="cursor-pointer text-[12px] text-ink-secondary">{t("canvas.handoffs")} · {edges.length}</summary>
         {edges.length === 0
           ? <div className="mt-2 flex flex-wrap items-center gap-3">

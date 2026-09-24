@@ -383,7 +383,7 @@ export function TeamCanvas({ sections, canManage, onMove, onInstructions, onEdit
       if (event.key === "0") { event.preventDefault(); fit(); }
     }}>
     <div data-canvas-world className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}>
-      <svg className="pointer-events-none absolute left-0 top-0" width={edgeExtent.width} height={edgeExtent.height} aria-hidden="true">
+      <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={edgeExtent.width} height={edgeExtent.height} aria-hidden="true">
         {edges.flatMap((edge) => {
           const from = centers[edge.sourceBotId];
           const to = centers[edge.targetBotId];
