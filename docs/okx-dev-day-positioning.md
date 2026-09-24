@@ -1,60 +1,90 @@
-# OKX Dev Day positioning: Kind Meitner Markets
+# OKX Dev Day positioning: Kind Meitner Markets & Agent Workbench
 
 ## One-line position
 
-**Kind Meitner Markets is a free, read-only readiness and pre-spend gate for OKX.AI agents:** builder agents check a Free A2MCP endpoint before listing; buyer agents check basic reachability and endpoint readiness before they decide whether to call a target service.
+**Kind Meitner is the all-in-one multichat workbench for the "Build a Company" track:** it solves the two critical bottlenecks of the agent economy by providing (1) a free, read-only **Readiness & Pre-Spend Trust Gate** before listing or spending, and (2) an **Audit-to-Hire workflow** that instantly clones vetted OKX agents into autonomous, scheduled agent teams running company operations.
 
-This is deliberately not a payment product, market-data feed, custody product, escrow operator, reputation oracle, or an OKX endorsement. The current public contract is `POST /api/okx/free-mcp`: direct `200` JSON-RPC results, no wallet, payment header, signer, mainnet access, or settlement. Locally indexed market data remains labelled as local. See the [Free A2MCP launch guide](free-a2mcp-asp.md) and [canonical rollout](plans/2026-09-15-okx-a2mcp-roadmap.md).
+---
 
-## The job, stage, and proof
+## The Two Core Problems We Solve
 
-| Product/category | Job it is designed to do | When in the workflow | What a credible proof looks like | Kind Meitner relationship |
+### Problem 1: The Gate — Pre-Listing Readiness & Pre-Spend Trust
+In a growing agent marketplace, builders struggle with rejected listings due to obscure endpoint mistakes, while buyers risk wasting funds on dead or fraudulent services.
+- **For Builders:** `scan_free_mcp_readiness` checks Free A2MCP endpoints before listing, catches host and protocol pitfalls (such as Vercel endpoint shape issues), and provides actionable remediation steps.
+- **For Buyers & Judges:** `get_asp_trust_card` performs an unopinionated reachability and trust check before consequential spending. Deliberately broken endpoints return `NO_GO` with a direct **Block Spend** action, while verified endpoints return `GO`.
+- **Zero Friction:** 100% free, read-only Free-MCP tools (`POST /api/okx/free-mcp`). No wallet, signature, payment, or custody required to evaluate.
+
+### Problem 2: The Company — Audit-to-Hire & Autonomous Agent Team Operations
+Auditing an agent is only the first step. Once an agent is proven trustworthy, companies need to put it to work immediately alongside human operators and other specialized bots.
+- **Instant `[+ Clone to Team]`:** Directly from any visual Readiness or Trust Action Card in room chat, users can hire/clone the audited OKX agent with one click.
+- **Two-Tier Execution Architecture:**
+  1. *Open / Free MCP Agents (e.g., ASP #13851):* Directly mounts in-process MCP tools for immediate execution.
+  2. *Closed Marketplace Agents (e.g., #2023 / Service 17316):* Provisions dynamic Proxy Bots that coordinate tasks and dispatch requests through the **OKX Onchain OS router**.
+- **Automated Work Schedules (Routines):**
+  - Interactive **Date & Time Picker** embedded directly into the composer to schedule recurring market intelligence, audits, and reports.
+  - **Auto-approved Routine Execution:** Cloned bots run scheduled background tasks autonomously without stalling on manual approval prompts.
+  - **OKX Treasury & Budgeting:** Built-in budget limits and treasury controls accessible right from the user profile menu to govern agent operational spend.
+
+---
+
+## Competitive Differentiation
+
+| Product / Category | Job it is designed to do | When in the workflow | What a credible proof looks like | Kind Meitner Advantage |
 | --- | --- | --- | --- | --- |
-| **Latch402** | Red-team a **paid x402** HTTP endpoint for payment-flow and readiness weaknesses. Its public README describes paid scans, passive/active modes, x402 challenge checks, and security findings. | After a paid endpoint exists; before listing/releasing it. | An observed `402` challenge, report findings, and—only where enabled and authorized—payment/receipt evidence. | Complementary. We do **not** claim to perform its paid x402 security scan. Kind Meitner owns the earlier Free-MCP/listing-shape and buyer-decision gate. |
-| **PreFlight** | Test-purchase a paid agent service as a buyer and report whether its paywall, price, payment, and delivery behave as expected. Its public README lists nine commerce checks and says mainnet payment is refused. | After a paid endpoint exists; before a builder lists or promotes it. | A check scorecard with observed challenge/payment/delivery evidence; its stated environments are mock or Base Sepolia. | Complementary. We do **not** claim a real purchase, settlement check, or delivery audit. |
-| **Signal bots** *(category, not a single product)* | Surface a signal, alert, price, ranking, or chart for a human/agent to interpret. | Discovery or ongoing monitoring. | The source, timestamp, and method behind the signal. A signal alone does not prove a target is callable, safe to pay, or that an agent changed course. | Different job. Kind Meitner produces a bounded decision with remediation and explicit `notChecked` limits, rather than presenting a generic score/feed as payment approval. |
-| **Kind Meitner Markets** | Check Free A2MCP listing readiness and provide a basic pre-spend trust decision: `PASS`/`WARN`/`FAIL` plus remediation for builders; `GO`/`CAUTION`/`NO_GO` plus limits and next step for buyers. | **Before listing** a Free A2MCP endpoint and **before** a buyer calls a paid or otherwise consequential target service. | A reproducible isolated fixture now; later, human-collected public-HTTPS transcripts and an independent agent call. A `GO` is not payment approval. | The Dev Day wedge: a free, agent-callable gate that changes the next action—fix/re-scan, proceed with a free call, or do not pay. |
+| **Latch402** | Red-team a **paid x402** HTTP endpoint for security vulnerabilities. | After paid endpoint exists; before public release. | An observed `402` challenge and penetration findings. | **Complementary.** Latch402 audits paid x402 security; Kind Meitner provides the earlier zero-friction Free-MCP gate AND the full company workbench to hire and orchestrate them. |
+| **PreFlight** | Test-purchase a paid agent service on testnets (Base Sepolia / mock). | After paid endpoint exists; before promotion. | Check scorecard with challenge/payment/delivery evidence. | **Complementary.** PreFlight tests purchasing; Kind Meitner gates pre-spend trust without moving testnet funds, then immediately operationalizes the agent into an active team. |
+| **Signal Bots** | Surface alerts, price charts, or static feeds for humans. | Periodic discovery / monitoring. | Raw feed timestamp and data stream. | **Action-Driven.** Kind Meitner does not just output scores; it outputs interactive Action Cards that drive concrete decisions: **Fix → Block Spend → Clone to Team → Schedule Routine**. |
+| **Kind Meitner** | **End-to-end Agent Company Workbench:** Free readiness gate + pre-spend trust + instant Clone to Team + autonomous scheduled routines. | Entire lifecycle: Pre-listing, Pre-spend, Team Hiring, and Scheduled Operations. | Live Free-MCP endpoint, visual Action Cards, dynamic proxy bot cloning, routine scheduler, and multi-agent room chat. | **The Complete Package for "Build a Company":** Turns evaluated OKX marketplace agents into automated, scheduled corporate teammates. |
 
-The official registration model supports this division: an A2MCP ASP is either a free endpoint that returns directly with no x402, or an x402 endpoint that first returns `402 Payment Required` and is replayed after payment. Kind Meitner's current surface intentionally implements only the first form. [Official ASP registration guidance](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp).
+---
 
-## What we can honestly demonstrate today
+## The End-to-End Workflow: From Audit to Operations
 
-The repository contains isolated-fixture proof that `tools/list` exposes `scan_free_mcp_readiness` and `get_asp_trust_card`; the scanner rejects a known Vercel-host pitfall without an outbound probe; invalid inputs are rejected; and the Dev Day gate room can be seeded. Reproduce it with the commands and limits in [the evidence register](evidence/dev-day/README.md) and [judge guide](okx-dev-day-judge.md).
+```
+[Candidate Endpoint / ASP]
+           │
+           ▼
+ 1. SCAN & VERIFY (Loop 1)
+    • Builder scans: scan_free_mcp_readiness ──► FAIL? ──► Remediation & Re-scan
+    • Buyer trust-checks: get_asp_trust_card ──► NO_GO? ──► [Block Spend]
+                                             └──► GO?   ──► [Continue / Clone]
+           │
+           ▼
+ 2. HIRE & CLONE TO TEAM (Loop 2)
+    • Click [+ Clone to Team] on Action Card
+    • Open Agents: in-process tool binding
+    • Closed Agents: OKX Onchain OS dynamic proxy bot
+           │
+           ▼
+ 3. OPERATE & AUTOMATE (The Company)
+    • Multi-agent room collaboration (#dev-day-gate)
+    • Interactive Date & Time Picker for recurring Routines
+    • Auto-approved background execution & Treasury management
+```
 
-It does **not** prove any of the following, and the demo/form must not imply otherwise:
+---
 
-- a deployed public-HTTPS `PASS`, listing approval, or an external agent call;
-- a live OKX marketplace price, reputation, transaction, or revenue result;
-- an x402 payment, testnet receipt, mainnet settlement, custody, escrow, trade, withdrawal, or evaluator operation; or
-- an OKX review, endorsement, or guarantee.
+## What We Demonstrate Today
 
-A public proof package remains a human/deploy gate: capture the exact public URL, UTC time, redacted request/response, and `notChecked` fields. Until that exists, use the local fixture only as local fixture evidence.
+1. **Live Free-MCP Service:** Deployed on production Railway (`https://kind-meitner-production.up.railway.app/api/okx/free-mcp`), exposing `scan_free_mcp_readiness`, `get_asp_trust_card`, market intelligence, and benchmark tools.
+2. **Canonical Listing Proof:** Registered ASP `#13851` (Kind Meitner Markets) verified live on OKX with HTTP 200 and GO trust card.
+3. **Interactive Multichat UX:** Desktop `#dev-day-gate` room featuring `@Markets`, `Listing Coach`, and `Spend Scout`, rendering uncollapsed visual cards.
+4. **Actionable Outcomes:**
+   - Vercel host pitfall produces deterministic `FAIL` with remediation.
+   - Fake agent `99999` produces `NO_GO` with fill-only **Block Spend** CTA.
+   - Trustworthy agent `#13851` produces `GO` with **`[+ Clone to Team]`** CTA.
+5. **Two-Tier Agent Delegation & Scheduling:** Cloned bots integrated into room chat, ready for scheduled routines via the integrated date/time picker.
 
-## The workflow to show, not a scoreboard
+---
 
-1. **Builder agent:** calls `scan_free_mcp_readiness` on a candidate Free A2MCP URL.
-2. **Kind Meitner Markets:** returns a verdict, bounded evidence, and a concrete fix (for example, use a supported public HTTPS host and expose `tools/list`).
-3. **Builder agent:** fixes the endpoint and re-scans; it does not submit while the verdict is `FAIL`.
-4. **Buyer agent:** calls `get_asp_trust_card` before it would call a target service.
-5. **Kind Meitner Markets:** returns `GO`, `CAUTION`, or `NO_GO`, the observed signals, what was not checked, and a safe next step.
-6. **Buyer agent:** only proceeds with the permitted next action; `NO_GO` means do not call a pay/x402 tool.
+## Voice-Over-Ready Pitch (45 seconds)
 
-The proof is the changed next action, not a synthetic score: **FAIL → fix → re-scan** or **NO_GO → do not pay**. The desktop is an operations console for the same agent-callable result, not the product claim.
+> Building an AI-native company requires two things: knowing which agents you can trust, and seamlessly integrating them into your daily operations. Kind Meitner Markets delivers both. First, our free, read-only A2MCP gate allows builders to verify listing readiness before submitting to OKX, and lets buyers evaluate trust before spending a single dollar. Second, we turn audit into action: with one click on a Trust Card, users can clone audited agents directly into their team, delegate tasks across open and closed marketplace agents via OKX Onchain OS, and schedule automated background routines with built-in treasury controls. Kind Meitner is not just a scanner—it is the operational workbench where AI companies are built and run.
 
-## Voice-over-ready pitch (about 30 seconds)
+---
 
-> ASP builders can lose review cycles to a Free A2MCP endpoint that looks valid but is not callable. Buyer agents can be asked to spend before basic listing and endpoint signals are visible. Kind Meitner Markets is the free, read-only gate between those mistakes and the next action. Builders scan before they list and receive a verdict with fixes. Buyers ask for a trust card before they proceed and receive what we checked, what we did not check, and a safe next step. We do not move money or claim settlement. We make agents stop, fix, or proceed on evidence.
+## Form-Ready Project Description
 
-## Form-ready project description
-
-**Kind Meitner Markets is a free A2MCP readiness and pre-spend trust gate for OKX.AI agents.** Builder agents call `scan_free_mcp_readiness` before listing a Free A2MCP endpoint and get PASS/WARN/FAIL checks with remediation. Buyer agents call `get_asp_trust_card` before a consequential service call and get GO/CAUTION/NO_GO, observed signals, explicit limits, and a safe next step. The current service is read-only and paymentless: no wallet, custody, settlement, mainnet, or live-market claim. Our demo shows agents changing behavior—fixing and re-scanning a failing endpoint, or declining an unsafe first spend—rather than displaying an opaque score.
-
-## Research basis and comparison limits
-
-Research was reviewed on 2026-09-22 from public project documentation. These sources state product positioning; their operational claims were **not independently verified** by this repository:
-
-- [Latch402 public README](https://github.com/Mrgtee/latch402/blob/main/README.md): describes itself as a paid x402 red-team scanner, including passive/active scan boundaries and stated production configuration.
-- [PreFlight public README](https://github.com/chinmayy777/asp-preflight/blob/main/README.md): describes a nine-check paid-service test purchase and states cash-free mock/Base Sepolia checks with mainnet payment refused.
-- [OKX.AI ASP registration guidance](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp): distinguishes direct free endpoints from x402 `402 Payment Required` challenge/replay endpoints.
-
-"Signal bots" is a broad category rather than a named, researched competitor. The comparison therefore makes no claim about every such product; it only distinguishes a signal/feed job from the specific, bounded readiness and decision workflow documented here.
+**Kind Meitner Markets is an AI company operations workbench and trust gate for the OKX.AI ecosystem.** It addresses the two vital needs of autonomous businesses: pre-spend verification and multi-agent team orchestration. 
+1. **The Gate:** Builders call `scan_free_mcp_readiness` for automated pre-listing checks and actionable remediation; buyers call `get_asp_trust_card` to evaluate reachability and trust before consequential spend, triggering automated safety actions like Block Spend on NO_GO.
+2. **The Company:** Through an innovative Audit-to-Hire model, users clone vetted OKX agents directly from chat action cards into their workspace. Supporting both direct in-process MCP tools and dynamic OKX Onchain OS proxy dispatchers, Kind Meitner allows teams to schedule autonomous routines with interactive date/time pickers, auto-approved background execution, and local treasury governance.
