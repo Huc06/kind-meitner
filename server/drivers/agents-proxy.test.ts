@@ -518,6 +518,7 @@ describe("agents-proxy MCP surface", () => {
       "list_bots", "list_rooms", "check_delegation", "wait_delegation", "list_threads",
       "list_team_setup",
       "session_search", "session_read", "list_routines", "skills_list",
+      "scan_free_mcp_readiness", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report",
     ];
     expect(list.result.tools.filter((tool: any) => tool.annotations?.readOnlyHint)
       .map((tool: any) => tool.name)).toEqual(readNames);

@@ -15,6 +15,10 @@ describe("built-in agent tool read policy", () => {
       "session_read",
       "list_routines",
       "skills_list",
+      "scan_free_mcp_readiness",
+      "get_asp_trust_card",
+      "query_market_benchmarks",
+      "get_market_intelligence_report",
     ]);
     for (const name of READ_ONLY_AGENT_TOOL_NAMES) {
       expect(isReadOnlyAgentTool(name)).toBe(true);
@@ -37,5 +41,16 @@ describe("built-in agent tool read policy", () => {
   ])("does not infer read access for %s", (name) => {
     expect(isReadOnlyAgentTool(name)).toBe(false);
     expect(agentToolAnnotations(name)).toBeUndefined();
+  });
+
+  it("annotates OKX free intelligence tools as read-only", () => {
+    for (const name of ["scan_free_mcp_readiness", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report"]) {
+      expect(agentToolAnnotations(name)).toEqual({
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
   });
 });
