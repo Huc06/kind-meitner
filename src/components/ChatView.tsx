@@ -39,7 +39,8 @@ import { EngineSetup } from "./EngineSetup";
 import { isProviderSafetyBlock, PROVIDER_SAFETY_GUIDANCE, PROVIDER_SAFETY_HELP_URL } from "../../shared/provider-safety";
 import { BotAvatar } from "./Avatar";
 import { TurnPresence } from "./TurnPresence";
-import { showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
+import { devDayGateCardsEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
+import { isOkxGateTool } from "@/lib/okx-action-cards";
 import { normalizeState, stateForBot } from "@/lib/mascot";
 import { peerLine, type PeerLine } from "@/lib/peer-message";
 import { showWorkingDots } from "@/lib/turn-tail";
@@ -49,9 +50,11 @@ import { RawMarkdownView, RawToggleAction } from "./RawMarkdownToggle";
 import { ThreadChip } from "./ThreadChip";
 import { VerifyCard } from "./VerifyCard";
 import { askText, runSteps, runSummary, showRun, skillPrompt, skillStaged } from "@/lib/verify-steps";
+import { OkxGateToolResult } from "./OkxGateToolResult";
 import { ToolActivity } from "./ToolActivity";
 import { ThreadRefText } from "./ThreadRefs";
 import { OptionCard, shouldHideOnboardingCard } from "./OptionCard";
+import { FirstConversationWelcome } from "./FirstConversationWelcome";
 import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
 import { Composer } from "./Composer";
@@ -640,6 +643,7 @@ const MessagesList = memo(function MessagesList({
 }) {
   const { state, dispatch } = useStore();
   const showToolCalls = showToolCallsEnabled(state.config);
+  const showGateCards = devDayGateCardsEnabled(state.config);
   // Finished tool chips become compact runs; settled assistant narration
   // becomes one reversible turn row while the terminal answer stays visible.
   const items = useMemo(() => groupTranscript(messages), [messages, locale]);
@@ -649,29 +653,23 @@ const MessagesList = memo(function MessagesList({
   // row out of the DOM, and there is nothing for the scroll to land on.
   const focus = state.focusMessage;
   const focusedId = focus && !focus.consumed && focus.threadId === bot.threadId ? focus.messageId : null;
+
+  const handleCloneOkxAgent = useCallback(async (agentId: string) => {
+    const targetRoom = state.groups.find((g) => g.name === "#dev-day-gate" || g.name === "Dev Day Gate") || state.groups[0];
+    if (!targetRoom) return;
+    await api("/api/okx/agents/import", {
+      method: "POST",
+      body: JSON.stringify({
+        agentId,
+        roomId: targetRoom.id,
+        requestId: `import-${Date.now()}`,
+      }),
+    });
+  }, [state.groups]);
   return (
     <>
       {messages.length === 0 && !bot.busy && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
-          <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} />
-          <RenameTitle
-            value={bot.name}
-            onCommit={(name) => {
-              if (window.ogb?.remoteClient?.active) {
-                void api(`/api/bots/${bot.id}/profile`, { method: "PATCH", body: JSON.stringify({ name }) })
-                  .then(({ bot: updated }) => dispatch({ type: "botPatched", bot: updated }))
-                  .catch((cause) => dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }));
-              } else {
-                dispatch({ type: "updateBot", botId: bot.id, patch: { name } });
-              }
-            }}
-            className="text-[17px] font-semibold text-ink"
-            inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
-          />
-          <div className="max-w-[360px] text-[14px] text-ink-secondary">
-            {bot.description || t("chat.emptyPrompt")}
-          </div>
-        </div>
+        <FirstConversationWelcome bot={bot} messageCount={messages.length} />
       )}
       {items.map((item, i) => {
         const previous = items[i - 1];
@@ -708,14 +706,21 @@ const MessagesList = memo(function MessagesList({
           );
         }
         if (item.kind === "run") {
-          if (!showToolCalls) return null;
+          if (!showToolCalls && !item.messages.some((step) => isOkxGateTool(step.tool?.name))) return null;
           return (
             <div key={item.id} className="contents">
               {newDay && <DaySeparator at={first.at} />}
-              <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId)}>
+              <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId || isOkxGateTool(step.tool?.name))}>
                 {item.messages.map((step) => (
                   <div key={step.id} className="contents" data-mid={step.id}>
-                    <ActivityChip message={step} />
+                    <OkxGateToolResult
+                      message={step}
+                      enabled={showGateCards}
+                      busy={bot.busy}
+                      composerDraftId={`bot:${bot.id}:${bot.threadId}`}
+                      onCloneAgent={handleCloneOkxAgent}
+                      fallback={<ActivityChip message={step} />}
+                    />
                   </div>
                 ))}
               </ActivityRun>
@@ -773,8 +778,17 @@ const MessagesList = memo(function MessagesList({
                   />
                 );
               }
-              if (!showToolCalls && !m.comm && !m.threadRef) return null;
-              return <ActivityChip message={m} />;
+              if (!showToolCalls && !m.comm && !m.threadRef && !isOkxGateTool(m.tool?.name)) return null;
+              return (
+                <OkxGateToolResult
+                  message={m}
+                  enabled={showGateCards}
+                  busy={bot.busy}
+                  composerDraftId={`bot:${bot.id}:${bot.threadId}`}
+                  onCloneAgent={handleCloneOkxAgent}
+                  fallback={<ActivityChip message={m} />}
+                />
+              );
             }
             case "screen":
               return m.png ? <ScreenFrame png={m.png} mime={m.mime} /> : null;
@@ -1135,7 +1149,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         className={cn(
           // @container so the chips on the right can fold to icon bubbles
           // when the column is narrow (side panel open, small window)
-          "@container/chathead flex items-center justify-between px-5 py-3",
+          "@container/chathead flex items-center justify-between border-b border-hairline/15 px-5 py-2.5",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
         )}
@@ -1143,14 +1157,14 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-raised/50"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-raised/30"
             title={t("chat.openProfile")}
             aria-label={t("chat.openProfileAria", { name: bot.name })}
           >
             <BotAvatar
               bot={bot}
               state={stateForBot({ ...bot, messages })}
-              size={28}
+              size={30}
               motion={mascotMotion?.kind ?? "none"}
               motionKey={mascotMotion?.nonce ?? 0}
             />
@@ -1321,7 +1335,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       >
         <div
           ref={transcriptRef}
-          className="flex w-full flex-col gap-3"
+          className="mx-auto flex min-h-full w-full max-w-[52rem] flex-col gap-3 pt-1"
           style={{ paddingBottom: composerDock.pad }}
           role="log"
           aria-live="polite"
@@ -1379,9 +1393,6 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
                 bot={bot}
                 state={toolInFlight ? "working" : "thinking"}
                 size={36}
-                forward={false}
-                lookAround={1}
-                trackPointer={false}
               />
             }
             visible={presenceVisible}
@@ -1417,7 +1428,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           the transcript pad, the jump pill and bottom-follow all move with
           it. */}
       {lastRunStep && showRun(recordedRun) && runDismissed.get(transcriptKey) !== lastRunStep.id && (
-        <div className="flex justify-end px-5 pb-2">
+        <div className="mx-auto flex w-full max-w-[52rem] justify-end px-5 pb-2">
           <VerifyCard
             key={transcriptKey}
             steps={recordedRun}

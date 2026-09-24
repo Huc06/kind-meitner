@@ -6,7 +6,7 @@ services:
       context: ./deploy/local
       args:
         BASE_IMAGE: ${KIND_MEITNER_BASE_IMAGE:-ghcr.io/harrymove-ctrl/kind-meitner:latest}
-        ENGINES: ${ENGINES-@anthropic-ai/claude-code @openai/codex}
+        ENGINES: ${ENGINES-@anthropic-ai/claude-code}
     image: ${KIND_MEITNER_LOCAL_IMAGE:-kind-meitner-local:latest}
     restart: unless-stopped
     volumes:

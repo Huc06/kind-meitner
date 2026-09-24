@@ -15,7 +15,66 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: classify changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      okx: ${{ steps.scope.outputs.okx }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            echo "okx=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "$GITHUB_SHA")"
+          full=false
+          okx=false
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              # Dev Day / Free-MCP surface: keep the cheap okx-server gate (PR #71)
+              # instead of the 3-OS + package matrix. First match wins — these must
+              # stay above the broad src/* arm.
+              server/okx/*|src/okx/*|src/components/Okx*|src/components/ReadinessRunCard*|src/components/TrustCard*|src/lib/okx-*|src/locales/*)
+                okx=true ;;
+              electron/*|companion/*|android/*|ios/*|src/*|shared/*|enterprise/*|scripts/*|Dockerfile|railway.toml|package.json|pnpm-lock.yaml|tsconfig*.json|vite.config.ts|.github/workflows/*)
+                full=true ;;
+              server/*) full=true ;;
+              *) full=true ;;
+            esac
+          done <<< "$files"
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "okx=$okx" >> "$GITHUB_OUTPUT"
+
+  okx-server:
+    name: typecheck + OKX / Dev Day gate
+    needs: changes
+    if: needs.changes.outputs.okx == 'true' && needs.changes.outputs.full != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm exec vitest run server/okx/ src/lib/okx-action-cards.test.ts src/components/OkxGateToolResult.test.ts src/components/OkxAgentInvite.test.ts
+
   test:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: typecheck + test (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -71,6 +130,8 @@ jobs:
         run: pnpm exec vite build
 
   cloudflared-linux-arm64:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: cloudflared installer (Linux ARM64)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
@@ -91,6 +152,8 @@ jobs:
           "$KIND_MEITNER_ARM64_FIXTURE/dist-native/cloudflared/linux-arm64/cloudflared" version
 
   foss:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     # LICENSING.md promises that deleting enterprise/ leaves a working
     # open-source edition. Prove it on every change: typecheck, the edition
     # tests, and a boot that reports "oss" even with a key set.
@@ -122,6 +185,8 @@ jobs:
           kill %1; wait %1 || true
 
   control-plane:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: control-plane check + workerd tests + dry run
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -140,6 +205,8 @@ jobs:
       - run: pnpm control-plane:dry-run
 
   ui-smoke:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     # Advisory, outside the required `test` matrix: the renderer recipe in
     # docs/verification/chat-ui.md run by a machine. It downloads the pinned
     # agent-browser release (digest verified) and its Chrome, drives the real
@@ -178,6 +245,8 @@ jobs:
           retention-days: 7
 
   package-linux:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     name: package + smoke (Ubuntu 24.04 x64)
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -244,8 +313,25 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  mobile-projects:
+    name: detect mobile projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.projects.outputs.ios }}
+      android: ${{ steps.projects.outputs.android }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: projects
+        shell: bash
+        run: |
+          if [[ -f ios/Package.swift ]]; then echo "ios=true" >> "$GITHUB_OUTPUT"; else echo "ios=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ -f android/gradlew && ( -f android/settings.gradle || -f android/settings.gradle.kts ) ]]; then echo "android=true" >> "$GITHUB_OUTPUT"; else echo "android=false" >> "$GITHUB_OUTPUT"; fi
+
   ios:
     name: Swift tests + iOS build
+    needs: mobile-projects
+    if: needs.mobile-projects.outputs.ios == 'true'
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -273,6 +359,8 @@ jobs:
   # Kotlin suite on exactly the change that breaks it.
   android:
     name: Kotlin tests + Android build
+    needs: mobile-projects
+    if: needs.mobile-projects.outputs.android == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

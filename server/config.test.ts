@@ -453,33 +453,26 @@ describe("saving the newer sections", () => {
 });
 
 describe("default fleet", () => {
-  it("ships Qwen and Hermes as custom-only engines", () => {
+  it("ships only Claude and the Grok CLI", () => {
     const map = instanceConfigs({});
-    expect(map.qwen).toEqual({ driver: "qwenAgent", environment: {} });
-    expect(map.hermes).toEqual({ driver: "hermesAgent", environment: {} });
+    expect(Object.keys(map).sort()).toEqual(["claude", "grok"]);
+    expect(map.grok).toEqual({ driver: "grokAgent", environment: {} });
+    expect(map.claude).toEqual({ driver: "claudeAgent", environment: {} });
   });
 
-  it("ships Cursor as a default-fleet subscription engine", () => {
-    const map = instanceConfigs({});
-    expect(map.cursor).toEqual({ driver: "cursorAgent", environment: {} });
-  });
-
-  it("carries the saved OpenAI-compatible URL into the live default instance", () => {
+  it("does not seed removed engines from a saved OpenAI-compatible URL", () => {
     const map = instanceConfigs({
       openaiCompat: { key: "secret", url: "https://models.example.test/v1" },
     });
-    expect(map.openaiCompat.config).toEqual({ url: "https://models.example.test/v1" });
-    expect(map.openaiCompat.environment).toEqual({
-      OPENAI_COMPAT_API_KEY: "secret",
-      OPENAI_COMPAT_URL: "https://models.example.test/v1",
-    });
+    expect(map.openaiCompat).toBeUndefined();
+    expect(map.codex).toBeUndefined();
   });
 
   it("hands a saved Anthropic key only to Claude instances, as the variable the CLI reads", () => {
     const map = instanceConfigs({ anthropic: { key: "sk-ant-fixture", url: "https://anthropic-proxy.example.test" } });
     expect(map.claude.environment).toEqual({ ANTHROPIC_API_KEY: "sk-ant-fixture", ANTHROPIC_BASE_URL: "https://anthropic-proxy.example.test" });
-    expect(map.codex.environment).toEqual({});
-    expect(map.openaiCompat.environment).toEqual({});
+    expect(map.grok.environment).toEqual({});
+    expect(map.codex).toBeUndefined();
     expect(instanceConfigs({ anthropic: { url: "https://only-a-url.example.test" } }).claude.environment).toEqual({});
     expect(parseConfigPatch({ anthropic: { key: "sk-ant-new" } })).toEqual({ anthropic: { key: "sk-ant-new" } });
   });
@@ -535,13 +528,10 @@ describe("default fleet", () => {
     expect(config.instances?.custom.config).toBeUndefined();
   });
 
-  it("adds missing custom-only engines onto an existing product fleet", () => {
+  it("does not add removed engines onto an existing product fleet", () => {
     const map = instanceConfigs({ instances: { claude: { driver: "claudeAgent" } } });
+    expect(Object.keys(map)).toEqual(["claude"]);
     expect(map.claude.driver).toBe("claudeAgent");
-    expect(map.qwen?.driver).toBe("qwenAgent");
-    expect(map.hermes?.driver).toBe("hermesAgent");
-    expect(map.cursor?.driver).toBe("cursorAgent");
-    expect(map.openaiCompat?.driver).toBe("openai-compat");
   });
 
   it("does not expand a one-off shadow fleet", () => {
@@ -666,15 +656,11 @@ describe("credential env narrowing", () => {
     expect(instances.codex.environment).toEqual({});
   });
 
-  it("hands no credential to any default-fleet CLI engine except the Computer", () => {
-    // the default `grok` instance is the CLI-login grokAgent, not the
-    // API-key driver, so a configured xai key reaches nobody by default
+  it("hands no workspace credential to the default Claude or Grok CLI fleet", () => {
     const cfg: AppConfig = { xai: { key: "SECRET-XAI" }, box: { token: "SECRET-BOX" } };
     const instances = instanceConfigs(cfg);
-    for (const [id, entry] of Object.entries(instances)) {
-      if (id === "computer") expect(entry.environment).toEqual({ BOX_TOKEN: "SECRET-BOX" });
-      else expect(entry.environment).toEqual({});
-    }
+    expect(Object.keys(instances).sort()).toEqual(["claude", "grok"]);
+    for (const entry of Object.values(instances)) expect(entry.environment).toEqual({});
   });
 
   it("keeps a per-instance environment while layering the credential on top", () => {

@@ -1,58 +1,42 @@
-// Bot avatar — the Blob Studio "Cursor" mascot (CursorAvatar.tsx), wrapped
-// in the app's historical MausAvatar API so no call site changes: per-bot
-// color becomes a body gradient, the app's one-shot motion beats borrow the
-// face/state for a moment, and the eyes follow the pointer. The previous
-// hand-built Maus body + face engine (maus-engine/face/driver) is gone;
-// CursorAvatar owns morphing, blinking, drift, body motion and effects.
-import {
-  forwardRef,
-  memo,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+// Bot avatar — Libraries.dev bot-avatars, wrapped in the app's historical
+// MausAvatar API so call sites keep passing color, state, body, and motion.
+// ChartAvatar stays the OKX catalog mark. CursorAvatar is no longer rendered
+// here; one-shot motion beats still borrow a library state for a moment.
+import { forwardRef, memo, useEffect, useState } from "react";
+import { BotAvatar as LibBotAvatar } from "bot-avatars";
 import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
-import { CursorAvatar, type CursorAvatarHandle } from "./CursorAvatar";
+import { mascotBodyToType, mausColorToHex, mausStateToBotState } from "@/lib/bot-avatar-bridge";
 import { botAvatarProfile, type BotAvatarCrop } from "../../shared/bot-avatar";
-import { MASCOT_BODIES, botMascotBody, type MascotBodyId } from "../../shared/mascot-bodies";
-
-export const EYE_SCALE = 1.12;
-export const MOUTH_WEIGHT = 11;
+import type { MascotBodyId } from "../../shared/mascot-bodies";
 
 /**
- * How far the pointer may pull the eyes. Facing forward the full range is
- * safe; with the expressions' authored gaze they already start off-centre.
+ * What a one-shot motion does while it plays. bot-avatars has no imperative
+ * blink/spin, so a beat only borrows a state.
  */
-const POINTER_GAZE = { forward: 1, authored: 0.25 };
-
-/**
- * What a one-shot motion does while it plays: CursorAvatar animates the body
- * per state, so borrowing the state for a beat moves body and face together.
- */
-interface MotionFaces
-  extends Partial<
-    Record<Exclude<MausMotion, "none">, { state?: MausState; blink?: boolean; spin?: number }>
-  > {}
+interface MotionFaces extends Partial<Record<Exclude<MausMotion, "none">, { state?: MausState }>> {}
 
 const MOTION_FACE: MotionFaces = {
-  arrive: { state: "spawning", spin: 900 },
-  switch: { state: "waking", spin: 620 },
-  customize: { state: "proud", blink: true },
+  arrive: { state: "spawning" },
+  switch: { state: "waking" },
+  customize: { state: "proud" },
   alert: { state: "alerting" },
   thinking: { state: "thinking" },
   working: { state: "working" },
   launch: { state: "loading" },
-  success: { state: "happy", blink: true },
-  celebrate: { state: "celebrate", spin: 700 },
-  blink: { blink: true },
-  surprise: { state: "surprised", blink: true },
+  success: { state: "happy" },
+  celebrate: { state: "celebrate" },
+  blink: {},
+  surprise: { state: "surprised" },
   failure: { state: "sad" },
 };
 
 /** How long a one-shot motion holds its state before the bot's own returns. */
 const MOTION_FACE_MS = 1400;
+
+function motionStateFromMotion(motion: MausMotion): MausState | undefined {
+  if (motion === "none") return undefined;
+  return MOTION_FACE[motion]?.state;
+}
 
 /** Channel-wise mix of a hex color toward another, t in 0..1. */
 function mix(hex: string, toward: string, t: number): string {
@@ -69,46 +53,29 @@ function mix(hex: string, toward: string, t: number): string {
 }
 
 /**
- * Bot color -> the mascot's three-stop body gradient (highlight, base,
- * shadow), with the same light/dark spread as the pack's default green
- * ["#9FE6B5", "#3FAE6E", "#1C7A4C"].
+ * Bot color -> the chart mark's two-stop wash. Kept for ChartAvatar, which
+ * is still the OKX catalog path.
  */
 const gradientFor = (color: MausColor): [string, string, string] => {
   const fill = MAUS_COLORS[color] ?? MAUS_COLORS.green;
   return [mix(fill, "#ffffff", 0.55), fill, mix(fill, "#000000", 0.42)];
 };
 
-export type MausAvatarHandle = CursorAvatarHandle;
+export type MausAvatarHandle = Record<string, never>;
 
 export type MausAvatarProps = {
   color: MausColor;
-  /** Named behaviour — drives the expression pool, its cadence and blinking. */
+  /** Named behaviour — collapsed onto the library's three states. */
   state?: MausState;
-  /** Pin one of the 25 faces and stop the state's own drift. */
-  expression?: number;
   size?: number;
   label?: string;
   motion?: MausMotion;
   motionKey?: number;
-  /** Head turn in degrees. */
-  turn?: number;
-  gaze?: { x?: number; y?: number };
-  spring?: number;
-  eyeScale?: number;
-  showMouth?: boolean;
-  mouthStroke?: number;
-  /**
-   * Face the viewer at turn 0, cancelling each expression's authored gaze
-   * direction. Off restores the engine's own drawn-in directions.
-   */
-  forward?: boolean;
-  /** How much each expression glances around. Overrides `forward`'s 0-or-1. */
-  lookAround?: number;
-  /** Let the eyes follow the pointer across this avatar. */
-  trackPointer?: boolean;
-  /** Run the animation. Off renders the state's resting face. */
+  /** Run the animation. Off freezes the avatar on its current frame. */
   animated?: boolean;
-  /** Which body the bot wears. Unknown values fall back to the cursor. */
+  /** Pointer follow and click-to-hop. Off unless a callsite asks for it. */
+  interactive?: boolean;
+  /** Which body the bot wears. Unknown values fall back to the ghost. */
   bodyId?: MascotBodyId;
 };
 
@@ -116,88 +83,82 @@ function MausAvatarComponent(
   {
     color,
     state = "idle",
-    expression,
     size = 44,
     label,
+    animated = true,
+    interactive = false,
+    bodyId,
     motion = "none",
     motionKey = 0,
-    turn,
-    gaze,
-    spring,
-    eyeScale,
-    showMouth,
-    mouthStroke,
-    forward = true,
-    lookAround,
-    trackPointer = true,
-    animated = true,
-    bodyId,
   }: MausAvatarProps,
   ref: React.Ref<MausAvatarHandle>,
 ) {
-  const silhouette = MASCOT_BODIES[botMascotBody(bodyId)];
-  const inner = useRef<CursorAvatarHandle>(null);
-  useImperativeHandle(ref, () => ({
-    blink: () => inner.current?.blink(),
-    spin: (durationMs?: number) => inner.current?.spin(durationMs),
-    setExpression: (index: number) => inner.current?.setExpression(index),
-  }));
-
-  // A one-shot motion borrows the state for a moment, then hands it back.
+  void ref;
   const [motionState, setMotionState] = useState<MausState | null>(null);
   useEffect(() => {
-    if (motion === "none" || !animated) return;
-    const beat = MOTION_FACE[motion];
-    if (!beat) return;
-    if (beat.blink) inner.current?.blink();
-    if (beat.spin) inner.current?.spin(beat.spin);
-    if (!beat.state) return;
-    setMotionState(beat.state);
-    const timer = setTimeout(() => setMotionState(null), MOTION_FACE_MS);
-    return () => clearTimeout(timer);
+    if (motion === "none" || !animated) {
+      setMotionState(null);
+      return;
+    }
+    const next = motionStateFromMotion(motion);
+    if (!next) {
+      setMotionState(null);
+      return;
+    }
+    setMotionState(next);
+    const timer = window.setTimeout(() => setMotionState(null), MOTION_FACE_MS);
+    return () => window.clearTimeout(timer);
   }, [motion, motionKey, animated]);
 
-  // Pointer-follow gaze, composed with any gaze the caller pins.
-  const [pointer, setPointer] = useState({ x: 0, y: 0 });
-  const range = forward ? POINTER_GAZE.forward : POINTER_GAZE.authored;
-  const onPointerMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
-    if (!trackPointer || !animated) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    setPointer({
-      x: Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width) * 2 - 1)) * range,
-      y: Math.max(-1, Math.min(1, ((event.clientY - rect.top) / rect.height) * 2 - 1)) * range,
-    });
-  };
-  const onPointerLeave = () => setPointer({ x: 0, y: 0 });
+  const botState = mausStateToBotState(motionState ?? state);
+  const botType = mascotBodyToType(bodyId);
+  const hex = mausColorToHex(color);
 
   return (
-    <span
-      className="inline-flex shrink-0"
-      onPointerMove={trackPointer && animated ? onPointerMove : undefined}
-      onPointerLeave={trackPointer && animated ? onPointerLeave : undefined}
-    >
-      <CursorAvatar
-        ref={inner}
-        state={motionState ?? state}
-        expression={expression}
+    // The library draws at 1.5x and pulls the overflow back with negative
+    // margins, so its own box is not the layout size callers asked for.
+    // Pin the wrapper to `size` and let the mark bleed outside it.
+    <span className="inline-flex shrink-0" style={{ width: size, height: size }}>
+      <LibBotAvatar
+        type={botType}
+        state={botState}
         size={size}
-        silhouette={silhouette}
-        gradient={gradientFor(color)}
-        title={label ?? null}
-        lookAround={lookAround ?? (forward ? 0 : 1)}
-        gaze={{ x: (gaze?.x ?? 0) + pointer.x, y: (gaze?.y ?? 0) + pointer.y }}
-        turn={turn}
-        spring={spring}
-        eyeScale={eyeScale}
-        showMouth={showMouth}
-        mouthStroke={mouthStroke}
+        color={hex}
+        interactive={interactive}
         paused={!animated}
+        {...(label ? { "aria-label": label, title: label } : {})}
       />
     </span>
   );
 }
 
 export const MausAvatar = memo(forwardRef(MausAvatarComponent));
+
+export function ChartAvatar({
+  color,
+  size = 44,
+  label = "OKX.AI catalog agent",
+}: {
+  color: MausColor;
+  size?: number;
+  label?: string;
+}) {
+  const [highlight, fill] = gradientFor(color);
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-app-bg/70 text-ink"
+      style={{ width: size, height: size, background: `linear-gradient(135deg, ${highlight}99, ${fill}66)` }}
+    >
+      <svg aria-hidden="true" width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 17 9 11l4 4 8-9" />
+        <path d="M15 6h6v6" />
+      </svg>
+    </span>
+  );
+}
 
 export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
   bot: {
@@ -206,6 +167,7 @@ export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
     avatarUrl?: string | null;
     avatarCrop?: BotAvatarCrop;
     mascotBody?: MascotBodyId | null;
+    okxImport?: { kind?: string };
   };
 };
 
@@ -241,6 +203,10 @@ export function resolveBotAvatarOutcome(params: {
  * so an old/corrupt profile can never leave a broken-image icon in the app.
  */
 export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
+  if (bot.okxImport?.kind === "okx-catalog") {
+    return <ChartAvatar color={bot.color} size={size} label={label ?? (bot.name ? `${bot.name}, OKX.AI catalog agent` : undefined)} />;
+  }
+
   const profile = botAvatarProfile(bot);
   const [imageFailed, setImageFailed] = useState(false);
 

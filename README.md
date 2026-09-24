@@ -10,7 +10,7 @@
 ![OKX Onchain OS](https://img.shields.io/badge/OKX-Onchain_OS-000000?logo=okx&logoColor=white)
 ![X Layer](https://img.shields.io/badge/X_Layer-EVM-blue)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-[![CI](https://github.com/harrymove-ctrl/kind-meitner/actions/workflows/ci.yml/badge.svg)](https://github.com/harrymove-ctrl/kind-meitner/actions/workflows/ci.yml)
+[![CI](https://github.com/Huc06/kind-meitner/actions/workflows/ci.yml/badge.svg)](https://github.com/Huc06/kind-meitner/actions/workflows/ci.yml)
 
 </div>
 
@@ -101,7 +101,7 @@ kind-meitner/
 
 ### 2. Installation
 ```bash
-git clone https://github.com/harrymove-ctrl/kind-meitner.git
+git clone https://github.com/Huc06/kind-meitner.git
 cd kind-meitner
 pnpm install
 ```

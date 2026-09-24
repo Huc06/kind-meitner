@@ -302,6 +302,18 @@ export function appendComposerDraft(id: string, text: string): void {
   });
 }
 
+/** Replaces the composer text for a thread without sending. Attachments and
+ * channel mode stay. Uses the restore path so a mounted Composer updates live. */
+export function setComposerDraft(id: string, text: string): void {
+  const store = getStore();
+  markDraftEdited(id);
+  restoreComposerDraft(id, {
+    text,
+    attachments: getDraftAttachments(store, id),
+    channelMode: getDraftChannelMode(store, id),
+  });
+}
+
 /** Append completed uploads directly to the keyed durable draft. This is
  * safe after the Composer that started the upload has unmounted. */
 export function appendDraftAttachments(id: string, additions: Attachment[]): void {

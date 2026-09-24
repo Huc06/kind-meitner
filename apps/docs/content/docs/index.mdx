@@ -1,51 +1,46 @@
 ---
 title: kind-meitner documentation
-description: Build a team of AI agents that can talk, use tools, operate computers, and keep working on a schedule.
+description: Invite OKX agents, then use the room, dispute screen, and marketplace terminal.
 icon: BookOpen
 ---
 
-<span className="kind-meitner-kicker">Local-first agent workspace</span>
+<span className="kind-meitner-kicker">OKX agent suite</span>
 
-kind-meitner turns agent CLIs into a familiar desktop chat app. Each bot can have its own model, instructions, working folder, connected apps, computer, and recurring work.
+kind-meitner is the local suite for OKX agents. Invite a catalog agent into a room. Engines, computers, and connected apps are optional local runtime after that.
 
 <div className="kind-meitner-stat-row">
-  <div className="kind-meitner-stat"><strong>Many engines</strong><span>Claude, Codex, Grok, Cursor, local models, and more</span></div>
-  <div className="kind-meitner-stat"><strong>Real tools</strong><span>Apps, files, terminals, browsers, VMs, and cloud desktops</span></div>
-  <div className="kind-meitner-stat"><strong>Your machine</strong><span>Local data and bring-your-own agent subscriptions</span></div>
+  <div className="kind-meitner-stat"><strong>OKX agents</strong><span>Markets, Listing Coach, and Spend Scout</span></div>
+  <div className="kind-meitner-stat"><strong>A room</strong><span>Invite is on a non-DM room, not a direct message</span></div>
+  <div className="kind-meitner-stat"><strong>This computer</strong><span>The catalog is local. Portal secrets stay on the server</span></div>
 </div>
 
-<ProductScreenshot name="docs-fresh-bot" alt="A new kind-meitner bot named Bramble asking what it should help with" caption="A clean first-run bot. Each conversation belongs to a real agent process, not a simulated contact." />
-
 <Cards>
+  <Card title="Invite your first OKX agent" href="/docs/getting-started/first-bot" description="Open a room and invite Markets, Listing Coach, or Spend Scout." />
+  <Card title="OKX agents" href="/docs/okx" description="Catalog invite and rooms." />
   <Card title="Install kind-meitner" href="/docs/getting-started/installation" description="Download a signed build or run the app from source." />
-  <Card title="Create your first bot" href="/docs/getting-started/first-bot" description="Choose an engine, give it a working folder, and send a task." />
-  <Card title="Connect apps" href="/docs/connected-apps" description="Authorize Gmail, GitHub, Slack, Notion, and hundreds more." />
-  <Card title="Give it a computer" href="/docs/computers" description="Use your desktop, an isolated local VM, Box, or your own VPS." />
+  <Card title="Local agents" href="/docs/features/bots-and-tasks" description="Engine-backed profiles for work that has to run on this computer." />
 </Cards>
 
 ## How the pieces fit
 
-| Layer | What it does | Where to configure it |
+| Layer | What it does | Where to start |
 |---|---|---|
-| **Bot** | Holds the identity, conversation, memory, and defaults | Bot settings |
-| **Agent engine** | Runs the reasoning loop and tools | Model picker and App settings |
-| **Working folder** | Gives the bot project context and a safe place to work | Bot settings |
-| **Connected apps** | Authorizes services such as Gmail or GitHub | Connected apps |
-| **Computer** | Gives visual control of a desktop environment | Computer panel |
-| **Automation** | Runs a task later, on a schedule, or from a webhook | Automations |
+| **OKX agent** | Catalog agent invited into a room | [Invite](/docs/getting-started/first-bot) |
+| **Room** | Non-DM group. The only place an invite works | [Rooms](/docs/okx/rooms) |
+| **Local agent** | Engine-backed profile for CLI work on this computer | [Local agents](/docs/features/bots-and-tasks) |
+| **Local runtime** | Engines, computers, connected apps, phone pairing | The sections below |
 
 ## Choose your path
 
 | I want to… | Start here |
 |---|---|
-| Understand the app in five minutes | [Quick tour](./getting-started/quick-tour.mdx) |
-| Pick Claude, Codex, Cursor, Grok, or a local model | [Agent engines](./providers/index.mdx) |
-| Organize bots, tasks, rooms, and delegations | [Bots and tasks](./features/bots-and-tasks.mdx) |
-| Control a browser or desktop | [Computers](./computers/index.mdx) |
-| Run work every morning | [Automations](./features/automation.mdx) |
-| Reach my bots from an iPhone | [iOS companion](./mobile/ios-companion.mdx) |
-| Back up or move my data | [Data and backups](./self-hosting/data-and-backups.mdx) |
-| Build from source or contribute | [Contributing](./contributing/index.mdx) |
+| Invite the first OKX agent | [Invite your first OKX agent](./getting-started/first-bot.mdx) |
+| Understand the suite in five minutes | [Quick tour](./getting-started/quick-tour.mdx) |
+| Read the catalog, caps, and screens | [OKX agents](./okx/index.mdx) |
+| Run a local CLI bot | [Local agents](./features/bots-and-tasks.mdx) |
+| Schedule local work | [Automations](./features/automation.mdx) |
+| Pair an iPhone with this computer | [iOS companion](./mobile/ios-companion.mdx) |
+| Back up or move local data | [Data and backups](./self-hosting/data-and-backups.mdx) |
 
 <Callout type="info" title="Docs track released behavior">
   kind-meitner moves quickly. The changelog records shipped releases; proposed or unfinished work stays on GitHub until it lands.

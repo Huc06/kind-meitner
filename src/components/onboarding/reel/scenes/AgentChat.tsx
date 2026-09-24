@@ -95,7 +95,6 @@ export function AgentChat({ playing, onCue, onEnded, label }: SceneProps) {
               state={replied ? (done ? "proud" : "writing") : phase === "think" ? "working" : "listening"}
               size={34}
               animated={!still}
-              trackPointer={false}
             />
           </div>
           <div className="relative min-h-[44px] flex-1">

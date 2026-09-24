@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   appendComposerDraft,
+  setComposerDraft,
   appendDraftAttachments,
   changeDraftAttachmentPending,
   draftRevision,
@@ -319,5 +320,16 @@ describe("appendComposerDraft", () => {
     expect(getDraft(store, draftId)).toBe(prompt);
     expect(getDraftAttachments(store, draftId)).toEqual([attachment]);
     expect(getDraftChannelMode(store, draftId)).toBe("goal");
+  });
+});
+
+describe("setComposerDraft", () => {
+  it("replaces the draft text without appending", () => {
+    const store = memoryStorage();
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: store });
+    const draftId = "bot:pepper:t1";
+    setDraft(store, draftId, "Keep me?");
+    setComposerDraft(draftId, "Replace with this");
+    expect(getDraft(store, draftId)).toBe("Replace with this");
   });
 });

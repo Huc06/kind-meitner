@@ -63,7 +63,7 @@ async function restartVerificationServer(baseUrl: string, dataDir: string, logPa
   return child;
 }
 
-it("serves only the catalog and provisions/imports Market Scout exactly once across restart", async () => {
+it("serves only the catalog and provisions/imports Markets exactly once across restart", async () => {
   const fixture = await launchVerificationServer();
   const { url, dataDir, logPath } = fixture.info;
   let restarted: ChildProcess | undefined;
@@ -72,13 +72,18 @@ it("serves only the catalog and provisions/imports Market Scout exactly once acr
     expect(catalog.response.status).toBe(200);
     expect(catalog.body).toEqual({
       source: "catalog",
-      agents: [expect.objectContaining({
-        id: "okx-market-scout-v1",
-        name: "Market Scout",
-        provider: "OKX.ai",
-        capabilities: ["chat", "market-intelligence"],
-        status: "available",
-      })],
+      agents: expect.arrayContaining([
+        expect.objectContaining({
+          id: "okx-market-scout-v1",
+          name: "Markets",
+          avatar: "chart",
+          provider: "OKX.ai",
+          capabilities: ["chat", "market-intelligence"],
+          status: "available",
+        }),
+        expect.objectContaining({ id: "okx-listing-coach", name: "Listing Coach", avatar: "chart" }),
+        expect.objectContaining({ id: "okx-spend-scout", name: "Spend Scout", avatar: "chart" }),
+      ]),
     });
 
     const local = await api(url, "/api/bots", "POST", { name: "Local seed" });
@@ -115,7 +120,7 @@ it("serves only the catalog and provisions/imports Market Scout exactly once acr
     const scout = beforeRestart.body.bots.find((bot: { id: string }) => bot.id === firstImport.body.agent.id);
     const room = beforeRestart.body.groups.find((group: { id: string }) => group.id === firstDefault.body.room.id);
     expect(scout).toMatchObject({
-      name: "Market Scout",
+      name: "Markets",
       okxImport: {
         kind: "okx-catalog",
         externalAgentId: "okx-market-scout-v1",
@@ -133,8 +138,40 @@ it("serves only the catalog and provisions/imports Market Scout exactly once acr
     });
     expect(room.memberIds.filter((id: string) => id === scout.id)).toHaveLength(1);
     expect(room.messages.filter((message: { kind: string; tool?: { name?: string; system?: boolean } }) =>
-      message.kind === "activity" && message.tool?.name === "Market Scout joined #Channel 1 from OKX.ai." && message.tool.system === true,
+      message.kind === "activity" && message.tool?.name === "Markets joined #Channel 1 from OKX.ai." && message.tool.system === true,
     )).toHaveLength(1);
+
+    const clearedLegacySoul = await api(url, `/api/bots/${scout.id}`, "PATCH", { soul: "" });
+    expect(clearedLegacySoul.response.status).toBe(200);
+    const healedLegacyImport = await api(url, "/api/okx/agents/import", "POST", {
+      ...payload,
+      requestId: "market-scout-legacy-soul-migration",
+    });
+    expect(healedLegacyImport.response.status).toBe(200);
+    const healedScout = (await api(url, "/api/bots")).body.bots.find((bot: { id: string }) => bot.id === scout.id);
+    expect(healedScout.soul).toContain("scan_free_mcp_readiness");
+
+    for (const expected of [
+      { id: "okx-listing-coach", name: "Listing Coach", instruction: "Never ask for wallet keys" },
+      { id: "okx-spend-scout", name: "Spend Scout", instruction: "Always surface notChecked" },
+    ]) {
+      const imported = await api(url, "/api/okx/agents/import", "POST", {
+        agentId: expected.id,
+        roomId: firstDefault.body.room.id,
+        requestId: `${expected.id}-import-1`,
+      });
+      expect(imported.response.status).toBe(201);
+      const importedBot = (await api(url, "/api/bots")).body.bots.find((bot: { id: string }) => bot.id === imported.body.agent.id);
+      expect(importedBot).toMatchObject({
+        name: expected.name,
+        soul: expect.stringContaining(expected.instruction),
+        okxImport: { kind: "okx-catalog", externalAgentId: expected.id },
+        composio: false,
+        approvalMode: "ask",
+        browser: false,
+        computer: "off",
+      });
+    }
 
     await waitForExit(fixture.child, { signal: "SIGTERM" });
     restarted = await restartVerificationServer(url, dataDir, logPath);

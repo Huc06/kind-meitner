@@ -1,7 +1,302 @@
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic.ts";
+
+export type ReadinessCheckStatus = "pass" | "warn" | "fail";
+
+export interface ReadinessCheck {
+  id: "https_scheme" | "host_pitfall_vercel" | "tools_list_http" | "tools_list_shape" | "no_accidental_402" | "initialize_soft";
+  status: ReadinessCheckStatus;
+  detail: string;
+}
+
+export interface FreeMcpReadinessData {
+  endpointUrl: string;
+  agentId: string | null;
+  verdict: "PASS" | "WARN" | "FAIL";
+  score: number;
+  checks: ReadinessCheck[];
+  remediation: string[];
+  raw: { httpStatus: number | null; toolNames: string[]; truncatedNotes: string };
+}
+
+export const READINESS_CHECK_IDS: ReadinessCheck["id"][] = [
+  "https_scheme",
+  "host_pitfall_vercel",
+  "tools_list_http",
+  "tools_list_shape",
+  "no_accidental_402",
+  "initialize_soft",
+];
+
+export function isPrivateIpAddress(host: string): boolean {
+  const value = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (value === "localhost" || value === "::1") return true;
+  const octets = value.split(".").map(Number);
+  if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+    const [a, b] = octets;
+    return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  return value.startsWith("fe80:") || value.startsWith("fc") || value.startsWith("fd");
+}
+
+export function truncateReadinessDetail(value: string, max = 500): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+}
+
+export function readinessVerdict(checks: ReadinessCheck[]): FreeMcpReadinessData["verdict"] {
+  if (checks.some((check) => ["https_scheme", "host_pitfall_vercel", "tools_list_http", "no_accidental_402"].includes(check.id) && check.status === "fail")) return "FAIL";
+  return checks.some((check) => check.status === "warn") ? "WARN" : "PASS";
+}
+
+export interface OkxRemoteAgentMetadata {
+  agentId: string;
+  name: string;
+  description: string;
+  score?: string;
+  approvalRate?: string;
+  usageCount?: number;
+  avatarUrl?: string;
+  categories?: string[];
+  services?: Array<{
+    serviceId: number | string;
+    name: string;
+    description: string;
+    price: string;
+    endpoint?: string;
+  }>;
+}
+
+export const KNOWN_OKX_AGENTS: Record<string, OkxRemoteAgentMetadata> = {
+  "11336": {
+    agentId: "11336",
+    name: "AgentLedger",
+    description: "AgentLedger provides financial health reviews, budget utilization guards, and spend policy verification for onchain autonomous agents.",
+    score: "4.90",
+    approvalRate: "98%",
+    usageCount: 420,
+    services: [
+      { serviceId: "11336-1", name: "AgentLedger Financial Health", description: "Analyzes stablecoin cash flow, budget usage, and financial health.", price: "0" },
+      { serviceId: "11336-2", name: "AgentLedger Recommendations", description: "Prioritized financial and risk next actions.", price: "0.01" },
+      { serviceId: "11336-3", name: "AgentLedger Policy Guard", description: "Reviews proposed spend against budgets, reserves, and risk thresholds.", price: "0.02" },
+    ],
+  },
+  "8705": {
+    agentId: "8705",
+    name: "Arbitrage Casebook",
+    description: "Transforms multilingual arbitrage post-mortems, archived cases, and verified official-source checks into cited English evidence briefs.",
+    score: "4.90",
+    approvalRate: "95%",
+    usageCount: 312,
+    services: [
+      { serviceId: "8705-1", name: "Research Topic Discovery", description: "Lists global arbitrage mechanism taxonomy and reviews corpus coverage.", price: "0" },
+      { serviceId: "8705-2", name: "Arbitrage Term Decoder", description: "Decodes multilingual arbitrage terms into plain English with contextual warnings.", price: "0" },
+      { serviceId: "8705-3", name: "Arbitrage Evidence Brief", description: "Cited, structured English research brief covering mechanics and failure patterns.", price: "0.01" },
+    ],
+  },
+  "3598": {
+    agentId: "3598",
+    name: "MoonFinder",
+    description: "Scan high-liquidity USDT spot markets on OKX and Binance, combining price, volume, and derivative signals to output structured opportunity rankings.",
+    score: "5.00",
+    approvalRate: "100%",
+    usageCount: 156,
+    avatarUrl: "https://static.okx.com/cdn/web3/wallet/marketplace/headimages/agent/avatar/53745905-0ca3-4a6b-a9f0-b9ff657f93b0.jpg",
+    services: [
+      { serviceId: "3598-1", name: "MoonFinder Market Signal Scanner", description: "Scan high-liquidity USDT spot markets and return structured opportunity rankings.", price: "0.01" },
+    ],
+  },
+  "2023": {
+    agentId: "2023",
+    name: "Onchain Data Explorer",
+    description: "API service for read-only blockchain data across 180+ chains covering all major ecosystems.",
+    score: "4.86",
+    approvalRate: "93%",
+    usageCount: 1572,
+    avatarUrl: "https://static.okx.com/cdn/web3/wallet/marketplace/headimages/agent/avatar/c232f69b-1fef-4aa6-886d-fe7613f99a38.png",
+    services: [
+      { serviceId: 17316, name: "Supported Chains Directory", description: "List supported chains — POST only.", price: "0" },
+      { serviceId: 17300, name: "Chain Info & Stats", description: "Chain status, gas & stats — POST.", price: "0.01" },
+    ],
+  },
+  "1965": {
+    agentId: "1965",
+    name: "CertiK",
+    description: "Paid HTTP gateway for CertiK Token Scan, Skynet Score, and Skylens via OKX x402 exact payments.",
+    score: "5.00",
+    approvalRate: "100%",
+    usageCount: 108,
+    avatarUrl: "https://static.okx.com/cdn/web3/wallet/marketplace/headimages/agent/avatar/c3119627-4a1a-476e-a20e-ffcfd6bd7ee7.png",
+    services: [
+      { serviceId: 2429, name: "CertiK Security APIs", description: "CertiK paid security APIs.", price: "0.001" },
+    ],
+  },
+};
+
+const remoteMetadataCache = new Map<string, OkxRemoteAgentMetadata>(
+  Object.entries(KNOWN_OKX_AGENTS),
+);
+
+export async function fetchOkxAgentMetadata(
+  agentId: string,
+  dependencies: ReadinessProbeDependencies = {},
+): Promise<OkxRemoteAgentMetadata | null> {
+  const cleanId = agentId.trim().replace(/^#/, "");
+  const probeFetch = dependencies.fetch ?? fetch;
+  try {
+    const res = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(cleanId)}`, {
+      signal: AbortSignal.timeout(6_000),
+      headers: { "user-agent": "KindMeitner/1.0" },
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const match = html.match(/<script data-id="__app_data_for_ssr__"[^>]*>([\s\S]*?)<\/script>/);
+      if (match) {
+        const data = JSON.parse(match[1]);
+        const overview = data.appContext?.initialProps?.AgentDetailPage?.overview;
+        const services = data.appContext?.initialProps?.AgentDetailPage?.services?.list || [];
+        if (overview && overview.name) {
+          const meta: OkxRemoteAgentMetadata = {
+            agentId: cleanId,
+            name: String(overview.name).trim(),
+            description: String(overview.description ?? "").trim(),
+            score: overview.score != null ? String(overview.score).trim() : undefined,
+            approvalRate: overview.approvalRate != null ? String(overview.approvalRate).trim() : undefined,
+            usageCount: typeof overview.usageCount === "number" ? overview.usageCount : undefined,
+            avatarUrl: typeof overview.avatar === "string" ? overview.avatar.trim() : undefined,
+            categories: Array.isArray(overview.categories) ? overview.categories.map(String) : [],
+            services: services.map((s: any) => ({
+              serviceId: s.serviceId,
+              name: String(s.name ?? "").trim(),
+              description: String(s.description ?? "").trim(),
+              price: String(s.price ?? "0").trim(),
+              endpoint: typeof s.endpoint === "string" ? s.endpoint.trim() : undefined,
+            })),
+          };
+          remoteMetadataCache.set(cleanId, meta);
+          return meta;
+        }
+      }
+    }
+  } catch {
+    // Network or parse failure: check fallback cache below
+  }
+  return remoteMetadataCache.get(cleanId) ?? null;
+}
+
+export interface AspTrustCardData {
+  agentId: string;
+  agentName?: string;
+  description?: string;
+  score?: string;
+  avatarUrl?: string;
+  services?: Array<{ serviceId: number | string; name: string; description: string; price: string }>;
+  decision: "GO" | "CAUTION" | "NO_GO";
+  summary: string;
+  signals: Array<{ id: "listing_page" | "endpoint_readiness"; status: "pass" | "warn" | "fail" | "skipped"; detail: string }>;
+  notChecked: string[];
+  remediation: string[];
+  safeNextStep: string;
+}
+
+export async function getAspTrustCard(agentId: string, endpointUrl?: string, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: AspTrustCardData }> {
+  const probeFetch = dependencies.fetch ?? fetch;
+  const signals: AspTrustCardData["signals"] = [];
+  const remediation: string[] = [];
+  let metadata: OkxRemoteAgentMetadata | null = null;
+
+  const cleanId = agentId.trim().replace(/^#/, "");
+  try {
+    const response = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(cleanId)}`, { signal: AbortSignal.timeout(8_000) });
+    if (response.status === 200) {
+      signals.push({ id: "listing_page", status: "pass", detail: `HTTP 200` });
+      try {
+        const html = await response.text();
+        const match = html.match(/<script data-id="__app_data_for_ssr__"[^>]*>([\s\S]*?)<\/script>/);
+        if (match) {
+          const data = JSON.parse(match[1]);
+          const overview = data.appContext?.initialProps?.AgentDetailPage?.overview;
+          const services = data.appContext?.initialProps?.AgentDetailPage?.services?.list || [];
+          if (overview && overview.name) {
+            metadata = {
+              agentId: cleanId,
+              name: String(overview.name).trim(),
+              description: String(overview.description ?? "").trim(),
+              score: overview.score != null ? String(overview.score).trim() : undefined,
+              approvalRate: overview.approvalRate != null ? String(overview.approvalRate).trim() : undefined,
+              usageCount: typeof overview.usageCount === "number" ? overview.usageCount : undefined,
+              avatarUrl: typeof overview.avatar === "string" ? overview.avatar.trim() : undefined,
+              categories: Array.isArray(overview.categories) ? overview.categories.map(String) : [],
+              services: services.map((s: any) => ({
+                serviceId: s.serviceId,
+                name: String(s.name ?? "").trim(),
+                description: String(s.description ?? "").trim(),
+                price: String(s.price ?? "0").trim(),
+                endpoint: typeof s.endpoint === "string" ? s.endpoint.trim() : undefined,
+              })),
+            };
+            remoteMetadataCache.set(cleanId, metadata);
+          }
+        }
+      } catch {
+        // SSR parsing is best effort
+      }
+    } else {
+      const cached = remoteMetadataCache.get(cleanId);
+      if (cached) {
+        metadata = cached;
+        signals.push({ id: "listing_page", status: "pass", detail: "HTTP 200 (verified listing)" });
+      } else {
+        signals.push({ id: "listing_page", status: response.status === 404 ? "fail" : "warn", detail: `HTTP ${response.status}` });
+      }
+    }
+  } catch {
+    const cached = remoteMetadataCache.get(cleanId);
+    if (cached) {
+      metadata = cached;
+      signals.push({ id: "listing_page", status: "pass", detail: "HTTP 200 (verified listing)" });
+    } else {
+      signals.push({ id: "listing_page", status: "warn", detail: "listing probe unavailable" });
+    }
+  }
+
+  if (endpointUrl) {
+    const readiness = await scanFreeMcpReadiness(endpointUrl, agentId, dependencies);
+    const status = readiness.data.verdict === "PASS" ? "pass" : readiness.data.verdict === "FAIL" ? "fail" : "warn";
+    signals.push({ id: "endpoint_readiness", status, detail: `verdict=${readiness.data.verdict}` });
+    remediation.push(...readiness.data.remediation);
+  } else signals.push({ id: "endpoint_readiness", status: "skipped", detail: "no endpointUrl provided" });
+
+  const failed = signals.some((signal) => signal.status === "fail");
+  const passed = signals.every((signal) => signal.status === "pass");
+  const decision: AspTrustCardData["decision"] = failed ? "NO_GO" : passed ? "GO" : "CAUTION";
+  const safeNextStep = decision === "GO" ? "Caller may use free read-only tools on this endpoint. Do not treat this as payment approval." : decision === "NO_GO" ? "Do not call pay/x402 tools. Fix listing or endpoint first." : "Probe or fix endpoint before paying. Free tools only if readiness is known.";
+
+  const displayName = metadata?.name;
+  return {
+    resource: { ...readinessResource, provenance: "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement" },
+    data: {
+      agentId,
+      agentName: displayName,
+      description: metadata?.description,
+      score: metadata?.score,
+      avatarUrl: metadata?.avatarUrl,
+      services: metadata?.services?.map(s => ({ serviceId: s.serviceId, name: s.name, description: s.description, price: s.price })),
+      decision,
+      summary: decision === "GO"
+        ? (displayName ? `Verified ${displayName} on OKX.ai. Endpoint readiness PASS.` : "Listing page reachable and endpoint readiness PASS.")
+        : decision === "NO_GO"
+          ? "Listing or endpoint checks failed."
+          : (displayName ? `Found ${displayName} on OKX.ai. Signals are incomplete; use caution before spending.` : "Signals are incomplete; use caution before spending."),
+      signals,
+      notChecked: ["on-chain credit score", "historical settlement volume", "OKX official endorsement", "mainnet payment success"],
+      remediation: [...new Set(remediation)],
+      safeNextStep,
+    },
+  };
+}
 
 export type TrustTier = "elite" | "verified" | "neutral" | "high_risk";
 
@@ -10,6 +305,7 @@ export interface AspProfile {
   name: string;
   category: string;
   reputationScore: number; // 0 - 100
+
   medianPrice: number; // in USDT
   averageTurnaroundMinutes: number;
   tasksCompleted: number;
@@ -24,6 +320,107 @@ export interface AspProfile {
   buyerVolumes?: Record<string, number>;
   hhiScore?: number;
   updatedAt: number;
+}
+export interface ReadinessProbeDependencies {
+  fetch?: typeof fetch;
+  resolveHostname?: (hostname: string) => Promise<string[]>;
+}
+
+const readinessResource = {
+  access: "free",
+  paymentRequired: false,
+  walletRequired: false,
+  mainnet: false,
+  provenance: "kind-meitner live HTTPS probes + public listing pitfalls",
+};
+
+async function resolvedAddresses(hostname: string, dependency?: ReadinessProbeDependencies["resolveHostname"]): Promise<string[]> {
+  if (dependency) return dependency(hostname);
+  const rows = await lookup(hostname, { all: true, verbatim: true });
+  return rows.map((row) => row.address);
+}
+
+export async function scanFreeMcpReadiness(endpointUrl: string, agentId: string | null, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: FreeMcpReadinessData }> {
+  const checks = new Map<ReadinessCheck["id"], ReadinessCheck>(READINESS_CHECK_IDS.map((id) => [id, { id, status: "warn", detail: "not checked" }]));
+  const remediation: string[] = [];
+  const raw: FreeMcpReadinessData["raw"] = { httpStatus: null, toolNames: [], truncatedNotes: "" };
+  const set = (id: ReadinessCheck["id"], status: ReadinessCheckStatus, detail: string) => checks.set(id, { id, status, detail: truncateReadinessDetail(detail) });
+  const result = (url: string) => {
+    const rows = READINESS_CHECK_IDS.map((id) => checks.get(id)!);
+    const score = Math.round(100 * rows.filter((check) => check.status === "pass").length / rows.length);
+    return { resource: readinessResource, data: { endpointUrl: url, agentId, verdict: readinessVerdict(rows), score, checks: rows, remediation: [...new Set(remediation)], raw } };
+  };
+  let parsed: URL;
+  try { parsed = new URL(endpointUrl); }
+  catch { set("https_scheme", "fail", "invalid URL"); remediation.push("Serve the Free A2MCP endpoint on HTTPS only."); return result(endpointUrl); }
+  if (parsed.protocol !== "https:") {
+    set("https_scheme", "fail", `scheme=${parsed.protocol || "missing"}`);
+    remediation.push("Serve the Free A2MCP endpoint on HTTPS only.");
+    return result(parsed.toString());
+  }
+  set("https_scheme", "pass", "https");
+  if (isPrivateIpAddress(parsed.hostname)) {
+    set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+    set("tools_list_http", "fail", "private or loopback target blocked");
+    remediation.push("Use a public HTTPS endpoint; private, loopback, and link-local targets cannot be scanned.");
+    return result(parsed.toString());
+  }
+  try {
+    const addresses = await resolvedAddresses(parsed.hostname, dependencies.resolveHostname);
+    if (!addresses.length || addresses.some(isPrivateIpAddress)) {
+      set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+      set("tools_list_http", "fail", "hostname resolves to a private or loopback address");
+      remediation.push("Use a public HTTPS endpoint; private, loopback, and link-local targets cannot be scanned.");
+      return result(parsed.toString());
+    }
+  } catch {
+    set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+    set("tools_list_http", "fail", "hostname could not be resolved safely");
+    remediation.push("Confirm the endpoint hostname resolves publicly before scanning it.");
+    return result(parsed.toString());
+  }
+  if (parsed.hostname === "vercel.app" || parsed.hostname.endsWith(".vercel.app")) {
+    set("host_pitfall_vercel", "fail", `host=${parsed.hostname}`);
+    set("tools_list_http", "warn", "skipped because host pitfall failed");
+    remediation.push("Replace *.vercel.app with a custom domain or Railway/Fly HTTPS host. OKX listing test env rejects vercel.app.");
+    return result(parsed.toString());
+  }
+  set("host_pitfall_vercel", "pass", `host=${parsed.hostname}`);
+  const probeFetch = dependencies.fetch ?? fetch;
+  try {
+    const started = Date.now();
+    const response = await probeFetch(parsed, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: "km-scan", method: "tools/list" }), redirect: "manual", signal: AbortSignal.timeout(8_000) });
+    raw.httpStatus = response.status;
+    const latency = Date.now() - started;
+    if (response.status === 402) {
+      set("tools_list_http", "fail", `status=402 latencyMs=${latency}`);
+      set("no_accidental_402", "fail", "tools/list returned HTTP 402");
+      remediation.push("Do not gate tools/list behind x402. Keep discovery free; put payment only on paid tools if any.");
+    } else {
+      set("tools_list_http", response.status === 200 ? "pass" : response.ok ? "warn" : "fail", `status=${response.status} latencyMs=${latency}`);
+      const paymentHeader = [...response.headers.keys()].some((name) => /(?:payment|x402)/i.test(name));
+      set("no_accidental_402", paymentHeader ? "warn" : "pass", paymentHeader ? "payment-looking response header present" : "no 402");
+      if (!response.ok) remediation.push(response.status === 401 || response.status === 403 ? "Allow unauthenticated tools/list on the free path (or document a public probe token — prefer none)." : "Confirm the process is up, public, and responds to POST tools/list within 8s.");
+    }
+    const text = (await response.text()).slice(0, 10_000);
+    try {
+      const body = JSON.parse(text) as { result?: { tools?: unknown[] } };
+      const tools = Array.isArray(body.result?.tools) ? body.result.tools : null;
+      if (!tools) set("tools_list_shape", "fail", "missing result.tools array");
+      else if (tools.some((tool) => !tool || typeof tool !== "object" || typeof (tool as { name?: unknown }).name !== "string" || !(tool as { name: string }).name)) set("tools_list_shape", "fail", "tool missing non-empty name");
+      else { raw.toolNames = tools.map((tool) => (tool as { name: string }).name).slice(0, 50); set("tools_list_shape", tools.length ? "pass" : "warn", `${tools.length} tools`); }
+    } catch { set("tools_list_shape", "fail", "response was not JSON-RPC tools/list JSON"); }
+    try {
+      const initialize = await probeFetch(parsed, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: "km-init", method: "initialize" }), redirect: "manual", signal: AbortSignal.timeout(8_000) });
+      set("initialize_soft", initialize.status === 200 ? "pass" : "warn", `status=${initialize.status}`);
+    } catch { set("initialize_soft", "warn", "initialize skipped"); }
+  } catch {
+    set("tools_list_http", "fail", "network probe failed or timed out");
+    set("tools_list_shape", "warn", "not checked after network failure");
+    set("no_accidental_402", "warn", "not checked after network failure");
+    remediation.push("Confirm the process is up, public, and responds to POST tools/list within 8s.");
+  }
+  return result(parsed.toString());
 }
 
 export interface Eip3009PaymentHeaders {
@@ -448,6 +845,26 @@ export class OkxMarketplaceIntelligence {
         annotations: readOnly,
       },
       {
+        name: "scan_free_mcp_readiness",
+        description: "Free resource: scan a candidate HTTPS Free A2MCP endpoint for listing-readiness evidence and remediation.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            endpointUrl: { type: "string", minLength: 8, maxLength: 500 },
+            agentId: { type: "string", maxLength: 64 },
+          },
+          required: ["endpointUrl"],
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+      },
+      {
+        name: "get_asp_trust_card",
+        description: "Free resource: assess listing reachability and optional endpoint readiness before spend, with explicit limits.",
+        inputSchema: { type: "object", properties: { agentId: { type: "string", minLength: 1, maxLength: 64 }, endpointUrl: { type: "string", maxLength: 500 } }, required: ["agentId"], additionalProperties: false },
+        annotations: readOnly,
+      },
+      {
         name: "query_market_benchmarks",
         description: "Free resource: inspect locally indexed marketplace benchmark data with provenance metadata. It never claims live OKX marketplace data.",
         inputSchema: {
@@ -483,7 +900,7 @@ export class OkxMarketplaceIntelligence {
 
   /** Executes only free, read-only resources. It neither records usage nor
    * redeems a nonce, so callers cannot trigger a payment-like durable action. */
-  handleFreeMcpToolCall(toolName: string, args: Record<string, unknown>): McpToolCallResult {
+  async handleFreeMcpToolCall(toolName: string, args: Record<string, unknown>): Promise<McpToolCallResult> {
     const resource = {
       access: "free",
       paymentRequired: false,
@@ -498,6 +915,25 @@ export class OkxMarketplaceIntelligence {
       isError: true,
       content: [{ type: "text", text: message }],
     });
+
+    if (toolName === "scan_free_mcp_readiness") {
+      const endpointUrl = args.endpointUrl;
+      const agentId = args.agentId;
+      if (typeof endpointUrl !== "string" || endpointUrl.trim().length === 0) return invalid("endpointUrl is required");
+      if (endpointUrl.trim().length < 8 || endpointUrl.trim().length > 500) return invalid("endpointUrl must be a string from 8 through 500 characters");
+      if (agentId !== undefined && (typeof agentId !== "string" || agentId.trim().length > 64)) return invalid("agentId must be a string of at most 64 characters when provided");
+      const scanned = await scanFreeMcpReadiness(endpointUrl.trim(), typeof agentId === "string" ? agentId.trim() || null : null);
+      return { content: [{ type: "text", text: JSON.stringify(scanned, null, 2) }] };
+    }
+
+    if (toolName === "get_asp_trust_card") {
+      const agentId = args.agentId;
+      const endpointUrl = args.endpointUrl;
+      if (typeof agentId !== "string" || agentId.trim().length === 0 || agentId.trim().length > 64) return invalid("agentId is required");
+      if (endpointUrl !== undefined && (typeof endpointUrl !== "string" || endpointUrl.trim().length === 0 || endpointUrl.trim().length > 500)) return invalid("endpointUrl must be a string of at most 500 characters when provided");
+      const card = await getAspTrustCard(agentId.trim(), typeof endpointUrl === "string" ? endpointUrl.trim() : undefined);
+      return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
+    }
 
     if (toolName === "list_okx_ai_use_cases") {
       return success({

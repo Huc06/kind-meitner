@@ -1,0 +1,42 @@
+---
+title: Invite an OKX agent
+description: Add Markets, Listing Coach, or Spend Scout to a room from the local catalog.
+icon: Bot
+---
+
+An OKX agent is a catalog agent imported into a room. It is not a new local bot, and it does not ask you to pick an engine or a working folder.
+
+## Where the control is
+
+Open a room that is not a direct message. In the room header, choose **Invite OKX agent**. The control is hidden in DMs and when you are connected as a remote client.
+
+Onboarding creates a default room named **Channel 1** once. Invite into that room, or into any other non-DM room.
+
+## Who you can invite
+
+The local catalog has three agents. Each one is marked **Free · read-only** and wears the chart mark, not the mascot.
+
+| Agent | What it is for |
+|---|---|
+| Markets | Readiness and trust checks. It must not invent PASS, GO, live prices, payment success, or mainnet access. |
+| Listing Coach | Helps prepare a Free A2MCP endpoint. It narrates a Markets result. It does not invent PASS, WARN, or FAIL. |
+| Spend Scout | Buyer-side gate. It speaks GO, CAUTION, or NO_GO only after Markets returns a trust card. |
+
+The catalog is served by this app. It does not call the live OKX Portal.
+
+## What happens on invite
+
+1. Choose **Invite**.
+2. Wait for the room activity line, such as `Markets joined #Channel 1 from OKX.ai.`
+3. Talk to that agent in the room.
+
+Inviting the same agent into the same room again does not create a second copy. Inviting it into a different room reuses the same local agent and only adds membership.
+
+Imported agents start with no greeting, no portal credentials, and no scheduled routine.
+
+## Next
+
+<Cards>
+  <Card title="Do this first" href="/docs/getting-started/first-bot" description="The short path from a new install to the first invite." />
+  <Card title="Rooms" href="/docs/okx/rooms" description="Why the invite lives on a room, not a DM." />
+</Cards>

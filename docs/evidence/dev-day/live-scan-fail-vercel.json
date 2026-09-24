@@ -1,0 +1,55 @@
+{
+  "resource": {
+    "access": "free",
+    "paymentRequired": false,
+    "walletRequired": false,
+    "mainnet": false,
+    "provenance": "kind-meitner live HTTPS probes + public listing pitfalls"
+  },
+  "data": {
+    "endpointUrl": "https://demo.vercel.app/api/okx/free-mcp",
+    "agentId": null,
+    "verdict": "FAIL",
+    "score": 17,
+    "checks": [
+      {
+        "id": "https_scheme",
+        "status": "pass",
+        "detail": "https"
+      },
+      {
+        "id": "host_pitfall_vercel",
+        "status": "fail",
+        "detail": "host=demo.vercel.app"
+      },
+      {
+        "id": "tools_list_http",
+        "status": "warn",
+        "detail": "skipped because host pitfall failed"
+      },
+      {
+        "id": "tools_list_shape",
+        "status": "warn",
+        "detail": "not checked"
+      },
+      {
+        "id": "no_accidental_402",
+        "status": "warn",
+        "detail": "not checked"
+      },
+      {
+        "id": "initialize_soft",
+        "status": "warn",
+        "detail": "not checked"
+      }
+    ],
+    "remediation": [
+      "Replace *.vercel.app with a custom domain or Railway/Fly HTTPS host. OKX listing test env rejects vercel.app."
+    ],
+    "raw": {
+      "httpStatus": null,
+      "toolNames": [],
+      "truncatedNotes": ""
+    }
+  }
+}

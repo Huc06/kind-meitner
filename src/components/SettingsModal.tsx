@@ -3,33 +3,22 @@
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
 import { useEffect, useRef, useState } from "react";
-import { Archive, Coins, FlaskConical, KeyRound, Monitor, Palette, Search, TabletSmartphone, Terminal, User, Users, X, Building2 } from "lucide-react";
+import { KeyRound, Palette, Search, Terminal, User, X } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
 import { analyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
-import { browserAvailable, browserUnavailableReason, builtInBrowserEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
+import { showToolCallsEnabled } from "@/lib/feature-flags";
 import { localeChoices, type LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
 import { withTourReset } from "@/lib/guided-tour";
 import { completionPatch } from "@/lib/onboarding";
-import { ApiKeyRow, OpenAiCompatUrl, VpsConnection } from "./ApiKeys";
+import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
 import { EnginesSettings } from "./EnginesSettings";
-import { LocalComputerSection } from "./LocalComputerSection";
-import { CompanionSection } from "./CompanionSection";
-import { ServerPairingCard } from "./ServerPairingCard";
-import { PeopleSection } from "./PeopleSection";
-import { CustomDomainSettings } from "./CustomDomainSettings";
-import { BrowserProfilesManager } from "./BrowserProfilesManager";
-import { RemoteComputerSection } from "./RemoteComputerSection";
-import { ConnectedWorkspacesSettings } from "./ConnectedWorkspacesSettings";
 import { Card, SettingRow, Switch } from "./SettingsPrimitives";
 import { shortcutLabel } from "./ShortcutHint";
-import { UsageSection } from "./UsageSection";
-import { WorkspacesSection, workspacesAvailable } from "./WorkspacesSection";
 import { SkinPicker } from "./SkinPicker";
 import { RoomTurnTimeoutSettings } from "./RoomTurnTimeoutSettings";
 import { ThreadConcurrencySettings } from "./ThreadConcurrencySettings";
-import { WorkspaceBackupSettings } from "./WorkspaceBackupSettings";
 import { cn } from "@/lib/cn";
 import { setShowThreads, useShowThreads } from "@/lib/thread-preferences";
 
@@ -44,17 +33,9 @@ const SECTIONS: Array<{
   keywords: string[];
 }> = [
   { id: "general", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "analytics", "updates", "threads", "parallel", "concurrency"] },
-  { id: "desktopWorkspaces", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "vps", "server", "connect", "pair", "switch", "local"] },
   { id: "appearance", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "display"] },
-  { id: "experimental", labelKey: "settings.section.experimental", icon: FlaskConical, keywords: ["early", "preview", "learn", "skill", "authoring", "browser", "profiles"] },
-  { id: "connections", labelKey: "settings.section.connections", icon: KeyRound, keywords: ["keys", "api", "composio", "box", "xai", "vps"] },
+  { id: "connections", labelKey: "settings.section.connections", icon: KeyRound, keywords: ["keys", "api", "anthropic", "xai"] },
   { id: "engines", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "claude", "grok", "providers", "cli"] },
-  { id: "companion", labelKey: "settings.section.companion", icon: TabletSmartphone, keywords: ["companion", "device", "phone", "desktop", "client", "host", "pair", "pairing", "mobile", "https", "secure", "tailscale", "wifi", "remote", "advanced", "domain", "dns", "self-hosted", "server", "caddy"] },
-  { id: "computer", labelKey: "settings.section.computer", icon: Monitor, keywords: ["vm", "virtual", "desktop"] },
-  { id: "usage", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing"] },
-  { id: "people", labelKey: "settings.section.people", icon: Users, keywords: ["people", "users", "invite", "sign in", "members", "admins", "access"] },
-  { id: "backups", labelKey: "settings.section.backups", icon: Archive, keywords: ["export", "import", "restore", "full backup", "password", "recovery"] },
-  { id: "workspaces", labelKey: "settings.section.workspaces", icon: Building2, keywords: ["clients", "tenants", "fleet", "workspaces"] },
 ];
 
 function sectionMatches(section: (typeof SECTIONS)[number], query: string): boolean {
@@ -339,87 +320,6 @@ function ToolCallsRow() {
   );
 }
 
-function ExperimentalFeaturesRow() {
-  const { state, dispatch } = useStore();
-  const skillAuthoring = skillAuthoringEnabled(state.config);
-  const browser = builtInBrowserEnabled(state.config);
-  const desktopBrowser = browserAvailable(state.config);
-  const browserInstallable = state.config?.browserEngine?.installable === true;
-  const browserBlockedOnWindows = window.ogb?.platform === "win32" && !desktopBrowser && !browserInstallable;
-  const [saving, setSaving] = useState<"skillAuthoring" | "browser" | null>(null);
-  const [error, setError] = useState("");
-
-  const toggle = async (feature: "skillAuthoring" | "browser", next: boolean) => {
-    if (saving) return;
-    setSaving(feature);
-    setError("");
-    try {
-      const config: ConfigStatus = await api("/api/config", {
-        method: "PATCH",
-        body: JSON.stringify({ features: { [feature]: next } }),
-      });
-      dispatch({ type: "configStatus", config });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("settings.experimental.error"));
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  return (
-    <Card title={t("settings.experimental.title")} subtitle={t("settings.experimental.subtitle")}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[14px] font-medium text-ink">{t("settings.experimental.skillAuthoring")}</div>
-          <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
-            {t("settings.experimental.skillAuthoringDetail")}
-          </div>
-        </div>
-        <Switch
-          checked={skillAuthoring}
-          aria-label={t("settings.experimental.skillAuthoringAria")}
-          disabled={saving !== null}
-          onClick={() => void toggle("skillAuthoring", !skillAuthoring)}
-          className="disabled:cursor-wait disabled:opacity-50"
-        />
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-4 border-t border-hairline/30 pt-4">
-        <div className="min-w-0">
-          <div className="text-[14px] font-medium text-ink">{t("settings.experimental.browser")}</div>
-          <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
-            {desktopBrowser
-              ? browser
-                ? t("settings.experimental.browserOn")
-                : t("settings.experimental.browserOff")
-              : browserBlockedOnWindows
-                ? t("settings.experimental.browserWindows")
-                : browserUnavailableReason(state.config)}
-          </div>
-        </div>
-        <Switch
-          checked={browser}
-          aria-label={t("settings.experimental.browserAria")}
-          disabled={saving !== null || (!browser && !desktopBrowser && !browserInstallable)}
-          onClick={() => void toggle("browser", !browser)}
-          className="disabled:cursor-wait disabled:opacity-50"
-        />
-      </div>
-      {error ? <p role="alert" className="mt-2 text-[12px] text-danger">{error}</p> : null}
-    </Card>
-  );
-}
-
-function BrowserProfilesRow() {
-  const { state } = useStore();
-  const profiles = state.config?.browserProfiles ?? [];
-  if (!builtInBrowserEnabled(state.config) && profiles.length === 0) return null;
-  return (
-    <Card title={t("settings.profiles.title")} subtitle={t("settings.profiles.sharedSubtitle")}>
-      <BrowserProfilesManager />
-    </Card>
-  );
-}
-
 /** Writes a redacted diagnostics file to a location the user picks. The
  * report holds versions, configured-or-not booleans and the server.log tail —
  * never credential values (the desktop shell does not read secret fields). */
@@ -466,20 +366,12 @@ function DiagnosticsRow() {
 export function SettingsModal() {
   const { state, dispatch } = useStore();
   const remoteActive = window.ogb?.remoteClient?.active === true;
-  const section: AppSettingsSection =
-    (remoteActive && !["appearance", "desktopWorkspaces"].includes(state.appSettingsSection)) || state.appSettingsSection === "remote"
-      ? "companion"
-      : state.appSettingsSection;
+  const section: AppSettingsSection = state.appSettingsSection;
   const dialogRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   useEffect(() => window.ogb?.environments?.onOpenSettings?.(() => setQuery("")), []);
   const q = query.trim().toLowerCase();
-  const availableSections = SECTIONS.filter((entry) => !remoteActive || entry.id === "companion" || entry.id === "appearance" || entry.id === "desktopWorkspaces")
-    .filter((entry) => entry.id !== "desktopWorkspaces" || Boolean(window.ogb?.environments))
-    // the operator's screen for other workspaces exists only where a fleet agent does
-    .filter((entry) => entry.id !== "workspaces" || workspacesAvailable(state.config))
-    // sign-in by email is a hosted server's; the desktop app pairs devices under Remote access
-    .filter((entry) => entry.id !== "people" || !window.ogb);
+  const availableSections = SECTIONS;
   const visibleSections = availableSections.filter((entry) => sectionMatches(entry, q));
   const sectionLabelKey = SECTIONS.find((entry) => entry.id === section)?.labelKey;
   const nextVisibleSection = visibleSections.some((entry) => entry.id === section) ? undefined : visibleSections[0]?.id;
@@ -621,7 +513,6 @@ export function SettingsModal() {
           </div>
 
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4 sm:px-5 sm:pb-5">
-            {section === "desktopWorkspaces" && <ConnectedWorkspacesSettings />}
             {section === "general" && (
               <>
                 <Card title={t("settings.profile.title")} subtitle={t("settings.profile.subtitle")}>
@@ -655,40 +546,16 @@ export function SettingsModal() {
               </>
             )}
 
-            {section === "experimental" && (
-              <>
-                <ExperimentalFeaturesRow />
-                <BrowserProfilesRow />
-              </>
-            )}
-
             {section === "connections" && (
               <Card
                 title={t("settings.connections.title")}
                 subtitle={t("settings.connections.subtitle")}
               >
                 <div className="flex flex-col gap-4">
-                  {state.config?.composio.mode === "managed" ? (
-                    <div className="rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-[13px] text-success">
-                      {t("settings.connections.ready")}
-                    </div>
-                  ) : null}
                   <div className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("keys.providers.title")}</div>
                   <p className="-mt-3 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
                   <ApiKeyRow section="anthropic" testProvider="anthropic" />
-                  <ApiKeyRow section="openaiCompat" testProvider="openaiCompat" />
-                  <OpenAiCompatUrl />
                   <ApiKeyRow section="xai" testProvider="xai" />
-                  <div className="pt-2 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("keys.integrations.title")}</div>
-                  <ApiKeyRow section="box" />
-                  <VpsConnection />
-                  <ApiKeyRow section="opencodeGo" />
-                  <details className="rounded-lg border border-hairline/40 bg-inset px-3 py-2">
-                    <summary className="cursor-pointer text-[13px] text-ink-secondary">{t("settings.connections.selfHost")}</summary>
-                    <div className="mt-3">
-                      <ApiKeyRow section="composio" />
-                    </div>
-                  </details>
                 </div>
               </Card>
             )}
@@ -696,24 +563,6 @@ export function SettingsModal() {
             {section === "engines" && (
               <EnginesSettings />
             )}
-
-            {section === "backups" && <WorkspaceBackupSettings />}
-
-            {section === "companion" && (
-              <>
-                <RemoteComputerSection />
-                {!remoteActive && <CustomDomainSettings />}
-                {/* a hosted server reached from a browser: pair phones and see devices here; the desktop app has its own companion flow */}
-                {!window.ogb && <ServerPairingCard />}
-                {!remoteActive && <CompanionSection profileEmail={state.config?.profile?.email} />}
-              </>
-            )}
-
-            {section === "computer" && <LocalComputerSection />}
-
-            {section === "usage" && <UsageSection />}
-            {section === "people" && <PeopleSection />}
-            {section === "workspaces" && <WorkspacesSection />}
           </div>
         </div>
       </div>
