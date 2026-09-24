@@ -34,7 +34,6 @@ vi.mock("@/state/store", async (importOriginal) => {
   };
 });
 
-import { SettingsModal } from "./SettingsModal";
 import { ComputerPanel } from "./ComputerPanel";
 import { AccessSection } from "./bot-settings/AccessSection";
 import { useBotSettingsDerived } from "./bot-settings/useBotSettingsDerived";
@@ -49,7 +48,6 @@ const switchTag = (markup: string, label: string) => {
   expect(match, `missing switch: ${label}`).not.toBeNull();
   return match![0];
 };
-const settings = () => renderToStaticMarkup(createElement(SettingsModal));
 const access = () => renderToStaticMarkup(createElement(BotAccess, { bot }));
 const panel = (browser: boolean) => renderToStaticMarkup(createElement(ComputerPanel, { bot: { ...bot, browser } }));
 
@@ -61,10 +59,11 @@ beforeEach(() => {
 afterAll(() => vi.unstubAllGlobals());
 
 describe("browser installation opt-in", () => {
-  it("exposes the fresh workspace opt-in before installation without enabling it automatically", () => {
-    const toggle = switchTag(settings(), "Enable the built-in browser");
-    expect(toggle).toContain('aria-checked="false"');
-    expect(toggle).not.toContain("disabled=");
+  // The workspace-wide "Enable the built-in browser" switch lived in Settings
+  // → Experimental, which the app no longer ships. What still has to hold is
+  // that nothing opts a workspace in on its own, and that the computer panel
+  // only offers the engine install once a bot actually wants a browser.
+  it("never offers the engine install until a bot opts in", () => {
     expect(panel(false)).not.toContain("Install the browser engine");
     expect(fixture.dispatch).not.toHaveBeenCalled();
   });
@@ -82,9 +81,8 @@ describe("browser installation opt-in", () => {
     expect(fixture.dispatch).not.toHaveBeenCalled();
   });
 
-  it("keeps both opt-ins unavailable when the server cannot install the engine", () => {
+  it("keeps the per-bot opt-in unavailable when the server cannot install the engine", () => {
     fixture.config.browserEngine = { kind: "unavailable", installable: false, reason: "Unsupported platform" };
-    expect(switchTag(settings(), "Enable the built-in browser")).toContain("disabled=");
     fixture.config.features = { browser: true };
     expect(switchTag(access(), "Give this bot a built-in browser")).toContain("disabled=");
     expect(panel(true)).not.toContain("Install the browser engine");
