@@ -23,7 +23,7 @@ function StatusIcon({ status }: { status: GateSignal["status"] }) {
 }
 
 const btnClass =
-  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-ink-secondary hover:bg-inset hover:text-ink disabled:cursor-not-allowed disabled:opacity-45";
+  "cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-hairline/50 bg-panel px-2.5 py-1 text-[12px] font-medium text-ink-secondary hover:bg-raised-hover hover:text-ink transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45";
 
 /** A transcript card for one settled `get_asp_trust_card` result. CTAs fill
  * the next buyer turn from server evidence; the card never invents GO. */
