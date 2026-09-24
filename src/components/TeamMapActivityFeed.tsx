@@ -3,6 +3,7 @@ import { Activity, Filter } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { WorkflowSnapshot } from "@/lib/team-map-workflow";
 import { buildActivityItems, type ActivityItem, type ActivityKind } from "@/lib/team-map-demo-ui";
+import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
 
 const KIND_OPTIONS: Array<ActivityKind | "all"> = [
   "all",
@@ -134,6 +135,9 @@ export function TeamMapActivityFeed({
           const hot =
             (highlightAgentId && item.agentId === highlightAgentId) ||
             (highlightTaskId && item.taskId === highlightTaskId);
+          const feedAgent = item.agentId
+            ? agents.find((a) => a.id === item.agentId)
+            : undefined;
           return (
             <li key={item.id}>
               <button
@@ -149,6 +153,15 @@ export function TeamMapActivityFeed({
                     : "border-transparent hover:border-hairline/40 hover:bg-raised/40",
                 )}
               >
+                {feedAgent && (
+                  <TeamMapAgentAvatar
+                    agentId={feedAgent.id}
+                    name={feedAgent.name}
+                    presence={feedAgent.presence}
+                    size={24}
+                    interactive={false}
+                  />
+                )}
                 <span className="mt-0.5 w-10 shrink-0 text-[10.5px] tabular-nums text-ink-secondary">
                   {formatAt(item.at, baseAt)}
                 </span>
