@@ -1276,8 +1276,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case "configStatus":
       return { ...state, config: action.config };
     case "select": {
-      const isTeamMap = state.activeView === "team-map" ||
-        (typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("view") === "team-map" || window.location.hash === "#team-map"));
+      const isTeamMap = safeIsTeamMap(state.activeView);
       const targetView = isTeamMap ? "team-map" : "chat";
       if (state.groups.some((g) => g.id === action.id)) {
         return {
@@ -1926,10 +1925,20 @@ export function reducer(state: AppState, action: Action): AppState {
     }
   }
 }
+function safeIsTeamMap(activeView?: string): boolean {
+  if (activeView === "team-map") return true;
+  if (typeof window === "undefined" || !window.location) return false;
+  try {
+    const search = window.location.search ?? "";
+    const hash = window.location.hash ?? "";
+    return new URLSearchParams(search).get("view") === "team-map" || hash === "#team-map";
+  } catch {
+    return false;
+  }
+}
 
 /** Newest screen frames whose pixels stay in memory per thread. */
 const MAX_KEPT_SCREEN_FRAMES = 8;
-
 export const initialState: AppState = {
   backgroundThreadEvents: {},
   bots: [],
@@ -1938,7 +1947,7 @@ export const initialState: AppState = {
   instances: [],
   config: null,
   selectedId: "",
-  activeView: (typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("view") === "team-map" || window.location.hash === "#team-map")) ? "team-map" : "chat",
+  activeView: safeIsTeamMap() ? "team-map" : "chat",
   routines: [],
   routineRuns: [],
   routinesLoadState: "loading",

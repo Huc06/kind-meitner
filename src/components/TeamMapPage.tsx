@@ -221,7 +221,7 @@ export function TeamMapPage() {
   // Determine Authoritative Data Mode (Default is Live/Empty, Sample requires explicit fixture flag)
   const dataMode = useMemo<TeamMapDataMode>(() => {
     return getTeamMapDataMode({
-      search: typeof window !== "undefined" ? window.location.search : "",
+      search: typeof window !== "undefined" ? (window.location?.search ?? "") : "",
       hasLiveWorkflow: false,
       isError: Boolean(refreshError),
     });
