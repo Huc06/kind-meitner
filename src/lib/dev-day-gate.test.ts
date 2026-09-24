@@ -31,7 +31,7 @@ describe("Dev Day Gate starters", () => {
     expect(DEV_DAY_GATE_STARTERS).toHaveLength(4);
     expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("https://demo.vercel.app/api/okx/free-mcp");
     expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("agentId 99999");
-    expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("agentId 13837");
+    expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("agentId 13851");
     expect(isDevDayGate({ name: "dev-day-gate", section: "Dev Day" })).toBe(true);
     expect(isDevDayGate({ name: "#dev-day-gate", section: "Elsewhere" })).toBe(false);
   });

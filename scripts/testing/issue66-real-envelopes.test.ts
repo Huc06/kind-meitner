@@ -94,17 +94,17 @@ it("parses real production 13837+endpoint as NO_GO due to listing_page HTTP 404"
   }
 });
 
-it("parses real production GO envelope for live listing agent 8136 (Continue substitute while 13837 is 404)", () => {
-  const text = JSON.parse(envelope("trust-go-8136.json")).result.content[0].text;
+it("parses real production GO envelope for Kind Meitner Markets #13851", () => {
+  const text = JSON.parse(envelope("trust-go-13851.json")).result.content[0].text;
   const msg = {
-    id: "g8136",
+    id: "g13851",
     role: "bot" as const,
     kind: "activity" as const,
     at: 1,
     tool: { name: "get_asp_trust_card", ok: true, output: text },
   };
   const data = parseOkxActionCard(msg.tool);
-  expect(data).toMatchObject({ kind: "trust", decision: "GO", agentId: "8136" });
+  expect(data).toMatchObject({ kind: "trust", decision: "GO", agentId: "13851" });
   const html = renderToStaticMarkup(createElement(OkxGateToolResult, {
     message: msg,
     enabled: true,

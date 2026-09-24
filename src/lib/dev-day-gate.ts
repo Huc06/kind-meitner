@@ -22,9 +22,9 @@ export const DEV_DAY_GATE_STARTERS = [
     prompt: "@Markets run get_asp_trust_card for agentId 99999",
   },
   {
-    id: "trust-13837",
-    label: "Trust agent 13837",
-    prompt: `@Markets run get_asp_trust_card for agentId 13837 with endpointUrl ${DEV_DAY_GATE_FREE_MCP_URL}`,
+    id: "trust-13851",
+    label: "Trust agent 13851",
+    prompt: `@Markets run get_asp_trust_card for agentId 13851 with endpointUrl ${DEV_DAY_GATE_FREE_MCP_URL}`,
   },
 ] as const;
 
