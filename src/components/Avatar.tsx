@@ -223,11 +223,17 @@ export function resolveBotAvatarOutcome(params: {
  * values and images that fail to load both fall back to the animated mascot,
  * so an old/corrupt profile can never leave a broken-image icon in the app.
  */
-export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
-  if (bot.okxImport?.kind === "okx-catalog") {
-    return <ChartAvatar color={bot.color} size={size} name={bot.name} label={label ?? (bot.name ? `${bot.name}, OKX.AI catalog agent` : undefined)} />;
-  }
+function defaultMascotBodyForBot(bot: { name?: string; mascotBody?: MascotBodyId | null }): MascotBodyId {
+  if (bot.mascotBody) return bot.mascotBody;
+  const name = (bot.name ?? "").toLowerCase();
+  if (name.includes("spend") || name.includes("scout")) return "shield"; // droid
+  if (name.includes("coach") || name.includes("listing")) return "squircle"; // pebble
+  if (name.includes("market")) return "star"; // star
+  return "cursor"; // ghost
+}
 
+export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
+  const effectiveBody = defaultMascotBodyForBot(bot);
   const profile = botAvatarProfile(bot);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -242,7 +248,7 @@ export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarPr
   if (outcome !== "flatImage") {
     return (
       <MausAvatar
-        bodyId={bot.mascotBody ?? undefined}
+        bodyId={effectiveBody}
         {...mascotProps}
         color={bot.color}
         size={size}

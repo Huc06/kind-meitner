@@ -136,7 +136,7 @@ export function TeamMapWorkflowDrawer({
       role="dialog"
       aria-modal="false"
       aria-label={`Workflow details for ${agentName}`}
-      className="flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#15171A] shadow-2xl outline-none"
+      className="flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#12151A]/85 backdrop-blur-xl shadow-2xl shadow-black/60 outline-none"
     >
       {/* Header */}
       <div className="flex h-13 shrink-0 items-center justify-between border-b border-white/[0.08] px-5 py-3">

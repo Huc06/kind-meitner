@@ -102,27 +102,17 @@ describe("resolveBotAvatarOutcome", () => {
 });
 
 
-describe("catalog chart avatars", () => {
-  it("renders an imported OKX catalog agent as a chart mark, never as a mascot", () => {
-    const markup = renderBot({
-      name: "Listing Coach",
-      okxImport: { kind: "okx-catalog" },
-    });
-    expect(markup).toContain('aria-label="Listing Coach, OKX.AI catalog agent"');
-    expect(markup).toContain('viewBox="0 0 24 24"');
-    expect(markup).not.toContain("data-bot-avatar");
-  });
-
-  it("distinguishes Spend Scout, Listing Coach, and Markets with distinct semantic domain marks", () => {
+describe("catalog bot avatars", () => {
+  it("renders catalog bots with distinct dynamic bot-avatars mascots", () => {
     const spend = renderBot({ name: "Spend Scout", okxImport: { kind: "okx-catalog" } });
     const coach = renderBot({ name: "Listing Coach", okxImport: { kind: "okx-catalog" } });
     const markets = renderBot({ name: "Markets", okxImport: { kind: "okx-catalog" } });
 
-    // Spend Scout has shield gatekeeper path
-    expect(spend).toContain("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z");
-    // Listing Coach has quality checklist path
-    expect(coach).toContain("M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2");
-    // Markets has trend line path
-    expect(markets).toContain("M3 17 9 11l4 4 8-9");
+    // Spend Scout maps to shield -> droid
+    expect(spend).toContain('data-bot-avatar="droid"');
+    // Listing Coach maps to squircle -> pebble
+    expect(coach).toContain('data-bot-avatar="pebble"');
+    // Markets maps to star -> star
+    expect(markets).toContain('data-bot-avatar="star"');
   });
 });

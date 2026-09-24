@@ -94,7 +94,7 @@ export function TeamMapBoardView({
           <section
             key={section.key}
             aria-label={`${section.name} team`}
-            className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
+            className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#13161C]/50 backdrop-blur-md shadow-lg"
           >
             {/* Team Container Header */}
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
@@ -137,16 +137,16 @@ export function TeamMapBoardView({
                       type="button"
                       onClick={() => onSelectBot(bot.id)}
                       className={cn(
-                        "group relative flex w-full flex-col rounded-xl border p-3 text-left outline-none transition-all cursor-pointer",
+                        "group relative flex w-full flex-col rounded-xl border p-3 text-left outline-none transition-all cursor-pointer backdrop-blur-md shadow-md",
                         isBlocked
-                          ? "border-danger/60 bg-danger/10 ring-1 ring-danger/30"
+                          ? "border-danger/80 bg-danger/15 ring-1 ring-danger/40"
                           : isReviewing
-                            ? "border-accent/60 bg-accent/10 ring-1 ring-accent/30"
+                            ? "border-accent/80 bg-accent/15 ring-1 ring-accent/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
                             : isWorking
-                              ? "border-accent/60 bg-card shadow-[0_0_12px_rgba(99,102,241,0.15)]"
+                              ? "border-accent/80 bg-[#191D24]/80 shadow-[0_0_14px_rgba(99,102,241,0.2)]"
                               : isSelected || isHighlighted
-                                ? "border-accent bg-[#1C2025] ring-2 ring-accent/40"
-                                : "border-white/[0.06] bg-[#1C2025]/60 hover:border-white/[0.15] hover:bg-[#20242A]",
+                                ? "border-accent bg-[#20252E]/90 ring-2 ring-accent/40 shadow-lg"
+                                : "border-white/[0.08] bg-[#191D24]/70 hover:border-white/[0.18] hover:bg-[#20252E]/85",
                         "focus-visible:ring-2 focus-visible:ring-accent",
                       )}
                     >

@@ -61,18 +61,18 @@ function BotCard({
   const isBlocked = workflow?.presence === "blocked" || workflow?.taskState === "blocked";
   const isReviewing = workflow?.presence === "reviewing" || workflow?.taskState === "reviewing";
 
-  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 rounded-xl border bg-card shadow-sm transition-all",
+  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 rounded-xl border backdrop-blur-md shadow-lg transition-all",
     isBlocked
-      ? "border-danger/70 bg-danger/5 ring-1 ring-danger/25"
+      ? "border-danger/80 bg-danger/15 ring-1 ring-danger/40 shadow-danger/10"
       : isReviewing
-        ? "border-accent ring-1 ring-accent/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+        ? "border-accent bg-accent/15 ring-1 ring-accent/30 shadow-[0_0_16px_rgba(99,102,241,0.25)]"
         : isWorking
-          ? "border-accent/80 shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+          ? "border-accent/80 bg-[#191D24]/80 shadow-[0_0_16px_rgba(99,102,241,0.25)]"
           : selected || highlighted
-            ? "border-accent/60 ring-2 ring-accent/25"
+            ? "border-accent/80 bg-[#20252E]/85 ring-2 ring-accent/30"
             : connected
-              ? "border-accent/40"
-              : "border-hairline/50 hover:border-ink-secondary/40",
+              ? "border-accent/40 bg-[#191D24]/75"
+              : "border-white/[0.08] bg-[#191D24]/70 hover:border-white/[0.18] hover:bg-[#20252E]/80",
     moving && "opacity-35")}>
     <button data-bot-id={bot.id} aria-label={t("canvas.editBot", { name: bot.name })}
       onClick={() => {
@@ -553,7 +553,7 @@ export function TeamCanvas({
           );
         };
         return <section key={section.key} data-team-key={section.key} aria-label={t("canvas.teamRegion", { name: section.name })}
-          className={cn("absolute rounded-2xl border bg-panel/90 shadow-sm has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-hairline/50")}
+          className={cn("absolute rounded-2xl border bg-[#12151A]/40 backdrop-blur-md shadow-md has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-white/[0.06]")}
           style={{ left: tile.x, top: tile.y, width: tile.width, height: tile.height }}>
           <header className="flex h-16 items-center gap-2 px-5">
             <button data-arrange-team={section.key} disabled={!layoutLoaded} aria-label={t("canvas.arrange", { name: section.name })}
