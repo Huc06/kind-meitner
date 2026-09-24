@@ -26,6 +26,7 @@ export type InterventionCommand =
   | { type: "open_conversation"; agentId: string }
   | { type: "unblock_task"; taskId: string }
   | { type: "approve_task"; taskId: string }
+  | { type: "approve_artifact"; artifactId: string; taskId: string }
   | { type: "request_changes"; taskId: string; reason: string }
   | { type: "provide_input"; agentId: string; taskId?: string };
 function presenceBadge(presence?: string): { label: string; tone: string } {
@@ -56,6 +57,8 @@ export function TeamMapWorkflowDrawer({
   onSelectAgent: _onSelectAgent,
   onSelectTask,
   onIntervene,
+  dataMode = "sample",
+  initialTab = "overview",
 }: {
   snapshot: WorkflowSnapshot;
   bots?: Bot[];
@@ -65,9 +68,11 @@ export function TeamMapWorkflowDrawer({
   onSelectAgent?: (id: string) => void;
   onSelectTask?: (id: string) => void;
   onIntervene?: (command: InterventionCommand) => void;
+  dataMode?: "live" | "sample" | "empty" | "unavailable";
+  initialTab?: "overview" | "history" | "artifacts";
 }) {
   const drawerRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "artifacts">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "artifacts">(initialTab);
   const [inspectingArtifact, setInspectingArtifact] = useState<WorkflowArtifact | null>(null);
   const [approvedArtifactIds, setApprovedArtifactIds] = useState<string[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -386,7 +391,9 @@ export function TeamMapWorkflowDrawer({
               <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
                 Deliverables &amp; Artifacts ({artifacts.length})
               </h5>
-              <span className="text-[10.5px] text-white/40 font-mono">Sample workflow data — not live commerce</span>
+              <span className="text-[10.5px] text-white/40 font-mono">
+                {dataMode === "live" ? "Live deliverables" : "Sample workflow data — not live commerce"}
+              </span>
             </div>
 
             {artifacts.length === 0 ? (
@@ -465,7 +472,7 @@ export function TeamMapWorkflowDrawer({
                               aria-label={`Approve ${art.name}`}
                               onClick={() => {
                                 setApprovedArtifactIds((prev) => [...prev, art.id]);
-                                onIntervene?.({ type: "approve_task", taskId: art.taskId });
+                                onIntervene?.({ type: "approve_artifact", artifactId: art.id, taskId: art.taskId });
                               }}
                               className="inline-flex h-7 items-center gap-1 rounded-md bg-accent px-2.5 text-[11.5px] font-medium text-white shadow-sm transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
                             >
@@ -527,12 +534,18 @@ export function TeamMapWorkflowDrawer({
                   </div>
                   <div>
                     <span className="text-white/40 block">Size</span>
-                    <span className="font-mono text-white/80">{inspectingArtifact.sizeBytes ? `${Math.round(inspectingArtifact.sizeBytes / 1000)} KB` : "4 KB"}</span>
+                    <span className="font-mono text-white/80">
+                      {inspectingArtifact.sizeBytes !== undefined
+                        ? `${Math.round(inspectingArtifact.sizeBytes / 1000)} KB`
+                        : "Unspecified"}
+                    </span>
                   </div>
                   <div>
                     <span className="text-white/40 block">Review state</span>
                     <span className="capitalize text-white/80">
-                      {approvedArtifactIds.includes(inspectingArtifact.id) ? "Approved" : inspectingArtifact.reviewState ?? "Verified"}
+                      {approvedArtifactIds.includes(inspectingArtifact.id)
+                        ? "Approved"
+                        : (inspectingArtifact.reviewState ?? "Pending review")}
                     </span>
                   </div>
                   <div>
@@ -592,14 +605,16 @@ export function TeamMapWorkflowDrawer({
               </div>
 
               <footer className="flex items-center justify-between border-t border-white/[0.08] bg-black/30 px-4 py-2.5">
-                <span className="text-[10.5px] text-white/40 font-mono">Sample workflow data — not live commerce</span>
+                <span className="text-[10.5px] text-white/40 font-mono">
+                  {dataMode === "live" ? "Live deliverable payload" : "Sample workflow data — not live commerce"}
+                </span>
                 <div className="flex items-center gap-2">
                   {inspectingArtifact.assignedReviewerId === agentId && inspectingArtifact.reviewState === "under_review" && !approvedArtifactIds.includes(inspectingArtifact.id) && (
                     <button
                       type="button"
                       onClick={() => {
                         setApprovedArtifactIds((prev) => [...prev, inspectingArtifact.id]);
-                        onIntervene?.({ type: "approve_task", taskId: inspectingArtifact.taskId });
+                        onIntervene?.({ type: "approve_artifact", artifactId: inspectingArtifact.id, taskId: inspectingArtifact.taskId });
                       }}
                       className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-[12px] font-medium text-white shadow-sm transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
                     >

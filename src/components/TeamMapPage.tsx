@@ -42,7 +42,7 @@ import {
   buildSampleWorkflowSnapshot,
   type BotRoleMapping,
 } from "@/lib/team-map-sample-workflow";
-import { createEmptyWorkflow, computeWowFacts } from "@/lib/team-map-workflow";
+import { createEmptyWorkflow, computeWowFacts, type WorkflowArtifact } from "@/lib/team-map-workflow";
 import type { ActivityKind } from "@/lib/team-map-demo-ui";
 import { t } from "@/lib/i18n";
 
@@ -210,7 +210,7 @@ export function TeamMapPage() {
   const [factsFilter, setFactsFilter] = useState<ActivityKind | "all">("all");
   const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
   const [unblockedTaskIds, setUnblockedTaskIds] = useState<string[]>([]);
-
+  const [approvedArtifactIds, setApprovedArtifactIds] = useState<string[]>([]);
   const [pendingMove, setPendingMove] = useState<{ bot: Bot; destination: string; resolve: (moved: boolean) => void } | null>(null);
   const pendingMoveRef = useRef(pendingMove);
   pendingMoveRef.current = pendingMove;
@@ -256,12 +256,17 @@ export function TeamMapPage() {
         }
         return a;
       });
-      return { workflowSnapshot: { ...sample.snapshot, tasks, agents }, wowFacts: sample.facts };
+      const artifacts: WorkflowArtifact[] = (sample.snapshot.artifacts ?? []).map((art) => {
+        if (approvedArtifactIds.includes(art.id)) {
+          return { ...art, reviewState: "approved" as const, status: "verified" as const };
+        }
+        return art;
+      });
+      return { workflowSnapshot: { ...sample.snapshot, tasks, agents, artifacts }, wowFacts: sample.facts };
     }
     const empty = createEmptyWorkflow();
     return { workflowSnapshot: empty, wowFacts: computeWowFacts(empty) };
-  }, [dataMode, botRoleMapping, unblockedTaskIds]);
-
+  }, [dataMode, botRoleMapping, unblockedTaskIds, approvedArtifactIds]);
   // Derive prioritized attention items for Team Lead operational intervention
   const attentionItems = useMemo(() => {
     return deriveAttentionItems(workflowSnapshot, bots);
@@ -573,6 +578,26 @@ export function TeamMapPage() {
             </span>
           </div>
 
+          {/* Data Mode Indicator */}
+          {dataMode === "sample" ? (
+            <span className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-medium text-amber-400 sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-amber-400" />
+              <span>Sample data — not live</span>
+            </span>
+          ) : dataMode === "live" ? (
+            <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-medium text-emerald-400 sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Live workflow</span>
+            </span>
+          ) : (
+            <a
+              href="?fixture=sample"
+              className="hidden items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10.5px] font-medium text-white/70 hover:bg-white/[0.08] hover:text-white sm:inline-flex transition"
+            >
+              <span>Load sample scenario</span>
+            </a>
+          )}
+
           {/* Segmented View Switcher (Canvas vs Board) */}
           <div className="flex items-center rounded-md border border-white/[0.1] bg-black/40 p-0.5" role="group" aria-label="View mode">
             <button
@@ -767,6 +792,7 @@ export function TeamMapPage() {
         {/* Right-side Detail Drawer with 1-click Operator Interventions */}
         {(selectedWorkflowBotId || selectedWorkflowTaskId) && (
           <TeamMapWorkflowDrawer
+            dataMode={dataMode}
             snapshot={workflowSnapshot}
             bots={bots}
             agentId={selectedWorkflowBotId}
@@ -798,6 +824,8 @@ export function TeamMapPage() {
                 setSelectedWorkflowTaskId(null);
                 setSelectedWorkflowBotId(null);
                 setHighlightBotIds([]);
+              } else if (action.type === "approve_artifact") {
+                setApprovedArtifactIds((prev) => [...new Set([...prev, action.artifactId])]);
               } else if (action.type === "inspect_blocker") {
                 setSelectedWorkflowTaskId(action.taskId);
               }

@@ -114,4 +114,79 @@ describe("TeamMapWorkflowDrawer with Real Bots", () => {
     // Honest provenance copy: must NOT claim "Verified on-chain rails"
     expect(markup).not.toContain("Verified on-chain rails");
   });
+
+  it("distinguishes live versus sample provenance honestly based on dataMode prop", () => {
+    const sampleSnapshot = {
+      ...createEmptyWorkflow(),
+      artifacts: [
+        {
+          id: "art-1",
+          name: "contract.sol",
+          type: "code" as const,
+          createdAt: 1000,
+          taskId: "task-1",
+          authorAgentId: "bot-real-1",
+        },
+      ],
+    };
+
+    // Sample mode
+    const sampleMarkup = renderToStaticMarkup(
+      createElement(TeamMapWorkflowDrawer, {
+        snapshot: sampleSnapshot,
+        bots: realBots,
+        agentId: "bot-real-1",
+        dataMode: "sample",
+        initialTab: "artifacts",
+        onClose: () => {},
+      }),
+    );
+    expect(sampleMarkup).toContain("Sample workflow data — not live commerce");
+    expect(sampleMarkup).not.toContain("Live deliverables");
+
+    // Live mode
+    const liveMarkup = renderToStaticMarkup(
+      createElement(TeamMapWorkflowDrawer, {
+        snapshot: sampleSnapshot,
+        bots: realBots,
+        agentId: "bot-real-1",
+        dataMode: "live",
+        initialTab: "artifacts",
+        onClose: () => {},
+      }),
+    );
+    expect(liveMarkup).toContain("Live deliverables");
+    expect(liveMarkup).not.toContain("Sample workflow data");
+  });
+
+  it("does not fabricate fallback sizes or verified review states when metadata is absent", () => {
+    const unannotatedSnapshot = {
+      ...createEmptyWorkflow(),
+      artifacts: [
+        {
+          id: "art-unannotated",
+          name: "raw-output.txt",
+          type: "document" as const,
+          createdAt: 1000,
+          taskId: "task-1",
+          authorAgentId: "bot-real-1",
+          // sizeBytes is omitted
+          // reviewState is omitted
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(TeamMapWorkflowDrawer, {
+        snapshot: unannotatedSnapshot,
+        bots: realBots,
+        agentId: "bot-real-1",
+        onClose: () => {},
+      }),
+    );
+
+    // Must NOT claim "4 KB" or "Verified"
+    expect(markup).not.toContain("4 KB");
+    expect(markup).not.toContain("Verified on-chain rails");
+  });
 });

@@ -60,7 +60,7 @@ export function getTeamMapDataMode(params?: {
     return "live";
   }
 
-  return "sample";
+  return "empty";
 }
 
 /**
