@@ -895,8 +895,8 @@ export function Composer({
             data-composer-backdrop
             className="pointer-events-none absolute -left-5 -right-5 -bottom-3 top-1/2 bg-app"
           />
-        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-2.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)] ring-1 ring-composer-ring">
-        <div className="flex items-end gap-1">
+        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-3 py-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_12px_24px_-4px_rgba(0,0,0,0.06)] ring-1 ring-composer-ring backdrop-blur transition-all focus-within:ring-accent/50">
+        <div className="flex items-end gap-1.5">
           <input
             ref={fileInput}
             type="file"
@@ -915,7 +915,7 @@ export function Composer({
                 onClick={() => fileInput.current?.click()}
                 aria-label={t("composer.attach")}
                 title={t("composer.attach")}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-secondary hover:bg-control hover:text-ink"
+                className="cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-all hover:bg-control hover:text-ink active:scale-95"
               >
                 <Paperclip size={17} />
               </button>
@@ -941,10 +941,10 @@ export function Composer({
                     setChannelMode((current) => current === "goal" ? "chat" : "goal");
                   }}
                   className={cn(
-                    "flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px] transition-colors",
+                    "cursor-pointer flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[12px] font-medium transition-all active:scale-95",
                     effectiveChannelMode === "goal"
-                      ? "border-accent/35 bg-accent/10 text-accent"
-                      : "border-hairline/20 bg-transparent text-ink-secondary hover:bg-raised hover:text-ink",
+                      ? "border-accent/40 bg-accent/15 text-accent"
+                      : "border-hairline/30 bg-raised/40 text-ink-secondary hover:bg-raised hover:text-ink",
                   )}
                 >
                   <Target size={14} aria-hidden="true" />
@@ -1069,10 +1069,10 @@ export function Composer({
           <button
             onClick={interruptTurn}
             aria-label={t("chat.stopTurn")}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-secondary hover:bg-raised hover:text-ink"
+            className="cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl bg-danger/15 text-danger transition-all hover:bg-danger/25 active:scale-95"
             title={t("chat.stop")}
           >
-            <Square size={14} className="fill-current" />
+            <Square size={13} className="fill-current" />
           </button>
         )}
         {!locked && !busy && !hasContent && capabilities.dictation.available && (
@@ -1080,14 +1080,14 @@ export function Composer({
             onClick={toggleMic}
             aria-label={recording ? t("composer.dictation.stop") : t("composer.dictation.start")}
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-full",
+              "cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
               recording
                 ? "animate-pulse bg-danger/20 text-danger"
                 : "text-ink-secondary hover:bg-raised hover:text-ink",
             )}
             title={recording ? t("composer.dictation.stopHint") : t("composer.dictation.hint")}
           >
-            <Mic size={18} />
+            <Mic size={17} />
           </button>
         )}
         {hasContent && !locked && (
@@ -1109,15 +1109,15 @@ export function Composer({
                     : t("chat.send")
             }
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-full text-white",
+              "cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
               busy && !canSteer
                   ? "bg-raised text-ink-secondary hover:bg-raised-hover"
-                  : "bg-accent hover:brightness-110",
+                  : "bg-accent text-white shadow-sm hover:brightness-110",
             )}
           >
-            {busy && !canSteer ? <Clock size={15} /> : <ArrowUp size={17} />}
+            {busy && !canSteer ? <Clock size={14} /> : <ArrowUp size={16} strokeWidth={2.5} />}
           </button>
-          )}
+        )}
           </div>
         </div>
         </div>
