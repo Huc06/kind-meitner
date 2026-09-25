@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 580" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap');
+      
+      .bg { fill: #0d1117; }
+      .border-line { stroke: #30363d; stroke-width: 1; stroke-dasharray: 4 4; fill: none; }
+      .solid-border { stroke: #30363d; stroke-width: 1; fill: none; }
+      
+      .headline { font-family: 'Inter', -apple-system, sans-serif; font-size: 34px; font-weight: 800; fill: #f0f6fc; letter-spacing: -0.03em; }
+      .headline-dim { font-family: 'Inter', -apple-system, sans-serif; font-size: 34px; font-weight: 700; fill: #8b949e; letter-spacing: -0.03em; }
+      .subline { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; fill: #8b949e; }
+      
+      .label-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; fill: #8b949e; letter-spacing: 0.1em; }
+      .text-mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; fill: #c9d1d9; }
+      .text-dim { font-family: 'JetBrains Mono', monospace; font-size: 12px; fill: #8b949e; }
+      
+      .badge-pass { fill: #3fb950; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+      .badge-warn { fill: #d29922; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+      
+      .stat-val { font-family: 'Inter', sans-serif; font-size: 32px; font-weight: 800; fill: #f0f6fc; }
+      .stat-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; fill: #8b949e; letter-spacing: 0.08em; }
+      
+      /* Grid pulse animation */
+      @keyframes cellPulse {
+        0%, 100% { opacity: 0.85; }
+        50% { opacity: 1; filter: drop-shadow(0 0 3px #238636); }
+      }
+      .cell-active { fill: #238636; animation: cellPulse 3s ease-in-out infinite; }
+      .cell-light { fill: #2ea043; }
+      .cell-bright { fill: #3fb950; }
+      .cell-empty { fill: #161b22; stroke: #21262d; stroke-width: 1; }
+      
+      /* Light mode adaptation */
+      @media (prefers-color-scheme: light) {
+        .bg { fill: #ffffff; }
+        .border-line { stroke: #d0d7de; }
+        .solid-border { stroke: #d0d7de; }
+        .headline { fill: #1f2328; }
+        .headline-dim { fill: #656d76; }
+        .subline { fill: #656d76; }
+        .label-mono { fill: #656d76; }
+        .text-mono { fill: #1f2328; }
+        .text-dim { fill: #656d76; }
+        .stat-val { fill: #1f2328; }
+        .stat-lbl { fill: #656d76; }
+        .cell-empty { fill: #ebedf0; stroke: #d0d7de; }
+      }
+    </style>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1100" height="580" class="bg" rx="16" />
+  <rect x="1" y="1" width="1098" height="578" class="solid-border" rx="16" />
+
+  <!-- Dotted Grid Separators (Nymspace style) -->
+  <line x1="45" y1="285" x2="1055" y2="285" class="border-line" />
+  <line x1="580" y1="40" x2="580" y2="260" class="border-line" />
+
+  <!-- Crosshair Accents (+) -->
+  <g fill="#8b949e" font-family="'JetBrains Mono', monospace" font-size="16" font-weight="600">
+    <text x="38" y="291">+</text>
+    <text x="1050" y="291">+</text>
+    <text x="575" y="291">+</text>
+  </g>
+
+  <!-- ================= LEFT HEADER: LOGO & ONE NAMESPACE ================= -->
+  <g transform="translate(60, 48)">
+    <!-- Brand Tile: Mascot in Squircle -->
+    <rect width="48" height="48" rx="14" fill="#161b22" stroke="#30363d" stroke-width="1.5" />
+    <path d="M 24 14 C 18 14 14 18 14 24 C 14 31 16 34 18 34 C 20 34 21 31 24 31 C 27 31 28 34 30 34 C 32 34 34 31 34 24 C 34 18 30 14 24 14 Z" fill="#2ea043" />
+    <circle cx="21" cy="22" r="1.8" fill="#ffffff" />
+    <circle cx="27" cy="22" r="1.8" fill="#ffffff" />
+    <circle cx="21.6" cy="22" r="0.9" fill="#0d1117" />
+    <circle cx="27.6" cy="22" r="0.9" fill="#0d1117" />
+
+    <!-- 3-line Authority Mantra -->
+    <text x="0" y="90" class="headline">One workspace.</text>
+    <text x="0" y="132" class="headline-dim">Many agents.</text>
+    <text x="0" y="174" class="headline">Explicit authority.</text>
+
+    <!-- Subtitle Spec Tags -->
+    <text x="0" y="212" class="subline">OKX Onchain OS · A2MCP readiness gate</text>
+    <text x="0" y="230" class="subline">Audit-to-Hire routines · 72h Smart Escrow</text>
+  </g>
+
+  <!-- ================= RIGHT HEADER: TEAMS & GATE TELEMETRY ================= -->
+  <g transform="translate(620, 52)">
+    <!-- Section 1: Names / Roles -->
+    <text x="0" y="0" class="label-mono">TEAMS &amp; ROLES</text>
+    <text x="0" y="26" class="text-mono">kind-meitner.okx</text>
+    <text x="240" y="26" class="text-dim">company workspace</text>
+
+    <text x="0" y="48" class="text-dim">├── @Markets</text>
+    <text x="240" y="48" class="text-dim">radar scanner · A2MCP</text>
+
+    <text x="0" y="70" class="text-dim">├── @Listing Coach</text>
+    <text x="240" y="70" class="text-dim">quality review · terms</text>
+
+    <text x="0" y="92" class="text-dim">├── @Spend Scout</text>
+    <text x="240" y="92" class="text-dim">buyer gatekeeper · trust</text>
+
+    <text x="0" y="114" class="text-dim">└── @Atlas</text>
+    <text x="240" y="114" class="text-dim">settlement · 72h escrow</text>
+
+    <!-- Section 2: Gate Signals -->
+    <text x="0" y="152" class="label-mono">GATE SIGNALS</text>
+    
+    <circle cx="4" cy="173" r="3.5" fill="#3fb950" />
+    <text x="16" y="177" class="text-mono">scan_free_mcp_readiness</text>
+    <text x="320" y="177" class="badge-pass">PASS [7/7]</text>
+
+    <circle cx="4" cy="195" r="3.5" fill="#3fb950" />
+    <text x="16" y="199" class="text-mono">get_asp_trust_card</text>
+    <text x="320" y="199" class="badge-pass">GO [ASP #13851]</text>
+
+    <circle cx="4" cy="217" r="3.5" fill="#d29922" />
+    <text x="16" y="221" class="text-mono">notChecked limits</text>
+    <text x="320" y="221" class="badge-warn">SURFACED</text>
+  </g>
+
+  <!-- ================= LOWER SECTION: BUILD LOG (COMMIT HEATMAP) ================= -->
+  <g transform="translate(60, 310)">
+    <!-- Label -->
+    <text x="0" y="0" class="label-mono">[ BUILD LOG &amp; SYSTEM TELEMETRY ]</text>
+
+    <!-- Contribution Grid (26 Columns x 7 Rows) -->
+    <g transform="translate(0, 20)">
+      <!-- Render 26 week columns with dots -->
+      <!-- Week 1-22 empty -->
+      <g opacity="0.6">
+        <!-- Loop simulation for empty columns -->
+        <g transform="translate(0,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(18,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(36,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(54,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(72,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(90,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(108,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(126,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(144,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(162,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(180,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(198,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(216,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(234,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(252,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(270,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(288,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(306,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(324,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(342,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+        <g transform="translate(360,0)"><rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="51" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="68" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="85" width="13" height="13" rx="3" class="cell-empty"/><rect x="0" y="102" width="13" height="13" rx="3" class="cell-empty"/></g>
+      </g>
+
+      <!-- Active Hackathon Build Window (Sep 17-25) -->
+      <g transform="translate(378,0)">
+        <rect x="0" y="0" width="13" height="13" rx="3" class="cell-empty"/>
+        <rect x="0" y="17" width="13" height="13" rx="3" class="cell-empty"/>
+        <rect x="0" y="34" width="13" height="13" rx="3" class="cell-empty"/>
+        <rect x="0" y="51" width="13" height="13" rx="3" class="cell-light"/>
+        <rect x="0" y="68" width="13" height="13" rx="3" class="cell-bright"/>
+        <rect x="0" y="85" width="13" height="13" rx="3" class="cell-active"/>
+        <rect x="0" y="102" width="13" height="13" rx="3" class="cell-bright"/>
+      </g>
+      <g transform="translate(396,0)">
+        <rect x="0" y="0" width="13" height="13" rx="3" class="cell-bright"/>
+        <rect x="0" y="17" width="13" height="13" rx="3" class="cell-active"/>
+        <rect x="0" y="34" width="13" height="13" rx="3" class="cell-bright"/>
+        <rect x="0" y="51" width="13" height="13" rx="3" class="cell-active"/>
+        <rect x="0" y="68" width="13" height="13" rx="3" class="cell-bright"/>
+        <rect x="0" y="85" width="13" height="13" rx="3" class="cell-active"/>
+        <rect x="0" y="102" width="13" height="13" rx="3" class="cell-active"/>
+      </g>
+    </g>
+
+    <!-- Month indicators below heatmap -->
+    <g transform="translate(0, 150)" class="text-dim" font-size="11">
+      <text x="0">Apr</text>
+      <text x="90">May</text>
+      <text x="180">Jun</text>
+      <text x="270">Jul</text>
+      <text x="350">Aug</text>
+      <text x="390" font-weight="700" fill="#3fb950">Sep (Build)</text>
+    </g>
+
+    <!-- Right Telemetry KPIs -->
+    <g transform="translate(560, 20)">
+      <g transform="translate(0,0)">
+        <text x="0" y="24" class="stat-val">280+</text>
+        <text x="0" y="42" class="stat-lbl">COMMITS (26 WEEKS)</text>
+      </g>
+      <g transform="translate(180,0)">
+        <text x="0" y="24" class="stat-val">9</text>
+        <text x="0" y="42" class="stat-lbl">ACTIVE DAYS</text>
+      </g>
+      <g transform="translate(0,68)">
+        <text x="0" y="24" class="stat-val">80+</text>
+        <text x="0" y="42" class="stat-lbl">UNIT TESTS PASS</text>
+      </g>
+      <g transform="translate(180,68)">
+        <text x="0" y="24" class="stat-val">Sep 25</text>
+        <text x="0" y="42" class="stat-lbl">FINAL AUDIT</text>
+      </g>
+    </g>
+
+    <!-- Latest Commits List -->
+    <g transform="translate(0, 185)">
+      <text x="0" y="0" class="label-mono">LATEST VERIFIED COMMITS</text>
+      <text x="380" y="0" class="text-dim">drawn 2026-09-25 23:59 utc</text>
+
+      <g transform="translate(0, 18)" class="text-mono" font-size="11.5">
+        <text x="0" y="0" fill="#79c0ff">a72ac27</text>
+        <text x="70" y="0" class="text-dim">Sep 25</text>
+        <text x="130" y="0">docs(railway): add concise Railway deployment quickstart (#13)</text>
+      </g>
+      <g transform="translate(0, 36)" class="text-mono" font-size="11.5">
+        <text x="0" y="0" fill="#79c0ff">c5dea44</text>
+        <text x="70" y="0" class="text-dim">Sep 25</text>
+        <text x="130" y="0">feat(dev-day): deterministic readiness receipt on scan_free_mcp_readiness (#93)</text>
+      </g>
+      <g transform="translate(0, 54)" class="text-mono" font-size="11.5">
+        <text x="0" y="0" fill="#79c0ff">6a68eb4</text>
+        <text x="70" y="0" class="text-dim">Sep 24</text>
+        <text x="130" y="0">feat(ui): complete React Bits Pro chat redesign (#113)</text>
+      </g>
+    </g>
+  </g>
+</svg>
