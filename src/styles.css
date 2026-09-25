@@ -1382,3 +1382,38 @@ button:disabled.bg-danger {
 [data-sidebar] :is(button, [role="button"]):not(:disabled, [aria-busy="true"]) {
   cursor: pointer;
 }
+
+/* ── Hero word tiles (from Nymspace) ────────────────────────────────── */
+@keyframes word-tile-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    transform: translateY(0.16em);
+    opacity: 0;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+[data-slot="word-tiles"] > span {
+  animation: word-tile-in 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--tile-index) * 120ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="word-tiles"] > span {
+    animation: none;
+  }
+}
+
+:root {
+  --tile-neutral-bg: #0a0a0a;
+  --tile-neutral-fg: #ffffff;
+}
+
+[data-theme="dark"], .dark, [data-skin="midnight"], [data-skin="twilight"] {
+  --tile-neutral-bg: #f2f2f2;
+  --tile-neutral-fg: #0a0a0a;
+}

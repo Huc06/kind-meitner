@@ -1,0 +1,908 @@
+/* Layer order, declared before the imports so it is the cascade's, not the
+   import order's, decision.
+
+   Import order alone was deciding this, and it decided wrong. Astryx's CSS is
+   imported after Tailwind's so that Astryx beats Tailwind's *preflight* — that
+   part was deliberate and is still needed, because preflight is a `@layer base`
+   reset and Astryx has to win on its own custom elements. But layer order is
+   resolved by first appearance, so importing Astryx last also put `reset`,
+   `astryx-base` and `astryx-theme` after Tailwind's `utilities`, and a later
+   layer wins regardless of specificity. Every Tailwind utility that collided
+   with Astryx's reset silently lost.
+
+   It was visible on the landing page: `size-6` on a commit avatar produced a
+   24px width and no height, because `img { height: auto }` in Astryx's reset
+   outranked it. The 460x460 avatar then stretched to the flex line — 24x62,
+   `object-fit: fill` — which is the squashed image on the build log.
+
+   `utilities` last is the whole fix. Astryx still precedes Tailwind's `base`,
+   so it still wins its custom elements; utilities now outrank Astryx's reset,
+   which is what a utility is for. Names are the ones the built stylesheet
+   actually emits — check with `document.styleSheets` if this list ever drifts. */
+@layer properties, theme, base, components, reset, astryx-base, astryx-theme, utilities;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Astryx design system (task #82). Standard UI = Astryx: every new screen is
+   built from @astryxdesign/core, not Tailwind utilities.
+   These sit after the Tailwind imports on purpose — Tailwind's preflight is a
+   `@layer base` reset, and Astryx has to win on its own custom elements
+   (astryx-button, astryx-stack, …) for its components to render correctly.
+   The pre-Astryx landing page still uses Tailwind; see the note in AGENTS.md. */
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+/* The owned theme, replacing `@astryxdesign/theme-neutral`. This is the built
+   output of `theme.ts` (`pnpm exec astryx theme build theme.ts`), imported as
+   static CSS rather than generated at runtime: a runtime `defineTheme` injects
+   its component overrides after hydration, so the first paint would ship
+   untokenised tables. `astryx theme build --check theme.ts` fails when this
+   file is stale against its source. */
+@import "../nymspace.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+/* Hero word tiles.
+   The reveal is a CSS animation, not a JS state flip: the resting state is the
+   assembled bar, and `animation-fill-mode: both` holds the closed frame during
+   the per-tile delay. So the heading is readable even when JS never runs, when
+   the page is prerendered, or when it loads in a background tab where rAF is
+   parked. */
+@keyframes word-tile-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    transform: translateY(0.16em);
+    opacity: 0;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+[data-slot="word-tiles"] > span {
+  animation: word-tile-in 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--tile-index) * 120ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="word-tiles"] > span {
+    animation: none;
+  }
+}
+
+/* The one neutral swatch in the tile palette has to flip with the theme.
+   A near-black tile is invisible against a near-black page, which breaks the
+   "one seamless bar" read — the tile is still there, but its edges vanish. */
+:root {
+  --tile-neutral-bg: #0a0a0a;
+  --tile-neutral-fg: #ffffff;
+}
+
+.dark {
+  --tile-neutral-bg: #f2f2f2;
+  --tile-neutral-fg: #0a0a0a;
+}
+
+/* ── Frame ────────────────────────────────────────────────────────────────
+   The console's framed surface, in the register of mdx-graphs.kshv.me.
+
+   The edge is four background gradients rather than a `border`, and that is
+   load-bearing rather than stylistic. `border-style: dashed` draws a pattern
+   the browser picks and cannot be interrupted; painting the edge as an image
+   is what lets the corner marks and the title sit on top of it and appear to
+   notch it. 2px on, 5px off, 1px thick — the reference's own values.
+
+   Every colour here is a theme token. `--astryx-theme-nymspace-color-frame`
+   is declared in `theme.ts` as a theme-local role aliasing `--color-border`,
+   so it follows light and dark without a second definition.
+
+   See openspec/changes/adopt-console-design-register/design.md. */
+
+@utility frame-edge {
+  background-image:
+    repeating-linear-gradient(to right, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(to bottom, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(to right, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(to bottom, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px);
+  background-repeat: repeat-x, repeat-y, repeat-x, repeat-y;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-size: 100% 1px, 1px 100%, 100% 1px, 1px 100%;
+}
+
+/* A single horizontal rule in the same dash rhythm, so a divider inside a
+   frame reads as part of the frame rather than as a second border style. */
+@utility frame-rule {
+  height: 1px;
+  background-image: repeating-linear-gradient(to right, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px);
+}
+
+/* A field separator in the frame's rhythm. Painted at the bottom edge rather
+   than as a border so a row of fields reads as the same dash pattern as the
+   frame around them, instead of a solid hairline inside a dashed box. */
+@utility frame-rule-below {
+  background-image: repeating-linear-gradient(to right, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px);
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  background-size: 100% 1px;
+}
+
+@utility frame-ink {
+  color: var(--astryx-theme-nymspace-color-frame);
+}
+
+/* The nav's underline: one mark, two weights.
+
+   Both states draw the same bar under the same link, and they differ the way
+   the two things differ. Hover is the console's dash rhythm in the frame's own
+   colour: a proposal, drawn in the language the chrome already speaks. The
+   current page is solid accent at twice the weight: a commitment, and the only
+   place in the header that carries colour.
+
+   The dashed version was first used for both, and the current page vanished.
+   `--astryx-theme-nymspace-color-frame` aliases `--color-border`, which is
+   `#f0f0fa33` — the same 20%-alpha ink as `frame-rule-below` running the full
+   width of the header a few pixels underneath. A 1px dashed hairline in the
+   exact colour and rhythm of a rule directly below it does not read as an
+   indicator; it reads as a bit of the rule that came loose. Accent is what
+   separates them, and the accent is `--color-text-accent`, already the one
+   colour the console spends, on the Search button.
+
+   The mark is a pseudo-element so the link stays one element. `AGENTS.md`
+   gives the raw-layout exception to `Frame` by name, and an underline that
+   needs a wrapper to exist would be claiming it a second time.
+
+   `bottom` is negative so the bar sits in the header's own padding rather than
+   inside the text box, where a descender would cross it. The offset is smaller
+   than the header's `paddingBlockEnd`, so the mark never reaches
+   `frame-rule-below` and the two lines stay legible as two.
+
+   The bar travels between links on navigation rather than blinking: the nav
+   lives in the layout, so React keeps these elements across a route change and
+   only flips `data-active`. What moves is a state change on persistent nodes,
+   which is what a transition can animate and a remount cannot. */
+@utility nav-link {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -0.375rem;
+    height: 1px;
+    background-image: repeating-linear-gradient(to right, var(--astryx-theme-nymspace-color-frame) 0 2px, transparent 2px 7px);
+    background-repeat: repeat-x;
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition:
+      opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  /* After the hover rule on purpose: hovering the page you are already on
+     must not demote its mark back to a dashed proposal. */
+  &[data-active]::after {
+    height: 2px;
+    background-image: none;
+    background-color: var(--color-text-accent);
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* Surfaces, and the punch.
+
+   Corner marks and the title paint the surface behind the frame so the edge
+   disappears underneath them. The reference hardcodes the page background
+   because in prose a figure only ever sits on the page; a console has more
+   than one surface, and the failure is invisible on the default one.
+
+   These same utilities paint a surface and punch a hole in a frame sitting on
+   it, deliberately. One name for both makes "the punch equals the surface"
+   true by construction rather than by two definitions agreeing. Painting the
+   console shell with `surface-body` and passing `surface="body"` to a Frame
+   inside it cannot drift.
+
+   Only opaque surfaces exist. `--color-background-muted` is a translucent
+   overlay (`#0536590C` light, `#1111127F` dark), and painting a translucent
+   colour over the edge leaves the edge showing through — a punch that does not
+   punch. A frame that wants to sit on a muted block should replace that block
+   rather than nest inside it. */
+@utility surface-body {
+  background-color: var(--color-background-body);
+}
+
+@utility surface-card {
+  background-color: var(--color-background-card);
+}
+
+/* ── Scroll affordances ───────────────────────────────────────────────────
+   The console conceals scrollbars and keeps the scrolling.
+
+   `overflow: hidden` is the wrong fix and is deliberately not used anywhere
+   here: it removes the scrolling, not the bar, turning a scrollable region
+   into a truncated one. The two rules below suppress the affordance only —
+   wheel, trackpad, keyboard and programmatic scroll are untouched.
+
+   Both an engine's standard property and its vendor pseudo-element are
+   needed: `scrollbar-width` covers Gecko, `::-webkit-scrollbar` covers
+   WebKit and Blink. Between them no supported engine still paints a bar.
+
+   The descendant rules matter as much as the element's own. The scrollers
+   the console cares about are mostly not ours — Astryx's Table owns its
+   horizontal scroll wrapper and CodeBlock owns its vertical one — so a
+   utility that only styled the element it sits on would conceal nothing.
+
+   See openspec/changes/polish-console-ui/design.md D3. */
+
+@utility scroll-quiet {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  & * {
+    scrollbar-width: none;
+  }
+
+  & *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* The document's own bar, concealed for the same reason.
+
+   Applied to `html` rather than by making the console shell a scroll
+   container. A full-viewport scroller only receives arrow and space keys
+   while focus is inside it; with focus on the body the browser scrolls the
+   document instead, and the shell would sit still. Concealing the document
+   bar keeps the document as the scroller, so keyboard scrolling works
+   exactly as it did before. */
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* Overflow, as a state rather than a bar.
+
+   A concealed edge removes the only signal that content continues, so the
+   edge carries a fade instead. The shell is the positioned parent; the
+   scroller inside it is what actually moves, and a pseudo-element on the
+   scroller would scroll away with the content.
+
+   `--scroll-edge-surface` is the surface the fade resolves to, defaulting to
+   the console shell's own. A caller painting a different surface overrides
+   the one custom property rather than redefining the gradient — the same
+   arrangement `surface-body` / `surface-card` use for the Frame punch. */
+@utility scroll-shell {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+
+  /* The inline-end edge, for a horizontally scrolling region. */
+  &::after {
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 3rem;
+    background-image: linear-gradient(
+      to left,
+      var(--scroll-edge-surface, var(--color-background-body)),
+      transparent
+    );
+  }
+
+  &[data-overflow-inline="true"]::after {
+    opacity: 1;
+  }
+
+  /* The block-end edge, for a vertically scrolling region. */
+  &::before {
+    inset-inline: 0;
+    inset-block-end: 0;
+    height: 2rem;
+    background-image: linear-gradient(
+      to top,
+      var(--scroll-edge-surface, var(--color-background-body)),
+      transparent
+    );
+  }
+
+  &[data-overflow-block="true"]::before {
+    opacity: 1;
+  }
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────
+   Same contract as `word-tile-in` above: `animation-fill-mode: both`, and
+   the resting state is the readable one. A row whose animation never runs —
+   prerender, dead JS, backgrounded tab — must be visible and in position,
+   not stuck at `opacity: 0`.
+
+   `transform` and `opacity` only, so a full window of rows animates off the
+   main thread.
+
+   The stagger step is 18ms and `--row-index` is the row's position within
+   its arriving batch, not in the list. At the reference's 120ms a window of
+   40 rows would take 4.8 seconds to finish arriving, which is not motion,
+   it is a wait; and an index that kept counting across batches would start
+   the second batch two seconds late. 18ms × 39 caps the tail at ~0.7s.
+
+   See design.md D4. */
+@keyframes row-enter {
+  from {
+    transform: translateY(0.25rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@utility row-enter {
+  animation: row-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--row-index, 0) * 18ms);
+}
+
+@keyframes view-enter {
+  from {
+    transform: translateY(0.375rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@utility view-enter {
+  animation: view-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The landing preloader's exit of last resort.
+
+   The overlay is server-rendered so the first paint is paper rather than the
+   page with a curtain dropped over it afterwards. That is the right trade
+   everywhere except one case: if the bundle never executes — a chunk 404s, a
+   script error, JavaScript off — React never mounts, nothing unmounts the
+   overlay, and a perfectly good page sits behind a blank sheet forever.
+
+   So the sheet also removes itself with no script at all. The delay is longer
+   than the component's own hard stop, so in every working case JavaScript has
+   already taken the overlay away and this never runs. `visibility` rather than
+   only `opacity`, because a transparent overlay still swallows every click.
+
+   The delay must stay above the component's own hard stop, which is a full
+   cycle plus the font wait plus a margin — at 22fps that is about 3.6s, so
+   this sits at 4.3s. Slow the loop down further and this moves too, or CSS
+   pulls the sheet while the burst is still in flight.
+
+   Reduced motion shows one still frame and does not need the same patience. */
+@keyframes preloader-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.preloader-shell {
+  animation: preloader-failsafe 400ms 4300ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preloader-shell {
+    animation-delay: 1600ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-enter,
+  .view-enter {
+    animation: none;
+  }
+
+  .scroll-shell::before,
+  .scroll-shell::after {
+    transition: none;
+  }
+
+  /* The underline still appears; it stops travelling. Removing the mark
+     instead would take the current-page indicator away from the readers most
+     likely to need it. */
+  .nav-link::after {
+    transform: scaleX(1);
+    transition: none;
+  }
+}
+
+/* Rows arriving in a window.
+
+   The animation is declared once for every body row, which is what makes it
+   correct rather than merely convenient. A CSS animation runs when an element
+   mounts; React reuses the `<tr>` elements already on screen (the tables key
+   their rows by id), so appending a batch animates exactly the new rows and
+   leaves the existing ones at their resting state. There is no "is this row
+   new" flag anywhere, because the DOM already knows.
+
+   Astryx's `Table` exposes no per-row className in data-driven mode, so the
+   `--row-index` property cannot be set on a row. `nth-child(40n + k)` gets the
+   same result from the other direction: the modulo is the window, so position
+   within the arriving batch is what the selector matches, and the stagger
+   resets every batch without anything tracking batches.
+
+   The first ten of each batch step by 18ms; everything past that shares the
+   180ms tail. Below the tenth row of a batch the difference is not perceptible
+   and is usually below the fold, and a flat tail is what bounds the total —
+   40 steps would be a wait rather than an entrance.
+
+   See design.md D4 and tasks 2.3 / 3.3. */
+/* The evidence panel sits inside the activity table's horizontal scroll
+   wrapper, so its `width: 100%` resolves against the table's full scroll
+   width rather than against the screen. At ordinary window sizes that is
+   several hundred pixels wider than the viewport, and `CodeBlock` puts its
+   copy button at the right edge of the block — which is how the button ended
+   up somewhere you had to drag the table sideways to reach.
+
+   `sticky` pins the panel to the scroll wrapper's left edge so it stays put
+   while the table scrolls underneath, and the width caps it at what is
+   actually on screen, which brings the copy button back with it. The cap is
+   `100vw` rather than a measured gutter: the overhang is the console's own
+   left inset, and the button carries enough end padding to stay clear of it. */
+@utility evidence-pane {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: min(100%, 100vw);
+}
+
+@utility row-window {
+  & tbody tr {
+    animation: row-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: 180ms;
+  }
+
+  & tbody tr:nth-child(40n + 1) { animation-delay: 0ms; }
+  & tbody tr:nth-child(40n + 2) { animation-delay: 18ms; }
+  & tbody tr:nth-child(40n + 3) { animation-delay: 36ms; }
+  & tbody tr:nth-child(40n + 4) { animation-delay: 54ms; }
+  & tbody tr:nth-child(40n + 5) { animation-delay: 72ms; }
+  & tbody tr:nth-child(40n + 6) { animation-delay: 90ms; }
+  & tbody tr:nth-child(40n + 7) { animation-delay: 108ms; }
+  & tbody tr:nth-child(40n + 8) { animation-delay: 126ms; }
+  & tbody tr:nth-child(40n + 9) { animation-delay: 144ms; }
+  & tbody tr:nth-child(40n + 10) { animation-delay: 162ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-window tbody tr {
+    animation: none;
+  }
+}
+
+/* ── Sound ────────────────────────────────────────────────────────────────
+   The mute toggle's icon, which the registry does not ship.
+
+   `@kobra/sound` installs one file — `components/ui/sound.tsx` — and its
+   `SoundToggle` draws a speaker, two waves and a slash, hangs `.sound-*` class
+   names off them, and stops there. The styles those names expect live in
+   Kobra's own stylesheet, which is not part of the registry item. Unstyled,
+   every path paints at once: the speaker renders permanently slashed, the mask
+   permanently cut, and the control says "muted" whether it is or not.
+
+   So the state lives here, keyed on `data-muted` on the <svg> — the one
+   attribute the component sets from `useSoundMuted()`.
+
+   The slash is drawn rather than shown. Both copies carry `pathLength={1}`, so
+   a dash array of 1 with an offset of 1 is exactly the whole line hidden and 0
+   is exactly the whole line drawn, independent of the path's real length. The
+   second copy is inside the mask, so the hole it punches in the speaker is cut
+   by the same stroke as it travels — the slash appears to push the waves apart
+   rather than to be laid over them. */
+.sound-slash {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-muted="true"] .sound-slash {
+  stroke-dashoffset: 0;
+}
+
+/* The waves are the audible part of the icon, so they are what leaves. They
+   retreat inward — outer first, and further — so the two read as one gesture
+   collapsing into the speaker rather than as two paths fading on a timer. */
+.sound-wave {
+  transform-origin: 25% 50%;
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-muted="true"] .sound-wave {
+  opacity: 0;
+}
+
+[data-muted="true"] .sound-wave-inner {
+  transform: translateX(-1px) scale(0.9);
+}
+
+[data-muted="true"] .sound-wave-outer {
+  transform: translateX(-2px) scale(0.8);
+}
+
+/* The icon still changes; it stops travelling. Removing the state would leave
+   a mute control that gives no sign of being engaged, which is the one thing
+   this icon exists to say. */
+@media (prefers-reduced-motion: reduce) {
+  .sound-slash,
+  .sound-wave {
+    transition: none;
+  }
+}
+
+/* ── The connect gate's veil ──────────────────────────────────────────────
+   `components/console/decrypt-gate.tsx` draws a glyph cipher over a screen a
+   visitor may read and may not operate, and decodes a circle of it under the
+   cursor. The glyphs are canvas; this is the other half — the blur that is
+   what actually conceals, with the same circle cut out of it.
+
+   `--cipher-x`, `--cipher-y` and `--cipher-r` are written onto the host by the
+   field engine every frame. Declaring them here with `@property` is not
+   decoration: an unregistered custom property is a token list, so the radial
+   gradient would see the literal text `0px` before the engine's first frame
+   and, worse, could not be interpolated at all. Registered, they are lengths
+   the compositor understands.
+
+   The fallback starts the circle closed (`0px`), so a page whose script never
+   runs keeps the blur across the whole surface rather than losing it. */
+
+@property --cipher-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --cipher-y {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --cipher-r {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --cipher-r-inner {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+/* The host is the positioned box, the pointer target, and the only element
+   carrying the circle. Everything inside it reads the same four properties. */
+.cipher-host {
+  position: relative;
+  isolation: isolate;
+}
+
+/* The veiled content, sealed into one layer.
+
+   Without this the cipher had holes in it, and the holes were in exactly the
+   places a reader would look first. `Frame` positions its bracketed title and
+   its corner marks at `z-index: 10` so they sit over the dashed edge they
+   notch; the content wrapper was `static` with `z-index: auto`, which creates
+   no stacking context, so those tens were not ten *within the content* — they
+   were ten within the host, against a glyph canvas at two. Every frame title
+   on every console screen painted straight over the veil, in full colour,
+   perfectly legible.
+
+   `isolation: isolate` is the whole fix: it makes the content its own stacking
+   context, so its internal z-indices are ordered among themselves and the
+   entire subtree resolves as one layer underneath the canvas. `position` and
+   `z-index` alongside it because `isolation` alone is enough in every current
+   engine and costs nothing to make explicit — the layer this establishes is
+   the floor of the effect's three, and the other two are declared just below.
+
+   The lesson generalises past this component: an overlay's z-index is only a
+   promise about the elements it is actually competing with. */
+.cipher-content {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
+/* The way in, kept on screen.
+
+   The overlay is the veil's own box, which on the longer console screens is
+   several viewports tall. A card centred in it is centred in the *page*, not in
+   what the reader is looking at, so arriving at the new agent form meant a wall
+   of cipher with the only unlocked control somewhere below the fold.
+
+   Sticky rather than fixed: fixed would keep the card on screen after the
+   console has scrolled past, floating over the footer of a page it no longer
+   belongs to. Sticky is bounded by its parent, so the card travels the length
+   of the veil and stops with it.
+
+   A third of the way down rather than centred, so it sits above the middle of
+   the reading area and leaves the widest part of the cipher visible underneath
+   — the effect is the argument for connecting, and hiding it behind the card
+   that asks would be a strange way to make the case. */
+.cipher-prompt {
+  position: sticky;
+  top: 30vh;
+}
+
+/* The glyphs.
+
+   Above the blur, and that ordering is the whole picture: the sheet frosts
+   what is behind it, so anything painted before it gets frosted and anything
+   painted after it does not. The cipher is the thing a reader is meant to see
+   sharply — a blurred field of blurred characters is just fog — and the
+   console is the thing that must not be. Layering them the other way around,
+   which is what DOM order alone gives you, produces exactly that fog.
+
+   `z-index` here rather than a utility on the element, so the three layers of
+   this effect are declared next to each other and a change to one is made
+   while looking at the other two. */
+.cipher-glyphs {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The blur.
+
+   `backdrop-filter` rather than `filter` on the content: filtering the content
+   itself would make it a containing block for its own descendants and blur the
+   prompt sitting on top of it. A backdrop layer is a sheet over the top — the
+   thing it frosts is whatever happens to be behind it, which is precisely the
+   content and precisely not the prompt.
+
+   The mask is the hole. Transparent inside the inner radius means the sheet is
+   absent there and the UI underneath is untouched; opaque outside the outer
+   radius means it is fully frosted; the ramp between them is the same
+   smoothstep the glyphs fade over, near enough that no seam is visible where
+   one ends and the other begins.
+
+   `saturate` alongside `blur` because a blurred screenshot of a UI is still
+   recognisably that UI by its colours alone — the status dots, the accent on a
+   button. Draining the colour is what turns it from "a console you can almost
+   read" into "a surface with something on it". */
+.cipher-blur {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Unprefixed only, and deliberately so. Written with a `-webkit-` twin
+     beside it, Lightning CSS read the pair as one authored prefix set and kept
+     the last — which is the Safari spelling Chrome has never supported, so the
+     blur silently did nothing in the browser most visitors use. The build adds
+     whatever prefixes its targets need; writing them by hand takes that
+     decision away from it and gets it wrong. */
+  backdrop-filter: blur(9px) saturate(0.2) contrast(0.85);
+  background-color: color-mix(in oklab, var(--color-background-body) 62%, transparent);
+  mask-image: radial-gradient(
+    circle at var(--cipher-x) var(--cipher-y),
+    transparent 0,
+    transparent var(--cipher-r-inner),
+    black var(--cipher-r)
+  );
+}
+
+/* Without `backdrop-filter` the sheet paints nothing and the console would sit
+   there in the clear behind a field of glyphs. The colour is the fallback: an
+   opaque-enough wash of the page's own surface, which hides the same thing a
+   blur would and reveals through the same mask. */
+@supports not (backdrop-filter: blur(1px)) {
+  .cipher-blur {
+    background-color: color-mix(in oklab, var(--color-background-body) 92%, transparent);
+  }
+}
+
+/* Reduced motion keeps the veil and drops the chase.
+
+   The gate is not decoration — removing it would hand an unconnected visitor a
+   console that looks operable — so what goes is the easing, not the effect.
+   The engines already hold the circle to the cursor with no smoothing under
+   the same query; this is the CSS half of that, and it exists so nothing here
+   animates a filter on a moving mask. */
+@media (prefers-reduced-motion: reduce) {
+  .cipher-blur {
+    transition: none;
+  }
+}
+
+/* ── Bend ─────────────────────────────────────────────────────────────────
+   The page, on the face of a cube.
+
+   The effect is `lib/bend/bend-vanilla.ts` and the component is
+   `components/console/bend.tsx`; these two utilities are the only part of it
+   that has to be CSS.
+
+   A definite viewport height, not a minimum. The region is a scroll container
+   and a scroll container needs a box to overflow — `min-height` would grow with
+   its content, leaving nothing to scroll and therefore nothing to fold. `dvh`
+   rather than `vh` because a mobile URL bar that slides away changes the
+   viewport, and a face one bar taller than the screen scrolls a little without
+   ever showing where it ends.
+
+   The console's scrolling moves in here as a consequence: the document has
+   exactly this one screen in it and no longer scrolls at all. `bend.tsx`
+   carries the keyboard half of that. */
+
+@utility bend-page {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+@utility bend-scroll {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+
+  /* A flex item shrinks below its content, and this one is a column of
+     unknown height inside a box of exactly one viewport.
+
+     Left to shrink it stops at the viewport and its content spills out of it,
+     still laid out and still scrollable — so the only visible symptom is that
+     whatever the item paints stops where the item stopped. The console's
+     surface colour is painted by that item, so the screen came out as one
+     viewport of `surface-body` sitting on the body's near-black, with a hard
+     horizontal seam across it. That is the exact failure the console layout's
+     own comment describes from the other direction, and it came back the
+     moment the surface became a flex child. */
+  & > * {
+    flex-shrink: 0;
+  }
+}

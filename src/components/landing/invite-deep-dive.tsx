@@ -53,30 +53,6 @@ export function InviteSpec() {
         <Brace label="tasks" />
       </div>
 
-      <div className="mt-16 overflow-visible rounded-2xl border border-[#e6e1d8] bg-white" style={{ colorScheme: "light" }}>
-        <div className="flex items-center gap-2 border-b border-[#e6e1d8] px-4 py-2">
-          <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-          <span className="size-2.5 rounded-full bg-[#febc2e]" />
-          <span className="size-2.5 rounded-full bg-[#28c840]" />
-          <p className="ml-2 font-mono text-[12px] text-[#8a837c]">docs/okx/invite.md</p>
-        </div>
-        <div className="overflow-x-auto px-8 pb-28 pt-24 font-mono text-[15px] leading-8 text-[#3d3834]">
-          <p className="whitespace-nowrap">
-            - <span className="ann ann-n ann-amber" data-note="open task">[ ]</span>{" "}
-            <span className="ann ann-s ann-blue" data-note="stable ID">INV-004</span>
-            <span> Ship Evaluator </span>
-            <span className="ann ann-se ann-green" data-note="tag">#evaluator</span>{" "}
-            <span className="ann ann-sw ann-red" data-note="priority">!high</span>{" "}
-            <span className="ann ann-nw ann-purple" data-note="custom field">@blocked_by:INV-001</span>
-          </p>
-          <p className="mt-4 pl-6">
-            <span className="ann ann-n" data-note="description">Sample screen. No page.</span>
-          </p>
-        </div>
-      </div>
-      <p className="mt-6 max-w-2xl text-sm italic text-[#8a837c]">
-        @blocked_by is a custom field. That open line is not a link.
-      </p>
     </section>
   );
 }
