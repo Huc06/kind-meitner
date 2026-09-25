@@ -19,6 +19,7 @@ import {
   Webhook,
   X,
 } from "lucide-react";
+import { MultiAgentActivityRail } from "./MultiAgentActivityRail";
 import { WorkingDots } from "@/components/WorkingIndicator";
 import { useCaptionChrome } from "@/components/DesktopCapabilities";
 import { cachedInput, costCaption, formatTokens, formatUsd, hasFiniteCost, usageChip, usageDetail } from "@/lib/usage";
@@ -546,17 +547,19 @@ function PeerLabel({ peer }: { peer: PeerLine }) {
         ? t("chat.peer.openedThread")
         : t("chat.peer.asked");
   return (
-    <div className="mb-1 flex items-center gap-1.5 pl-0.5" data-testid="peer-label">
-      <BotAvatar
-        bot={author ?? { name: peer.name, color: "blue" }}
-        state={normalizeState(author?.mascotExpression) ?? "happy"}
-        size={16}
-        motion="none"
-        motionKey={0}
-        animated={false}
-      />
-      <span className="text-[11px] font-medium text-ink-secondary">{peer.name}</span>
-      <span className="text-[11px] text-ink-secondary/70">· {how}</span>
+    <div className="mb-1.5 flex items-center gap-1.5 pl-0.5" data-testid="peer-label">
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-hairline/40 bg-raised/70 px-2 py-0.5 text-[11px] font-medium text-ink shadow-xs">
+        <BotAvatar
+          bot={author ?? { name: peer.name, color: "blue" }}
+          state={normalizeState(author?.mascotExpression) ?? "happy"}
+          size={14}
+          motion="none"
+          motionKey={0}
+          animated={false}
+        />
+        <span>{peer.name}</span>
+        <span className="text-[10px] text-ink-secondary">· {how}</span>
+      </span>
     </div>
   );
 }
@@ -1027,6 +1030,8 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
     setBusySince(bot.busy ? Date.now() : null);
   }, [bot.busy, bot.id, bot.threadId]);
 
+  const group = state.groups.find((g) => !g.dm && (g.threadId === bot.threadId || g.id === bot.id));
+
   // regenerate = fork the last user message with the same text — reuses the
   // existing branch machinery, so the old answer stays reachable via ‹ ›
   const regenerate = useCallback(() => {
@@ -1299,10 +1304,16 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
 
       {/* Messages + composer share one pane so bubbles scroll into the pill
           instead of dying on a rectangular clip above a black dock. */}
-      <div className="relative min-h-0 flex-1">
-      <div
-        ref={scrollRef}
-        className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-5 [overflow-anchor:none]"
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          {/* ReactBits Pro Scroll Edge Gradient */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-6 bg-gradient-to-b from-panel/90 to-transparent transition-opacity duration-200"
+          />
+          <div
+            ref={scrollRef}
+            className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-5 [overflow-anchor:none]"
         onPointerDown={(e) => {
           // grabbing the scrollbar is a scroll gesture too — the lane lives
           // past the content box (clientWidth excludes it)
@@ -1408,10 +1419,11 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         <button
           onClick={jumpToLatest}
           aria-label={t("chat.jumpToLatestAria")}
-          className="animate-pop-in absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline/40 bg-raised px-3 py-1.5 text-[12.5px] text-ink shadow-lg hover:bg-raised-hover"
-          style={{ bottom: composerDock.height }}
+          className="cursor-pointer animate-pop-in absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline/60 bg-raised/95 px-3.5 py-1.5 text-[12px] font-medium text-ink shadow-[0_4px_16px_-4px_rgba(0,0,0,0.18)] backdrop-blur transition-all hover:bg-raised-hover active:scale-95"
+          style={{ bottom: composerDock.height + 8 }}
         >
-          <ArrowDown size={13} /> {t("chat.jumpToLatest")}
+          <ArrowDown size={13} className="text-ink-secondary" />
+          <span>{t("chat.jumpToLatest")}</span>
         </button>
       )}
 
@@ -1454,6 +1466,14 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           : undefined}
       />
       </div>
+      </div>
+      {group && !group.dm && group.memberIds.length > 1 && (
+        <MultiAgentActivityRail
+          messages={messages}
+          bots={state.bots}
+          activeBot={bot}
+        />
+      )}
       </div>
 
     </main>
