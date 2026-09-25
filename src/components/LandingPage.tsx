@@ -190,44 +190,112 @@ export function LandingPage() {
         </section>
       )}
 
-      {/* The Four Pillars - Nymspace Clean Grid */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-20 pt-4">
-        <div className="text-center mb-8">
-          <span className={open ? "font-mono text-xs uppercase tracking-wider text-[#2f8f5b] font-semibold" : "font-mono text-xs uppercase tracking-wider text-emerald-700 font-semibold"}>
+      {/* The Four Pillars - Interactive Visual Showcase Tiles */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-24 pt-6">
+        <div className="text-center mb-10">
+          <span className={open ? "font-mono text-xs uppercase tracking-wider text-[#2f8f5b] font-semibold" : "font-mono text-xs uppercase tracking-wider text-emerald-600 font-semibold"}>
             Core Architecture
           </span>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight">The Four Pillars of Autonomous Commerce</h2>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">The Four Pillars of Autonomous Commerce</h2>
+          <p className="mt-2 text-sm text-zinc-500 max-w-xl mx-auto">
+            Engineered specifically for the OKX Dev Day Build a Company track.
+          </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {PILLARS.map((p) => (
             <div
               key={p.title}
               className={open
-                ? "group flex flex-col justify-between rounded-2xl border border-[#e6e1d8] bg-white/80 p-5 shadow-sm transition hover:border-[#2f8f5b] hover:shadow-md"
-                : "group flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-600 hover:shadow-md"}
+                ? "group relative flex flex-col justify-between rounded-2xl border border-[#e6e1d8] bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#2f8f5b] hover:shadow-xl"
+                : "group relative flex flex-col justify-between rounded-2xl border border-white/[0.1] bg-[#14171E] p-5 shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-[#181C25] hover:shadow-2xl text-white"}
             >
               <div>
+                {/* Card Header: Icon, Number, Badge */}
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-zinc-400">{p.number}</span>
-                  <span className="rounded-full bg-black/5 px-2 py-0.5 font-mono text-[10px]" style={{ color: open ? "#8a837c" : "#71717a" }}>
-                    {p.badge}
-                  </span>
+                  <div className="flex size-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
+                    {p.icon}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[10px] font-bold text-zinc-400">{p.number}</span>
+                    <span className="rounded-full bg-black/5 px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ color: open ? "#8a837c" : "#94a3b8" }}>
+                      {p.badge}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="mt-4 text-base font-semibold transition-colors group-hover:text-emerald-600">
+
+                {/* Title & Description */}
+                <h3 className="mt-4 text-base font-bold tracking-tight transition-colors group-hover:text-emerald-500">
                   {p.title}
                 </h3>
-                <p className="mt-2 text-xs leading-5" style={{ color: open ? "#8a837c" : "#71717a" }}>
+                <p className="mt-2 text-xs leading-relaxed" style={{ color: open ? "#5c554e" : "#94a3b8" }}>
                   {p.description}
                 </p>
+
+                {/* Visual Mini Interactive Telecom Widget per pillar */}
+                {p.number === "01" && (
+                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
+                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                      <span>3-Agent Jury Quorum</span>
+                      <span className="text-emerald-400 font-semibold">100% Consensus</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-1">
+                      <span className="rounded bg-accent/20 px-1.5 py-0.5 text-accent text-[9px]">Jury A</span>
+                      <span className="rounded bg-accent/20 px-1.5 py-0.5 text-accent text-[9px]">Jury B</span>
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-400 text-[9px] font-bold">PASS 3/3</span>
+                    </div>
+                  </div>
+                )}
+
+                {p.number === "02" && (
+                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
+                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                      <span>Next: 2h 14m</span>
+                      <span className="text-emerald-400">0 */4 * * *</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-300">
+                      <span>Cap: 105k USDT</span>
+                      <span className="rounded bg-emerald-500/10 text-emerald-400 px-1 text-[9px]">Auto-approved</span>
+                    </div>
+                  </div>
+                )}
+
+                {p.number === "03" && (
+                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
+                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                      <span>ASP #13851</span>
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-400 font-bold text-[9px]">GO · 7/7</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-300">
+                      <span>Reputation: 98.4%</span>
+                      <span className="text-zinc-500 text-[9px]">Free A2MCP</span>
+                    </div>
+                  </div>
+                )}
+
+                {p.number === "04" && (
+                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
+                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                      <span>Spatial Graph</span>
+                      <span className="text-violet-400 text-[9px]">1.80x Speedup</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-300">
+                      <span>Markets ➔ Coach ➔ Atlas</span>
+                      <span className="text-emerald-400 font-semibold text-[9px]">Live</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Interactive Launch Button */}
               <button
                 type="button"
                 onClick={() => dispatch({ type: p.action })}
-                className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline cursor-pointer"
+                className={open
+                  ? "mt-2 flex w-full items-center justify-between rounded-xl border border-[#e6e1d8] bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-800 transition hover:border-[#2f8f5b] hover:bg-[#2f8f5b]/10 hover:text-[#2f8f5b] cursor-pointer"
+                  : "mt-2 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-white transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400 cursor-pointer"}
               >
-                <span>Launch component</span>
+                <span>Launch {p.badge}</span>
                 <span className="transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
               </button>
             </div>
