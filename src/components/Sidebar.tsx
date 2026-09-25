@@ -29,6 +29,7 @@ import {
   Trash2,
   Users,
   X,
+  Sparkles,
 } from "lucide-react";
 import { api, useStore, formatTime, visibleMessages, currentTaskBot, type AppState, type Bot, type Group } from "@/state/store";
 import { peerLine } from "@/lib/peer-message";
@@ -2144,6 +2145,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           {density !== "icons" && (
           <SidebarMoreMenu
             items={[
+              {
+                key: "landing",
+                label: "Landing page",
+                icon: <Sparkles size={18} />,
+                active: state.activeView === "landing",
+                onSelect: () => dispatch({ type: "showLanding" }),
+              },
               {
                 key: "chat",
                 label: "Chat",

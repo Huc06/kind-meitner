@@ -661,7 +661,7 @@ export interface AppState {
   config: ConfigStatus | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator";
+  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator" | "landing";
   okxSettingsOpen?: boolean;
   activeDisputesCount?: number;
   routines: Routine[];
@@ -818,6 +818,7 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string }
   | { type: "showTeamMap" }
   | { type: "showChat" }
+  | { type: "showLanding" }
   | { type: "showBloomberg" }
   | { type: "showEvaluator" }
   | { type: "toggleOkxSettings"; open?: boolean }
@@ -1165,6 +1166,8 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "showChat":
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
+    case "showLanding":
+      return state.activeView === "landing" ? state : { ...state, activeView: "landing" };
     case "showTeamMap":
       return {
         ...state,
@@ -1276,8 +1279,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case "configStatus":
       return { ...state, config: action.config };
     case "select": {
-      const isTeamMap = safeIsTeamMap(state.activeView);
-      const targetView = isTeamMap ? "team-map" : "chat";
+      const targetView = state.activeView === "team-map" ? "team-map" : "chat";
       if (state.groups.some((g) => g.id === action.id)) {
         return {
           ...state,
@@ -1925,15 +1927,22 @@ export function reducer(state: AppState, action: Action): AppState {
     }
   }
 }
-function safeIsTeamMap(activeView?: string): boolean {
-  if (activeView === "team-map") return true;
-  if (typeof window === "undefined" || !window.location) return false;
+function safeInitialActiveView(activeView?: string): AppState["activeView"] {
+  if (activeView === "team-map") return "team-map";
+  if (activeView === "landing") return "landing";
+  if (typeof window === "undefined" || !window.location) return "landing";
   try {
     const search = window.location.search ?? "";
     const hash = window.location.hash ?? "";
-    return new URLSearchParams(search).get("view") === "team-map" || hash === "#team-map";
+    const p = new URLSearchParams(search);
+    if (p.get("view") === "team-map" || hash === "#team-map") return "team-map";
+    if (p.get("view") === "routines") return "routines";
+    if (p.get("view") === "chat" || p.get("app") === "1") return "chat";
+    if (p.get("view") === "landing") return "landing";
+    if (sessionStorage.getItem("kind-meitner:entered-app") === "1") return "chat";
+    return "landing";
   } catch {
-    return false;
+    return "landing";
   }
 }
 
@@ -1947,7 +1956,7 @@ export const initialState: AppState = {
   instances: [],
   config: null,
   selectedId: "",
-  activeView: safeIsTeamMap() ? "team-map" : "chat",
+  activeView: safeInitialActiveView(),
   routines: [],
   routineRuns: [],
   routinesLoadState: "loading",

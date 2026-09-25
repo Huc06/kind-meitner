@@ -278,7 +278,7 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
         view: "chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "routines";
       }) {
         const previousViewRef = useRef<AppState["activeView"]>("okx-bloomberg");
-        const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator">("chat");
+        const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "landing">("chat");
 
         if (view === "routines" && previousViewRef.current !== "routines") {
           calendarOriginRef.current = previousViewRef.current;

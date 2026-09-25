@@ -27,6 +27,7 @@ import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { TeamMapPage } from "@/components/TeamMapPage";
+import { LandingPage } from "@/components/LandingPage";
 import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { saveOkxSettings } from "./okx/okx-settings-api";
 import { setLocale } from "@/lib/i18n";
@@ -81,7 +82,7 @@ function Shell() {
   // the panel hands off to this and back)
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const previousViewRef = useRef(state.activeView);
-  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator">("chat");
+  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "landing">("chat");
   const group = state.groups.find((g) => g.id === state.selectedId);
   const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
   const calendarFocus = state.activeView === "routines";
@@ -173,6 +174,10 @@ function Shell() {
       dispatch({ type: "showEvaluator" });
       return;
     }
+    if (calendarOriginRef.current === "landing") {
+      dispatch({ type: "showLanding" });
+      return;
+    }
     dispatch({ type: "select", id: state.selectedId });
   }, [dispatch, state.selectedId]);
   const openCalendarRoom = useCallback((id: string) => {
@@ -233,14 +238,16 @@ function Shell() {
           className="absolute inset-0 z-30 bg-black/50 md:hidden"
         />
       )}
-      {!calendarFocus && <Sidebar
+      {!calendarFocus && state.activeView !== "landing" && <Sidebar
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
           menuButtonRef.current?.focus();
         }}
       />}
-      {state.activeView === "team-map" ? (
+      {state.activeView === "landing" ? (
+        <LandingPage />
+      ) : state.activeView === "team-map" ? (
         <TeamMapPage />
       ) : state.activeView === "routines" ? (
         <RoutinesPage onBack={closeCalendar} onOpenRoom={openCalendarRoom} />
