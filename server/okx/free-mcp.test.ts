@@ -179,6 +179,22 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
     expect(scanned.data.remediation.join(" ")).toContain("Do not gate tools/list behind x402");
   });
 
+  it("attaches a deterministic kindmeitner.readiness.v1 receipt to readiness scans", async () => {
+    const scan1 = await scanFreeMcpReadiness("https://demo.vercel.app/api/okx/free-mcp", null, {
+      fetch: async () => { throw new Error("must not probe a known pitfall"); },
+      resolveHostname: async () => ["203.0.113.10"],
+    });
+    const scan2 = await scanFreeMcpReadiness("https://demo.vercel.app/api/okx/free-mcp", null, {
+      fetch: async () => { throw new Error("must not probe a known pitfall"); },
+      resolveHostname: async () => ["203.0.113.10"],
+    });
+
+    expect(scan1.data.receipt).toBeDefined();
+    expect(scan1.data.receipt?.schema).toBe("kindmeitner.readiness.v1");
+    expect(scan1.data.receipt?.id).toBe(scan2.data.receipt?.id);
+    expect(scan1.data.receipt?.evidenceHash).toBe(scan2.data.receipt?.evidenceHash);
+    expect(scan1.data.receipt?.id.startsWith("rcpt-")).toBe(true);
+  });
 
 it("returns an honest GO trust card with always-visible limits", async () => {
   const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {

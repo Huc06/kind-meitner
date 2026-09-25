@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -12,6 +12,12 @@ export interface ReadinessCheck {
   detail: string;
 }
 
+export interface ReadinessReceipt {
+  schema: "kindmeitner.readiness.v1";
+  id: string;
+  evidenceHash: string;
+}
+
 export interface FreeMcpReadinessData {
   endpointUrl: string;
   agentId: string | null;
@@ -20,6 +26,7 @@ export interface FreeMcpReadinessData {
   checks: ReadinessCheck[];
   remediation: string[];
   raw: { httpStatus: number | null; toolNames: string[]; truncatedNotes: string };
+  receipt?: ReadinessReceipt;
 }
 
 export const READINESS_CHECK_IDS: ReadinessCheck["id"][] = [
@@ -340,6 +347,21 @@ async function resolvedAddresses(hostname: string, dependency?: ReadinessProbeDe
   return rows.map((row) => row.address);
 }
 
+export function computeReadinessReceipt(url: string, verdict: string, score: number, checks: ReadinessCheck[]): ReadinessReceipt {
+  const normalized = [
+    url.trim().toLowerCase(),
+    verdict,
+    String(score),
+    ...checks.map((c) => `${c.id}:${c.status}:${truncateReadinessDetail(c.detail)}`),
+  ].join("\n");
+  const hash = createHash("sha256").update(normalized).digest("hex");
+  return {
+    schema: "kindmeitner.readiness.v1",
+    id: `rcpt-${hash.slice(0, 16)}`,
+    evidenceHash: `0x${hash}`,
+  };
+}
+
 export async function scanFreeMcpReadiness(endpointUrl: string, agentId: string | null, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: FreeMcpReadinessData }> {
   const checks = new Map<ReadinessCheck["id"], ReadinessCheck>(READINESS_CHECK_IDS.map((id) => [id, { id, status: "warn", detail: "not checked" }]));
   const remediation: string[] = [];
@@ -348,7 +370,9 @@ export async function scanFreeMcpReadiness(endpointUrl: string, agentId: string 
   const result = (url: string) => {
     const rows = READINESS_CHECK_IDS.map((id) => checks.get(id)!);
     const score = Math.round(100 * rows.filter((check) => check.status === "pass").length / rows.length);
-    return { resource: readinessResource, data: { endpointUrl: url, agentId, verdict: readinessVerdict(rows), score, checks: rows, remediation: [...new Set(remediation)], raw } };
+    const verdict = readinessVerdict(rows);
+    const receipt = computeReadinessReceipt(url, verdict, score, rows);
+    return { resource: readinessResource, data: { endpointUrl: url, agentId, verdict, score, checks: rows, remediation: [...new Set(remediation)], raw, receipt } };
   };
   let parsed: URL;
   try { parsed = new URL(endpointUrl); }
