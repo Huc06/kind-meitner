@@ -14,7 +14,7 @@ The npm CLI supports a managed public tunnel, Tailscale, or your own proxy.
 Step by step, for a server you do not have yet: [Deploy kind-meitner on a
 VPS](deploy-vps.md) walks through the three ways in (public address, own
 domain, Tailscale), signing engines in, pairing, keeping it running,
-updating and backups. This page is the reference behind it.
+updating and backups. For PaaS deployment with persistent volume storage, see the [Railway quickstart](railway-quickstart.md). This page is the reference behind it.
 
 ## What works headless (and what doesn't)
 
