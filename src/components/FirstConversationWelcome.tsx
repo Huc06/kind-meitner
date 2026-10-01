@@ -136,12 +136,12 @@ export function FirstConversationWelcome({
   }
 
   return (
-    <div className="grid min-h-full flex-1 place-items-center px-4 py-8 text-center">
+    <div className="flex min-h-full flex-1 items-center justify-center p-4 text-center">
       <Frame
         surface="app"
         title="WELCOME"
         data-tour="first-conversation-welcome"
-        className="w-full max-w-[520px] bg-card p-5 text-left"
+        className="my-auto w-full max-w-[min(520px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card p-5 text-left"
       >
         <div className="mb-4 flex items-center gap-3.5">
           <BotAvatar bot={bot} state="idle" size={48} motion="none" motionKey={0} />

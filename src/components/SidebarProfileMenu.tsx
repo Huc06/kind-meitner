@@ -256,7 +256,7 @@ export function SidebarProfileMenu() {
           <span
             ref={triggerRef}
             className={cn(
-              "flex h-9 w-full items-center gap-2.5 px-2.5 text-left transition-colors",
+              "flex h-9 w-full items-center gap-2.5 px-2.5 text-left transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
               open ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
             )}
           >

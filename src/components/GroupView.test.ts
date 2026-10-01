@@ -1,14 +1,24 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { StoreProvider, type Message } from "@/state/store";
+import { StoreProvider, type Group, type Message } from "@/state/store";
 
 vi.mock("./DesktopCapabilities", () => ({
-  useDesktopCapabilities: () => ({}),
+  useDesktopCapabilities: () => ({
+    capabilities: {
+      dictation: { available: false },
+      host: { homeDir: "/home/user" },
+    },
+  }),
+  useCaptionChrome: () => ({
+    dragStyle: {},
+    noDragStyle: {},
+    controlsShiftStyle: {},
+  }),
 }));
 
-import { RoomToolChip } from "./GroupView";
+import { GroupView, RoomToolChip } from "./GroupView";
 
 const chip = (patch: Partial<Message> = {}): Message => ({
   id: "chip",
@@ -19,12 +29,12 @@ const chip = (patch: Partial<Message> = {}): Message => ({
   ...patch,
 });
 
-const render = (message: Message) =>
+const renderChip = (message: Message) =>
   renderToStaticMarkup(createElement(StoreProvider, null, createElement(RoomToolChip, { message })));
 
 describe("RoomToolChip", () => {
   it("turns a linked receipt into a button that opens the room it names", () => {
-    const markup = render(chip({
+    const markup = renderChip(chip({
       comm: { groupId: "room-standup", withBotId: "scout", withName: "Standup", withColor: "green" },
     }));
     expect(markup).toContain("<button");
@@ -33,7 +43,7 @@ describe("RoomToolChip", () => {
   });
 
   it("turns an opened-thread receipt into a button that opens that thread", () => {
-    const markup = render(chip({
+    const markup = renderChip(chip({
       tool: { name: "Opened thread #QA PR 245 on Scout", ok: true },
       threadRef: { botId: "scout", threadId: "qa-245", title: "QA PR 245" },
     }));
@@ -43,7 +53,7 @@ describe("RoomToolChip", () => {
   });
 
   it("leaves an ordinary step as a plain pill", () => {
-    const markup = render(chip());
+    const markup = renderChip(chip());
     expect(markup).not.toContain("<button");
     expect(markup).toContain("Posted in Standup");
   });
@@ -58,5 +68,84 @@ describe("RoomToolChip", () => {
     expect(markup).toContain("Sent to Eli");
     expect(markup).toContain('aria-label="Eli"');
     expect(markup).not.toContain("<button");
+  });
+});
+
+describe("GroupView Header and Body", () => {
+  beforeEach(() => {
+    vi.stubGlobal("window", { ogb: undefined });
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const testGroup: Group = {
+    id: "group-1",
+    name: "Engineering Ops",
+    threadId: "thread-ops",
+    memberIds: [],
+    bulletin: "Primary Ops room for agent task coordination\nSecond line instructions",
+    defaultResponder: { kind: "mentions" },
+    messages: [],
+    createdAt: 1000,
+    unread: false,
+  };
+
+  it("header shows room name, purpose from first line of bulletin, and counts not model name or tokens", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: testGroup })),
+    );
+
+    // Line 1: Room name
+    expect(markup).toContain("Engineering Ops");
+
+    // Line 2: Purpose from first line of bulletin
+    expect(markup).toContain("Primary Ops room for agent task coordination");
+    expect(markup).not.toContain("Second line instructions");
+
+    // Line 3: counts and connection state
+    expect(markup).toContain("1 participants · 0 agents");
+
+    // Actions with text labels
+    expect(markup).toContain("Room details");
+    expect(markup).toContain("Activity");
+    expect(markup).toContain("More");
+
+    // Primary header must NOT contain model name or token/cost details
+    // (They are hidden inside the More overflow menu)
+    expect(markup).not.toContain("data-model-name");
+    expect(markup).not.toContain("claude-3-5");
+  });
+
+  it("uses fallback purpose when bulletin is empty", () => {
+    const noPurposeGroup: Group = {
+      ...testGroup,
+      bulletin: "",
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: noPurposeGroup })),
+    );
+
+    expect(markup).toContain("No room purpose yet — add group instructions");
+  });
+
+  it("renders starters in empty rooms", () => {
+    const emptyGroup: Group = {
+      ...testGroup,
+      messages: [],
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: emptyGroup })),
+    );
+
+    expect(markup).toContain("Scan an ASP endpoint");
+    expect(markup).toContain("Check trust before spend");
+    expect(markup).toContain("Discover trending ASPs");
+    expect(markup).toContain("Invite an OKX agent");
+    expect(markup).toContain("View the Free A2MCP checklist");
   });
 });

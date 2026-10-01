@@ -676,6 +676,8 @@ export interface AppState {
   /** Which tab the Plugins panel opens on; "mcp" when a bot's tools
    * sent the user there to add a server. */
   pluginsSurface: "hub" | "apps" | "mcp";
+  hubTab?: "agents" | "asps" | "mcp";
+  activityOpen: boolean;
   /** The "New bot" role picker. */
   newBotOpen: boolean;
   /** Creation continues even when the role picker is dismissed. */
@@ -934,7 +936,8 @@ export type Action =
   | { type: "notice"; notice: AppState["notice"] }
   | { type: "revealThread"; threadId: string }
   | { type: "toggleSettings"; open?: boolean; section?: BotSettingsSection; botId?: string }
-  | { type: "togglePlugins"; open?: boolean; surface?: "hub" | "apps" | "mcp" }
+  | { type: "togglePlugins"; open?: boolean; surface?: "hub" | "apps" | "mcp"; hubTab?: "agents" | "asps" | "mcp" }
+  | { type: "toggleActivity"; open?: boolean }
   | { type: "toggleNewBot"; open?: boolean }
   | { type: "toggleComputer"; open?: boolean }
   | { type: "toggleInspector"; open?: boolean }
@@ -1624,7 +1627,15 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         pluginsOpen: open,
         pluginsSurface: action.surface ?? state.pluginsSurface,
+        hubTab: action.hubTab !== undefined ? action.hubTab : state.hubTab,
         ...(open ? { settingsOpen: false, appSettingsOpen: false, newBotOpen: false, shortcutsOpen: false } : {}),
+      };
+    }
+    case "toggleActivity": {
+      const open = action.open ?? !state.activityOpen;
+      return {
+        ...state,
+        activityOpen: open,
       };
     }
     case "botCreationPending":
@@ -1969,6 +1980,8 @@ export const initialState: AppState = {
   okxSettingsOpen: false,
   activeDisputesCount: 0,
   pluginsSurface: "hub",
+  hubTab: "agents",
+  activityOpen: false,
   newBotOpen: false,
   botCreationPending: false,
   computerOpen: false,

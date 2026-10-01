@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_ONBOARDING } from "./onboarding";
-import { ANCHOR_EFFECTS, currentStep, isTourEligible, stepNumber, TOUR_STEPS, withTourFinished, withTourReset } from "./guided-tour";
+import {
+  ANCHOR_EFFECTS,
+  currentStep,
+  isTourCompleted,
+  isTourEligible,
+  stepNumber,
+  TOUR_STEPS,
+  withTourFinished,
+  withTourReset,
+} from "./guided-tour";
 
 const withDone = (ids: string[]) => ({ ...EMPTY_ONBOARDING, hintsSeen: ids });
 const step = (id: string) => TOUR_STEPS.find((s) => s.id === id)!;
@@ -40,6 +49,33 @@ describe("guided tour", () => {
     for (const s of TOUR_STEPS.filter((x) => x.anchor?.startsWith("nav-"))) expect(s.skipIfMissing).toBe(true);
   });
 
+  it("points Agent Hub at real nav-apps and apps-panel anchors", () => {
+    const appsStep = step("tour.apps");
+    expect(appsStep.anchor).toBe("nav-apps");
+    expect(appsStep.skipIfMissing).toBe(true);
+    expect(appsStep.onEnter).toBe("openTools");
+    expect(appsStep.onExit).toBe("openApps");
+
+    const appsPanelStep = step("tour.apps-panel");
+    expect(appsPanelStep.anchor).toBe("apps-panel");
+    expect(appsPanelStep.onEnter).toBe("openApps");
+    expect(appsPanelStep.onExit).toBe("closeApps");
+  });
+
+  it("targets readiness and trust starter chips with skipIfMissing anchors", () => {
+    const readiness = step("tour.readiness");
+    expect(readiness.anchor).toBe("starter-readiness");
+    expect(readiness.fallbackAnchor).toBe("starters");
+    expect(readiness.skipIfMissing).toBe(true);
+    expect(readiness.placement).toBe("above");
+
+    const trust = step("tour.trust");
+    expect(trust.anchor).toBe("starter-trust");
+    expect(trust.fallbackAnchor).toBe("starters");
+    expect(trust.skipIfMissing).toBe(true);
+    expect(trust.placement).toBe("above");
+  });
+
   it("rebuilds the scene on enter so a reload mid-tour resumes cleanly", () => {
     expect(step("tour.computer-browser").onEnter).toBe("openComputer");
     expect(step("tour.computer-browser").fallbackAnchor).toBe("computer-tabs");
@@ -61,11 +97,52 @@ describe("guided tour", () => {
     }
     expect(ANCHOR_EFFECTS.has("closeApps")).toBe(false);
   });
-  it("gates tour eligibility against remote clients, welcome flow state, and completion", () => {
-    expect(isTourEligible({ remoteClient: true, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: false })).toBe(false);
-    expect(isTourEligible({ remoteClient: false, completedAt: undefined, welcomeOpen: false })).toBe(false);
-    expect(isTourEligible({ remoteClient: false, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: true })).toBe(false);
-    expect(isTourEligible({ remoteClient: false, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: false })).toBe(true);
+
+  describe("dismissal persistence and eligibility", () => {
+    it("gates tour eligibility against remote clients, welcome flow state, and completion", () => {
+      expect(isTourEligible({ remoteClient: true, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: false })).toBe(false);
+      expect(isTourEligible({ remoteClient: false, completedAt: undefined, welcomeOpen: false })).toBe(false);
+      expect(isTourEligible({ remoteClient: false, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: true })).toBe(false);
+      expect(isTourEligible({ remoteClient: false, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: false })).toBe(true);
+    });
+
+    it("identifies when the tour is completed via isTourCompleted", () => {
+      expect(isTourCompleted(undefined)).toBe(false);
+      expect(isTourCompleted(withDone(["tour.composer"]))).toBe(false);
+      const allDone = withDone(TOUR_STEPS.map((s) => s.id));
+      expect(isTourCompleted(allDone)).toBe(true);
+    });
+
+    it("never re-shows the tour when all steps are present in hintsSeen", () => {
+      const allDone = TOUR_STEPS.map((s) => s.id);
+      expect(
+        isTourEligible({
+          remoteClient: false,
+          completedAt: "2026-10-01T00:00:00Z",
+          welcomeOpen: false,
+          hintsSeen: allDone,
+        }),
+      ).toBe(false);
+
+      expect(currentStep(withDone(allDone))).toBeNull();
+    });
+
+    it("remembers dismissed/completed state across reloads via hintsSeen", () => {
+      const initial = withDone(["spot.approval"]);
+      const finished = withTourFinished(initial);
+      const updatedRecord = withDone(finished);
+
+      expect(isTourCompleted(updatedRecord)).toBe(true);
+      expect(currentStep(updatedRecord)).toBeNull();
+      expect(
+        isTourEligible({
+          remoteClient: false,
+          completedAt: "2026-10-01T00:00:00Z",
+          welcomeOpen: false,
+          hintsSeen: updatedRecord.hintsSeen,
+        }),
+      ).toBe(false);
+    });
   });
 
   it("caps withTourFinished to at most 100 items for server schema validation", () => {

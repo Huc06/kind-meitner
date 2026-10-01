@@ -104,23 +104,25 @@ describe("Sidebar Agent Hub entry", () => {
     vi.unstubAllGlobals();
   });
 
-  it("passes Agent Hub entry to Tools menu with tourId 'nav-apps' and opens hub surface", () => {
+  it("renders Agent Hub entry with tourId 'nav-apps' in main nav and opens hub surface", () => {
+    let tree: ReactNode;
     function Capture() {
-      return Sidebar({ open: true, onClose: vi.fn() });
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
     }
     renderToStaticMarkup(createElement(Capture));
 
-    const hubItem = fixture.capturedMoreMenuItems.find((item) => item.key === "agent-hub");
-    expect(hubItem).toBeDefined();
-    expect(hubItem?.tourId).toBe("nav-apps");
-    expect(hubItem?.label).toBe("Agent Hub");
-    expect(hubItem?.active).toBe(false);
+    const hubButton = findElement(tree, "data-tour", "nav-apps");
+    expect(hubButton).toBeDefined();
+    expect(hubButton?.props["aria-label"]).toContain("Agent Hub");
+    expect(hubButton?.props["aria-current"]).toBeUndefined();
 
-    hubItem?.onSelect();
+    (hubButton?.props.onClick as () => void)?.();
     expect(fixture.dispatch).toHaveBeenCalledWith({
       type: "togglePlugins",
       open: true,
       surface: "hub",
+      hubTab: "agents",
     });
   });
 
@@ -129,13 +131,15 @@ describe("Sidebar Agent Hub entry", () => {
       pluginsOpen: true,
       pluginsSurface: "hub",
     };
+    let tree: ReactNode;
     function Capture() {
-      return Sidebar({ open: true, onClose: vi.fn() });
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
     }
     renderToStaticMarkup(createElement(Capture));
 
-    const hubItem = fixture.capturedMoreMenuItems.find((item) => item.key === "agent-hub");
-    expect(hubItem?.active).toBe(true);
+    const hubButton = findElement(tree, "data-tour", "nav-apps");
+    expect(hubButton?.props["aria-current"]).toBe("page");
   });
 
   it("renders Agent Hub icon button with data-tour='nav-apps' in icons density", () => {
@@ -149,14 +153,61 @@ describe("Sidebar Agent Hub entry", () => {
 
     const button = findElement(tree, "data-tour", "nav-apps");
     expect(button).toBeDefined();
-    expect(button?.props["aria-label"]).toBe("Agent Hub");
+    expect(button?.props["aria-label"]).toContain("Agent Hub");
 
     (button?.props.onClick as () => void)?.();
     expect(fixture.dispatch).toHaveBeenCalledWith({
       type: "togglePlugins",
       open: true,
       surface: "hub",
+      hubTab: "agents",
     });
+  });
+
+  it("renders ASP Directory in main nav and opens hub surface with asps tab", () => {
+    let tree: ReactNode;
+    function Capture() {
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
+    }
+    renderToStaticMarkup(createElement(Capture));
+
+    const aspButton = findElement(tree, "aria-label", "ASP Directory");
+    expect(aspButton).toBeDefined();
+    (aspButton?.props.onClick as () => void)?.();
+    expect(fixture.dispatch).toHaveBeenCalledWith({
+      type: "togglePlugins",
+      open: true,
+      surface: "hub",
+      hubTab: "asps",
+    });
+  });
+
+  it("renders Activity in main nav and dispatches toggleActivity", () => {
+    let tree: ReactNode;
+    function Capture() {
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
+    }
+    renderToStaticMarkup(createElement(Capture));
+
+    const actButton = findElement(tree, "aria-label", "Activity");
+    expect(actButton).toBeDefined();
+    (actButton?.props.onClick as () => void)?.();
+    expect(fixture.dispatch).toHaveBeenCalledWith({
+      type: "toggleActivity",
+    });
+  });
+
+  it("renders connection status with text", () => {
+    fixture.state = { connected: true };
+    let tree: ReactNode;
+    function Capture() {
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
+    }
+    const html = renderToStaticMarkup(createElement(Capture));
+    expect(html).toContain("Connected");
   });
 });
 

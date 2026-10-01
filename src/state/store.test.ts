@@ -1891,4 +1891,21 @@ describe("togglePlugins surface", () => {
     expect(reopened.pluginsOpen).toBe(true);
     expect(reopened.pluginsSurface).toBe("apps");
   });
+
+  it("accepts hubTab option on togglePlugins", () => {
+    const state = reducer(initialState, { type: "togglePlugins", open: true, surface: "hub", hubTab: "asps" });
+    expect(state.pluginsOpen).toBe(true);
+    expect(state.pluginsSurface).toBe("hub");
+    expect(state.hubTab).toBe("asps");
+  });
+
+  it("toggles activityOpen with toggleActivity", () => {
+    expect(initialState.activityOpen).toBe(false);
+    const opened = reducer(initialState, { type: "toggleActivity" });
+    expect(opened.activityOpen).toBe(true);
+    const closed = reducer(opened, { type: "toggleActivity", open: false });
+    expect(closed.activityOpen).toBe(false);
+    const forced = reducer(closed, { type: "toggleActivity", open: true });
+    expect(forced.activityOpen).toBe(true);
+  });
 });

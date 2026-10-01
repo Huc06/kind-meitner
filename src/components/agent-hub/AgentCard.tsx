@@ -3,32 +3,27 @@ import type { HubAgent, ImportHubAgentResult } from "@/lib/agent-hub";
 import { importHubAgent } from "@/lib/agent-hub";
 import { useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
-import { setComposerDraft } from "@/lib/drafts";
-import { ChartAvatar } from "@/components/Avatar";
 import { Tag } from "@/components/ui/tag";
 import { Button } from "@/components/ui/button";
 import { ChannelPicker, formatChannelName } from "./ChannelPicker";
-import { tileFor } from "@/components/ui/tile";
+import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
+import type { BotIdentityLike } from "@/lib/agent-identity";
 import { Check, Loader2, ArrowRight, MessageSquare, AlertCircle } from "lucide-react";
-import type { MausColor } from "@/lib/mascot";
-
-function agentAvatarColor(key: string): MausColor {
-  const tone = tileFor(key);
-  if (tone === "violet") return "purple";
-  if (tone === "magenta") return "pink";
-  return tone;
-}
 
 export interface AgentCardProps {
   agent: HubAgent;
+  bot?: BotIdentityLike;
+  currentRoomId?: string | null;
   viewMode?: "discover" | "workspace";
   onSelect?: (agent: HubAgent) => void;
-  resultMessage?: { kind: ImportHubAgentResult["kind"]; message: string } | null;
+  resultMessage?: { kind: ImportHubAgentResult["kind"]; message: string; subtext?: string } | null;
 }
 
 export function AgentCard({
   agent,
-  viewMode = "discover",
+  bot,
+  currentRoomId: _currentRoomId,
+  viewMode: _viewMode = "discover",
   onSelect,
   resultMessage,
 }: AgentCardProps) {
@@ -42,15 +37,33 @@ export function AgentCard({
   });
 
   const [isPending, setIsPending] = useState(false);
-  const [result, setResult] = useState<{ kind: ImportHubAgentResult["kind"]; message: string } | null>(
-    resultMessage ?? null,
-  );
+  const [result, setResult] = useState<{
+    kind: ImportHubAgentResult["kind"] | "failed";
+    message: string;
+    subtext?: string;
+  } | null>(resultMessage ?? null);
 
   useEffect(() => {
     if (resultMessage !== undefined) {
       setResult(resultMessage);
     }
   }, [resultMessage]);
+
+  const isOkx = agent.provider.toLowerCase().includes("okx") || Boolean(bot?.okxImport);
+
+  const botForIdentity: BotIdentityLike = bot ?? {
+    id: agent.importedBotId ?? agent.id,
+    name: agent.name,
+    description: agent.summary,
+    okxImport: isOkx
+      ? {
+          kind: "okx-catalog",
+          externalAgentId: agent.id,
+          provider: "OKX.ai",
+          capabilities: agent.capabilities,
+        }
+      : undefined,
+  };
 
   const handleImport = async () => {
     if (!selectedRoomId || remoteClient || isPending) return;
@@ -60,34 +73,59 @@ export function AgentCard({
     const targetRoom = (state.groups ?? []).find((g) => g.id === selectedRoomId);
     const roomName = formatChannelName(targetRoom?.name ?? selectedRoomId);
 
+    if (!isOkx) {
+      // Local workspace bot
+      const botId = agent.importedBotId ?? agent.id;
+      if (targetRoom?.memberIds?.includes(botId)) {
+        setResult({
+          kind: "already",
+          message: t("okxHub.result.already", { room: roomName }),
+        });
+      } else if (targetRoom) {
+        dispatch({
+          type: "patchGroup",
+          groupId: targetRoom.id,
+          patch: { memberIds: [...(targetRoom.memberIds ?? []), botId] },
+        });
+        setResult({
+          kind: "added",
+          message: t("okxHub.result.added", { room: roomName }),
+        });
+      } else {
+        setResult({
+          kind: "invalid",
+          message: "Could not invite this agent.",
+          subtext: "Check that the room is active and try again.",
+        });
+      }
+      setIsPending(false);
+      return;
+    }
+
     try {
       const res = await importHubAgent(agent.id, selectedRoomId);
-      let message = "";
-      switch (res.kind) {
-        case "added":
-          message = t("okxHub.result.added", { room: roomName });
-          break;
-        case "already":
-          message = t("okxHub.result.already", { room: roomName });
-          break;
-        case "notFound":
-          message = res.message ?? t("okxHub.result.notFound");
-          break;
-        case "dmRoom":
-          message = res.message ?? t("okxHub.result.dmRoom");
-          break;
-        case "invalid":
-          message = res.message ?? t("okxHub.result.invalid");
-          break;
-        case "network":
-          message = res.message ?? t("okxHub.result.network");
-          break;
+      if (res.kind === "added") {
+        setResult({
+          kind: "added",
+          message: t("okxHub.result.added", { room: roomName }),
+        });
+      } else if (res.kind === "already") {
+        setResult({
+          kind: "already",
+          message: t("okxHub.result.already", { room: roomName }),
+        });
+      } else {
+        setResult({
+          kind: res.kind,
+          message: "Could not invite this agent.",
+          subtext: "Check that the room is active and try again.",
+        });
       }
-      setResult({ kind: res.kind, message });
-    } catch (err) {
+    } catch {
       setResult({
         kind: "network",
-        message: err instanceof Error ? err.message : t("okxHub.result.network"),
+        message: "Could not invite this agent.",
+        subtext: "Check that the room is active and try again.",
       });
     } finally {
       setIsPending(false);
@@ -102,55 +140,38 @@ export function AgentCard({
   const handleUseInChannel = (roomId: string) => {
     const targetRoom = (state.groups ?? []).find((g) => g.id === roomId);
     if (!targetRoom) return;
-    const draftId = `group:${targetRoom.id}:${targetRoom.threadId}`;
-    setComposerDraft(draftId, `@${agent.name} `);
     dispatch({ type: "togglePlugins", open: false });
     dispatch({ type: "select", id: targetRoom.id });
   };
 
-  const avatarColor = agentAvatarColor(agent.id);
   const isImported = agent.rooms.length > 0;
 
   return (
     <div
-      className="flex flex-col border border-hairline bg-card p-4 transition-colors hover:border-ink-secondary/40"
+      className="flex flex-col border border-hairline bg-card p-4 transition-colors hover:border-ink-secondary/40 gap-3"
       data-testid={`agent-card-${agent.id}`}
     >
-      <div className="flex items-start gap-3">
-        <div className="shrink-0">
-          <ChartAvatar
-            size={40}
-            name={agent.name}
-            color={avatarColor}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4
-              onClick={() => onSelect?.(agent)}
-              className="cursor-pointer truncate text-[14px] font-medium text-ink hover:underline"
-            >
-              {agent.name}
-            </h4>
-            <span className="font-mono text-[11px] text-ink-secondary">
-              {agent.provider}
-            </span>
-            {isImported && (
-              <Tag tone="success" variant="soft" size="sm">
-                {agent.rooms.length === 1
-                  ? t("okxHub.inRoomsOne")
-                  : t("okxHub.inRoomsMany", { count: agent.rooms.length })}
-              </Tag>
-            )}
-          </div>
-          <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-ink-secondary">
-            {agent.summary}
-          </p>
-        </div>
-      </div>
+      {/* AgentIdentity card variant */}
+      <AgentIdentity
+        bot={botForIdentity}
+        variant="card"
+        state={state}
+        showCapabilities={false}
+      />
 
+      {/* Description */}
+      {agent.summary && (
+        <p className="line-clamp-2 text-[12.5px] leading-relaxed text-ink-secondary">
+          {agent.summary}
+        </p>
+      )}
+
+      {/* Capabilities */}
       {agent.capabilities.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="label-mono text-[10px] text-ink-secondary mr-1">
+            Capabilities:
+          </span>
           {agent.capabilities.map((cap) => (
             <Tag key={cap} tone="neutral" variant="outline" size="sm">
               {cap}
@@ -159,9 +180,17 @@ export function AgentCard({
         </div>
       )}
 
+      {/* Provenance */}
+      <div className="font-mono text-[11px] text-ink-secondary">
+        <span className="text-ink-secondary">Provenance:</span>{" "}
+        <span className="text-ink">
+          {isOkx ? "OKX.AI catalog · local registry" : "Local workspace agent"}
+        </span>
+      </div>
+
       {/* Rooms display for imported agents */}
       {isImported && (
-        <div className="mt-3 border-t border-hairline pt-3">
+        <div className="border-t border-hairline pt-3">
           <div className="label-mono mb-2 text-[10px] text-ink-secondary">
             {agent.rooms.length === 1
               ? t("okxHub.inRoomsLabelOne")
@@ -202,67 +231,82 @@ export function AgentCard({
         </div>
       )}
 
-      {/* Add to channel section in Discover view */}
-      {viewMode === "discover" && (
-        <div className="mt-4 border-t border-hairline pt-3">
-          {remoteClient ? (
-            <div className="text-[11px] font-mono text-ink-secondary">
-              {t("okxHub.remoteClientDisabled")}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
+      {/* Invite to room + View details actions */}
+      <div className="mt-auto border-t border-hairline pt-3 flex flex-col gap-2">
+        {remoteClient ? (
+          <div className="text-[11px] font-mono text-ink-secondary">
+            {t("okxHub.remoteClientDisabled")}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {nonDmGroups.length > 1 && (
+                <div className="min-w-0 flex-1 sm:max-w-[200px]">
                   <ChannelPicker
                     selectedRoomId={selectedRoomId}
                     onSelectRoom={setSelectedRoomId}
                     disabled={isPending || nonDmGroups.length === 0}
                   />
                 </div>
-                {nonDmGroups.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={isPending || !selectedRoomId}
-                    onClick={handleImport}
-                    className="shrink-0"
-                  >
-                    {isPending ? (
-                      <>
-                        <Loader2 size={12} className="mr-1 animate-spin" />
-                        {t("okxHub.adding")}
-                      </>
-                    ) : (
-                      t("okxHub.addToChannel")
-                    )}
-                  </Button>
-                )}
-              </div>
-
-              {result && (
-                <div
-                  role="status"
-                  className={`flex items-center gap-1.5 border px-2.5 py-1.5 text-[11px] font-mono ${
-                    result.kind === "added"
-                      ? "border-success/40 bg-success/10 text-success"
-                      : result.kind === "already"
-                        ? "border-warning/40 bg-warning/10 text-warning"
-                        : "border-danger/40 bg-danger/10 text-danger"
-                  }`}
-                >
-                  {result.kind === "added" ? (
-                    <Check size={12} className="shrink-0" />
-                  ) : (
-                    <AlertCircle size={12} className="shrink-0" />
-                  )}
-                  <span>{result.message}</span>
-                </div>
               )}
+              {nonDmGroups.length > 0 && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={isPending || !selectedRoomId}
+                  onClick={handleImport}
+                  className="shrink-0"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 size={12} className="mr-1 animate-spin" />
+                      {t("okxHub.adding")}
+                    </>
+                  ) : (
+                    "Invite to room"
+                  )}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onSelect?.(agent)}
+                className="shrink-0"
+              >
+                View details
+              </Button>
             </div>
-          )}
-        </div>
-      )}
+
+            {result && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={`flex items-start gap-1.5 border px-2.5 py-1.5 text-[11px] font-mono ${
+                  result.kind === "added"
+                    ? "border-success/40 bg-success/10 text-success"
+                    : result.kind === "already"
+                      ? "border-warning/40 bg-warning/10 text-warning"
+                      : "border-danger/40 bg-danger/10 text-danger"
+                }`}
+              >
+                {result.kind === "added" ? (
+                  <Check size={12} className="shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                )}
+                <div className="flex flex-col gap-0.5">
+                  <span>{result.message}</span>
+                  {result.subtext && (
+                    <span className="text-[10px] opacity-80">{result.subtext}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

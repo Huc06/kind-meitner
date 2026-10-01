@@ -5,26 +5,42 @@ export const DEV_DAY_GATE_SECTION = "Dev Day";
 export const DEV_DAY_GATE_BULLETIN = "Gate before list. Gate before spend. Free MCP only.";
 export const DEV_DAY_GATE_FREE_MCP_URL = "https://kind-meitner-production.up.railway.app/api/okx/free-mcp";
 
-export const DEV_DAY_GATE_STARTERS = [
+export interface DevDayGateStarter {
+  id: string;
+  label: string;
+  prompt?: string;
+  action: "fill" | "hub";
+}
+
+export const DEV_DAY_GATE_STARTERS: readonly DevDayGateStarter[] = [
   {
-    id: "scan-vercel",
-    label: "Scan a vercel URL",
-    prompt: "@Markets run scan_free_mcp_readiness for https://demo.vercel.app/api/okx/free-mcp",
-  },
-  {
-    id: "scan-railway",
-    label: "Scan our Railway Free MCP",
+    id: "scan-asp",
+    label: "Scan an ASP endpoint",
     prompt: `@Markets run scan_free_mcp_readiness for ${DEV_DAY_GATE_FREE_MCP_URL}`,
+    action: "fill",
   },
   {
-    id: "trust-99999",
-    label: "Trust agent 99999",
-    prompt: "@Markets run get_asp_trust_card for agentId 99999",
-  },
-  {
-    id: "trust-13851",
-    label: "Trust agent 13851",
+    id: "trust-spend",
+    label: "Check trust before spend",
     prompt: `@Markets run get_asp_trust_card for agentId 13851 with endpointUrl ${DEV_DAY_GATE_FREE_MCP_URL}`,
+    action: "fill",
+  },
+  {
+    id: "trending-asps",
+    label: "Discover trending ASPs",
+    prompt: "@Markets run get_trending_asps",
+    action: "fill",
+  },
+  {
+    id: "invite-agent",
+    label: "Invite an OKX agent",
+    action: "hub",
+  },
+  {
+    id: "a2mcp-checklist",
+    label: "View the Free A2MCP checklist",
+    prompt: "@Markets run get_free_a2mcp_launch_checklist",
+    action: "fill",
   },
 ] as const;
 

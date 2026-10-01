@@ -1,7 +1,7 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
-import { ArrowUp, BookOpen, Clock, Mic, Paperclip, Square, Target, Users, X } from "lucide-react";
-import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type Message } from "@/state/store";
+import { ArrowUp, BookOpen, ChevronDown, Clock, Mic, Paperclip, Square, Target, Users, X } from "lucide-react";
+import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type GroupDefaultResponder, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { activeLocale, t } from "@/lib/i18n";
 import {
@@ -44,7 +44,7 @@ import {
   type PasteAttachment,
 } from "@/lib/composer-attachments";
 import { normalizeState } from "@/lib/mascot";
-import { goalCoordinatorForComposer, groupComposerHint, roomRespondersForComposer } from "@/lib/group-routing";
+import { effectiveDefaultResponder, goalCoordinatorForComposer, roomRespondersForComposer } from "@/lib/group-routing";
 import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { ReplyQuote } from "./ReplyQuote";
@@ -79,6 +79,55 @@ interface ComposerDraftSnapshot extends ComposerSendSnapshot {
   reply: Message | null;
 }
 
+export function DefaultResponderSelect({ group, members }: { group: Group; members: Bot[] }) {
+  const { dispatch } = useStore();
+  const responder = effectiveDefaultResponder(group, members);
+  const value = responder.kind === "member" ? `member:${responder.botId}` : responder.kind;
+  const lead = responder.kind === "member" ? members.find((member) => member.id === responder.botId) : undefined;
+  const title =
+    responder.kind === "everyone"
+      ? t("room.responder.everyone")
+      : responder.kind === "mentions"
+        ? t("room.responder.mentions")
+        : t("room.responder.lead", { name: lead?.name ?? t("room.responder.leadFallback") });
+
+  const change = (nextValue: string) => {
+    let next: GroupDefaultResponder;
+    if (nextValue === "everyone") next = { kind: "everyone" };
+    else if (nextValue === "mentions") next = { kind: "mentions" };
+    else next = { kind: "member", botId: nextValue.slice("member:".length) };
+    dispatch({ type: "patchGroup", groupId: group.id, patch: { defaultResponder: next } });
+  };
+
+  return (
+    <div className="relative shrink-0" title={title}>
+      <select
+        aria-label={t("room.responder.aria")}
+        value={value}
+        onChange={(event) => change(event.target.value)}
+        className="h-6 max-w-[190px] appearance-none truncate border border-hairline bg-raised py-0.5 pl-2 pr-5 font-mono text-[11px] text-ink outline-none hover:border-ink-secondary/60 focus:border-ink"
+      >
+        <optgroup label={t("room.responder.groupLead")}>
+          {members.map((member) => (
+            <option key={member.id} value={`member:${member.id}`}>
+              {t("room.responder.leadOption", { name: member.name })}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label={t("room.responder.groupBehavior")}>
+          <option value="everyone">{t("room.responder.everyoneOption")}</option>
+          <option value="mentions">{t("room.responder.mentionsOption")}</option>
+        </optgroup>
+      </select>
+      <ChevronDown
+        size={11}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-ink-secondary"
+      />
+    </div>
+  );
+}
+
 /** Renders the editable message composer and its pending attachments. */
 export function Composer({
   bot: profile,
@@ -106,7 +155,7 @@ export function Composer({
   const locked = setupLocked || Boolean(bot?.awaitingThreadSnapshot);
   const { state, dispatch } = useStore();
   const { capabilities } = useDesktopCapabilities();
-  const remoteClient = window.ogb?.remoteClient?.active === true;
+  const remoteClient = typeof window !== "undefined" && window.ogb?.remoteClient?.active === true;
   // Unified target: a 1:1 bot thread or a room. In a room the @ picker
   // offers members plus @everyone; explicit mentions override the room's
   // configured default responder.
@@ -206,6 +255,29 @@ export function Composer({
   const mentionListRef = useRef<HTMLDivElement>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
+
+  const responders = useMemo(() => (group ? roomRespondersForComposer(text, members ?? [], group) : []), [group, text, members]);
+  const hasMentions = useMemo(() => {
+    if (!group) return false;
+    if (/(?:^|\s)@everyone\b/i.test(text)) return true;
+    return Boolean(members && text.includes("@") && responders.length > 0);
+  }, [group, text, members, responders]);
+
+  const respondingText = useMemo(() => {
+    if (!group) return null;
+    if (hasMentions && responders.length > 1) {
+      return "Responding: mentioned agents";
+    }
+    if (hasMentions && responders.length === 1) {
+      return `Responding agent: ${responders[0].name}`;
+    }
+    const defaultResp = effectiveDefaultResponder(group, members ?? []);
+    if (defaultResp.kind === "member") {
+      const lead = members?.find((m) => m.id === defaultResp.botId);
+      return lead ? `Responding agent: ${lead.name}` : "Responding: mentioned agents";
+    }
+    return "Responding: mentioned agents";
+  }, [group, members, hasMentions, responders]);
 
   // image paste is offered only when every bot that will actually answer
   // can open one. sendGroup routes to mentions, else the room default —
@@ -1051,15 +1123,10 @@ export function Composer({
                   ? t("composer.placeholder.queueGroup", { name: busyName })
                   : t("composer.placeholder.queue", { name: busyName })
                 : group
-                  ? channelMode === "goal"
-                    ? t("composer.placeholder.goal", { name: group.name })
-                    : t("composer.placeholder.group", {
-                        name: group.name,
-                        hint: groupComposerHint(group, members ?? []),
-                      })
+                  ? "Ask an agent to inspect an ASP, check readiness, or coordinate a task…"
                   : t("composer.placeholder.bot", { name: bot?.name ?? "" })
           }
-          aria-label={t("composer.placeholder.bot", { name: group ? group.name : (bot?.name ?? "") })}
+          aria-label={group ? "Ask an agent to inspect an ASP, check readiness, or coordinate a task…" : t("composer.placeholder.bot", { name: bot?.name ?? "" })}
             className="block max-h-[9rem] min-h-6 w-full resize-none overflow-y-auto bg-transparent px-1 py-1 text-[15px] leading-6 placeholder:text-ink-secondary focus:outline-none"
           />
           <div className="flex items-center gap-1">
@@ -1120,6 +1187,23 @@ export function Composer({
         )}
           </div>
         </div>
+        {group && !group.dm ? (
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 border-t border-hairline/60 pt-1.5 font-mono text-[11px] text-ink-secondary">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-medium text-ink truncate">{respondingText}</span>
+              {!remoteClient && !locked && members && members.length > 0 && (
+                <DefaultResponderSelect group={group} members={members} />
+              )}
+            </div>
+            <div className="shrink-0 text-ink-secondary/70">
+              Enter to send · Shift+Enter for a new line
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1.5 flex items-center justify-end border-t border-hairline/60 pt-1.5 font-mono text-[11px] text-ink-secondary/70">
+            Enter to send · Shift+Enter for a new line
+          </div>
+        )}
         </div>
         </div>
       </div>

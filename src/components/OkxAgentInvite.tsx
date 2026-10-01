@@ -72,9 +72,11 @@ export function OkxCatalogInviteDetails({ agent }: { agent: OkxCatalogAgent }) {
 export function OkxAgentInvite({
   roomId,
   importedExternalAgentIds = new Set<string>(),
+  label = "Invite agent",
 }: {
   roomId: string;
   importedExternalAgentIds?: ReadonlySet<string>;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<OkxCatalogAgent[] | null>(null);
@@ -150,7 +152,7 @@ export function OkxAgentInvite({
         aria-expanded={open}
         aria-controls="okx-agent-invite-panel"
       >
-        Invite OKX agent
+        {label}
       </Button>
       {open ? (
         <section

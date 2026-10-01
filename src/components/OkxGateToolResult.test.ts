@@ -170,4 +170,95 @@ describe("OKX action cards", () => {
     expect(isDisabledButton(html, "Continue free tools")).toBe(true);
     expect(html).toContain("Block spend");
   });
+
+  it("renders readiness card with header, boundary, disclaimer, score, and counts", () => {
+    const html = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        score: 83,
+        checks: [
+          { id: "https_scheme", status: "pass" as const, detail: "https" },
+          { id: "host_pitfall_vercel", status: "fail" as const, detail: "host=demo.vercel.app" },
+          { id: "tools_list_shape", status: "warn" as const, detail: "not checked" },
+        ],
+        resource: {
+          access: "free",
+          paymentRequired: false,
+          walletRequired: false,
+          mainnet: false,
+          provenance: "custom provenance test signal",
+        },
+      },
+      onRescan: () => {},
+      onApplyHost: () => {},
+    }));
+
+    expect(html).toContain("Free MCP listing readiness");
+    expect(html).toContain("FAIL");
+    expect(html).toContain("https://demo.vercel.app/api/okx/free-mcp");
+    expect(html).toContain("Score: 83");
+    expect(html).toContain("1 passed · 1 warned · 1 failed");
+    expect(html).toContain("Access: Free");
+    expect(html).toContain("Payment required: No");
+    expect(html).toContain("Wallet required: No");
+    expect(html).toContain("Mainnet: No");
+    expect(html).toContain("Source: custom provenance test signal");
+    expect(html).toContain("This is a local listing-readiness check, not an OKX review or endorsement.");
+    expect(html).toContain("Copy evidence");
+  });
+
+  it("renders trust card with header, boundary, disclaimer, counts, and spend blocked line", () => {
+    const html = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        decision: "NO_GO",
+        signals: [
+          { id: "listing_page", status: "fail" as const, detail: "HTTP 404" },
+          { id: "endpoint_readiness", status: "pass" as const, detail: "verdict=PASS" },
+        ],
+        resource: {
+          access: "free",
+          paymentRequired: false,
+          walletRequired: false,
+          mainnet: false,
+          provenance: "test trust provenance",
+        },
+      },
+      onBlockSpend: () => {},
+      onContinue: () => {},
+      onRecheck: () => {},
+    }));
+
+    expect(html).toContain("Pre-spend trust");
+    expect(html).toContain("NO-GO");
+    expect(html).toContain("99999");
+    expect(html).toContain("Spend blocked");
+    expect(html).toContain("1 passed · 0 warned · 1 failed");
+    expect(html).toContain("Access: Free");
+    expect(html).toContain("Payment required: No");
+    expect(html).toContain("Wallet required: No");
+    expect(html).toContain("Mainnet: No");
+    expect(html).toContain("Source: test trust provenance");
+    expect(html).toContain("This result is a local pre-spend signal, not an OKX endorsement.");
+    expect(html).toContain("Copy evidence");
+  });
+
+  it("renders Spend not blocked on GO trust card", () => {
+    const html = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        decision: "GO",
+        agentId: "13851",
+        signals: [
+          { id: "listing_page", status: "pass" as const, detail: "HTTP 200" },
+        ],
+      },
+      onContinue: () => {},
+    }));
+
+    expect(html).toContain("Pre-spend trust");
+    expect(html).toContain("GO");
+    expect(html).toContain("Spend not blocked");
+    expect(html).not.toContain("Spend blocked");
+  });
 });

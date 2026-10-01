@@ -38,6 +38,7 @@ export function TrustCard({
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedEvidence, setCopiedEvidence] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [cloned, setCloned] = useState(false);
   const evidenceId = useId();
@@ -55,7 +56,11 @@ export function TrustCard({
       : data.decision === "NO_GO"
         ? "danger"
         : "warning";
-
+  const decisionDisplay = data.decision === "NO_GO" ? "NO-GO" : data.decision;
+  const isSpendBlocked = data.decision === "NO_GO" || data.decision === "CAUTION";
+  const passedSignals = data.signals.filter((s) => s.status === "pass").length;
+  const warnedSignals = data.signals.filter((s) => s.status === "warn").length;
+  const failedSignals = data.signals.filter((s) => s.status === "fail").length;
   const runOnce = (action: () => void) => {
     if (busy || actionLocked.current) return;
     actionLocked.current = true;
@@ -74,14 +79,39 @@ export function TrustCard({
     }
   };
 
+  const copyEvidence = async () => {
+    try {
+      let textToCopy = data.rawJson;
+      try {
+        textToCopy = JSON.stringify(JSON.parse(data.rawJson), null, 2);
+      } catch {
+        /* fallback to raw string */
+      }
+      await navigator.clipboard?.writeText(textToCopy);
+      setCopiedEvidence(true);
+      window.setTimeout(() => setCopiedEvidence(false), 2000);
+    } catch {
+      // Clipboard access is best-effort.
+    }
+  };
+
+  const accessVal = data.resource?.access
+    ? data.resource.access.charAt(0).toUpperCase() + data.resource.access.slice(1)
+    : "Free";
+  const paymentVal = data.resource?.paymentRequired ? "Yes" : "No";
+  const walletVal = data.resource?.walletRequired ? "Yes" : "No";
+  const mainnetVal = data.resource?.mainnet ? "Yes" : "No";
+  const sourceVal =
+    data.resource?.provenance ||
+    "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement";
   return (
     <Frame
       as="section"
       aria-label={t("okxGate.trust.aria", { decision: data.decision })}
-      title="Trust"
+      title={t("okxGate.trust.title")}
       index="02"
       surface="app"
-      className="w-full max-w-[min(42rem,88%)] bg-card p-4"
+      className="w-full max-w-[min(42rem,88%)] bg-card p-4 overflow-hidden"
     >
       <div className="flex items-start gap-3">
         <Tag
@@ -90,34 +120,54 @@ export function TrustCard({
           size="lg"
           aria-label={t("okxGate.trust.decision", { decision: data.decision })}
         >
-          {data.decision}
+          {decisionDisplay}
         </Tag>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[13px] font-medium text-ink">
-              {data.agentName ? `${data.agentName} (#${data.agentId})` : t("okxGate.trust.title")}
+              {t("okxGate.trust.title")}
             </h3>
             <span className="label-mono text-ink-secondary">
               [AGENT #{data.agentId}]
             </span>
           </div>
-          <p className="font-mono text-[11px] text-ink-secondary truncate mt-0.5">
+          <p className="font-mono text-[11px] text-ink-secondary truncate break-all mt-0.5">
             {data.agentName
-              ? `OKX.ai Marketplace Agent${data.score ? ` · ⭐ ${data.score}/5.0` : ""}`
+              ? `${data.agentName} · OKX.ai Marketplace Agent${data.score ? ` · ⭐ ${data.score}/5.0` : ""}`
               : t("okxGate.trust.agent", { agentId: data.agentId })}
           </p>
+          <p className="font-mono text-[11px] text-ink-secondary mt-0.5">
+            {t("okxGate.trust.counts", {
+              passed: passedSignals,
+              warned: warnedSignals,
+              failed: failedSignals,
+            })}
+          </p>
           {lastRunSummary && (
-            <p className="font-mono text-[11px] text-ink-secondary mt-1">
-              {t("okxGate.lastRun.label", { summary: lastRunSummary })}
+            <p className="font-mono text-[11px] text-ink-secondary mt-0.5">
+              <time dateTime={typeof ranAt === "number" ? new Date(ranAt).toISOString() : undefined}>
+                {t("okxGate.lastRun.label", { summary: lastRunSummary })}
+              </time>
             </p>
           )}
+          <div className="mt-2 flex items-center gap-2 font-mono text-[11px]">
+            <span
+              className={cn(
+                "size-1.5 rounded-full shrink-0",
+                isSpendBlocked ? "bg-danger" : "bg-success",
+              )}
+              aria-hidden="true"
+            />
+            <span className={cn("font-medium", isSpendBlocked ? "text-danger" : "text-success")}>
+              {isSpendBlocked ? t("okxGate.trust.spendBlocked") : t("okxGate.trust.spendNotBlocked")}
+            </span>
+          </div>
         </div>
       </div>
 
-      <p className="mt-3 text-[12px] leading-relaxed text-ink-secondary">
+      <p className="mt-3 text-[12px] leading-relaxed text-ink-secondary break-words">
         {data.summary}
       </p>
-
       {data.services && data.services.length > 0 && (
         <div className="mt-2.5 border border-hairline bg-inset p-2.5">
           <div className="label-mono text-ink-secondary">
@@ -183,6 +233,28 @@ export function TrustCard({
 
       <div className="frame-rule my-3" />
 
+      <div className="border border-hairline bg-inset p-2.5 font-mono text-[11px] space-y-1">
+        <div className="label-mono text-ink-secondary mb-1">
+          {t("okxGate.boundary.title")}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 text-ink-secondary">
+          <div>{t("okxGate.boundary.access", { access: accessVal })}</div>
+          <div>{t("okxGate.boundary.payment", { required: paymentVal })}</div>
+          <div>{t("okxGate.boundary.wallet", { required: walletVal })}</div>
+          <div>{t("okxGate.boundary.mainnet", { mainnet: mainnetVal })}</div>
+        </div>
+        <div className="text-ink-secondary pt-0.5 break-all">
+          {t("okxGate.boundary.source", { source: sourceVal })}
+        </div>
+      </div>
+
+      <div className="frame-rule my-3" />
+
+      <p className="font-mono text-[10.5px] text-ink-secondary leading-relaxed">
+        {t("okxGate.trust.disclaimer")}
+      </p>
+      <div className="frame-rule my-3" />
+
       <div className="flex flex-wrap items-center gap-1.5">
         {showBlockSpend && (
           <Button
@@ -227,7 +299,16 @@ export function TrustCard({
           {copied ? t("okxGate.copied") : t("okxGate.trust.copyNext")}
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
+          size="sm"
+          disabled={busy}
+          onClick={() => void copyEvidence()}
+          aria-label={t("okxGate.copyEvidence")}
+        >
+          <Copy size={12} aria-hidden="true" />
+          {copiedEvidence ? t("okxGate.copied") : t("okxGate.copyEvidence")}
+        </Button>
+        <Button
           size="sm"
           onClick={() => setEvidenceOpen((open) => !open)}
           aria-expanded={evidenceOpen}

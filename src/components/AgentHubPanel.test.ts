@@ -16,14 +16,14 @@ const { marketScout, freeMcpService, fixture } = vi.hoisted(() => {
 
   const freeMcpService: HubService = {
     id: "okx-free-mcp",
-    name: "Free A2MCP",
+    name: "Kind Meitner Markets Free A2MCP",
     endpoint: "/api/okx/free-mcp",
     tools: [
       { name: "scan_free_mcp_readiness", description: "Scan readiness of Free MCP" },
       { name: "get_asp_trust_card", description: "Get ASP trust card" },
     ],
     provenance: "kind-meitner local registry and public OKX.AI setup guidance",
-    okxAgentId: "okx-market-scout-v1",
+    okxAgentId: "13851",
   };
 
   const mockRoom = {
@@ -32,10 +32,12 @@ const { marketScout, freeMcpService, fixture } = vi.hoisted(() => {
     threadId: "thread-general-1",
     memberIds: [],
     dm: false,
+    messages: [],
   } as unknown as Group;
 
   const fixture = {
     surface: "hub" as "hub" | "apps" | "mcp",
+    hubTab: undefined as "agents" | "asps" | "mcp" | undefined,
     dispatch: vi.fn(),
     groups: [mockRoom],
     bots: [] as Bot[],
@@ -58,6 +60,7 @@ vi.mock("@/state/store", () => ({
   useStore: () => ({
     state: {
       pluginsSurface: fixture.surface,
+      hubTab: fixture.hubTab,
       groups: fixture.groups,
       bots: fixture.bots,
       selectedId: fixture.selectedId,
@@ -86,8 +89,8 @@ vi.mock("./McpServersPanel", () => ({
   McpServersPanel: () => createElement("div", { "data-testid": "mcp-inventory" }, "MCP inventory"),
 }));
 
+import { Button } from "@/components/ui/button";
 import { AgentHubPanel } from "./AgentHubPanel";
-import { PluginsPanel } from "./PluginsPanel";
 import { AgentCard } from "./agent-hub/AgentCard";
 import { AspServiceCard } from "./agent-hub/AspServiceCard";
 
@@ -96,8 +99,8 @@ type Node = ReactElement<{
   role?: string;
   "aria-selected"?: boolean;
   "data-tour"?: string;
-  onClick?: () => void | Promise<void>;
-  [key: string]: unknown;
+  type?: string;
+  onClick?: () => void;
 }>;
 
 function nodes(value: ReactNode): Node[] {
@@ -105,16 +108,22 @@ function nodes(value: ReactNode): Node[] {
   const node = value as Node;
   return [node, ...Children.toArray(node.props.children).flatMap(nodes)];
 }
-function findButtonWithText(tree: ReactNode, text: string): ReactElement<Record<string, unknown>> | undefined {
-  for (const child of Children.toArray(tree)) {
-    if (!isValidElement<Record<string, unknown>>(child)) continue;
-    if (child.props.onClick) {
-      const json = JSON.stringify(child.props);
-      if (json.includes(text)) return child;
-    }
-    const found = findButtonWithText(child.props.children as ReactNode, text);
-    if (found) return found;
+
+function hasText(children: ReactNode, text: string): boolean {
+  if (typeof children === "string" && children.includes(text)) return true;
+  if (Array.isArray(children)) return children.some((c) => hasText(c, text));
+  if (isValidElement(children)) {
+    return hasText((children as ReactElement<{ children?: ReactNode }>).props.children, text);
   }
+  return false;
+}
+
+function findButtonWithText(tree: ReactNode, text: string): ReactElement<Record<string, unknown>> | undefined {
+  return nodes(tree).find(
+    (n) =>
+      (n.type === "button" || n.type === Button || (n.props as { type?: string }).type === "button") &&
+      hasText(n.props.children, text),
+  );
 }
 
 function render(component: () => ReactNode = () => AgentHubPanel({ initialCatalog: [marketScout], initialServices: [freeMcpService] })) {
@@ -124,7 +133,7 @@ function render(component: () => ReactNode = () => AgentHubPanel({ initialCatalo
     return tree;
   }
   const html = renderToStaticMarkup(createElement(Capture));
-  return { html, nodes: nodes(tree), tree };
+  return { html, nodes: nodes(tree) };
 }
 
 describe("AgentHubPanel", () => {
@@ -132,6 +141,19 @@ describe("AgentHubPanel", () => {
     vi.stubGlobal("window", { ogb: {} });
     vi.stubGlobal("document", { activeElement: null });
     fixture.surface = "hub";
+    fixture.hubTab = undefined;
+    fixture.groups = [
+      {
+        id: "room-general",
+        name: "General",
+        threadId: "thread-general-1",
+        memberIds: [],
+        dm: false,
+        messages: [],
+      } as unknown as Group,
+    ];
+    fixture.bots = [];
+    fixture.selectedId = "room-general";
     fixture.dispatch.mockReset();
     fixture.setComposerDraftMock.mockReset();
     fixture.apiFetchMock.mockReset();
@@ -144,7 +166,7 @@ describe("AgentHubPanel", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders hub with Discover active and required headers/labels", () => {
+  it("renders hub with Agents active and required headers/labels", () => {
     const { html, nodes: treeNodes } = render();
 
     // Dialog title & subtitle
@@ -154,25 +176,25 @@ describe("AgentHubPanel", () => {
     // Panel root data-tour anchor
     expect(html).toContain('data-tour="apps-panel"');
 
-    // Discover tab is active
-    const discoverTab = treeNodes.find(
-      (n) => n.props.role === "tab" && n.props.children === "Discover",
+    // Agents tab is active
+    const agentsTab = treeNodes.find(
+      (n) => n.props.role === "tab" && n.props.children === "Agents",
     );
-    expect(discoverTab).toBeDefined();
-    expect(discoverTab?.props["aria-selected"]).toBe(true);
+    expect(agentsTab).toBeDefined();
+    expect(agentsTab?.props["aria-selected"]).toBe(true);
 
-    // Workspace & Custom MCP tabs exist
-    const workspaceTab = treeNodes.find(
-      (n) => n.props.role === "tab" && n.props.children === "In this workspace",
+    // ASPs & MCP servers tabs exist
+    const aspsTab = treeNodes.find(
+      (n) => n.props.role === "tab" && n.props.children === "ASPs",
     );
-    expect(workspaceTab).toBeDefined();
-    expect(workspaceTab?.props["aria-selected"]).toBe(false);
+    expect(aspsTab).toBeDefined();
+    expect(aspsTab?.props["aria-selected"]).toBe(false);
 
-    const customMcpTab = treeNodes.find(
-      (n) => n.props.role === "tab" && n.props.children === "Custom MCP",
+    const mcpTab = treeNodes.find(
+      (n) => n.props.role === "tab" && n.props.children === "MCP servers",
     );
-    expect(customMcpTab).toBeDefined();
-    expect(customMcpTab?.props["aria-selected"]).toBe(false);
+    expect(mcpTab).toBeDefined();
+    expect(mcpTab?.props["aria-selected"]).toBe(false);
 
     // Search placeholder
     expect(html).toContain('placeholder="Search OKX agents or ASPs"');
@@ -180,21 +202,18 @@ describe("AgentHubPanel", () => {
     // App integrations link
     expect(html).toContain("App integrations");
 
-    // Discover content: agents section and ASP services section
-    expect(html).toContain("Source: kind-meitner local catalog (not live OKX discovery)");
+    // Agents section
+    expect(html).toContain("Available from OKX.AI catalog");
+    expect(html).toContain("OKX.AI catalog · local registry");
     expect(html).toContain("Markets");
-    expect(html).toContain("OKX.ai");
-    expect(html).toContain("Free A2MCP");
-    expect(html).toContain("Free · read-only · no wallet · no payment · not an OKX endorsement");
   });
 
   it("renders catalog loading state", () => {
-    // When catalog is not yet loaded, render shows loading state
     const { html } = render(() => AgentHubPanel());
     expect(html).toContain("Loading OKX agents and ASP services…");
   });
 
-  it("handles import success message and duplicate message in AgentCard", async () => {
+  it("handles invite success message and duplicate message in AgentCard", async () => {
     fixture.importResult = { kind: "added", room: "room-general" };
     const agent = {
       ...marketScout,
@@ -208,11 +227,11 @@ describe("AgentHubPanel", () => {
     }
     const html = renderToStaticMarkup(createElement(Capture));
     expect(html).toContain("Markets");
-    expect(html).toContain("Add to channel");
+    expect(html).toContain("Invite to room");
 
-    const addButton = findButtonWithText(treeNode, "Add to channel");
-    expect(addButton).toBeDefined();
-    await (addButton?.props.onClick as () => Promise<void>)?.();
+    const inviteButton = findButtonWithText(treeNode, "Invite to room");
+    expect(inviteButton).toBeDefined();
+    await (inviteButton?.props.onClick as () => Promise<void>)?.();
 
     // Renders success message
     const htmlSuccess = renderToStaticMarkup(
@@ -237,82 +256,27 @@ describe("AgentHubPanel", () => {
     expect(htmlDup).toContain("Already in #General");
   });
 
-  it("fills composer draft on readiness check without sending and closes panel", () => {
-    let cardTree!: ReactElement;
-    function CaptureCard() {
-      cardTree = AspServiceCard({ service: freeMcpService }) as ReactElement;
-      return cardTree;
-    }
-    const html = renderToStaticMarkup(createElement(CaptureCard));
-    expect(html).toContain("Check readiness");
-    expect(html).toContain("Check trust");
-
-    const readinessBtn = findButtonWithText(cardTree, "Check readiness");
-    expect(readinessBtn).toBeDefined();
-
-    // Trigger check readiness
-    (readinessBtn?.props.onClick as () => void)?.();
-
-    // Draft filled for chosen room
-    expect(fixture.setComposerDraftMock).toHaveBeenCalledWith(
-      "group:room-general:thread-general-1",
-      "@Markets run scan_free_mcp_readiness for /api/okx/free-mcp",
+  it("renders unavailable state with exact copy and retry action", () => {
+    const errorHtml = renderToStaticMarkup(
+      createElement(() => AgentHubPanel({ initialError: "Failed to load catalog" })),
     );
-
-    // Panel closed
-    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "togglePlugins", open: false });
-
-    // Room selected
-    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "select", id: "room-general" });
-
-    // NEVER sent a message
-    const sendCalls = fixture.dispatch.mock.calls.filter(
-      ([action]) => action.type === "send" || action.type === "sendGroup",
-    );
-    expect(sendCalls).toHaveLength(0);
+    expect(errorHtml).toContain("The OKX catalog is temporarily unavailable.");
+    expect(errorHtml).toContain("Your imported agents and local ASP data are still available.");
+    expect(errorHtml).toContain("Retry");
   });
 
-  it("fills composer draft on trust check (with okxAgentId) without sending", () => {
-    let cardTree!: ReactElement;
-    function CaptureCard() {
-      cardTree = AspServiceCard({ service: freeMcpService }) as ReactElement;
-      return cardTree;
-    }
-    renderToStaticMarkup(createElement(CaptureCard));
-
-    const trustBtn = findButtonWithText(cardTree, "Check trust");
-    expect(trustBtn).toBeDefined();
-
-    // Trigger check trust
-    (trustBtn?.props.onClick as () => void)?.();
-
-    // Draft filled
-    expect(fixture.setComposerDraftMock).toHaveBeenCalledWith(
-      "group:room-general:thread-general-1",
-      "@Markets run get_asp_trust_card for agentId okx-market-scout-v1 with endpointUrl /api/okx/free-mcp",
-    );
-    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "togglePlugins", open: false });
-    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "select", id: "room-general" });
-
-    // No message send
-    const sendCalls = fixture.dispatch.mock.calls.filter(
-      ([action]) => action.type === "send" || action.type === "sendGroup",
-    );
-    expect(sendCalls).toHaveLength(0);
-  });
-
-  it("renders McpServersPanel on Custom MCP tab and allows switching surface to apps", () => {
+  it("renders McpServersPanel on MCP servers tab and allows switching surface to apps", () => {
     fixture.surface = "mcp";
     const { html, nodes: treeNodes } = render();
 
     // McpServersPanel is rendered
     expect(html).toContain("MCP inventory");
 
-    // Custom MCP tab has aria-selected=true
-    const customMcpTab = treeNodes.find(
-      (n) => n.props.role === "tab" && n.props.children === "Custom MCP",
+    // MCP servers tab has aria-selected=true
+    const mcpTab = treeNodes.find(
+      (n) => n.props.role === "tab" && n.props.children === "MCP servers",
     );
-    expect(customMcpTab?.props["aria-selected"]).toBe(true);
+    expect(mcpTab?.props["aria-selected"]).toBe(true);
 
     // App integrations link exists
     const appIntegrationsBtn = treeNodes.find(
@@ -329,14 +293,112 @@ describe("AgentHubPanel", () => {
     });
   });
 
-  it("ensures Composio is not fetched on hub surface", () => {
-    fixture.surface = "hub";
-    render(PluginsPanel);
+  it("renders ASP card without prior result", () => {
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AspServiceCard({ service: freeMcpService }) as ReactElement;
+      return cardTree;
+    }
+    const html = renderToStaticMarkup(createElement(CaptureCard));
 
-    // Verifies that neither /api/connectors nor /api/connectors/catalog is called on hub surface
-    const connectorCalls = fixture.apiFetchMock.mock.calls.filter(
-      ([url]) => typeof url === "string" && url.includes("/api/connectors"),
+    expect(html).toContain("Kind Meitner Markets Free A2MCP");
+    expect(html).toContain("#13851");
+    expect(html).toContain("Not checked yet");
+    expect(html).toContain("Free");
+    expect(html).toContain("Wallet: No");
+    expect(html).toContain("Mainnet: No");
+
+    // Copy evidence button is disabled when there is no prior result
+    const copyEvidenceBtn = findButtonWithText(cardTree, "Copy evidence");
+    expect(copyEvidenceBtn).toBeDefined();
+    expect(copyEvidenceBtn?.props.disabled).toBe(true);
+  });
+
+  it("renders ASP card with prior result from room messages", () => {
+    const roomWithScan = {
+      id: "room-general",
+      name: "General",
+      threadId: "thread-general-1",
+      memberIds: [],
+      dm: false,
+      messages: [
+        {
+          id: "msg-1",
+          at: 1727780000000,
+          tool: {
+            name: "scan_free_mcp_readiness",
+            ok: true,
+            output: JSON.stringify({
+              endpointUrl: "/api/okx/free-mcp",
+              verdict: "PASS",
+              checks: [{ id: "c1", status: "pass", detail: "ok" }],
+              remediation: ["none"],
+            }),
+          },
+        },
+        {
+          id: "msg-2",
+          at: 1727785000000,
+          tool: {
+            name: "get_asp_trust_card",
+            ok: true,
+            output: JSON.stringify({
+              agentId: "13851",
+              decision: "GO",
+              summary: "Verified",
+              signals: [{ id: "s1", status: "pass", detail: "ok" }],
+              notChecked: ["none"],
+              remediation: ["none"],
+              safeNextStep: "ready",
+            }),
+          },
+        },
+      ],
+    } as unknown as Group;
+
+    fixture.groups = [roomWithScan];
+
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AspServiceCard({ service: freeMcpService }) as ReactElement;
+      return cardTree;
+    }
+    const html = renderToStaticMarkup(createElement(CaptureCard));
+
+    expect(html).toContain("PASS");
+    expect(html).toContain("GO");
+    expect(html).not.toContain("Not checked yet");
+
+    // Copy evidence button is enabled when evidence is available
+    const copyEvidenceBtn = findButtonWithText(cardTree, "Copy evidence");
+    expect(copyEvidenceBtn).toBeDefined();
+    expect(copyEvidenceBtn?.props.disabled).toBeFalsy();
+  });
+
+  it("fills composer draft on readiness check without sending and closes panel", () => {
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AspServiceCard({ service: freeMcpService }) as ReactElement;
+      return cardTree;
+    }
+    const html = renderToStaticMarkup(createElement(CaptureCard));
+    expect(html).toContain("Run readiness scan");
+
+    const readinessBtn = findButtonWithText(cardTree, "Run readiness scan");
+    expect(readinessBtn).toBeDefined();
+
+    (readinessBtn?.props.onClick as () => void)?.();
+
+    expect(fixture.setComposerDraftMock).toHaveBeenCalledWith(
+      "group:room-general:thread-general-1",
+      "@Markets run scan_free_mcp_readiness for /api/okx/free-mcp",
     );
-    expect(connectorCalls).toHaveLength(0);
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "togglePlugins", open: false });
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "select", id: "room-general" });
+
+    const sendCalls = fixture.dispatch.mock.calls.filter(
+      ([action]) => action.type === "send" || action.type === "sendGroup",
+    );
+    expect(sendCalls).toHaveLength(0);
   });
 });

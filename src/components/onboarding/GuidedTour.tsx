@@ -22,12 +22,25 @@ const MASCOT: Record<TourStep["id"], MausState> = {
   "tour.tools": "curious",
   "tour.apps": "happy",
   "tour.apps-panel": "proud",
+  "tour.readiness": "curious",
+  "tour.trust": "working",
   "tour.automations": "happy",
   "tour.automations-page": "drowsy",
   "tour.done": "celebrate",
 };
 
-const copy = (id: TourStep["id"]) => t(`onboarding.tour.${id.slice(5)}` as LocaleKey);
+const stepContent = (id: TourStep["id"]): { title?: string; body: string } => {
+  const base = id.slice(5);
+  const titleKey = `onboarding.tour.${base}.title` as LocaleKey;
+  const bodyKey = `onboarding.tour.${base}.body` as LocaleKey;
+  const mainKey = `onboarding.tour.${base}` as LocaleKey;
+  const titleText = t(titleKey);
+  const bodyText = t(bodyKey);
+  if (titleText && titleText !== titleKey && bodyText && bodyText !== bodyKey) {
+    return { title: titleText, body: bodyText };
+  }
+  return { body: t(mainKey) };
+};
 
 function visible(anchor: string): HTMLElement | null {
   const all = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${anchor}"]`));
@@ -152,7 +165,7 @@ export function GuidedTour() {
 
   const remoteClient = window.ogb?.remoteClient?.active === true;
   const active =
-    isTourEligible({ remoteClient, completedAt: record?.completedAt, welcomeOpen: state.welcomeOpen }) &&
+    isTourEligible({ remoteClient, completedAt: record?.completedAt, welcomeOpen: state.welcomeOpen, hintsSeen: record?.hintsSeen }) &&
     !dismissed &&
     step !== null;
 
@@ -202,17 +215,19 @@ export function GuidedTour() {
   const { current, total } = stepNumber(step);
   const closing = step.id === "tour.done";
   const anchor = fallback === step.id && step.fallbackAnchor ? step.fallbackAnchor : step.anchor;
+  const { title, body } = stepContent(step.id);
   return (
     <Spotlight
       anchor={anchor}
       placement={step.placement}
       mascot={MASCOT[step.id]}
+      title={title}
       progress={closing ? undefined : t("onboarding.tour.progress", { current, total })}
       primary={{ label: closing ? t("onboarding.tour.finish") : t("onboarding.tour.next"), onClick: closing ? finish : () => advance() }}
       secondary={closing ? undefined : { label: t("onboarding.tour.skip"), onClick: finish }}
       onDone={finish}
     >
-      {copy(step.id)}
+      {body}
       {failed && <p role="alert" className="mt-2 font-mono text-[11px] text-danger">{t("onboarding.tour.error")}</p>}
     </Spotlight>
   );

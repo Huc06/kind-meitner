@@ -16,6 +16,13 @@ export type GateLastRun = {
   latencyMs?: number;
   toolCount?: number;
 };
+export type EnvelopeResource = {
+  access?: string;
+  paymentRequired?: boolean;
+  walletRequired?: boolean;
+  mainnet?: boolean;
+  provenance?: string;
+};
 
 export type ReadinessRunCardData = {
   kind: "readiness";
@@ -24,6 +31,8 @@ export type ReadinessRunCardData = {
   checks: GateSignal[];
   remediation: string[];
   rawJson: string;
+  score?: number | string;
+  resource?: EnvelopeResource;
   lastRun?: GateLastRun;
 };
 
@@ -42,9 +51,9 @@ export type TrustCardData = {
   remediation: string[];
   safeNextStep: string;
   rawJson: string;
+  resource?: EnvelopeResource;
   lastRun?: GateLastRun;
 };
-
 export type OkxActionCardData = ReadinessRunCardData | TrustCardData;
 
 /** Known-good Railway Free-MCP URL used by Apply host (Dev Day Loop A). */
@@ -115,25 +124,57 @@ export function extractGateLastRun(
   };
 }
 
-export function extractCardPayload(parsed: unknown): Record<string, unknown> | null {
+export function extractEnvelope(parsed: unknown): {
+  data: Record<string, unknown> | null;
+  resource: EnvelopeResource | undefined;
+} {
   if (Array.isArray(parsed) && parsed.length > 0) {
     const first = parsed[0];
     if (isRecord(first)) {
-      if (isRecord(first.text)) return extractCardPayload(first.text);
+      if (isRecord(first.text)) return extractEnvelope(first.text);
       if (typeof first.text === "string") {
         try {
-          return extractCardPayload(JSON.parse(first.text));
+          return extractEnvelope(JSON.parse(first.text));
         } catch {
           /* not json string */
         }
       }
-      return extractCardPayload(first);
+      return extractEnvelope(first);
     }
   }
-  if (!isRecord(parsed)) return null;
-  if (isRecord(parsed.data)) return parsed.data;
-  if (isRecord(parsed.result)) return extractCardPayload(parsed.result);
-  return parsed;
+  if (!isRecord(parsed)) return { data: null, resource: undefined };
+  if (isRecord(parsed.result)) return extractEnvelope(parsed.result);
+
+  let resource: EnvelopeResource | undefined;
+  const rawRes = isRecord(parsed.resource) ? parsed.resource : undefined;
+  if (rawRes) {
+    resource = {
+      access: text(rawRes.access, 100) ?? undefined,
+      paymentRequired: typeof rawRes.paymentRequired === "boolean" ? rawRes.paymentRequired : undefined,
+      walletRequired: typeof rawRes.walletRequired === "boolean" ? rawRes.walletRequired : undefined,
+      mainnet: typeof rawRes.mainnet === "boolean" ? rawRes.mainnet : undefined,
+      provenance: text(rawRes.provenance, 500) ?? undefined,
+    };
+  }
+
+  if (isRecord(parsed.data)) {
+    if (!resource && isRecord(parsed.data.resource)) {
+      const dRes = parsed.data.resource;
+      resource = {
+        access: text(dRes.access, 100) ?? undefined,
+        paymentRequired: typeof dRes.paymentRequired === "boolean" ? dRes.paymentRequired : undefined,
+        walletRequired: typeof dRes.walletRequired === "boolean" ? dRes.walletRequired : undefined,
+        mainnet: typeof dRes.mainnet === "boolean" ? dRes.mainnet : undefined,
+        provenance: text(dRes.provenance, 500) ?? undefined,
+      };
+    }
+    return { data: parsed.data, resource };
+  }
+  return { data: parsed, resource };
+}
+
+export function extractCardPayload(parsed: unknown): Record<string, unknown> | null {
+  return extractEnvelope(parsed).data;
 }
 
 /** The provider records a completed MCP result as a string in `tool.output`.
@@ -147,7 +188,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   } catch {
     return null;
   }
-  const data = extractCardPayload(parsed);
+  const { data, resource } = extractEnvelope(parsed);
   if (!data) return null;
   const rawJson = tool.output.length <= 20_000 ? tool.output : tool.output.slice(0, 20_000);
 
@@ -156,6 +197,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     const verdict = text(data.verdict, 20);
     const checks = signals(data.checks);
     const remediation = listOfText(data.remediation);
+    const score = typeof data.score === "number" || typeof data.score === "string" ? data.score : undefined;
     if (!endpointUrl || !verdict || !readinessVerdicts.has(verdict as ReadinessVerdict) || !checks || !remediation) return null;
     const lastRun = extractGateLastRun(data, checks);
     return {
@@ -165,6 +207,8 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
       checks,
       remediation,
       rawJson,
+      ...(score !== undefined ? { score } : {}),
+      ...(resource ? { resource } : {}),
       ...(lastRun ? { lastRun } : {}),
     };
   }
@@ -210,6 +254,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     remediation,
     safeNextStep,
     rawJson,
+    ...(resource ? { resource } : {}),
     ...(lastRun ? { lastRun } : {}),
   };
 }

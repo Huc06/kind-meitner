@@ -41,7 +41,7 @@ export function DialogPanel({ className, children, ref, ...props }: DialogPanelP
       role="dialog"
       aria-modal="true"
       className={cn(
-        "relative flex max-h-[min(88vh,56rem)] w-full max-w-lg flex-col border border-hairline bg-card text-ink shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)]",
+        "relative flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] w-full sm:max-w-lg flex-col border border-hairline bg-card text-ink shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)]",
         className,
       )}
       style={{ ["--frame-surface" as string]: "var(--color-card)" }}

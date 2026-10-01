@@ -16,6 +16,8 @@ export type TourStepId =
   | "tour.tools"
   | "tour.apps"
   | "tour.apps-panel"
+  | "tour.readiness"
+  | "tour.trust"
   | "tour.automations"
   | "tour.automations-page"
   | "tour.done";
@@ -61,6 +63,8 @@ export const TOUR_STEPS: TourStep[] = [
   { id: "tour.tools", anchor: "tools", placement: "right", onExit: "openTools" },
   { id: "tour.apps", anchor: "nav-apps", skipIfMissing: true, placement: "right", onEnter: "openTools", onExit: "openApps" },
   { id: "tour.apps-panel", anchor: "apps-panel", placement: "below", onEnter: "openApps", onExit: "closeApps" },
+  { id: "tour.readiness", anchor: "starter-readiness", fallbackAnchor: "starters", skipIfMissing: true, placement: "above" },
+  { id: "tour.trust", anchor: "starter-trust", fallbackAnchor: "starters", skipIfMissing: true, placement: "above" },
   { id: "tour.automations", anchor: "nav-automations", skipIfMissing: true, placement: "right", onEnter: "openTools", onExit: "openAutomations" },
   { id: "tour.automations-page", anchor: "automations-page", placement: "below", onEnter: "openAutomations", onExit: "backToChat" },
   // back where they started: the closing card sits on the chat itself
@@ -97,16 +101,24 @@ export function withTourFinished(record: OnboardingStatus | undefined): string[]
   return result.length > 100 ? result.slice(-100) : result;
 }
 
+/** Check if all guided tour steps have been recorded as completed in hintsSeen. */
+export function isTourCompleted(record: OnboardingStatus | undefined): boolean {
+  if (!record?.hintsSeen) return false;
+  return TOUR_STEPS.every((step) => record.hintsSeen?.includes(step.id));
+}
+
 /** Whether the guided tour is eligible to run on this client. A paired remote
  * client never runs the live tour: its controls live on the host computer,
- * and client-scoped sessions cannot write workspace config. */
+ * and client-scoped sessions cannot write workspace config. Never re-shows after completion. */
 export function isTourEligible(options: {
   remoteClient: boolean;
   completedAt?: string;
   welcomeOpen?: boolean;
+  hintsSeen?: string[];
 }): boolean {
   if (options.remoteClient) return false;
   if (!options.completedAt) return false;
   if (options.welcomeOpen) return false;
+  if (options.hintsSeen && TOUR_STEPS.every((step) => options.hintsSeen?.includes(step.id))) return false;
   return true;
 }
