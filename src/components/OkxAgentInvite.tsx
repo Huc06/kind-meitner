@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { api, ApiError, type Group } from "@/state/store";
+import { importHubAgent } from "@/lib/agent-hub";
 import { ChartAvatar } from "./Avatar";
 import { Tag } from "@/components/ui/tag";
 import { Button } from "@/components/ui/button";
@@ -51,9 +52,6 @@ export function canInviteOkxAgent(group: Pick<Group, "dm">, remoteClient: boolea
   return !remoteClient && !group.dm;
 }
 
-function importRequestId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `okx-import-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
 
 export function OkxCatalogInviteDetails({ agent }: { agent: OkxCatalogAgent }) {
   return (
@@ -128,15 +126,16 @@ export function OkxAgentInvite({
     setImportingId(agent.id);
     setError(null);
     try {
-      await api("/api/okx/agents/import", {
-        method: "POST",
-        body: JSON.stringify({ agentId: agent.id, roomId, requestId: importRequestId() }),
-      });
-      // Do not patch the room or bot list here. The normal group/bot stream
-      // owns membership and activity updates, including an idempotent import.
-      setRequestedId(agent.id);
+      const result = await importHubAgent(agent.id, roomId);
+      if (result.kind === "added" || result.kind === "already") {
+        // Do not patch the room or bot list here. The normal group/bot stream
+        // owns membership and activity updates, including an idempotent import.
+        setRequestedId(agent.id);
+      } else {
+        setError(result.message ?? `Could not invite ${agent.name}.`);
+      }
     } catch (reason) {
-      setError(reason instanceof ApiError || reason instanceof Error ? reason.message : `Could not invite ${agent.name}.`);
+      setError(reason instanceof Error ? reason.message : `Could not invite ${agent.name}.`);
     } finally {
       setImportingId(null);
     }

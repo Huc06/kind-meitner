@@ -2,7 +2,7 @@ import { Children, createElement, isValidElement, type ReactElement, type ReactN
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const fixture = vi.hoisted(() => ({ surface: "apps" as "apps" | "mcp", dispatch: vi.fn() }));
+const fixture = vi.hoisted(() => ({ surface: "hub" as "hub" | "apps" | "mcp", dispatch: vi.fn() }));
 vi.mock("@/state/store", () => ({
   api: vi.fn(),
   useStore: () => ({ state: { pluginsSurface: fixture.surface }, dispatch: fixture.dispatch }),
@@ -22,10 +22,16 @@ function render() {
   const html = renderToStaticMarkup(createElement(Capture));
   return { html, nodes: nodes(tree) };
 }
-beforeEach(() => { vi.stubGlobal("window", {}); fixture.surface = "apps"; fixture.dispatch.mockReset(); });
+beforeEach(() => { vi.stubGlobal("window", {}); fixture.surface = "hub"; fixture.dispatch.mockReset(); });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Plugins surface navigation", () => {
+  it("renders the default hub surface", () => {
+    const initial = render();
+    expect(initial.html).toContain("Agent Hub");
+    expect(initial.html).not.toContain("MCP inventory");
+  });
+
   it("opens the requested surface and persists manual changes through the store", () => {
     fixture.surface = "mcp";
     const initial = render();

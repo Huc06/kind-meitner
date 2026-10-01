@@ -1,21 +1,15 @@
-// The connectors scene, built in code rather than recorded: connected apps
-// orbit the guide on three rings, the way sources orbit the logo in Recall's
-// "Save From Anywhere" bento. Rings and badges spring in on a stagger, then
-// turn at three speeds; the guide watches, then looks proud once a badge
-// gains its check. Under reduced motion the rings hold still.
-//
-// Logos come from the same resolver the Connected apps page uses: the
-// official mark from the Composio catalog when the server has one, else the
-// service's favicon, else a monogram. So the scene shows exactly what the
-// marketplace will, and still renders offline.
+// The agent hub connectors scene, built in code rather than recorded:
+// OKX agents and the Free MCP service orbit the guide on concentric rings.
+// Rings and badges spring in on a stagger, then turn in alternating directions;
+// the guide watches, then looks proud once Markets gains its check. Under
+// reduced motion the rings hold still.
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check, Cpu, ShieldCheck, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MausAvatar } from "@/components/Avatar";
-import { ServiceIcon, type ToolkitCard } from "@/components/PluginsPanel";
+import { tileFor, TILE_TEXT } from "@/components/ui/tile";
 import { cn } from "@/lib/cn";
 import type { MausState } from "@/lib/mascot";
 import { reducedMotion } from "@/lib/onboarding";
-import { api } from "@/state/store";
 
 export interface SceneProps {
   playing: boolean;
@@ -26,45 +20,33 @@ export interface SceneProps {
 
 const ORBITING_APPS_MS = 5200;
 
-/** The apps on the rings, inner to outer. Domains are the favicon fallback
- * for services the curated catalog does not list; a catalog entry with an
- * official logo always wins. */
-const RINGS: Array<Array<{ slug: string; label: string; domain: string }>> = [
+interface HubItem {
+  slug: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+/** Agents and Free MCP on the rings, inner to outer. No external logos. */
+const RINGS: Array<Array<HubItem>> = [
   [
-    { slug: "gmail", label: "Gmail", domain: "gmail.com" },
-    { slug: "slack", label: "Slack", domain: "slack.com" },
-    { slug: "github", label: "GitHub", domain: "github.com" },
+    { slug: "okx-market-scout-v1", label: "Markets", icon: TrendingUp },
+    { slug: "okx-listing-coach", label: "Listing Coach", icon: Sparkles },
   ],
   [
-    { slug: "notion", label: "Notion", domain: "notion.so" },
-    { slug: "linkedin", label: "LinkedIn", domain: "linkedin.com" },
-    { slug: "discord", label: "Discord", domain: "discord.com" },
-    { slug: "googlecalendar", label: "Calendar", domain: "calendar.google.com" },
-  ],
-  [
-    { slug: "apify", label: "Apify", domain: "apify.com" },
-    { slug: "apollo", label: "Apollo", domain: "apollo.io" },
-    { slug: "linear", label: "Linear", domain: "linear.app" },
-    { slug: "hubspot", label: "HubSpot", domain: "hubspot.com" },
-    { slug: "figma", label: "Figma", domain: "figma.com" },
-    { slug: "stripe", label: "Stripe", domain: "stripe.com" },
+    { slug: "okx-spend-scout", label: "Spend Scout", icon: ShieldCheck },
+    { slug: "okx-free-mcp", label: "Free MCP", icon: Cpu },
   ],
 ];
 
-/** Official logos from the catalog, fetched once per session. */
-let catalog: Promise<Map<string, ToolkitCard>> | null = null;
-function loadCatalog(): Promise<Map<string, ToolkitCard>> {
-  catalog ??= api("/api/connectors/catalog")
-    .then((d: { cards?: ToolkitCard[] }) => new Map((d.cards ?? []).map((card) => [card.slug, card])))
-    .catch(() => new Map<string, ToolkitCard>());
-  return catalog;
-}
-
-function Badge({ card, connected }: { card: Pick<ToolkitCard, "logo" | "domain" | "label">; connected?: boolean }) {
+function Badge({ item, connected }: { item: HubItem; connected?: boolean }) {
+  const Icon = item.icon;
+  const tone = tileFor(item.slug);
   return (
     <div className="relative flex flex-col items-center gap-1.5">
-      <ServiceIcon card={card} className="size-9" />
-      <span className="label-mono max-w-[64px] truncate text-[8.5px] text-ink-secondary">{card.label}</span>
+      <div className={cn("flex size-9 items-center justify-center border border-hairline bg-card shadow-xs", TILE_TEXT[tone])}>
+        <Icon size={18} />
+      </div>
+      <span className="label-mono max-w-[72px] truncate text-[9px] text-ink-secondary">{item.label}</span>
       {connected && (
         <span className="animate-spot-in absolute -right-1 -top-1.5 flex size-4 items-center justify-center rounded-full bg-success text-accent ring-2 ring-inset">
           <Check size={10} strokeWidth={3} />
@@ -125,15 +107,6 @@ function Ring({
 export function OrbitingApps({ playing, onCue, onEnded, label }: SceneProps) {
   const still = reducedMotion() || !playing;
   const [connected, setConnected] = useState(still);
-  const [logos, setLogos] = useState<Map<string, ToolkitCard>>(new Map());
-
-  useEffect(() => {
-    let alive = true;
-    void loadCatalog().then((cards) => alive && setLogos(cards));
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (still) return;
@@ -150,11 +123,6 @@ export function OrbitingApps({ playing, onCue, onEnded, label }: SceneProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [still]);
 
-  const card = (app: { slug: string; label: string; domain: string }) => {
-    const known = logos.get(app.slug);
-    return { label: app.label, logo: known?.logo ?? null, domain: known?.domain ?? app.domain };
-  };
-
   return (
     <div className="relative h-full w-full overflow-hidden bg-inset" role="img" aria-label={label}>
       {/* the guide in the centre */}
@@ -165,9 +133,9 @@ export function OrbitingApps({ playing, onCue, onEnded, label }: SceneProps) {
       </div>
       <div className="relative flex h-full w-full items-center justify-center">
         {RINGS.map((apps, ring) => (
-          <Ring key={ring} radius={[92, 140, 186][ring]!} duration={[22, 34, 46][ring]!} reverse={ring !== 1} index={ring} still={still}>
+          <Ring key={ring} radius={[104, 164][ring]!} duration={[24, 36][ring]!} reverse={ring !== 1} index={ring} still={still}>
             {apps.map((app, i) => (
-              <Badge key={app.slug} card={card(app)} connected={connected && ring === 0 && i === 0} />
+              <Badge key={app.slug} item={app} connected={connected && ring === 0 && i === 0} />
             ))}
           </Ring>
         ))}

@@ -675,7 +675,7 @@ export interface AppState {
   pluginsOpen: boolean;
   /** Which tab the Plugins panel opens on; "mcp" when a bot's tools
    * sent the user there to add a server. */
-  pluginsSurface: "apps" | "mcp";
+  pluginsSurface: "hub" | "apps" | "mcp";
   /** The "New bot" role picker. */
   newBotOpen: boolean;
   /** Creation continues even when the role picker is dismissed. */
@@ -934,7 +934,7 @@ export type Action =
   | { type: "notice"; notice: AppState["notice"] }
   | { type: "revealThread"; threadId: string }
   | { type: "toggleSettings"; open?: boolean; section?: BotSettingsSection; botId?: string }
-  | { type: "togglePlugins"; open?: boolean; surface?: "apps" | "mcp" }
+  | { type: "togglePlugins"; open?: boolean; surface?: "hub" | "apps" | "mcp" }
   | { type: "toggleNewBot"; open?: boolean }
   | { type: "toggleComputer"; open?: boolean }
   | { type: "toggleInspector"; open?: boolean }
@@ -1968,7 +1968,7 @@ export const initialState: AppState = {
   pluginsOpen: false,
   okxSettingsOpen: false,
   activeDisputesCount: 0,
-  pluginsSurface: "apps",
+  pluginsSurface: "hub",
   newBotOpen: false,
   botCreationPending: false,
   computerOpen: false,

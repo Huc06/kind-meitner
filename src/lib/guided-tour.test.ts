@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_ONBOARDING } from "./onboarding";
-import { ANCHOR_EFFECTS, currentStep, stepNumber, TOUR_STEPS, withTourFinished, withTourReset } from "./guided-tour";
+import { ANCHOR_EFFECTS, currentStep, isTourEligible, stepNumber, TOUR_STEPS, withTourFinished, withTourReset } from "./guided-tour";
 
 const withDone = (ids: string[]) => ({ ...EMPTY_ONBOARDING, hintsSeen: ids });
 const step = (id: string) => TOUR_STEPS.find((s) => s.id === id)!;
@@ -60,5 +60,17 @@ describe("guided tour", () => {
       if (s.onExit && ANCHOR_EFFECTS.has(s.onExit)) expect(s.anchor).not.toBeNull();
     }
     expect(ANCHOR_EFFECTS.has("closeApps")).toBe(false);
+  });
+  it("gates tour eligibility against remote clients, welcome flow state, and completion", () => {
+    expect(isTourEligible({ remoteClient: true, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: false })).toBe(false);
+    expect(isTourEligible({ remoteClient: false, completedAt: undefined, welcomeOpen: false })).toBe(false);
+    expect(isTourEligible({ remoteClient: false, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: true })).toBe(false);
+    expect(isTourEligible({ remoteClient: false, completedAt: "2026-10-01T00:00:00Z", welcomeOpen: false })).toBe(true);
+  });
+
+  it("caps withTourFinished to at most 100 items for server schema validation", () => {
+    const longHints = Array.from({ length: 120 }, (_, i) => `hint.${i}`);
+    const finished = withTourFinished(withDone(longHints));
+    expect(finished.length).toBeLessThanOrEqual(100);
   });
 });

@@ -10,14 +10,28 @@ import type { SearchHit } from "@/lib/search-hit";
 import { landOnSearchHit } from "@/lib/focus-message";
 import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/eyebrow";
+import { tFromServer } from "@/lib/i18n";
+type CommandItem = {
+  id: string;
+  name: string;
+  run: () => void;
+  icon?: React.ReactNode;
+};
+
 type PaletteEntry =
   | { kind: "bot"; bot: Bot }
   | { kind: "room"; group: Group }
+  | { kind: "command"; command: CommandItem }
   | { kind: "message"; hit: SearchHit };
-
-export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) {
+export function CommandPalette({
+  onOpenChange,
+  initialOpen = false,
+}: {
+  onOpenChange?: (open: boolean) => void;
+  initialOpen?: boolean;
+}) {
   const { state, dispatch } = useStore();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [query, setQuery] = useState("");
   const [messageHits, setMessageHits] = useState<SearchHit[]>([]);
   const [cursor, setCursor] = useState(0);
@@ -84,9 +98,25 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
 
   const bots = rankByName(state.bots.filter((b) => !b.hidden), q);
   const rooms = rankByName(state.groups, q);
+  const commands: CommandItem[] = [
+    {
+      id: "agent-hub",
+      name: tFromServer("okxHub.nav.openAgentHub", "Open Agent Hub") ?? "Open Agent Hub",
+      icon: <BotIcon size={15} className="shrink-0 text-ink-secondary" />,
+      run: () => dispatch({ type: "togglePlugins", open: true, surface: "hub" }),
+    },
+  ];
+  const matchingCommands = commands.filter((cmd) => {
+    if (!q) return true;
+    const name = cmd.name.toLowerCase();
+    if (name.includes(q)) return true;
+    const words = q.split(/\s+/).filter(Boolean);
+    return words.every((word) => name.includes(word));
+  });
   const entries: PaletteEntry[] = [
     ...bots.map((bot): PaletteEntry => ({ kind: "bot", bot })),
     ...rooms.map((group): PaletteEntry => ({ kind: "room", group })),
+    ...matchingCommands.map((command): PaletteEntry => ({ kind: "command", command })),
     // message hits only make sense for a typed query; empty = switcher mode
     ...(q ? messageHits.map((hit): PaletteEntry => ({ kind: "message", hit })) : []),
   ];
@@ -94,7 +124,9 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
   const selected = entries.length ? Math.min(cursor, entries.length - 1) : 0;
 
   const activate = async (entry: PaletteEntry) => {
-    if (entry.kind === "message") {
+    if (entry.kind === "command") {
+      entry.command.run();
+    } else if (entry.kind === "message") {
       const hit = entry.hit;
       try {
         await landOnSearchHit(hit, state, dispatch);
@@ -128,7 +160,8 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
 
   // flat cursor across sections; each row needs its absolute index
   const roomOffset = bots.length;
-  const messageOffset = bots.length + rooms.length;
+  const commandOffset = bots.length + rooms.length;
+  const messageOffset = bots.length + rooms.length + matchingCommands.length;
 
   const row = (key: string, index: number, onPick: () => void, children: React.ReactNode, twoLine = false) => (
     <button
@@ -209,6 +242,22 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
               <>
                 <Users size={15} className="shrink-0 text-ink-secondary" />
                 <span className="truncate text-[13px] font-medium text-ink">{group.name}</span>
+              </>,
+            ),
+          )}
+          {matchingCommands.length > 0 && (
+            <div className="label-mono px-2.5 pb-1 pt-3 text-ink-secondary">
+              Commands
+            </div>
+          )}
+          {matchingCommands.map((command, i) =>
+            row(
+              `cmd:${command.id}`,
+              commandOffset + i,
+              () => void activate({ kind: "command", command }),
+              <>
+                {command.icon ?? <BotIcon size={15} className="shrink-0 text-ink-secondary" />}
+                <span className="truncate text-[13px] font-medium text-ink">{command.name}</span>
               </>,
             ),
           )}

@@ -37,7 +37,7 @@ import { peerLine } from "@/lib/peer-message";
 import { BotAvatar, InitialsAvatar } from "./Avatar";
 import { stateForBot } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { t, tFromServer } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
@@ -2149,6 +2149,24 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               </span>
             )}
           </button>
+          <button
+            data-tour="nav-apps"
+            onClick={() => dispatch({ type: "togglePlugins", open: true, surface: "hub" })}
+            aria-label={tFromServer("okxHub.nav.agentHub", "Agent Hub")}
+            title={tFromServer("okxHub.nav.agentHub", "Agent Hub")}
+            className={cn(
+              "flex min-h-9 w-full items-center py-2 text-left transition-colors",
+              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
+              state.pluginsOpen && state.pluginsSurface === "hub"
+                ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+                : "text-ink hover:bg-raised-hover",
+            )}
+          >
+            <BotIcon size={18} className={state.pluginsOpen && state.pluginsSurface === "hub" ? "text-ink" : "text-ink-secondary"} />
+            <span className={cn("flex-1 text-[13px] font-mono", density === "icons" && "hidden")}>
+              {tFromServer("okxHub.nav.agentHub", "Agent Hub")}
+            </span>
+          </button>
 
           </>
         )}
@@ -2210,6 +2228,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   </span>
                 ) : undefined,
                 onSelect: () => dispatch({ type: "showEvaluator" }),
+              },
+              {
+                key: "agent-hub",
+                tourId: "nav-apps",
+                label: tFromServer("okxHub.nav.agentHub", "Agent Hub") ?? "Agent Hub",
+                icon: <BotIcon size={18} />,
+                active: state.pluginsOpen && state.pluginsSurface === "hub",
+                onSelect: () => dispatch({ type: "togglePlugins", open: true, surface: "hub" }),
               },
 
             ]}

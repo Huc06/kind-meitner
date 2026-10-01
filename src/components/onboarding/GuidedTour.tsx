@@ -6,7 +6,7 @@
 // written to the server's hint list first, so a reload lands on the same
 // step.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ANCHOR_EFFECTS, currentStep, stepNumber, TOUR_STEPS, withTourFinished, type TourEffect, type TourStep } from "@/lib/guided-tour";
+import { ANCHOR_EFFECTS, currentStep, isTourEligible, stepNumber, TOUR_STEPS, withTourFinished, type TourEffect, type TourStep } from "@/lib/guided-tour";
 import { t } from "@/lib/i18n";
 import type { MausState } from "@/lib/mascot";
 import { hintSeenPatch } from "@/lib/onboarding";
@@ -83,7 +83,7 @@ export function GuidedTour() {
           return;
         }
         case "openApps":
-          if (!press("nav-apps")) dispatch({ type: "togglePlugins", open: true });
+          if (!press("nav-apps")) dispatch({ type: "togglePlugins", open: true, surface: "hub" });
           return;
         case "closeApps":
           dispatch({ type: "togglePlugins", open: false });
@@ -105,12 +105,17 @@ export function GuidedTour() {
     (finish: boolean, id?: TourStep["id"]) => {
       // A skip must follow an in-flight Next, not disappear behind its guard.
       const operation = pending.current.then(async () => {
-        const patch = finish
+        const rawPatch = finish
           ? { onboarding: { hintsSeen: withTourFinished(latestRecord.current) } }
           : id ? hintSeenPatch(latestRecord.current, id) : null;
-        if (!patch) return;
+        if (!rawPatch) return;
+        const patch = {
+          onboarding: {
+            ...rawPatch.onboarding,
+            hintsSeen: rawPatch.onboarding.hintsSeen?.slice(-100),
+          },
+        };
         const config = await api("/api/config", { method: "PUT", body: JSON.stringify(patch), signal: AbortSignal.timeout(10_000) });
-        latestRecord.current = config.onboarding;
         dispatch({ type: "configStatus", config });
       });
       pending.current = operation.catch(() => {});
@@ -145,7 +150,11 @@ export function GuidedTour() {
     dispatch({ type: "toggleTour", open: false });
   }, [state.computerOpen, state.pluginsOpen, run, save, dispatch]);
 
-  const active = !dismissed && Boolean(record?.completedAt) && !state.welcomeOpen && step !== null;
+  const remoteClient = window.ogb?.remoteClient?.active === true;
+  const active =
+    isTourEligible({ remoteClient, completedAt: record?.completedAt, welcomeOpen: state.welcomeOpen }) &&
+    !dismissed &&
+    step !== null;
 
   // entering a step runs its effect once per step
   useEffect(() => {
@@ -189,7 +198,6 @@ export function GuidedTour() {
   }, [active, step, advance]);
 
   if (!active || !step) return null;
-  if (window.ogb?.remoteClient?.active === true) return null;
 
   const { current, total } = stepNumber(step);
   const closing = step.id === "tour.done";

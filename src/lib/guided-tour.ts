@@ -93,5 +93,20 @@ export function withTourReset(record: OnboardingStatus | undefined): string[] {
 export function withTourFinished(record: OnboardingStatus | undefined): string[] {
   const have = new Set(record?.hintsSeen ?? []);
   for (const step of TOUR_STEPS) have.add(step.id);
-  return [...have];
+  const result = [...have];
+  return result.length > 100 ? result.slice(-100) : result;
+}
+
+/** Whether the guided tour is eligible to run on this client. A paired remote
+ * client never runs the live tour: its controls live on the host computer,
+ * and client-scoped sessions cannot write workspace config. */
+export function isTourEligible(options: {
+  remoteClient: boolean;
+  completedAt?: string;
+  welcomeOpen?: boolean;
+}): boolean {
+  if (options.remoteClient) return false;
+  if (!options.completedAt) return false;
+  if (options.welcomeOpen) return false;
+  return true;
 }
