@@ -9,13 +9,12 @@
 // the primary action sits under your thumb.
 import { memo } from "react";
 import { useStore, type Bot, type Message } from "@/state/store";
-import { cn } from "@/lib/cn";
 import { t, tFromServer } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { SkillRequestPreview } from "@/components/SkillRequestPreview";
 import { toolLabel } from "./ApprovalCard";
 import { reviewedSkillSha256 } from "../../shared/skill-request";
-
+import { Button } from "@/components/ui/button";
 interface ApprovalLabels {
   [tool: string]: LocaleKey;
 }
@@ -154,18 +153,18 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
               ? t("approval.aria.pendingProfile")
               : t("approval.aria.pending")
       }
-      className="rounded-t-2xl border-b border-hairline/50 bg-control/40 px-4 py-3"
+      className="border-b border-hairline bg-control/40 px-4 py-3"
     >
       <div className="flex flex-wrap items-center gap-2" aria-live="polite">
-        <span className="text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
+        <span className="label-mono text-ink-secondary">
           {t("approval.pending")}
         </span>
         {count > 1 && (
-          <span className="rounded-full bg-control px-1.5 py-0.5 text-[11px] tabular-nums text-ink-secondary">
+          <span className="border border-hairline bg-control px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-ink-secondary">
             {t("approval.position", { index: index + 1, count })}
           </span>
         )}
-        <span className="text-[13px] text-ink">{label(pending)}</span>
+        <span className="text-[13px] font-medium text-ink">{label(pending)}</span>
         {!pending.message.card?.teamSetupRequest && <span className="font-mono text-[11px] text-ink-secondary">
           {isSkillApproval(pending)
             ? pending.message.card?.skillRequest?.action === "update" ? "update_skill" : "stage_skill"
@@ -237,46 +236,46 @@ export function PendingApprovalActions({
       always: always && !pending.allowKey && pending.allowSession ? true : undefined,
     });
 
-  const base = "rounded-full px-3.5 py-1.5 text-[13.5px] transition-colors";
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2 px-2 py-2">
+    <div className="flex flex-wrap items-center justify-end gap-1.5 px-3 py-2">
       {!durableRequest && (
-        <button onClick={onCancelTurn} className={cn(base, "text-ink-secondary hover:bg-control hover:text-ink")}>
+        <Button variant="ghost" size="sm" onClick={onCancelTurn}>
           {t("approval.action.cancelTurn")}
-        </button>
+        </Button>
       )}
-      <button
+      <Button
+        variant="danger"
+        size="sm"
         onClick={() => decide("deny")}
         autoFocus={isTeamSetup}
-        className={cn(base, "border border-danger/40 text-danger hover:bg-danger/10")}
       >
         {isRoutineRequest || isProfileRequest || isTeamSetup ? t("approval.action.cancel") : t("approval.action.deny")}
-      </button>
+      </Button>
       {!durableRequest && bot && pending.allowKey && (
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => decide("allow", true)}
           title={t("approval.action.stopAsking", { name: bot.name, key: pending.allowKey })}
-          className={cn(base, "border border-hairline/50 text-ink hover:bg-control")}
         >
           {t("approval.action.alwaysAllow")}
-        </button>
+        </Button>
       )}
       {!durableRequest && !pending.allowKey && pending.allowSession && (
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => decide("allow", true)}
           title={t("approval.action.alwaysAllowSessionHint")}
-          className={cn(base, "border border-hairline/50 text-ink hover:bg-control")}
         >
           {t("approval.action.alwaysAllowSession")}
-        </button>
+        </Button>
       )}
-      <button
+      <Button
+        variant="primary"
+        size="sm"
         onClick={() => decide("allow")}
         disabled={isSkillRequest && !reviewedSha256}
-        className={cn(
-          base,
-          "bg-accent font-medium text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40",
-        )}
       >
         {isTeamSetup ? pending.message.card?.options[0] : isSkillRequest
           ? pending.message.card?.skillRequest?.action === "update"
@@ -285,7 +284,7 @@ export function PendingApprovalActions({
           : isRoutineRequest || isProfileRequest
             ? t("approval.action.confirm")
             : t("approval.action.allowOnce")}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -151,11 +151,11 @@ export function SidebarPopoverMenu({
           id={menuId}
           role="menu"
           aria-label={ariaLabel}
-          className="animate-pop-in absolute bottom-full left-0 right-0 z-40 mb-1 overflow-hidden rounded-xl border border-hairline/50 bg-menu py-1.5 shadow-2xl shadow-black/50"
+          className="animate-pop-in absolute bottom-full left-0 right-0 z-40 mb-1 overflow-hidden border border-hairline bg-menu py-1 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
         >
           {items.map((item) => (
             <div key={item.key}>
-              {item.separatorBefore && <div className="my-1.5 h-px bg-hairline/50" />}
+              {item.separatorBefore && <div className="my-1 h-px bg-hairline" />}
               <button
                 type="button"
                 role="menuitem"
@@ -166,15 +166,17 @@ export function SidebarPopoverMenu({
                   if (!item.keepOpen) close();
                 }}
                 className={cn(
-                  "flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] disabled:opacity-60",
-                  item.active ? "bg-raised text-ink" : "text-ink hover:bg-raised/70",
+                  "flex h-8 w-full items-center gap-2.5 px-2.5 text-left text-[13px] transition-colors disabled:opacity-50",
+                  item.active
+                    ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+                    : "text-ink hover:bg-raised-hover",
                 )}
               >
                 {item.icon && (
                   <span
                     className={cn(
-                      "flex size-5 shrink-0 items-center justify-center",
-                      item.active ? "text-accent" : "text-ink-secondary",
+                      "flex size-4 shrink-0 items-center justify-center",
+                      item.active ? "text-ink" : "text-ink-secondary",
                     )}
                   >
                     {item.icon}
@@ -185,7 +187,7 @@ export function SidebarPopoverMenu({
                 {item.attention && (
                   <span
                     className={cn(
-                      "size-2 shrink-0 rounded-full",
+                      "size-1.5 shrink-0 rounded-full",
                       item.attentionTone === "accent" ? "bg-accent" : "bg-danger",
                     )}
                   />

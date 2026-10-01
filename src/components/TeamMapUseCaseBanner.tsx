@@ -182,22 +182,22 @@ export function TeamMapUseCaseBanner({
   };
 
   return (
-    <div className={cn("border-b border-white/[0.08] bg-[#0E1013]/90 backdrop-blur-md px-6 py-3", className)}>
+    <div className={cn("frame-rule-below bg-app px-6 py-3", className)}>
       {/* Top row: Use case title, category, selector dropdown */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="flex size-7 items-center justify-center border border-hairline bg-inset text-ink">
             <Sparkles size={14} aria-hidden="true" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
+              <span className="label-mono text-[10.5px] text-ink">
                 {scenario.category} Pipeline
               </span>
-              <span className="text-white/30">·</span>
-              <span className="text-[11px] text-white/50">{scenario.summary}</span>
+              <span className="text-ink-secondary/40">·</span>
+              <span className="text-[11px] text-ink-secondary">{scenario.summary}</span>
             </div>
-            <h4 className="text-[13.5px] font-bold text-white tracking-tight">
+            <h4 className="text-[13.5px] font-semibold text-ink tracking-tight">
               {scenario.title}
             </h4>
           </div>
@@ -208,15 +208,15 @@ export function TeamMapUseCaseBanner({
           <button
             type="button"
             onClick={() => setDropdownOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#16191E] px-3 py-1.5 text-[12px] font-medium text-white/80 transition hover:border-white/[0.18] hover:bg-[#1E222A]"
+            className="flex items-center gap-2 border border-hairline bg-inset px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-ink hover:border-ink cursor-pointer"
           >
             <span>Switch Use Case</span>
-            <ChevronDown size={13} className={cn("text-white/40 transition-transform", dropdownOpen && "rotate-180")} />
+            <ChevronDown size={13} className={cn("text-ink-secondary transition-transform", dropdownOpen && "rotate-180")} />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-2xl border border-white/[0.1] bg-[#15181E] p-1.5 shadow-2xl backdrop-blur-xl">
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+            <div className="absolute right-0 top-full z-50 mt-1 w-72 border border-hairline bg-menu p-1 shadow-2xl">
+              <div className="label-mono px-3 py-1.5 text-[10.5px] text-ink-secondary">
                 Select Active Use Case
               </div>
               {DEMO_USE_CASES.map((item) => (
@@ -225,14 +225,14 @@ export function TeamMapUseCaseBanner({
                   type="button"
                   onClick={() => handleSelect(item.id)}
                   className={cn(
-                    "flex w-full flex-col rounded-xl px-3 py-2 text-left text-[12px] transition",
+                    "flex w-full flex-col px-3 py-2 text-left text-[12px] transition cursor-pointer",
                     item.id === selectedId
-                      ? "bg-white/[0.08] text-white font-medium"
-                      : "text-white/70 hover:bg-white/[0.04] hover:text-white"
+                      ? "bg-raised text-ink font-medium"
+                      : "text-ink-secondary hover:bg-raised-hover hover:text-ink"
                   )}
                 >
-                  <span className="font-semibold">{item.title}</span>
-                  <span className="text-[11px] text-white/40 line-clamp-1">{item.summary}</span>
+                  <span className="font-semibold text-ink">{item.title}</span>
+                  <span className="text-[11px] text-ink-secondary line-clamp-1">{item.summary}</span>
                 </button>
               ))}
             </div>
@@ -254,39 +254,39 @@ export function TeamMapUseCaseBanner({
               type="button"
               onClick={() => onSelectStepAgent?.(step.agentId)}
               className={cn(
-                "group relative flex flex-col rounded-xl border p-2.5 text-left transition backdrop-blur-sm cursor-pointer",
+                "group relative flex flex-col border p-2.5 text-left transition-colors cursor-pointer",
                 isBlocked
-                  ? "border-danger/60 bg-danger/10 hover:border-danger hover:bg-danger/15"
+                  ? "border-danger bg-danger/10 hover:border-danger hover:bg-danger/15"
                   : isCompleted
-                    ? "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50 hover:bg-emerald-500/10"
+                    ? "border-success/40 bg-success/5 hover:border-success"
                     : isInProgress
-                      ? "border-accent/60 bg-accent/10 hover:border-accent hover:bg-accent/15"
-                      : "border-white/[0.06] bg-[#16191E]/60 hover:border-white/[0.14] hover:bg-[#1A1E24]"
+                      ? "border-accent bg-raised hover:border-ink"
+                      : "border-hairline bg-card hover:border-ink-secondary hover:bg-raised-hover"
               )}
             >
               {/* Step number badge & status */}
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-mono font-bold text-white/40">
+                <span className="font-mono text-[11px] font-semibold text-ink-secondary">
                   0{step.stepNumber}
                 </span>
                 <span className="flex items-center gap-1 font-medium">
                   {isCompleted && (
-                    <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="flex items-center gap-1 font-mono text-[10.5px] text-success">
                       <CheckCircle2 size={12} /> Completed
                     </span>
                   )}
                   {isBlocked && (
-                    <span className="flex items-center gap-1 text-danger font-bold animate-pulse">
+                    <span className="flex items-center gap-1 font-mono text-[10.5px] text-danger font-semibold animate-pulse">
                       <AlertTriangle size={12} /> Blocked
                     </span>
                   )}
                   {isInProgress && (
-                    <span className="flex items-center gap-1 text-accent font-semibold">
+                    <span className="flex items-center gap-1 font-mono text-[10.5px] text-ink font-semibold">
                       <Clock size={12} /> In Progress
                     </span>
                   )}
                   {isWaiting && (
-                    <span className="flex items-center gap-1 text-white/40">
+                    <span className="flex items-center gap-1 font-mono text-[10.5px] text-ink-secondary">
                       <Clock size={12} /> Queued
                     </span>
                   )}
@@ -295,23 +295,23 @@ export function TeamMapUseCaseBanner({
 
               {/* Title & Agent Owner */}
               <div className="mt-1">
-                <h5 className="text-[12.5px] font-bold text-white/95 group-hover:text-accent transition-colors">
+                <h5 className="text-[12.5px] font-semibold text-ink">
                   {step.title}
                 </h5>
-                <p className="text-[11px] font-medium text-white/60">
-                  Assigned to <span className="text-white font-semibold">{step.agentName}</span> ({step.role})
+                <p className="text-[11px] text-ink-secondary">
+                  Assigned to <span className="text-ink font-medium">{step.agentName}</span> ({step.role})
                 </p>
               </div>
 
               {/* Short explanation */}
-              <p className="mt-1 text-[11px] leading-snug text-white/45 line-clamp-2">
+              <p className="mt-1 text-[11px] leading-snug text-ink-secondary line-clamp-2">
                 {step.description}
               </p>
 
               {/* Output indicator */}
-              <div className="mt-2 flex items-center justify-between border-t border-white/[0.04] pt-1.5 text-[10px] text-white/40">
-                <span className="truncate font-mono">📦 {step.output}</span>
-                <span className="shrink-0 text-accent group-hover:translate-x-0.5 transition-transform">Inspect &rarr;</span>
+              <div className="mt-2 flex items-center justify-between frame-rule-above pt-1.5 font-mono text-[10.5px] text-ink-secondary">
+                <span className="truncate">📦 {step.output}</span>
+                <span className="shrink-0 text-ink group-hover:underline">Inspect &rarr;</span>
               </div>
             </button>
           );

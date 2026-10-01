@@ -7,6 +7,10 @@ import {
   Coins,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Frame } from "@/components/ui/frame";
+import { Button } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 export interface DisputeCardData {
   disputeId: string;
@@ -109,6 +113,12 @@ const DEFAULT_DISPUTES: DisputeCardData[] = [
   },
 ];
 
+const VERDICT_TONE: Record<DisputeCardData["verdict"], "success" | "warning" | "danger"> = {
+  PASS: "success",
+  PARTIAL_REFUND: "warning",
+  FULL_REFUND: "danger",
+};
+
 export function EvaluatorView({
   okbStaked = 100,
   totalFeesEarned = 42.5,
@@ -139,243 +149,259 @@ export function EvaluatorView({
     }
   };
 
-  const verdictBadge = (verdict: DisputeCardData["verdict"]) => {
-    switch (verdict) {
-      case "PASS":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-      case "PARTIAL_REFUND":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
-      case "FULL_REFUND":
-        return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
-    }
-  };
-
   return (
-    <div className={cn("flex flex-col h-full overflow-y-auto p-4 space-y-4 bg-panel text-ink", className)}>
-      {/* Error Alert Banner */}
-      {claimError && (
-        <div
-          role="alert"
-          className="flex items-center justify-between rounded-lg border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-500"
-        >
-          <span className="flex items-center gap-2">
-            <AlertOctagon size={14} className="shrink-0" />
-            <span>{claimError}</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setClaimError(null)}
-            className="text-rose-400 hover:text-rose-300 font-bold ml-2 text-xs"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      {/* Top Header & Staking Safeguard Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline/40 pb-3">
-        <div>
-          <h2 className="text-base font-bold flex items-center gap-2">
-            <Scale className="text-accent" size={18} />
-            OKX Dispute Resolution Evaluator ASP
-          </h2>
-          <p className="text-xs text-ink-secondary">
+    <div className={cn("flex flex-col h-full overflow-y-auto bg-app text-ink", className)}>
+      {/* View Header */}
+      <header className="h-11 shrink-0 frame-rule-below bg-app px-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Scale className="size-4 text-ink-secondary shrink-0" />
+          <h1 className="text-sm font-medium text-ink truncate">OKX Dispute Resolution Evaluator ASP</h1>
+          <span aria-hidden className="h-3 w-px bg-hairline" />
+          <span className="label-mono text-ink-secondary truncate hidden md:inline">
             Autonomous 3-agent jury consensus (Buyer Advocate, Seller Advocate, Chief Arbiter)
-          </p>
+          </span>
         </div>
+      </header>
 
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg border border-hairline/40 bg-card px-3 py-1.5 text-center">
-            <div className="text-[10px] uppercase font-semibold text-ink-secondary">OKB Stake Protection</div>
-            <div className="text-sm font-bold text-emerald-500 flex items-center justify-center gap-1">
-              <ShieldCheck size={14} />
-              {okbStaked} OKB Staked
-            </div>
+      <div className="p-4 space-y-4 flex-1 flex flex-col">
+        {/* Error Alert Banner */}
+        {claimError && (
+          <div
+            role="alert"
+            className="flex items-center justify-between border border-danger/40 bg-danger/10 p-3 text-xs text-danger"
+          >
+            <span className="flex items-center gap-2">
+              <AlertOctagon size={14} className="shrink-0" />
+              <span>{claimError}</span>
+            </span>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => setClaimError(null)}
+              className="text-danger hover:text-danger"
+            >
+              ✕
+            </Button>
           </div>
+        )}
 
-          <div className="rounded-lg border border-hairline/40 bg-card px-3 py-1.5 text-center">
-            <div className="text-[10px] uppercase font-semibold text-ink-secondary">Dispute Fees Earned</div>
-            <div className="text-sm font-bold text-accent flex items-center justify-center gap-1">
-              <Coins size={14} />
-              ${totalFeesEarned.toFixed(2)} USDT
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid: Left feed, Right inspection transcript */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
-        {/* Left: Disputes Feed */}
-        <div className="space-y-2 lg:col-span-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            Disputes Deliberated ({disputes.length})
-          </h3>
-          <div className="space-y-2">
-            {disputes.length === 0 && (
-              <div className="rounded-xl border border-hairline/40 bg-card p-6 text-center text-xs text-ink-secondary">
-                No disputes on record.
+        {/* Staking & Safeguard Notice Banner */}
+        <Frame title="STAKING & SAFEGUARDS" index="01" surface="app" className="bg-card p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div className="label-mono text-ink-secondary">OKB Stake Protection</div>
+              <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-success flex items-center gap-1.5">
+                <ShieldCheck size={16} />
+                {okbStaked} OKB Staked
               </div>
-            )}
-            {disputes.map((d) => (
-              <div
-                key={d.disputeId}
-                onClick={() => setSelectedDisputeId(d.disputeId)}
-                className={cn(
-                  "rounded-xl border p-3 cursor-pointer transition-all space-y-2",
-                  selectedDisputeId === d.disputeId
-                    ? "border-accent bg-accent/5 shadow-sm"
-                    : "border-hairline/40 bg-card hover:bg-raised/40",
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-semibold text-ink">{d.disputeId}</span>
-                  <span
+            </div>
+
+            <div>
+              <div className="label-mono text-ink-secondary">Dispute Fees Earned</div>
+              <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-accent flex items-center gap-1.5">
+                <Coins size={16} />
+                ${totalFeesEarned.toFixed(2)} USDT
+              </div>
+            </div>
+          </div>
+        </Frame>
+
+        {/* Two-Column Layout: Disputes Feed & Deliberation Panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
+          {/* Left: Disputes Feed */}
+          <div className="space-y-2 lg:col-span-1">
+            <Eyebrow index="02">Disputes Deliberated ({disputes.length})</Eyebrow>
+            <div className="space-y-2">
+              {disputes.length === 0 && (
+                <Frame title="DISPUTES" index="01" surface="app" className="bg-card p-6 text-center text-xs text-ink-secondary">
+                  No disputes on record.
+                </Frame>
+              )}
+              {disputes.map((d) => {
+                const isSelected = selectedDisputeId === d.disputeId;
+                return (
+                  <div
+                    key={d.disputeId}
+                    onClick={() => setSelectedDisputeId(d.disputeId)}
                     className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                      verdictBadge(d.verdict),
+                      "border p-3 cursor-pointer transition-colors duration-150 space-y-2 text-xs",
+                      isSelected
+                        ? "border-ink bg-raised shadow-[inset_2px_0_0_var(--color-ink)]"
+                        : "border-hairline bg-card hover:bg-raised-hover",
                     )}
                   >
-                    {d.verdict}
-                  </span>
-                </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-semibold text-ink">{d.disputeId}</span>
+                      <Tag tone={VERDICT_TONE[d.verdict] ?? "neutral"} variant="solid" size="sm">
+                        {d.verdict}
+                      </Tag>
+                    </div>
 
-                <div className="text-xs text-ink-secondary truncate">
-                  Task: <span className="font-mono text-ink">{d.taskId}</span>
-                </div>
+                    <div className="text-xs text-ink-secondary truncate">
+                      Task: <span className="font-mono text-ink">{d.taskId}</span>
+                    </div>
 
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-ink-secondary">
-                    Score: <strong className="text-ink">{d.rubric.totalScore}/100</strong>
-                  </span>
-                  <span className="font-mono text-accent font-medium">
-                    +{d.feeEarned} {d.token} Fee
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between pt-1 border-t border-hairline/30 text-[10px] text-ink-secondary">
-                  <span className="flex items-center gap-1">
-                    {d.safeToVote ? (
-                      <span className="text-emerald-500 flex items-center gap-0.5">
-                        <CheckCircle2 size={11} /> Safe
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-ink-secondary">
+                        Score: <strong className="font-mono tabular-nums text-ink">{d.rubric.totalScore}/100</strong>
                       </span>
-                    ) : (
-                      <span className="text-rose-500 flex items-center gap-0.5">
-                        <AlertOctagon size={11} /> Withheld
+                      <span className="font-mono tabular-nums text-accent font-medium">
+                        +{d.feeEarned} {d.token} Fee
                       </span>
-                    )}
-                    · {(d.confidence * 100).toFixed(0)}% Conf
-                  </span>
-                  <span>{new Date(d.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                    </div>
 
-        {/* Right: Deliberation Transcript & Rubric Detail */}
-        {activeDispute ? (
-          <div className="lg:col-span-2 rounded-xl border border-hairline/40 bg-card p-4 space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
-              {/* Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline/30 pb-3">
-                <div>
-                  <h3 className="text-sm font-bold flex items-center gap-2">
-                    Dispute Details: <span className="font-mono text-accent">{activeDispute.disputeId}</span>
-                  </h3>
-                  <div className="text-xs text-ink-secondary">
-                    Associated Task: <span className="font-mono">{activeDispute.taskId}</span> · Escrow:{" "}
-                    <strong>
-                      {activeDispute.escrowAmount} {activeDispute.token}
-                    </strong>
+                    <div className="flex items-center justify-between pt-1 frame-rule-above text-[10px] text-ink-secondary font-mono">
+                      <span className="flex items-center gap-1">
+                        {d.safeToVote ? (
+                          <span className="text-success flex items-center gap-0.5">
+                            <CheckCircle2 size={11} /> Safe
+                          </span>
+                        ) : (
+                          <span className="text-danger flex items-center gap-0.5">
+                            <AlertOctagon size={11} /> Withheld
+                          </span>
+                        )}
+                        · {(d.confidence * 100).toFixed(0)}% Conf
+                      </span>
+                      <span>{new Date(d.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+          {/* Right: Deliberation Panel with 3 Jurors & 4-Dimension Rubric */}
+          {activeDispute ? (
+            <div className="lg:col-span-2 border border-hairline bg-card p-4 space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex flex-wrap items-center justify-between gap-3 frame-rule-below pb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      Dispute Details: <span className="font-mono text-accent">{activeDispute.disputeId}</span>
+                    </h3>
+                    <div className="text-xs text-ink-secondary mt-0.5">
+                      Associated Task: <span className="font-mono text-ink">{activeDispute.taskId}</span> · Escrow:{" "}
+                      <strong className="font-mono tabular-nums text-ink">
+                        {activeDispute.escrowAmount} {activeDispute.token}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant={activeDispute.feeClaimed ? "secondary" : "primary"}
+                    size="sm"
                     disabled={activeDispute.feeClaimed || claiming[activeDispute.disputeId]}
                     onClick={() => handleClaim(activeDispute.disputeId)}
-                    className={cn(
-                      "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5",
-                      activeDispute.feeClaimed
-                        ? "bg-raised text-ink-secondary cursor-not-allowed"
-                        : "bg-accent text-ink hover:opacity-90",
-                    )}
+                    className="gap-1.5"
                   >
                     <Coins size={13} />
                     {activeDispute.feeClaimed ? "Fee Claimed" : `Claim Fee (${activeDispute.feeEarned} ${activeDispute.token})`}
-                  </button>
+                  </Button>
+                </div>
+
+                {/* 4-Dimension Rubric Breakdown with square score bars */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {[
+                    { label: "Completeness", score: activeDispute.rubric.completeness, max: 30 },
+                    { label: "Quality & Tests", score: activeDispute.rubric.correctnessQuality, max: 30 },
+                    { label: "Spec Alignment", score: activeDispute.rubric.specAlignment, max: 20 },
+                    { label: "Good Faith", score: activeDispute.rubric.goodFaithEffort, max: 20 },
+                  ].map((r) => (
+                    <div key={r.label} className="border border-hairline bg-inset/40 p-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-1 text-[11px]">
+                        <span className="label-mono text-ink-secondary truncate">{r.label}</span>
+                        <span className="font-mono tabular-nums font-semibold text-ink shrink-0">
+                          {r.score}/{r.max}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-inset border border-hairline overflow-hidden">
+                        <div
+                          className="h-full bg-accent transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.max(0, (r.score / r.max) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 3 Jurors as Indexed Frames */}
+                <div className="space-y-3">
+                  <Frame title="BUYER ADVOCATE" index="01" surface="card" className="bg-raised/20 p-3 space-y-1 text-xs">
+                    <div className="label-mono text-ink-secondary">Buyer Rejection Grievance:</div>
+                    <div className="text-ink italic leading-relaxed">"{activeDispute.buyerGrievance}"</div>
+                  </Frame>
+
+                  <Frame title="SELLER ADVOCATE" index="02" surface="card" className="bg-raised/20 p-3 space-y-1 text-xs">
+                    <div className="label-mono text-ink-secondary">Seller Defense & Submission:</div>
+                    <div className="text-ink leading-relaxed">
+                      Deliverable provided under task <span className="font-mono text-ink">{activeDispute.taskId}</span> with verified escrow of{" "}
+                      <span className="font-mono text-ink">{activeDispute.escrowAmount} {activeDispute.token}</span>.
+                    </div>
+                  </Frame>
+
+                  <Frame title="CHIEF ARBITER" index="03" surface="card" className="bg-raised/20 p-3 space-y-1 text-xs">
+                    <div className="label-mono text-ink-secondary">Chief Arbiter Assessment & Rationale:</div>
+                    <div className="text-ink leading-relaxed">{activeDispute.rationale}</div>
+                  </Frame>
+                </div>
+
+                {/* Full Deliberation Audit Log */}
+                <div className="space-y-1.5">
+                  <div className="label-mono text-ink-secondary">
+                    Auditable Deliberation Transcript
+                  </div>
+                  <pre className="border border-hairline bg-inset p-3 text-[11px] font-mono whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto text-ink">
+                    {activeDispute.transcript}
+                  </pre>
                 </div>
               </div>
 
-              {/* Rubric Breakdown Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="rounded-lg bg-raised/50 p-2.5 text-center">
-                  <div className="text-[10px] text-ink-secondary uppercase">Completeness</div>
-                  <div className="text-sm font-bold text-ink">{activeDispute.rubric.completeness}/30</div>
+              {/* Slashing Protection Status Footer & Consensus Meter */}
+              <div className="pt-3 frame-rule-above flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="flex items-center gap-1.5 text-ink-secondary">
+                  <ShieldCheck size={14} className={activeDispute.safeToVote ? "text-success" : "text-danger"} />
+                  Slashing Protection:{" "}
+                  <strong className={activeDispute.safeToVote ? "text-success font-medium" : "text-danger font-medium"}>
+                    {activeDispute.safeToVote ? "Safe to Broadcast (Consensus Reached)" : "Vote Withheld"}
+                  </strong>
+                </span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="label-mono text-ink-secondary">Consensus:</span>
+                    <div className="h-2 w-20 bg-inset border border-hairline overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full transition-all duration-300",
+                          activeDispute.confidence >= 0.65 ? "bg-accent" : "bg-danger",
+                        )}
+                        style={{ width: `${Math.min(100, Math.max(0, activeDispute.confidence * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="font-mono tabular-nums text-[11px] text-ink-secondary">
+                    {(activeDispute.confidence * 100).toFixed(1)}% (Threshold: 65%)
+                  </span>
                 </div>
-                <div className="rounded-lg bg-raised/50 p-2.5 text-center">
-                  <div className="text-[10px] text-ink-secondary uppercase">Quality & Tests</div>
-                  <div className="text-sm font-bold text-ink">{activeDispute.rubric.correctnessQuality}/30</div>
-                </div>
-                <div className="rounded-lg bg-raised/50 p-2.5 text-center">
-                  <div className="text-[10px] text-ink-secondary uppercase">Spec Alignment</div>
-                  <div className="text-sm font-bold text-ink">{activeDispute.rubric.specAlignment}/20</div>
-                </div>
-                <div className="rounded-lg bg-raised/50 p-2.5 text-center">
-                  <div className="text-[10px] text-ink-secondary uppercase">Good Faith</div>
-                  <div className="text-sm font-bold text-ink">{activeDispute.rubric.goodFaithEffort}/20</div>
-                </div>
-              </div>
-
-              {/* Grievance & Ruling */}
-              <div className="space-y-2">
-                <div className="rounded-lg bg-raised/30 p-3 text-xs space-y-1">
-                  <div className="font-semibold text-ink-secondary uppercase text-[10px]">Buyer Rejection Grievance:</div>
-                  <div className="text-ink italic">"{activeDispute.buyerGrievance}"</div>
-                </div>
-
-                <div className="rounded-lg bg-accent/5 border border-accent/20 p-3 text-xs space-y-1">
-                  <div className="font-semibold text-accent uppercase text-[10px]">Chief Arbiter Assessment & Rationale:</div>
-                  <div className="text-ink leading-relaxed">{activeDispute.rationale}</div>
-                </div>
-              </div>
-
-              {/* Full Deliberation Audit Log */}
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-                  Auditable Deliberation Transcript
-                </div>
-                <pre className="rounded-lg bg-raised/50 p-3 text-[11px] font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto text-ink">
-                  {activeDispute.transcript}
-                </pre>
               </div>
             </div>
-
-            {/* Slashing Protection Status Footer */}
-            <div className="pt-3 border-t border-hairline/30 flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 text-ink-secondary">
-                <ShieldCheck size={14} className="text-emerald-500" />
-                Slashing Protection:{" "}
-                <strong className={activeDispute.safeToVote ? "text-emerald-500" : "text-rose-500"}>
-                  {activeDispute.safeToVote ? "Safe to Broadcast (Consensus Reached)" : "Vote Withheld"}
-                </strong>
-              </span>
-              <span className="text-ink-secondary text-[11px]">
-                Confidence: {(activeDispute.confidence * 100).toFixed(1)}% (Threshold: 65%)
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="lg:col-span-2 rounded-xl border border-hairline/40 bg-card p-8 flex flex-col items-center justify-center text-center space-y-3 min-h-[350px]">
-            <div className="h-12 w-12 rounded-full bg-raised/50 flex items-center justify-center text-ink-secondary">
-              <Scale size={24} />
-            </div>
-            <h3 className="text-sm font-bold text-ink">No Disputes on Record</h3>
-            <p className="text-xs text-ink-secondary max-w-sm">
-              There are currently no dispute deliberations to evaluate. New dispute claims from the OKX marketplace will appear here automatically.
-            </p>
-          </div>
-        )}
+          ) : (
+            <Frame
+              title="EMPTY"
+              surface="app"
+              className="lg:col-span-2 bg-card p-8 flex flex-col items-center justify-center text-center space-y-3 min-h-[350px]"
+            >
+              <div className="size-10 border border-hairline bg-raised flex items-center justify-center text-ink-secondary">
+                <Scale size={20} />
+              </div>
+              <h3 className="text-sm font-semibold text-ink">No Disputes on Record</h3>
+              <p className="text-xs text-ink-secondary max-w-sm leading-relaxed">
+                There are currently no dispute deliberations to evaluate. New dispute claims from the OKX marketplace will appear here automatically.
+              </p>
+            </Frame>
+          )}
+        </div>
       </div>
     </div>
   );

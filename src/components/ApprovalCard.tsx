@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { t, tFromServer } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { SkillRequestPreview } from "@/components/SkillRequestPreview";
+import { Frame } from "@/components/ui/frame";
 
 interface ToolLabels {
   [tool: string]: LocaleKey;
@@ -107,15 +108,18 @@ export function ApprovalCard({
     : undefined;
 
   return (
-    <div
+    <Frame
+      as="section"
       data-tour={settled ? undefined : "approval"}
+      title="Approval"
+      surface="app"
       className={cn(
-        "w-full max-w-[840px] rounded-2xl border bg-card p-4",
-        settled ? "border-hairline/30 opacity-70" : "border-accent/40",
+        "w-full max-w-[840px] bg-card p-4",
+        settled && "opacity-75",
       )}
     >
       <div className="flex items-baseline justify-between gap-3">
-        <div className="text-[15px] font-semibold text-ink">
+        <div className="text-[14px] font-medium text-ink">
           {isTeamSetup ? card.title : profileHeader ?? (
             <>
               {bot
@@ -139,7 +143,7 @@ export function ApprovalCard({
                 ? t("approval.aria.profileChange")
                 : t("approval.aria.details")
         }
-        className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-inset px-3 py-2 font-mono text-[12.5px] leading-relaxed text-ink"
+        className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words border border-hairline bg-inset px-3 py-2 font-mono text-[12px] leading-relaxed text-ink"
       >
         {card.subtitle}
       </pre>
@@ -147,17 +151,19 @@ export function ApprovalCard({
       {card.skillRequest && <SkillRequestPreview request={card.skillRequest} />}
 
       {heldNote && (
-        <div className="mt-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12.5px] text-warning">
+        <div className="mt-2 border border-warning/40 bg-warning/10 px-3 py-2 font-mono text-[11.5px] text-warning">
           {heldNote}
         </div>
       )}
 
+      <div className="frame-rule my-3" />
+
       {/* The decision lives in the composer (one place to answer, and it
           can't be scrolled past); here we only record what happened. */}
-      <div className="mt-3 flex items-center gap-1.5 text-[13px] text-ink-secondary">
+      <div className="flex items-center gap-1.5 font-mono text-[11.5px] text-ink-secondary">
         {settled === "allow" ? (
           <>
-            <Check size={14} className="text-success" />
+            <Check size={13} className="text-success" />
             {isTeamSetup ? (card.teamSetupRequest?.deletion ? "Bot deleted" : "Team setup applied") : skillSettledLabel ??
               routineSettledLabel ??
               (isProfileRequest
@@ -170,19 +176,19 @@ export function ApprovalCard({
           </>
         ) : settled ? (
           <>
-            <X size={14} /> {isRoutineRequest || isSkillRequest || isProfileRequest || isTeamSetup
+            <X size={13} className="text-danger" /> {isRoutineRequest || isSkillRequest || isProfileRequest || isTeamSetup
               ? t("approval.status.cancelled")
               : t("approval.status.denied")}
           </>
         ) : (
           <>
-            <ShieldCheck size={14} className="text-accent" />
+            <ShieldCheck size={13} className="text-accent" />
             {isRoutineRequest || isSkillRequest || isProfileRequest || isTeamSetup
               ? t("approval.status.waitingConfirmation")
               : t("approval.status.waitingAnswer")}
           </>
         )}
       </div>
-    </div>
+    </Frame>
   );
 }

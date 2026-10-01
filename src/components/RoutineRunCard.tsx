@@ -5,7 +5,8 @@ import { routineDateTime } from "@/lib/routine-display";
 import { t } from "@/lib/i18n";
 import type { RoutineRunCardData } from "../../shared/routine-run";
 import type { Message } from "@/state/store";
-
+import { Frame } from "@/components/ui/frame";
+import { Button } from "@/components/ui/button";
 const DETAIL_LIMIT = 280;
 
 const COPY = {
@@ -65,7 +66,7 @@ export function RoutineRunCard({
   if (!run) {
     const fallback = compactDetail(message.text);
     return fallback ? (
-      <div className="w-fit max-w-[min(42rem,88%)] rounded-2xl bg-card px-4 py-2.5 text-[14px] leading-relaxed text-ink">
+      <div className="w-fit max-w-[min(42rem,88%)] border border-hairline bg-card px-4 py-2.5 text-[14px] leading-relaxed text-ink">
         {fallback}
       </div>
     ) : null;
@@ -80,45 +81,45 @@ export function RoutineRunCard({
   const actionLabel = run.goalStatus === "needs-input" ? "Review" : "Open run";
 
   return (
-    <section
+    <Frame
+      as="section"
       aria-label={`${run.routineName} routine run: ${copy.label}`}
-      className="w-full max-w-[680px] rounded-xl border border-hairline/45 bg-card px-4 py-3"
+      title="Routine Run"
+      surface="app"
+      className="w-full max-w-[680px] bg-card p-4"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h3 className="truncate text-[14px] font-semibold text-ink">{run.routineName}</h3>
-            <span aria-live="polite" className={cn("inline-flex items-center gap-1 text-[11.5px] font-semibold", copy.tone)}>
+            <h3 className="truncate text-[13.5px] font-medium text-ink">{run.routineName}</h3>
+            <span aria-live="polite" className={cn("inline-flex items-center gap-1 font-mono text-[11px] font-medium uppercase", copy.tone)}>
               {run.status === "running" && !run.goalStatus && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
               {copy.label}
             </span>
           </div>
-          <time dateTime={new Date(run.scheduledFor ?? message.at).toISOString()} className="mt-0.5 block text-[11.5px] text-ink-secondary">
+          <time dateTime={new Date(run.scheduledFor ?? message.at).toISOString()} className="mt-0.5 block font-mono text-[11px] text-ink-secondary">
             {routineDateTime(run.scheduledFor ?? message.at)}
           </time>
-          {detail && <p className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">{detail}</p>}
-          {run.status === "completed" && run.summary && run.summary.length > DETAIL_LIMIT && <details className="mt-2 text-[12px] text-ink-secondary">
-            <summary className="cursor-pointer font-medium text-ink-secondary hover:text-ink">{t("routines.results.showReport")}</summary>
-            <p className="mt-2 whitespace-pre-wrap leading-relaxed">{run.summary}</p>
-          </details>}
+          {detail && <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-secondary">{detail}</p>}
+          {run.status === "completed" && run.summary && run.summary.length > DETAIL_LIMIT && (
+            <details className="mt-2 text-[12px] text-ink-secondary">
+              <summary className="cursor-pointer font-mono text-[11px] text-ink-secondary hover:text-ink">{t("routines.results.showReport")}</summary>
+              <p className="mt-2 whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{run.summary}</p>
+            </details>
+          )}
         </div>
         {onOpen && run.executionThreadId && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onOpen}
             aria-label={`${actionLabel} for ${run.routineName}`}
-            className={cn(
-              "flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent",
-              run.goalStatus === "needs-input"
-                ? "bg-warning/15 text-warning hover:bg-warning/25"
-                : "text-ink-secondary hover:bg-inset hover:text-ink",
-            )}
           >
             {actionLabel}
-            <ArrowRight aria-hidden="true" size={13} />
-          </button>
+            <ArrowRight aria-hidden="true" size={12} />
+          </Button>
         )}
       </div>
-    </section>
+    </Frame>
   );
 }

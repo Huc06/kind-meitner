@@ -10,7 +10,7 @@
 // reload with rows already on screen arrives as refreshError, the same
 // data-wins precedence OverviewSection gets one level up.
 import { whenLabel } from "@/lib/schedule-label";
-
+import { Button } from "@/components/ui/button";
 export interface HistoryRow {
   id: string;
   at: number;
@@ -49,33 +49,33 @@ export function HistorySection({
   return (
     <div className="flex flex-col gap-2">
       {refreshError && (
-        <div className="rounded-lg bg-inset px-3 py-2 text-[12.5px] text-ink-secondary">Couldn’t refresh history.</div>
+        <div className="border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink-secondary">Couldn’t refresh history.</div>
       )}
       {sorted.map((row) => (
-        <div key={`${bot.id}-${row.id}`} className="rounded-xl bg-card p-4">
+        <div key={`${bot.id}-${row.id}`} className="border border-hairline bg-card p-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink">
-              <span className="text-ink-secondary">{whenLabel(row.at)}</span>
+            <div className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-ink">
+              <span className="font-mono text-[11px] text-ink-secondary">{whenLabel(row.at)}</span>
               {" · "}
-              <span>
+              <span className="font-mono text-[11px] text-ink-secondary">
                 {row.actor} via {row.via}
               </span>
               {" · "}
               <span>{row.summary}</span>
             </div>
             {row.field === "soul" && row.canRestore === true && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="xs"
                 disabled={rollingBack}
                 onClick={() => onRollback(row.id)}
-                className="shrink-0 rounded-md px-2 py-1 text-[12px] font-medium text-accent-text hover:bg-accent/10 disabled:opacity-50"
               >
                 Undo this change
-              </button>
+              </Button>
             )}
           </div>
           {row.field === "soul" && row.canRestore !== true && (
-            <p className="mt-2 text-[12px] leading-relaxed text-ink-secondary">
+            <p className="mt-2 text-[11.5px] leading-relaxed text-ink-secondary">
               {row.restoreUnavailableReason ?? "The exact previous instructions are unavailable, so this change cannot be undone."}
             </p>
           )}

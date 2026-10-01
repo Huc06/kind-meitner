@@ -37,7 +37,7 @@ export function WindowCaptionButtons({ visible }: { visible: boolean }) {
   const noDrag = { WebkitAppRegion: "no-drag" } as CSSProperties;
   const captionButton = cn(
     "flex h-[26px] w-11 items-center justify-center text-ink-secondary",
-    "hover:bg-raised hover:text-ink active:bg-raised/60",
+    "hover:bg-raised-hover hover:text-ink active:bg-raised",
   );
 
   return (
@@ -71,7 +71,7 @@ export function WindowCaptionButtons({ visible }: { visible: boolean }) {
         type="button"
         aria-label={t("window.close")}
         title={t("window.close")}
-        className={cn(captionButton, "hover:bg-danger/25 hover:text-danger")}
+        className={cn(captionButton, "hover:bg-danger hover:text-ink")}
         onClick={() => void controls?.close()}
       >
         <X size={15} />

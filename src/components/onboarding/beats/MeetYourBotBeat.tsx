@@ -8,7 +8,8 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { MAUS_COLOR_NAMES, MAUS_COLORS, type MausColor } from "@/lib/mascot";
 import { api, type Bot } from "@/state/store";
-import { inputClass, PrimaryButton, QuietButton, staggerIndex, type BeatProps } from "./shared";
+import { Input, FieldLabel } from "@/components/ui/field";
+import { PrimaryButton, QuietButton, staggerIndex, type BeatProps } from "./shared";
 
 const SOUL_LINE_LIMIT = 200;
 
@@ -81,10 +82,10 @@ export function MeetYourBotBeat({
         {/* the bot itself, in its chosen color, next to the guide */}
         <MausAvatar color={color} state="happy" size={64} label={name || bot?.name} />
         <div className="min-w-0 flex-1">
-          <label className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary" htmlFor="welcome-bot-name">
+          <FieldLabel htmlFor="welcome-bot-name">
             {t("onboarding.bot.name")}
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="welcome-bot-name"
             autoFocus
             type="text"
@@ -93,13 +94,12 @@ export function MeetYourBotBeat({
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void save()}
             placeholder={bot?.name}
-            className={`mt-1 ${inputClass}`}
           />
         </div>
       </div>
 
       <div className="animate-rise mt-4" style={staggerIndex(2)}>
-        <div className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("onboarding.bot.color")}</div>
+        <div className="label-mono text-ink-secondary">{t("onboarding.bot.color")}</div>
         <div role="radiogroup" aria-label={t("onboarding.bot.color")} className="mt-2 flex flex-wrap gap-2">
           {MAUS_COLOR_NAMES.map((c) => (
             <button
@@ -113,7 +113,7 @@ export function MeetYourBotBeat({
                 bump("customize");
               }}
               className={cn(
-                "size-7 rounded-full border-2 transition-transform duration-150 hover:scale-110 active:scale-95",
+                "size-6 border-2 transition-transform duration-150 hover:scale-110 active:scale-95",
                 c === color ? "border-ink" : "border-transparent",
               )}
               style={{ backgroundColor: MAUS_COLORS[c] }}
@@ -123,10 +123,10 @@ export function MeetYourBotBeat({
       </div>
 
       <div className="animate-rise mt-4" style={staggerIndex(3)}>
-        <label className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary" htmlFor="welcome-bot-soul">
+        <FieldLabel htmlFor="welcome-bot-soul">
           {t("onboarding.bot.soul")}
-        </label>
-        <input
+        </FieldLabel>
+        <Input
           id="welcome-bot-soul"
           type="text"
           value={line}
@@ -134,12 +134,11 @@ export function MeetYourBotBeat({
           onChange={(e) => setLine(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void save()}
           placeholder={t("onboarding.bot.soulPlaceholder")}
-          className={`mt-1 ${inputClass}`}
         />
       </div>
 
       {failed && (
-        <div className="animate-rise mt-4 rounded-lg border border-danger/25 bg-danger/10 px-3 py-2 text-[13px] text-danger" role="alert">
+        <div className="animate-rise mt-4 border border-danger/40 bg-danger/10 px-3 py-2 font-mono text-[12px] text-danger" role="alert">
           {t("onboarding.bot.error")}
         </div>
       )}

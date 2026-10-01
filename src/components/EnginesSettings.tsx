@@ -9,10 +9,11 @@ import { Check, ChevronDown, Loader2, RefreshCw, TriangleAlert } from "lucide-re
 
 import { api, useStore, type InstanceInfo } from "@/state/store";
 import { EngineCard, EngineSections, RefreshEngines, engineReady } from "./EngineLibrary";
-import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { EngineSetup, EngineUpdateNotice } from "./EngineSetup";
 import { AddClaudeAccount, ClaudeAccountSettings } from "./ClaudeAccountSettings";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 
 interface ProbeResult {
   ok: boolean;
@@ -117,7 +118,7 @@ function CustomPicker({ instance, cliDefault, onClose, onSaved }: {
             }}
             aria-label={t("engines.detectedAria", { name: instance.displayName })}
             disabled={busy}
-            className="w-full appearance-none rounded-lg border border-hairline/40 bg-inset px-3 py-2 pr-8 font-mono text-[12px] text-ink focus:border-hairline focus:outline-none disabled:opacity-50"
+            className="w-full appearance-none border border-hairline bg-inset px-3 py-2 pr-8 font-mono text-[12px] text-ink focus:border-ink focus:outline-none disabled:opacity-50"
           >
             <option value="">{t("engines.selectBinary")}</option>
             {candidates.map((p) => (
@@ -127,7 +128,7 @@ function CustomPicker({ instance, cliDefault, onClose, onSaved }: {
           <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-secondary" />
         </div>
       )}
-      <input
+      <Input
         type="text"
         value={manual}
         onChange={(e) => setManual(e.target.value)}
@@ -141,55 +142,56 @@ function CustomPicker({ instance, cliDefault, onClose, onSaved }: {
         aria-label={t("engines.customAria", { name: instance.displayName })}
         spellCheck={false}
         disabled={busy}
-        className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12px] text-ink placeholder:font-sans placeholder:text-ink-secondary focus:border-hairline focus:outline-none disabled:opacity-50"
+        className="font-mono text-[12px]"
       />
       {probe && !probe.ok && probe.message && (
-        <div role="alert" className="flex gap-1.5 rounded-lg border border-warning/25 bg-warning/10 px-2.5 py-2 text-[12px] leading-relaxed text-warning">
+        <div role="alert" className="flex gap-1.5 border border-warning/40 bg-warning/10 px-2.5 py-2 text-[12px] leading-relaxed text-warning">
           <TriangleAlert size={13} className="mt-0.5 shrink-0" />
           <span>{t("engines.testFailed", { message: probe.message })}</span>
         </div>
       )}
       {probe?.ok && probe.version && (
-        <div className="text-[12px] text-success">{t("engines.testPassed", { version: probe.version })}</div>
+        <div className="font-mono text-[12px] text-success">{t("engines.testPassed", { version: probe.version })}</div>
       )}
       {error && <div role="alert" className="text-[12px] text-danger">{error}</div>}
       <div className="flex justify-end gap-2">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onClose}
           disabled={busy}
-          className="rounded-lg px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised/50 hover:text-ink disabled:opacity-50"
         >
           {t("common.cancel")}
-        </button>
+        </Button>
         {probe && !probe.ok ? (
           <>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setProbe(null)}
               disabled={busy}
-              className="rounded-lg px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised/50 hover:text-ink disabled:opacity-50"
             >
               {t("engines.editPath")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
               onClick={() => persist()}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg bg-raised px-3 py-1.5 text-[13px] text-danger hover:bg-raised-hover disabled:opacity-50"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : t("engines.saveAnyway")}
-            </button>
+            </Button>
           </>
         ) : (
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={save}
             disabled={busy || !value || !dirty}
-            className={cn(
-              "flex w-[72px] items-center justify-center gap-1.5 rounded-lg py-1.5 text-[13px]",
-              "bg-raised text-ink hover:bg-raised-hover",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-            )}
+            className="w-[80px]"
           >
             {busy ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} />{t("common.save")}</>}
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -256,8 +258,8 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
       {engineReady(instance) && instance.snapshot.authenticated === true && instance.authentication?.method === "paste-code" && !instance.claudeAccount && (
         <p className="flex items-center gap-1.5 text-[12px] text-success"><Check size={13} />{t("engineSetup.claude.connectedAccount")}</p>
       )}
-      <details className="mt-3 rounded-xl border border-hairline/40 px-3 py-2.5">
-        <summary className="cursor-pointer text-[12px] font-medium text-ink-secondary hover:text-ink">{t("engines.library.advanced")}</summary>
+      <details className="mt-3 border border-hairline bg-inset/40 p-3">
+        <summary className="cursor-pointer font-mono text-[11.5px] uppercase tracking-wide text-ink-secondary hover:text-ink">{t("engines.library.advanced")}</summary>
         <p className="mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("engines.footer")}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
           {instance.cli ? (
@@ -270,45 +272,46 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
             )
           )}
           {instance.snapshot.version && (
-            <span className="break-all text-[11px] text-ink-secondary" title={instance.snapshot.version}>
+            <span className="break-all font-mono text-[11px] text-ink-secondary" title={instance.snapshot.version}>
               {instance.snapshot.version}
             </span>
           )}
           <span className="flex-1" />
           {instance.driverKind === "claudeAgent" && (
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={updateClaude}
               disabled={switching || updating}
-              className="flex shrink-0 items-center gap-1 text-[11.5px] text-ink-secondary hover:text-ink disabled:opacity-50"
+              className="h-6 gap-1 px-1.5"
             >
-              {updating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              {updating ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
               {updating ? t("engines.updating") : t("engines.updateClaude")}
-            </button>
+            </Button>
           )}
           {instance.cli && (
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={reset}
               disabled={switching || updating}
-              className="shrink-0 text-[11.5px] text-ink-secondary hover:text-ink disabled:opacity-50"
+              className="h-6 px-1.5"
             >
               {switching ? t("engines.resetting") : t("engines.reset")}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant={open ? "primary" : "secondary"}
+            size="xs"
             onClick={() => setOpen((v) => !v)}
             disabled={updating}
             aria-expanded={open}
-            className={cn(
-              "shrink-0 rounded-lg border border-hairline/40 px-3 py-1 text-[12px]",
-              open ? "bg-accent/15 text-accent" : "text-ink-secondary hover:bg-raised/50 hover:text-ink",
-              "disabled:opacity-50",
-            )}
           >
             {t("engines.setCli")}
-          </button>
+          </Button>
         </div>
         {updatedVersion && (
-          <div role="status" className="mt-1 text-[12px] text-success">{t("engines.claudeUpdated", { version: updatedVersion })}</div>
+          <div role="status" className="mt-1 font-mono text-[12px] text-success">{t("engines.claudeUpdated", { version: updatedVersion })}</div>
         )}
         {error && <div role="alert" className="mt-1 text-[12px] text-danger">{error}</div>}
         {open && (
@@ -335,13 +338,13 @@ export function EnginesSettings() {
     <div className="flex min-w-0 flex-col gap-6 pb-2">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 basis-60">
-          <h1 className="text-[22px] font-semibold tracking-tight text-ink">{t("settings.engines.title")}</h1>
-          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-ink-secondary">{t("engines.library.intro")}</p>
+          <h1 className="text-[18px] font-semibold tracking-tight text-ink">{t("settings.engines.title")}</h1>
+          <p className="mt-1 max-w-lg text-[13px] leading-relaxed text-ink-secondary">{t("engines.library.intro")}</p>
         </div>
         <RefreshEngines />
       </div>
       <EngineSections instances={rows} renderEngine={(instance) => <EngineRow instance={instance} />} />
-      <div className="border-t border-hairline/40 pt-4"><AddClaudeAccount /></div>
+      <div className="border-t border-hairline pt-4"><AddClaudeAccount /></div>
     </div>
   );
 }

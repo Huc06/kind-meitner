@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/cn";
 import type { Message } from "@/state/store";
 import type { GroupGoalRunCardData } from "../../shared/group-goal-run";
+import { Frame } from "@/components/ui/frame";
 
 const DETAIL_LIMIT = 280;
 
@@ -58,7 +59,7 @@ export function GoalRunCard({ message }: { message: Message }) {
   if (!run) {
     const fallback = compact(message.text, DETAIL_LIMIT);
     return fallback ? (
-      <div className="w-fit max-w-[min(42rem,88%)] rounded-2xl bg-card px-4 py-2.5 text-[14px] leading-relaxed text-ink">
+      <div className="w-fit max-w-[min(42rem,88%)] border border-hairline bg-card px-4 py-2.5 text-[14px] leading-relaxed text-ink">
         {fallback}
       </div>
     ) : null;
@@ -72,27 +73,30 @@ export function GoalRunCard({ message }: { message: Message }) {
     : `${run.turnCount} ${run.turnCount === 1 ? "turn" : "turns"}`;
 
   return (
-    <section
+    <Frame
+      as="section"
       aria-label={`Goal run: ${copy.label}`}
-      className={cn("w-full max-w-[680px] rounded-2xl border bg-card px-3.5 py-3 shadow-sm", copy.border)}
+      title="Goal Run"
+      surface="app"
+      className="w-full max-w-[680px] bg-card p-4"
     >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-inset">
+        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center border border-hairline bg-inset">
           <StatusIcon status={run.status} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h3 className="truncate text-[13.5px] font-semibold text-ink">{goal || "Group goal"}</h3>
-            <span aria-live="polite" className={cn("text-[11.5px] font-medium", copy.tone)}>
+            <h3 className="truncate text-[13.5px] font-medium text-ink">{goal || "Group goal"}</h3>
+            <span aria-live="polite" className={cn("font-mono text-[11px] font-medium uppercase", copy.tone)}>
               {copy.label}
             </span>
           </div>
-          {detail && <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-ink-secondary">{detail}</p>}
-          <p className="mt-1 text-[11.5px] text-ink-secondary/80">
+          {detail && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-ink-secondary">{detail}</p>}
+          <p className="mt-1 font-mono text-[11px] text-ink-secondary">
             {run.coordinatorName} coordinating · {turns}
           </p>
         </div>
       </div>
-    </section>
+    </Frame>
   );
 }

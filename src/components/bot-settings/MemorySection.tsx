@@ -38,11 +38,8 @@ import {
 import { shortPath } from "@/lib/short-path";
 import type { Bot } from "@/state/store";
 import { useDesktopCapabilities } from "../DesktopCapabilities";
-import { inputCls } from "./field";
-
-const buttonCls = "rounded-lg bg-control px-3 py-1.5 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50";
-const quietButtonCls = "rounded-md px-2 py-1 text-[12.5px] text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-50";
-
+import { Button } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 interface Editing {
   path: string;
   text: string;
@@ -197,24 +194,24 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-card p-4">
-        <div className="text-[15px] font-medium text-ink">Memory</div>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-secondary">
+      <div className="border border-hairline bg-card p-4">
+        <div className="text-[14px] font-medium text-ink">Memory</div>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-ink-secondary">
           Notes this bot keeps between tasks. They are plain markdown files in a folder on this computer — open them in any
           editor, or in Obsidian.
         </p>
         {overview && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink-secondary" title={overview.workspacePath}>
+            <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-secondary" title={overview.workspacePath}>
               {shortPath(overview.workspacePath, home)}
             </span>
-            <button type="button" className={buttonCls} onClick={() => void openLocation("obsidian")}>
+            <Button variant="secondary" size="xs" onClick={() => void openLocation("obsidian")}>
               Open in Obsidian
-            </button>
-            <button type="button" className={cn(buttonCls, "inline-flex items-center gap-1.5")} onClick={() => void openLocation("folder")}>
-              <FolderOpen size={14} />
+            </Button>
+            <Button variant="secondary" size="xs" onClick={() => void openLocation("folder")}>
+              <FolderOpen size={13} />
               {fileManagerLabel(capabilities.host.platform)}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -222,13 +219,13 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
       {overview && <MemoryGauge index={overview.index} />}
 
       {editing && (
-        <div className="rounded-xl bg-card p-4">
+        <div className="border border-hairline bg-card p-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate font-mono text-[12.5px] text-ink">{editing.path}</span>
+            <span className="truncate font-mono text-[12px] text-ink">{editing.path}</span>
             {editing.path !== MEMORY_INDEX && (
-              <button type="button" className={quietButtonCls} onClick={() => void open(MEMORY_INDEX)}>
+              <Button variant="ghost" size="xs" onClick={() => void open(MEMORY_INDEX)}>
                 Back to MEMORY.md
-              </button>
+              </Button>
             )}
           </div>
           {conflict && (
@@ -240,7 +237,7 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
             />
           )}
           <textarea
-            className={cn(inputCls, "mt-2 min-h-[200px] resize-y font-mono text-[12.5px] leading-relaxed")}
+            className={cn(fieldClass, "mt-2 min-h-[200px] resize-y font-mono text-[12px] leading-relaxed")}
             value={editing.text}
             readOnly={editing.readOnly}
             placeholder={
@@ -254,33 +251,33 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
           {editing.readOnly ? (
             <p className="mt-2 text-[12px] text-ink-secondary">Daily logs are the bot's own record of what it did; they are not loaded into conversations and are read-only here.</p>
           ) : (
-            <div className="mt-2 flex items-center gap-3">
-              <button type="button" onClick={() => void save(editing.hash)} disabled={saving || !editing.dirty} className={buttonCls}>
+            <div className="mt-2 flex items-center gap-2">
+              <Button variant="primary" size="sm" onClick={() => void save(editing.hash)} disabled={saving || !editing.dirty}>
                 {saving ? "Saving…" : "Save"}
-              </button>
+              </Button>
               {editing.dirty && (
-                <button type="button" className={quietButtonCls} disabled={saving} onClick={() => void open(editing.path)}>
+                <Button variant="secondary" size="sm" disabled={saving} onClick={() => void open(editing.path)}>
                   Discard changes
-                </button>
+                </Button>
               )}
             </div>
           )}
           {savedDraft !== null && (
             <div className="mt-3">
-              <div className="mb-1 text-[12px] text-ink-secondary">Your unsaved draft, kept so nothing is lost:</div>
-              <pre className="max-h-[160px] overflow-auto whitespace-pre-wrap rounded-lg border border-hairline/40 bg-inset p-3 font-mono text-[12px] leading-relaxed text-ink">
+              <div className="mb-1 font-mono text-[11px] text-ink-secondary">Your unsaved draft, kept so nothing is lost:</div>
+              <pre className="max-h-[160px] overflow-auto whitespace-pre-wrap border border-hairline bg-inset p-3 font-mono text-[11.5px] leading-relaxed text-ink">
                 {savedDraft}
               </pre>
-              <button type="button" className={cn(quietButtonCls, "mt-1")} onClick={() => setSavedDraft(null)}>
+              <Button variant="ghost" size="xs" className="mt-1" onClick={() => setSavedDraft(null)}>
                 Dismiss draft
-              </button>
+              </Button>
             </div>
           )}
         </div>
       )}
 
       {overview && (
-        <div className="rounded-xl bg-card p-4">
+        <div className="border border-hairline bg-card p-4">
           <MemoryFileRows
             title="Topic files"
             hint="Longer notes the bot reads on demand. Click one to edit it."
@@ -291,7 +288,7 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
           />
           <div className="mt-3 flex items-center gap-2">
             <input
-              className={cn(inputCls, "py-1.5 text-[13px]")}
+              className={cn(fieldClass, "h-8 font-mono text-[12px]")}
               value={newTopic}
               placeholder="New topic name, e.g. clients"
               aria-label="New topic name"
@@ -300,9 +297,9 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
                 if (e.key === "Enter") void createTopic();
               }}
             />
-            <button type="button" className={buttonCls} disabled={!newTopic.trim()} onClick={() => void createTopic()}>
+            <Button variant="secondary" size="sm" disabled={!newTopic.trim()} onClick={() => void createTopic()}>
               New topic
-            </button>
+            </Button>
           </div>
           {overview.logs.length > 0 && (
             <div className="mt-4">
@@ -319,9 +316,9 @@ export function MemorySection({ bot, active = true }: { bot: Bot; active?: boole
         </div>
       )}
 
-      <div className="rounded-xl bg-card p-4">
-        <div className="text-[15px] font-medium text-ink">Changes</div>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-secondary">
+      <div className="border border-hairline bg-card p-4">
+        <div className="text-[14px] font-medium text-ink">Changes</div>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-ink-secondary">
           Every change to these files, whoever made it. Undo puts a file back the way it was before that change.
         </p>
         <div className="mt-3">
@@ -341,19 +338,19 @@ export function MemoryGauge({ index }: { index: MemoryCapacity }) {
   const status = capacityStatus(index);
   const fill = status.level === "over" ? "bg-danger" : status.level === "near" ? "bg-warning" : "bg-accent";
   return (
-    <div className={cn("rounded-xl p-4", status.level === "over" ? "border border-danger/30 bg-danger/10" : "bg-card")}>
+    <div className={cn("border p-4", status.level === "over" ? "border-danger/40 bg-danger/10" : "border-hairline bg-card")}>
       <div className="flex items-center justify-between gap-3 text-[13px]">
         <span className="font-medium text-ink">How much of MEMORY.md loads</span>
-        <span className={cn("text-[12px]", status.level === "over" ? "text-danger" : "text-ink-secondary")}>
+        <span className={cn("font-mono text-[11.5px] tabular-nums", status.level === "over" ? "text-danger" : "text-ink-secondary")}>
           {index.lines} / {index.maxLines} lines · {formatBytes(index.bytes)} / {formatBytes(index.maxBytes)}
         </span>
       </div>
       <GaugeBar label="Lines" share={status.lineShare} fill={fill} />
       <GaugeBar label="Size" share={status.byteShare} fill={fill} />
-      <p className={cn("mt-2 text-[12.5px] leading-relaxed", status.level === "over" ? "text-danger" : "text-ink-secondary")}>
+      <p className={cn("mt-2 text-[12px] leading-relaxed", status.level === "over" ? "text-danger" : "text-ink-secondary")}>
         {status.warning ?? status.sentence}
       </p>
-      {status.warning && <p className="mt-1 text-[12px] text-ink-secondary">{status.sentence}</p>}
+      {status.warning && <p className="mt-1 text-[11.5px] text-ink-secondary">{status.sentence}</p>}
     </div>
   );
 }
@@ -361,17 +358,17 @@ export function MemoryGauge({ index }: { index: MemoryCapacity }) {
 function GaugeBar({ label, share, fill }: { label: string; share: number; fill: string }) {
   const width = `${Math.min(100, Math.round(share * 100))}%`;
   return (
-    <div className="mt-2 flex items-center gap-2 text-[11.5px] text-ink-secondary">
+    <div className="mt-2 flex items-center gap-2 font-mono text-[11px] text-ink-secondary">
       <span className="w-10 shrink-0">{label}</span>
       <div
-        className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset"
+        className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset"
         role="meter"
         aria-label={`${label} used`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.min(100, Math.round(share * 100))}
       >
-        <div className={cn("h-full rounded-full", fill)} style={{ width }} />
+        <div className={cn("h-full", fill)} style={{ width }} />
       </div>
     </div>
   );
@@ -389,18 +386,18 @@ export function ConflictNotice({
   onOverwrite: () => void;
 }) {
   return (
-    <div className="mt-2 rounded-lg border border-warning/25 bg-warning/10 p-3 text-[12.5px] leading-relaxed text-ink">
+    <div className="mt-2 border border-warning/40 bg-warning/10 p-3 text-[12.5px] leading-relaxed text-ink">
       <div className="font-medium">{botName} changed this file while you were editing.</div>
       <div className="mt-0.5 text-ink-secondary">
         Nothing has been saved. Reload to see {botName}'s version (your draft is kept below), or overwrite it with yours.
       </div>
-      <div className="mt-2 flex gap-2">
-        <button type="button" className={buttonCls} disabled={busy} onClick={onReload}>
+      <div className="mt-2.5 flex gap-2">
+        <Button variant="secondary" size="xs" disabled={busy} onClick={onReload}>
           Reload
-        </button>
-        <button type="button" className={buttonCls} disabled={busy} onClick={onOverwrite}>
+        </Button>
+        <Button variant="secondary" size="xs" disabled={busy} onClick={onOverwrite}>
           Overwrite with mine
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -423,36 +420,37 @@ export function MemoryFileRows({
 }) {
   return (
     <div>
-      <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">{title}</div>
+      <div className="label-mono text-ink-secondary">{title}</div>
       <div className="mt-0.5 text-[12px] text-ink-secondary">{hint}</div>
       {files.length === 0 ? (
-        <div className="mt-2 text-[12.5px] text-ink-secondary">None yet.</div>
+        <div className="mt-2 font-mono text-[12px] text-ink-secondary">None yet.</div>
       ) : (
-        <div className="mt-2 overflow-hidden rounded-lg border border-hairline/40">
+        <div className="mt-2 divide-y divide-hairline border border-hairline">
           {files.map((file) => (
             <div
               key={file.path}
               className={cn(
-                "flex items-center gap-2 border-b border-hairline/40 px-3 py-2 last:border-b-0",
-                selected === file.path ? "bg-control/60" : "hover:bg-control/40",
+                "flex items-center gap-2 px-3 py-2 transition-colors",
+                selected === file.path ? "bg-raised shadow-[inset_2px_0_0_var(--color-ink)]" : "hover:bg-raised-hover",
               )}
             >
               <button type="button" onClick={() => onOpen(file)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                <FileText size={14} className="shrink-0 text-ink-secondary" />
-                <span className="truncate font-mono text-[12.5px] text-ink">{file.name}</span>
-                <span className="shrink-0 text-[11.5px] text-ink-secondary">
+                <FileText size={13} className="shrink-0 text-ink-secondary" />
+                <span className="truncate font-mono text-[12px] text-ink">{file.name}</span>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-secondary">
                   {formatBytes(file.bytes)} · {relativeTime(file.modifiedAt)}
                 </span>
               </button>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                icon
+                size="xs"
                 onClick={() => onDelete(file)}
                 aria-label={`Delete ${file.name}`}
                 title="Delete"
-                className="shrink-0 rounded-md p-1 text-ink-secondary hover:bg-control hover:text-danger"
               >
-                <Trash2 size={14} />
-              </button>
+                <Trash2 size={13} className="text-danger" />
+              </Button>
             </div>
           ))}
         </div>
@@ -481,41 +479,41 @@ export function MemoryJournalList({
       {rows.map((row) => {
         const source = journalSource(row);
         return (
-          <div key={row.id} className="rounded-lg bg-inset px-3 py-2">
+          <div key={row.id} className="border border-hairline bg-inset p-3">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink">
+              <div className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-ink">
                 <span>{journalSummary(row, botName)}</span>
                 {" · "}
-                <span className="text-ink-secondary">{relativeTime(row.at, now)}</span>
+                <span className="font-mono text-[11px] text-ink-secondary">{relativeTime(row.at, now)}</span>
                 {source && (
                   <>
                     {" · "}
-                    <span className="text-ink-secondary">{source}</span>
+                    <span className="font-mono text-[11px] text-ink-secondary">{source}</span>
                   </>
                 )}
               </div>
               {row.canRevert ? (
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="xs"
                   disabled={reverting !== null}
                   onClick={() => onRevert(row)}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-accent-text hover:bg-accent/10 disabled:opacity-50"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={11} />
                   {reverting === row.id ? "Undoing…" : "Undo"}
-                </button>
+                </Button>
               ) : (
-                <span className="shrink-0 text-[11.5px] text-ink-secondary" title={row.revertUnavailableReason}>
+                <span className="shrink-0 font-mono text-[11px] text-ink-secondary" title={row.revertUnavailableReason}>
                   Can't undo
                 </span>
               )}
             </div>
             {row.diff && (
-              <details className="mt-1">
-                <summary className="cursor-pointer text-[12px] text-ink-secondary">
+              <details className="mt-1.5">
+                <summary className="cursor-pointer font-mono text-[11px] text-ink-secondary">
                   +{row.added} −{row.removed} · show what changed
                 </summary>
-                <pre className="mt-1 max-h-[240px] overflow-auto whitespace-pre-wrap rounded-md bg-card p-2 font-mono text-[11.5px] leading-relaxed text-ink">
+                <pre className="mt-1.5 max-h-[240px] overflow-auto whitespace-pre-wrap border border-hairline bg-card p-2 font-mono text-[11px] leading-relaxed text-ink">
                   {row.diff}
                 </pre>
               </details>

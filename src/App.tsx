@@ -227,7 +227,7 @@ function Shell() {
         aria-label="Open bot list"
         aria-expanded={drawerOpen}
         onClick={() => setDrawerOpen(true)}
-        className="absolute left-3 top-3 z-30 rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink md:hidden"
+        className="absolute left-3 top-3 z-30 border border-hairline bg-panel p-1.5 text-ink-secondary hover:bg-raised-hover hover:text-ink md:hidden"
       >
         <Menu size={18} />
       </button>}
@@ -235,7 +235,7 @@ function Shell() {
         <div
           aria-hidden
           onMouseDown={(e) => e.target === e.currentTarget && setDrawerOpen(false)}
-          className="absolute inset-0 z-30 bg-black/50 md:hidden"
+          className="absolute inset-0 z-30 bg-black/60 backdrop-blur-[2px] md:hidden"
         />
       )}
       {!calendarFocus && state.activeView !== "landing" && <Sidebar
@@ -263,13 +263,13 @@ function Shell() {
         <ChatView bot={bot} />
       ) : (
         <main className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-app text-ink-secondary">
-          <Loader2 size={20} className="animate-spin" />
-          <div className="text-[14px]">
+          <Loader2 size={20} className="animate-spin text-ink" />
+          <div className="font-mono text-[13px] text-ink">
             {state.connected ? "No bots yet" : "Connecting to the bot server…"}
           </div>
           {!state.connected && (
-            <div className="text-[12px]">
-              Start it with <code className="rounded bg-raised px-1.5 py-0.5">pnpm dev:server</code>
+            <div className="font-mono text-[11px] text-ink-secondary">
+              Start it with <code className="border border-hairline bg-inset px-1.5 py-0.5 text-ink">pnpm dev:server</code>
             </div>
           )}
         </main>

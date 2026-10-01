@@ -87,10 +87,10 @@ export function EffortRow({
             }
             onClick={() => dispatch({ type: "setModel", botId: bot.id, threadId, ...(updateBotDefault ? { updateBotDefault: true } : {}), selection: { ...selection, effort: level } })}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70",
+              "cursor-pointer border px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide",
               selection.effort === level
-                ? "border-accent/60 bg-control text-ink"
-                : "border-hairline/40 text-ink-secondary hover:bg-control/60 hover:text-ink",
+                ? "border-accent bg-accent text-accent-ink"
+                : "border-hairline bg-transparent text-ink-secondary hover:bg-raised-hover hover:text-ink",
             )}
           >
             {level === undefined ? "Default" : effortLabel(level)}
@@ -117,8 +117,8 @@ function ModelRow({
       type="button"
       onClick={onPick}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-ink hover:bg-control/60",
-        current && "bg-control",
+        "cursor-pointer flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[13px] text-ink hover:bg-raised-hover",
+        current && "bg-raised",
       )}
     >
       <span className="flex min-w-0 items-center gap-2">
@@ -156,7 +156,7 @@ function ModelSearch({
 }) {
   return (
     <div className="shrink-0 px-2 pb-2">
-      <div className="flex items-center gap-2 rounded-lg border border-hairline/40 bg-inset px-2.5 py-1.5 focus-within:border-accent/60">
+      <div className="flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5 focus-within:border-ink">
         <Search size={13} className="shrink-0 text-ink-secondary" />
         <input
           value={value}
@@ -199,7 +199,7 @@ export function ModelEngineRail({ instances, selectedInstance, claudeInstance, o
         aria-label={label}
         aria-pressed={selected}
         title={`${label} · ${engineStatus(target)}`}
-        className={cn("relative flex size-9 items-center justify-center rounded-lg", selected ? "bg-control ring-1 ring-hairline/50" : "hover:bg-control/60")}
+        className={cn("cursor-pointer relative flex size-9 items-center justify-center border transition-colors", selected ? "border-ink bg-raised" : "border-transparent hover:border-hairline hover:bg-raised-hover")}
       >
         <ProviderMark driverKind={instance.driverKind} size={18} />
         {attention && <span className="absolute bottom-0.5 right-0.5 size-1.5 rounded-full bg-warning ring-2 ring-panel" />}
@@ -432,11 +432,7 @@ export function ModelPicker({
       aria-expanded={open && !bot.busy}
       aria-haspopup="dialog"
       className={cn(
-        "flex items-center gap-1.5 rounded-full border border-hairline/40 bg-control/60 py-1 pl-2 pr-2.5 text-[13px] text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-control/60",
-        // in a narrow chat header fold to a rounded square with just the
-        // provider mark; the model name rides the tooltip (a bot with no
-        // resolved engine keeps its label — the mark is what would hide it).
-        // Multiple Claude accounts keep their name even in the compact chip.
+        "cursor-pointer flex items-center gap-1.5 border border-hairline bg-control/60 py-1 pl-2 pr-2.5 font-mono text-[11px] uppercase tracking-wide text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-control/60",
         !contained && active && !showActiveAccount && COMPACT_SQUARE,
       )}
       title={
@@ -451,7 +447,7 @@ export function ModelPicker({
     >
       {active && <ProviderMark driverKind={active.driverKind} size={14} />}
       {!contained && showActiveAccount && (
-        <span data-model-account-compact className="hidden max-w-20 truncate @max-4xl/chathead:inline">{active.displayName}</span>
+        <span data-model-account-compact="true" className="hidden max-w-20 truncate @max-4xl/chathead:inline">{active.displayName}</span>
       )}
       <span className={cn("flex min-w-0 items-center gap-1", !contained && active && "@max-4xl/chathead:hidden")}>
         <span className="max-w-[160px] truncate">
@@ -499,10 +495,10 @@ export function ModelPicker({
           role="dialog"
           aria-label={t("model.choose")}
           className={cn(
-            "flex overflow-hidden rounded-2xl border border-hairline/50 bg-card",
+            "flex overflow-hidden border border-hairline bg-menu",
             contained
               ? "relative mt-3 w-full max-h-[min(420px,50dvh)]"
-              : "absolute right-0 top-full z-30 mt-2 w-[380px] max-w-[calc(100vw-2rem)] max-h-[min(480px,calc(100dvh-7rem))] shadow-2xl shadow-black/50",
+              : "absolute right-0 top-full z-30 mt-2 w-[380px] max-w-[calc(100vw-2rem)] max-h-[min(480px,calc(100dvh-7rem))] shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]",
           )}
         >
           <ModelEngineRail instances={state.instances} selectedInstance={railInstance} claudeInstance={claudeRailInstance} onSelect={selectRail} />
@@ -513,7 +509,7 @@ export function ModelPicker({
                 <div role="group" aria-label="Apply model changes to" className="flex gap-1">
                   {(["thread", "bot"] as const).map((value) => (
                     <button key={value} type="button" aria-pressed={scope === value} onClick={() => setScope(value)}
-                      className={cn("rounded-lg px-2 py-1 text-[12px]", scope === value ? "bg-control text-ink" : "text-ink-secondary hover:bg-control/60")}>
+                      className={cn("cursor-pointer px-2 py-1 font-mono text-[11px] uppercase tracking-wide border", scope === value ? "border-ink bg-raised text-ink" : "border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink")}>
                       {value === "bot" ? "Thread + bot default" : "Only this thread"}
                     </button>
                   ))}
@@ -540,7 +536,7 @@ export function ModelPicker({
                             : t("model.refresh", { name: railInstance.displayName })
                         }
                         title={t("model.refreshTitle")}
-                        className="flex size-6 items-center justify-center rounded-md text-ink-secondary hover:bg-control hover:text-ink disabled:cursor-wait disabled:opacity-70"
+                        className="cursor-pointer flex size-6 items-center justify-center border border-hairline text-ink-secondary hover:bg-raised-hover hover:text-ink disabled:cursor-wait disabled:opacity-70"
                       >
                         {refreshing ? (
                           <Loader2 size={12} className="animate-spin" aria-hidden="true" />
@@ -550,8 +546,8 @@ export function ModelPicker({
                       </button>
                       <span
                         className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium",
-                          blocked ? "bg-warning/10 text-warning" : "bg-success/10 text-success",
+                          "shrink-0 border px-1.5 py-0.5 font-mono text-[10px] uppercase",
+                          blocked ? "border-warning/60 text-warning" : "border-success/60 text-success",
                         )}
                       >
                         {pane === "custom" && !blocked ? t("model.localModels") : engineStatus(railInstance)}
@@ -578,7 +574,7 @@ export function ModelPicker({
                       setPane("main");
                       resetList();
                     }}
-                    className="mx-2 mb-1 flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[12px] text-ink-secondary hover:bg-control/60"
+                    className="mx-2 mb-1 flex shrink-0 items-center gap-1.5 border border-hairline bg-card px-2 py-1 text-left font-mono text-[11px] text-ink-secondary hover:bg-raised-hover cursor-pointer"
                   >
                     <ChevronLeft size={13} /> {t("model.backTo", { name: railInstance.displayName })}
                   </button>
@@ -642,7 +638,7 @@ export function ModelPicker({
                             <button
                               type="button"
                               onClick={() => setShowAll(true)}
-                              className="mt-1 flex w-full items-center justify-between rounded-lg border-t border-hairline/40 px-2.5 py-2 text-[12.5px] font-medium text-ink-secondary hover:bg-control/60 hover:text-ink"
+                              className="cursor-pointer mt-1 flex w-full items-center justify-between border-t border-hairline px-2.5 py-2 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink"
                             >
                               {t("model.showAll", { count: official.length })} <ChevronDown size={13} />
                             </button>
@@ -651,7 +647,7 @@ export function ModelPicker({
                             <button
                               type="button"
                               onClick={() => setShowAll(false)}
-                              className="mt-1 w-full rounded-lg px-2.5 py-2 text-[12px] text-ink-secondary hover:bg-control/60 hover:text-ink"
+                              className="cursor-pointer mt-1 w-full border border-hairline px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink"
                             >
                               {t("model.showSuggested")}
                             </button>
@@ -668,7 +664,7 @@ export function ModelPicker({
                           )}
                           {rest.map(renderRow)}
                           {custom.length === 0 && (
-                            <div className="mx-1 rounded-xl border border-dashed border-hairline/50 px-3 py-5 text-center">
+                            <div className="mx-1 border border-hairline bg-inset px-3 py-5 text-center">
                               <div className="text-[12.5px] font-medium text-ink">{t("model.noLocal")}</div>
                               <div className="mt-1 text-[11.5px] leading-relaxed text-ink-secondary">
                                 {t("model.noLocalHint")}

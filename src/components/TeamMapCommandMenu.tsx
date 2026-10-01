@@ -41,10 +41,10 @@ function Kbd({
     <kbd
       data-slot="command-menu-kbd"
       className={cn(
-        "inline-flex min-w-5 origin-center items-center justify-center rounded-[5px] border border-white/[0.12] bg-[#1E2228] px-1.5 py-0.5 font-mono text-[10.5px] font-semibold select-none transition-transform duration-100 ease-out",
+        "inline-flex h-5 min-w-5 origin-center items-center justify-center border border-hairline bg-inset px-1 font-mono text-[10.5px] font-medium select-none transition-transform duration-100 ease-out",
         pressed
-          ? "scale-x-95 scale-y-85 bg-accent/20 border-accent/40 text-accent shadow-none"
-          : "text-white/60 shadow-[0_1px_0_0_rgba(255,255,255,0.08)]",
+          ? "scale-x-95 scale-y-85 bg-accent text-accent-ink"
+          : "text-ink-secondary",
         className,
       )}
     >
@@ -232,13 +232,13 @@ export function TeamMapCommandMenu({
           aria-label="Open command palette"
           onClick={() => setOpen(true)}
           className={cn(
-            "group flex h-8 items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.04] px-3 text-[12px] font-medium text-white/70 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer",
+            "group flex h-8 items-center justify-between gap-3 border border-hairline bg-inset px-3 text-[12px] font-medium text-ink-secondary transition hover:border-ink hover:text-ink focus-visible:outline-none cursor-pointer",
             className,
           )}
         >
           <div className="flex items-center gap-2 truncate">
-            <Search size={13} className="shrink-0 text-white/40 group-hover:text-white/80 transition-colors" aria-hidden="true" />
-            <span className="truncate font-normal tracking-tight text-white/70 group-hover:text-white">{triggerPlaceholder}</span>
+            <Search size={13} className="shrink-0 text-ink-secondary group-hover:text-ink transition-colors" aria-hidden="true" />
+            <span className="truncate font-normal tracking-tight text-ink-secondary group-hover:text-ink">{triggerPlaceholder}</span>
           </div>
           <span className="flex items-center gap-1 shrink-0">
             <Kbd pressed={combo}>{modLabel}</Kbd>
@@ -255,18 +255,18 @@ export function TeamMapCommandMenu({
             role="dialog"
             aria-modal="true"
             aria-label="Command palette"
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 p-4 pt-20 backdrop-blur-md animate-in fade-in duration-150"
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-20 animate-in fade-in duration-150"
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
             }}
           >
             <div
-              className="relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-[#14171C]/95 shadow-2xl backdrop-blur-2xl animate-in zoom-in-95 duration-150"
+              className="relative flex w-full max-w-xl flex-col border border-hairline bg-panel shadow-2xl animate-in zoom-in-95 duration-150"
               onKeyDown={onListKeyDown}
             >
               {/* Search Bar Input */}
-              <div className="flex items-center gap-3 border-b border-white/[0.08] px-4 py-3">
-                <Search className="size-4 shrink-0 text-white/40" aria-hidden="true" />
+              <div className="flex items-center gap-3 border-b border-hairline px-4 py-3">
+                <Search className="size-4 shrink-0 text-ink-secondary" aria-hidden="true" />
                 <input
                   ref={inputRef}
                   value={query}
@@ -276,7 +276,7 @@ export function TeamMapCommandMenu({
                   }}
                   placeholder={placeholder}
                   aria-label={placeholder}
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/40"
+                  className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-secondary/50"
                 />
                 <span className="hidden items-center gap-1 sm:flex">
                   <Kbd pressed={combo}>{modLabel}</Kbd>
@@ -292,14 +292,14 @@ export function TeamMapCommandMenu({
                 className="max-h-[min(60vh,380px)] overflow-y-auto overscroll-contain p-2"
               >
                 {filtered.length === 0 ? (
-                  <p className="px-3 py-8 text-center text-sm text-white/40">
+                  <p className="px-3 py-8 text-center text-sm text-ink-secondary">
                     {emptyMessage}
                   </p>
                 ) : (
                   groups.map((group) => (
                     <div key={group.label || "_"} className="mb-2 last:mb-0">
                       {group.label && (
-                        <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                        <div className="label-mono px-3 pt-2 pb-1 text-[10.5px] text-ink-secondary">
                           {group.label}
                         </div>
                       )}
@@ -314,10 +314,10 @@ export function TeamMapCommandMenu({
                             onMouseMove={() => setRawActive(index)}
                             onClick={() => handleSelect(item)}
                             className={cn(
-                              "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition cursor-pointer",
+                              "flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition cursor-pointer",
                               active
-                                ? "bg-white/[0.08] text-white"
-                                : "text-white/70 hover:bg-white/[0.04] hover:text-white",
+                                ? "bg-raised text-ink"
+                                : "text-ink-secondary hover:bg-raised-hover hover:text-ink",
                             )}
                           >
                             {item.icon && (
@@ -326,15 +326,15 @@ export function TeamMapCommandMenu({
                               </span>
                             )}
                             <span className="flex-1 truncate">
-                              <span className="block truncate font-medium text-white/90">{item.label}</span>
+                              <span className="block truncate font-medium text-ink">{item.label}</span>
                               {item.description && (
-                                <span className="block truncate text-[11.5px] text-white/45">
+                                <span className="block truncate text-[11.5px] text-ink-secondary">
                                   {item.description}
                                 </span>
                               )}
                             </span>
                             {item.shortcut && (
-                              <Kbd className="ml-auto text-[10px]">{item.shortcut}</Kbd>
+                              <Kbd className="ml-auto text-[10.5px]">{item.shortcut}</Kbd>
                             )}
                           </button>
                         );
@@ -345,7 +345,7 @@ export function TeamMapCommandMenu({
               </div>
 
               {/* Footer navigation keys */}
-              <div className="flex items-center gap-4 border-t border-white/[0.08] bg-[#0E1013]/60 px-4 py-2.5 text-[11px] text-white/40">
+              <div className="frame-rule-above flex items-center gap-4 bg-app px-4 py-2.5 text-[11px] font-mono text-ink-secondary">
                 <span className="flex items-center gap-1">
                   <Kbd pressed={keys.up}>↑</Kbd>
                   <Kbd pressed={keys.down}>↓</Kbd>

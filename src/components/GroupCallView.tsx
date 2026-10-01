@@ -18,7 +18,7 @@ import { cn } from "@/lib/cn";
 import { BotAvatar } from "./Avatar";
 import { CallTargetButton } from "./CallView";
 import { isRoutineApproval, isSkillApproval, pendingApprovals, spokenApprovalPrompt } from "./PendingApproval";
-
+import { Button } from "@/components/ui/button";
 const YES = /^(yes|yeah|yep|yup|sure|ok|okay|go ahead|do it|allow|approve|approved|fine|please do)\b/i;
 const NO = /^(no|nope|don'?t|do not|stop|deny|denied|cancel|never|skip it)\b/i;
 const CALL_ENDPOINT_MS = 850;
@@ -453,14 +453,17 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
             : "Working";
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-app/95 px-8 backdrop-blur-sm">
-      <button
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-app/95 px-8">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon
         onClick={() => endCall(group.id)}
         aria-label="Hang up"
-        className="absolute right-5 top-5 rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+        className="absolute right-4 top-4 text-ink-secondary hover:text-ink"
       >
-        <X size={18} />
-      </button>
+        <X size={16} />
+      </Button>
 
       <div className="max-w-full overflow-x-auto px-4 py-3">
         <div className="flex min-w-max items-end justify-center gap-3">
@@ -478,8 +481,8 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
               <div
                 key={member.id}
                 className={cn(
-                  "flex w-[124px] flex-col items-center gap-2 rounded-3xl px-2 py-3 transition-all duration-200",
-                  focused ? "scale-105 bg-raised/70 shadow-lg" : "opacity-75",
+                  "flex w-[124px] flex-col items-center gap-2 border px-2 py-3 transition-colors",
+                  focused ? "border-hairline bg-raised" : "border-transparent opacity-75",
                 )}
               >
                 <BotAvatar
@@ -501,8 +504,8 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
 
       <div className="flex flex-col items-center gap-1.5 text-center">
         <div className="text-[20px] font-medium text-ink">{group.name}</div>
-        <div className="flex items-center gap-2 text-[13.5px] text-ink-secondary">
-          {(phase === "working" || phase === "sending") && <Loader2 size={13} className="animate-spin" />}
+        <div className="flex items-center gap-2 font-mono text-[12px] text-ink-secondary">
+          {(phase === "working" || phase === "sending") && <Loader2 size={12} className="animate-spin" />}
           {status}
         </div>
       </div>
@@ -526,34 +529,37 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
       {note && (
         <div className="flex max-w-[520px] flex-col items-center gap-2 text-center text-[12.5px] text-warning">
           <span>{note}</span>
-          <button
+          <Button
+            variant="secondary"
+            size="xs"
             onClick={listen}
-            className="rounded-full border border-warning/40 px-3 py-1.5 text-[12px] hover:bg-warning/10"
           >
             Try microphone again
-          </button>
+          </Button>
         </div>
       )}
-      {speech.error && <div className="max-w-[460px] text-center text-[12.5px] text-danger">{speech.error}</div>}
+      {speech.error && <div className="max-w-[460px] text-center font-mono text-[12px] text-danger">{speech.error}</div>}
 
       <div className="flex items-center gap-3">
         {speaker.isSpeaking() && (
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={interruptSpeech}
-            className="rounded-full border border-hairline/50 px-4 py-2 text-[13.5px] text-ink hover:bg-raised"
           >
             Interrupt
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="danger"
+          size="md"
           onClick={() => endCall(group.id)}
-          className="flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-[14px] font-medium text-white hover:brightness-110"
         >
-          <PhoneOff size={16} /> Hang up
-        </button>
+          <PhoneOff size={15} /> Hang up
+        </Button>
       </div>
 
-      <div className="text-[11.5px] text-ink-secondary/70">
+      <div className="font-mono text-[11px] text-ink-secondary">
         Hold Control + Option to talk · Say a member’s name to direct the turn · Space interrupts · Esc hangs up
       </div>
     </div>

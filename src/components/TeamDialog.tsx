@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { api, useStore, type Bot } from "@/state/store";
 import { BotPickerList } from "./BotPickerList";
+import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 
 /** A team may start empty; choosing bots moves their membership, never copies them. */
@@ -49,11 +50,11 @@ export function TeamDialog({ section, rename = false, onClose }: {
     }
   };
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={(event) => {
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={(event) => {
       if (event.target === event.currentTarget && !saving) onClose();
     }}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="team-dialog-title"
-        className="max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-2xl border border-hairline/50 bg-panel p-5 text-ink shadow-2xl"
+        className="max-h-[90vh] w-full max-w-[430px] overflow-y-auto border border-hairline bg-panel p-5 text-ink shadow-2xl"
         onKeyDown={(event) => {
           if (event.key === "Escape" && !saving) { event.stopPropagation(); onClose(); }
           if (event.key === "Tab") {
@@ -64,21 +65,21 @@ export function TeamDialog({ section, rename = false, onClose }: {
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
           }
         }}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 id="team-dialog-title" className="text-[17px] font-semibold">{title}</h2>
-          <button aria-label={t("team.closeDialog")} disabled={saving} onClick={onClose} className="rounded-lg p-1.5 text-ink-secondary hover:bg-raised"><X size={18} /></button>
+        <div className="mb-3 flex items-center justify-between gap-3 frame-rule-below pb-3">
+          <h2 id="team-dialog-title" className="label-mono text-[13px] font-semibold text-ink">[ {title.toUpperCase()} ]</h2>
+          <button aria-label={t("team.closeDialog")} disabled={saving} onClick={onClose} className="p-1 text-ink-secondary hover:text-ink"><X size={16} /></button>
         </div>
-        {(!moving || rename) && <label className="mb-3 block text-[13px] text-ink-secondary">{t("team.name")}
+        {(!moving || rename) && <label className="label-mono mb-3 block text-[11px] text-ink-secondary">{t("team.name")}
           <input value={name} maxLength={60} disabled={saving} onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => { if (event.key === "Enter") void save(); }}
-            className="mt-1 w-full rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[14px] text-ink" />
+            className="mt-1.5 w-full border border-hairline bg-inset px-3 py-2 font-sans text-[13px] text-ink placeholder:text-ink-secondary/50 focus:border-ink focus:outline-none" />
         </label>}
         {!rename && <>
-          <p className="mb-3 text-[13px] leading-relaxed text-ink-secondary">
+          <p className="mb-3 text-[12.5px] leading-relaxed text-ink-secondary">
             {moving ? t("team.moveIntro") : t("team.createIntro")} {t("team.moveWarning")}
           </p>
           <fieldset disabled={saving}>
-            <legend className="mb-1 text-[12px] font-medium text-ink-secondary">{t("team.existingBots")}</legend>
+            <legend className="label-mono mb-1.5 text-[10.5px] text-ink-secondary">{t("team.existingBots")}</legend>
             <BotPickerList bots={candidates} picked={picked} emptyHint={t("team.noBots")} onToggle={(id) => setPicked((previous) => {
               const next = new Set(previous);
               if (next.has(id)) next.delete(id); else next.add(id);
@@ -86,13 +87,12 @@ export function TeamDialog({ section, rename = false, onClose }: {
             })} />
           </fieldset>
         </>}
-        {error && <p role="alert" className="mt-3 text-[13px] text-danger">{error}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <button disabled={saving} onClick={onClose} className="rounded-lg px-3 py-2 text-[13px] text-ink-secondary hover:bg-raised">{t("common.cancel")}</button>
-          <button disabled={saving || (!moving && !name.trim()) || (moving && !picked.size)} onClick={() => void save()}
-            className="rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-white disabled:opacity-40">
+        {error && <p role="alert" className="mt-3 font-mono text-[11.5px] text-danger">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2 frame-rule-above pt-3">
+          <Button variant="secondary" size="sm" disabled={saving} onClick={onClose}>{t("common.cancel")}</Button>
+          <Button variant="primary" size="sm" disabled={saving || (!moving && !name.trim()) || (moving && !picked.size)} onClick={() => void save()}>
             {saving ? t("team.saving") : rename ? t("folder.saveName") : moving ? picked.size ? t(picked.size === 1 ? "team.moveOne" : "team.moveMany", { count: picked.size }) : t("team.moveSelected") : t("team.create")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>, document.body,

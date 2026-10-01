@@ -2,7 +2,8 @@
 // narrate before tools; the messages stay available without looking like six
 // separate final answers after the turn is done.
 import { useEffect, useState } from "react";
-import { Check, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { Tag } from "@/components/ui/tag";
 
 export function TurnNarrationRun({
   label,
@@ -19,21 +20,26 @@ export function TurnNarrationRun({
   }, [forceOpen]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5 my-1">
       <div className="flex justify-start">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           title={open ? "Hide progress messages" : "Show progress messages"}
-          className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-control"
+          className="cursor-pointer flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1 font-mono text-[11px] text-ink-secondary hover:bg-raised-hover hover:text-ink"
         >
-          <Check size={13} className="text-success" />
-          <span>{label}</span>
-          <ChevronRight size={13} className={open ? "rotate-90" : undefined} />
+          <span className="text-ink-secondary select-none">&gt;_</span>
+          <span className="text-ink">{label}</span>
+          <Tag tone="success" variant="outline" size="sm">OK</Tag>
+          <ChevronRight size={12} className={open ? "rotate-90 text-ink-secondary" : "text-ink-secondary"} />
         </button>
       </div>
-      {open && children}
+      {open && (
+        <div className="border border-hairline bg-inset p-3 space-y-2">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

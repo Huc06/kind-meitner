@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { Button } from "@/components/ui/button";
 export function ManagedTeamsSettings({
   name, ownTeam, teams, allowed, onSave,
 }: {
@@ -13,9 +13,9 @@ export function ManagedTeamsSettings({
   const choices = [...new Set([...teams, ...allowed])].filter(team => team !== ownTeam).sort();
   const changed = JSON.stringify([...selected].sort()) !== JSON.stringify([...allowed].sort());
   return (
-    <details className="mt-3 border-t border-hairline/40 pt-3">
+    <details className="mt-3 frame-rule-above pt-3">
       <summary className="cursor-pointer text-[13px] font-medium text-ink">Additional teams</summary>
-      <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary">
+      <p className="mt-2 text-[12.5px] leading-relaxed text-ink-secondary">
         Let {name} coordinate bots and propose setup changes in the teams you select.
         Your own team is already included. Other bots keep their permissions, and unrelated chat history stays private.
       </p>
@@ -29,12 +29,13 @@ export function ManagedTeamsSettings({
             {team || "General"}
           </label>
         ))}
-        {!choices.length && <p className="text-[13px] text-ink-secondary">Create another team to coordinate across teams.</p>}
+        {!choices.length && <p className="text-[12.5px] text-ink-secondary">Create another team to coordinate across teams.</p>}
       </fieldset>
-      <button type="button" disabled={!changed} onClick={() => onSave(selected)}
-        className="mt-3 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-40">
-        Save team access
-      </button>
+      <div className="mt-3">
+        <Button variant="primary" size="sm" disabled={!changed} onClick={() => onSave(selected)}>
+          Save team access
+        </Button>
+      </div>
     </details>
   );
 }

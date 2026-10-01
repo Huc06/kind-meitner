@@ -25,7 +25,7 @@ export function DesktopWorkspaceSwitcher({ compact = false }: { compact?: boolea
         setError(""); setOpen(true);
         void bridge.menu().catch(() => setError("Could not open workspaces. Try the Server menu.")).finally(() => setOpen(false));
       }}
-      className={cn("flex w-full items-center gap-2 rounded-lg py-2 text-left text-[13px] font-medium text-ink hover:bg-control focus-visible:outline focus-visible:outline-accent", compact ? "justify-center px-1" : "px-2")}
+      className={cn("flex w-full items-center gap-2 py-1.5 text-left font-mono text-[12px] text-ink hover:bg-raised-hover", compact ? "justify-center px-1" : "px-2")}
       style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
       <Icon size={16} className="shrink-0 text-ink-secondary" />
       {!compact && <><span className="min-w-0 flex-1 truncate">{name}</span><ChevronDown size={13} className="shrink-0 text-ink-secondary" /></>}

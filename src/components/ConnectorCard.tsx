@@ -4,7 +4,8 @@ import { Check, Loader2, PlugZap, RefreshCw, X } from "lucide-react";
 import { api, type Message } from "@/state/store";
 import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
-
+import { Button } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
 async function openConnectionPage(url: string) {
   if (window.ogb?.openExternal) {
     await window.ogb.openExternal(url);
@@ -96,21 +97,31 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
 
   return (
     <div className="flex w-full justify-start">
-      <div data-tour="connector" className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-hairline/50 bg-card shadow-sm">
+      <div data-tour="connector" className="w-full max-w-[520px] border border-hairline bg-card">
         <div className="flex items-start gap-3 p-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-control text-[16px] font-semibold text-ink">
-            {connector.label.slice(0, 1).toUpperCase() || <PlugZap size={19} />}
+          <div className="flex size-10 shrink-0 items-center justify-center border border-hairline bg-control text-[15px] font-semibold text-ink">
+            {connector.label.slice(0, 1).toUpperCase() || <PlugZap size={18} />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="truncate text-[14px] font-semibold text-ink">{connector.label}</span>
               {connected && (
-                <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
-                  <Check size={11} /> {t("connectors.card.connected")}
-                </span>
+                <Tag tone="success" size="sm">
+                  <Check size={11} className="mr-1 inline" /> {t("connectors.card.connected")}
+                </Tag>
+              )}
+              {authorizing && (
+                <Tag tone="warning" size="sm">
+                  <Loader2 size={11} className="mr-1 inline animate-spin" /> {t("connectors.card.waiting")}
+                </Tag>
+              )}
+              {connector.status === "failed" && (
+                <Tag tone="danger" size="sm">
+                  {t("connectors.card.tryAgain")}
+                </Tag>
               )}
             </div>
-            <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
               {connected
                 ? connector.resumed
                   ? t("connectors.card.resumed")
@@ -118,20 +129,27 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
                 : connector.description}
             </p>
             {!connected && (
-              <p className="mt-1 text-[11.5px] text-ink-secondary/80">
+              <p className="mt-1 font-mono text-[11px] text-ink-secondary">
                 {t("connectors.card.signInHint")}
               </p>
             )}
             {error && <p className="mt-2 text-[12px] text-danger">{typeof error === "string" ? error : t(error.key)}</p>}
           </div>
           {!connected && (
-            <button onClick={dismiss} aria-label={t("connectors.card.notNow")} title={t("connectors.card.notNow")} className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink">
-              <X size={15} />
-            </button>
+            <Button
+              variant="ghost"
+              size="xs"
+              icon
+              onClick={dismiss}
+              aria-label={t("connectors.card.notNow")}
+              title={t("connectors.card.notNow")}
+            >
+              <X size={14} />
+            </Button>
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-hairline/40 bg-panel/40 px-4 py-2.5">
-          <div className="flex items-center gap-1.5 text-[11.5px] text-ink-secondary">
+        <div className="flex items-center justify-between border-t border-hairline bg-inset px-4 py-2.5">
+          <div className="flex items-center gap-1.5 label-mono text-ink-secondary">
             {authorizing ? <Loader2 size={12} className="animate-spin" /> : <PlugZap size={12} />}
             {authorizing
               ? t("connectors.card.waiting")
@@ -140,10 +158,11 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
                 : t("connectors.card.requested")}
           </div>
           {!connected ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => void connect()}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {busy || authorizing ? <Loader2 size={13} className="animate-spin" /> : <PlugZap size={13} />}
               {authorizing
@@ -151,17 +170,18 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
                 : connector.status === "failed"
                   ? t("connectors.card.tryAgain")
                   : t("connectors.card.connectSecurely")}
-            </button>
+            </Button>
           ) : !connector.resumed ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => void resume()}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {busy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {t("connectors.card.continueTask")}
-            </button>
+            </Button>
           ) : (
-            <span className="flex items-center gap-1 text-[12px] font-medium text-success"><Check size={13} /> {t("connectors.card.continuing")}</span>
+            <span className="flex items-center gap-1 font-mono text-[12px] text-success"><Check size={13} /> {t("connectors.card.continuing")}</span>
           )}
         </div>
       </div>

@@ -40,16 +40,16 @@ export function SidebarMoreMenu({
       renderTrigger={({ open, attention }) => (
         <span
           className={cn(
-            "flex min-h-9 w-full items-center gap-3 rounded-xl px-3 text-[14px] transition-colors",
-            compact ? "py-1" : "py-1.5",
-            open ? "bg-raised text-ink" : "bg-transparent text-ink hover:bg-raised/50",
+            "flex h-8 w-full items-center gap-2.5 px-2.5 text-[13px] transition-colors",
+            compact && "px-1.5",
+            open ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "bg-transparent text-ink hover:bg-raised-hover",
           )}
         >
-          <Wrench size={18} className={open ? "text-accent" : "text-ink-secondary"} />
+          <Wrench size={15} className={open ? "text-ink" : "text-ink-secondary"} />
           <span className="flex-1 truncate text-left">{label}</span>
-          {attention && !open && <span className="size-2 shrink-0 rounded-full bg-danger" />}
+          {attention && !open && <span className="size-1.5 shrink-0 rounded-full bg-danger" />}
           <ChevronUp
-            size={14}
+            size={13}
             className={cn("shrink-0 text-ink-secondary transition-transform", open && "rotate-180")}
           />
         </span>

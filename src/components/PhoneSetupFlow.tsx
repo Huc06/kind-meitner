@@ -20,6 +20,10 @@ import {
   Wifi,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { Frame } from "@/components/ui/frame";
+import { Input, FieldLabel } from "@/components/ui/field";
 import {
   companionPairingLink,
   companionPairingRoute,
@@ -904,7 +908,7 @@ function ValuePoints() {
   return (
     <div className="mt-5 grid w-full gap-2 sm:grid-cols-3">
       {points.map(({ Icon, title, detail }) => (
-        <div key={title} className="rounded-xl bg-inset px-3 py-3 text-left">
+        <div key={title} className="border border-hairline bg-card px-3 py-3 text-left">
           <Icon size={16} className="text-accent" />
           <div className="mt-2 text-[13px] font-medium text-ink">{title}</div>
           <div className="mt-0.5 text-[11.5px] leading-relaxed text-ink-secondary">{detail}</div>
@@ -948,7 +952,7 @@ export function PhoneSetupFlowView({
           <ul className="flex flex-col gap-3.5">
             {points.map(({ Icon, title, detail }) => (
               <li key={title} className="flex items-start gap-3">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent/12 text-accent">
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center border border-hairline bg-raised text-accent">
                   <Icon size={14} />
                 </span>
                 <span>
@@ -959,24 +963,28 @@ export function PhoneSetupFlowView({
             ))}
           </ul>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={c.start}
           disabled={!c.state || c.busy || c.accountBusy}
-          className="mt-5 w-full rounded-lg bg-accent py-2.5 text-[14px] font-medium text-white hover:opacity-90 disabled:cursor-wait disabled:opacity-40"
+          className="mt-5 w-full"
         >
           {t("phone.intro.setUp")}
-        </button>
-        {c.error && <p role="alert" className="mt-3 text-[12.5px] text-danger">{c.error}</p>}
-        <button
+        </Button>
+        {c.error && <p role="alert" className="mt-3 font-mono text-[11px] text-danger">{c.error}</p>}
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => {
             c.skip();
             onSkip?.();
           }}
-          className="mt-3 self-center text-[12.5px] text-ink-secondary hover:text-ink"
+          className="mt-3 self-center"
         >
           {t("phone.intro.notNow")}
-        </button>
-        <p className="mt-1.5 self-center text-[11.5px] text-ink-secondary">{t("phone.intro.resume")}</p>
+        </Button>
+        <p className="mt-1.5 self-center font-mono text-[11px] text-ink-secondary">{t("phone.intro.resume")}</p>
       </div>
     );
   }
@@ -986,42 +994,44 @@ export function PhoneSetupFlowView({
       <div className={compactHeader ? "flex flex-col items-start" : "flex flex-col items-center text-center"}>
         {!compactHeader && (
           <>
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-accent/12 text-accent">
-              <Smartphone size={26} />
+            <div className="flex size-12 items-center justify-center border border-hairline bg-raised text-accent">
+              <Smartphone size={24} />
             </div>
-            <h2 className="mt-4 text-[19px] font-semibold text-ink">{t("phone.intro.title", { app: brand().name })}</h2>
+            <h2 className="mt-4 text-[18px] font-semibold text-ink">{t("phone.intro.title", { app: brand().name })}</h2>
           </>
         )}
         <p className={compactHeader ? "mt-1 text-[13.5px] leading-relaxed text-ink-secondary" : "mt-1.5 max-w-[460px] text-[13.5px] leading-relaxed text-ink-secondary"}>
           {t("phone.intro.detail")}
         </p>
         <ValuePoints />
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={c.start}
           disabled={!c.state || c.busy || c.accountBusy}
-          className={compactHeader
-            ? "mt-5 w-full rounded-lg bg-accent py-2.5 text-[14px] font-medium text-white hover:opacity-90 disabled:cursor-wait disabled:opacity-40"
-            : "mt-5 w-full max-w-[320px] rounded-lg bg-accent py-2.5 text-[14px] font-medium text-white hover:opacity-90 disabled:cursor-wait disabled:opacity-40"}
+          className={compactHeader ? "mt-5 w-full" : "mt-5 w-full max-w-[320px]"}
         >
           {variant === "settings"
             ? c.state?.devices.length
               ? t("phone.intro.pairAnother")
               : t("phone.intro.pair")
             : t("phone.intro.setUp")}
-        </button>
-        {c.error && <p role="alert" className="mt-3 max-w-[390px] text-[12.5px] text-danger">{c.error}</p>}
+        </Button>
+        {c.error && <p role="alert" className="mt-3 max-w-[390px] font-mono text-[11px] text-danger">{c.error}</p>}
         {variant === "onboarding" && (
           <>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 c.skip();
                 onSkip?.();
               }}
-              className={compactHeader ? "mt-3 self-center text-[12.5px] text-ink-secondary hover:text-ink" : "mt-2.5 text-[12.5px] text-ink-secondary hover:text-ink"}
+              className={compactHeader ? "mt-3 self-center" : "mt-2.5"}
             >
               {t("phone.intro.notNow")}
-            </button>
-            <p className={compactHeader ? "mt-2 self-center text-[11.5px] text-ink-secondary" : "mt-2 text-[11.5px] text-ink-secondary"}>
+            </Button>
+            <p className={compactHeader ? "mt-2 self-center font-mono text-[11px] text-ink-secondary" : "mt-2 font-mono text-[11px] text-ink-secondary"}>
               {t("phone.intro.resume")}
             </p>
           </>
@@ -1035,10 +1045,10 @@ export function PhoneSetupFlowView({
     const failed = c.account?.status === "error" || c.setupTimedOut;
     return (
       <div className="mx-auto flex w-full max-w-[430px] flex-col">
-        <button onClick={c.cancel} className="mb-4 flex w-fit items-center gap-1.5 text-[12px] text-ink-secondary hover:text-ink">
+        <Button variant="ghost" size="xs" onClick={c.cancel} className="mb-4 flex w-fit items-center gap-1.5">
           <ArrowLeft size={13} /> {t("phone.back")}
-        </button>
-        <div className="flex size-11 items-center justify-center rounded-xl bg-accent/12 text-accent">
+        </Button>
+        <div className="flex size-11 items-center justify-center border border-hairline bg-raised text-accent">
           <Mail size={20} />
         </div>
         <h2 className="mt-3 text-[18px] font-semibold text-ink">
@@ -1059,9 +1069,10 @@ export function PhoneSetupFlowView({
 
         {!unavailable && !failed && (
           <div className="mt-5 flex flex-col gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-ink-secondary">{t("phone.signIn.email")}</span>
-              <input
+            <div>
+              <FieldLabel htmlFor="phone-signin-email">{t("phone.signIn.email")}</FieldLabel>
+              <Input
+                id="phone-signin-email"
                 autoFocus
                 autoComplete="email"
                 inputMode="email"
@@ -1072,13 +1083,13 @@ export function PhoneSetupFlowView({
                   if (event.key === "Enter" && !c.codeSent && canSubmitEmail) c.requestCode();
                 }}
                 placeholder="you@example.com"
-                className="rounded-lg border border-hairline/50 bg-inset px-3 py-2.5 text-[14px] text-ink outline-none placeholder:text-ink-secondary/60 focus:border-accent disabled:opacity-50"
               />
-            </label>
+            </div>
             {c.codeSent && (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[12px] font-medium text-ink-secondary">{t("phone.signIn.code")}</span>
-                <input
+              <div>
+                <FieldLabel htmlFor="phone-signin-code">{t("phone.signIn.code")}</FieldLabel>
+                <Input
+                  id="phone-signin-code"
                   autoFocus
                   autoComplete="one-time-code"
                   inputMode="numeric"
@@ -1089,66 +1100,74 @@ export function PhoneSetupFlowView({
                     if (event.key === "Enter" && c.code.length === 8) c.verifyCode();
                   }}
                   placeholder="12345678"
-                  className="rounded-lg border border-hairline/50 bg-inset px-3 py-2.5 font-mono text-[16px] tracking-[0.18em] text-ink outline-none placeholder:tracking-normal placeholder:text-ink-secondary/60 focus:border-accent disabled:opacity-50"
+                  className="font-mono text-[16px] tracking-[0.18em]"
                 />
-              </label>
+              </div>
             )}
-            <button
+            <Button
+              variant="primary"
+              size="md"
               disabled={c.accountBusy || (!c.codeSent && !canSubmitEmail) || (c.codeSent && c.code.length !== 8)}
               onClick={c.codeSent ? c.verifyCode : c.requestCode}
-              className="rounded-lg bg-accent py-2.5 text-[14px] font-medium text-white hover:opacity-90 disabled:opacity-40"
             >
               {c.accountBusy ? t("phone.signIn.working") : c.codeSent ? t("phone.signIn.verify") : t("phone.signIn.sendCode")}
-            </button>
+            </Button>
             {c.codeSent && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={c.accountBusy}
                 onClick={c.changeEmail}
-                className="text-[12px] text-ink-secondary hover:text-ink disabled:opacity-40"
               >
                 {t("phone.signIn.otherEmail")}
-              </button>
+              </Button>
             )}
             {c.codeSent && !actionError && (
-              <p className="text-[11.5px] text-ink-secondary">{t("phone.signIn.expires")}</p>
+              <p className="font-mono text-[11px] text-ink-secondary">{t("phone.signIn.expires")}</p>
             )}
           </div>
         )}
 
         {(unavailable || failed) && (
-          <button
+          <Button
+            variant="primary"
+            size="md"
             disabled={c.accountBusy}
             onClick={c.retryAccount}
-            className="mt-5 rounded-lg bg-accent py-2.5 text-[14px] font-medium text-white disabled:opacity-40"
+            className="mt-5"
           >
             {c.accountBusy ? t("remote.account.retrying") : t("phone.signIn.retry")}
-          </button>
+          </Button>
         )}
-        {actionError && <p role="alert" className="mt-3 text-[12.5px] text-danger">{actionError}</p>}
-        <div className="my-4 flex items-center gap-3 text-[11px] text-ink-secondary">
-          <span className="h-px flex-1 bg-hairline/40" /> {t("phone.signIn.or")} <span className="h-px flex-1 bg-hairline/40" />
+        {actionError && <p role="alert" className="mt-3 font-mono text-[11px] text-danger">{actionError}</p>}
+        <div className="my-4 flex items-center gap-3 label-mono text-ink-secondary">
+          <span className="h-px flex-1 bg-hairline" /> {t("phone.signIn.or")} <span className="h-px flex-1 bg-hairline" />
         </div>
         {variant === "onboarding" && c.tailscaleAvailable && (
           <>
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               disabled={c.busy || c.accountBusy}
               onClick={c.useTailscale}
-              className="flex items-center justify-center gap-2 rounded-lg border border-hairline/50 py-2.5 text-[13px] text-ink hover:bg-control disabled:opacity-40"
+              className="w-full"
             >
               <ShieldCheck size={15} /> {t("remote.pairOverTailscale")}
-            </button>
+            </Button>
             <p className="mt-2 text-center text-[11px] leading-relaxed text-ink-secondary">
               {t("phone.signIn.tailnetNote")}
             </p>
           </>
         )}
-        <button
+        <Button
+          variant="secondary"
+          size="md"
           disabled={c.busy || c.accountBusy}
           onClick={c.useLocal}
-          className={`${variant === "onboarding" && c.tailscaleAvailable ? "mt-3" : ""} flex items-center justify-center gap-2 rounded-lg border border-hairline/50 py-2.5 text-[13px] text-ink hover:bg-control disabled:opacity-40`}
+          className={cn("w-full", variant === "onboarding" && c.tailscaleAvailable && "mt-3")}
         >
           <Wifi size={15} /> {t("phone.signIn.wifiInstead")}
-        </button>
+        </Button>
         <p className="mt-2 text-center text-[11px] leading-relaxed text-ink-secondary">
           {t("phone.signIn.wifiNote")}
         </p>
@@ -1159,8 +1178,8 @@ export function PhoneSetupFlowView({
   if (c.phase === "verifying") {
     return (
       <div className="flex flex-col items-center py-8 text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-accent/12 text-accent">
-          <Loader2 size={25} className="animate-spin" />
+        <div className="flex size-12 items-center justify-center border border-hairline bg-raised text-accent">
+          <Loader2 size={24} className="animate-spin" />
         </div>
         <h2 className="mt-4 text-[18px] font-semibold text-ink">
           {c.localFallback
@@ -1177,9 +1196,9 @@ export function PhoneSetupFlowView({
             : t("phone.verifying.secureDetail")}
         </p>
         {(c.error || c.accountError) && (
-          <p role="alert" className="mt-3 max-w-[380px] text-[12.5px] text-danger">{c.error ?? c.accountError}</p>
+          <p role="alert" className="mt-3 max-w-[380px] font-mono text-[11px] text-danger">{c.error ?? c.accountError}</p>
         )}
-        <button onClick={c.cancel} className="mt-5 text-[12px] text-ink-secondary hover:text-ink">{t("common.cancel")}</button>
+        <Button variant="ghost" size="sm" onClick={c.cancel} className="mt-5">{t("common.cancel")}</Button>
       </div>
     );
   }
@@ -1187,30 +1206,32 @@ export function PhoneSetupFlowView({
   if (c.phase === "success") {
     return (
       <div className="flex flex-col items-center py-6 text-center">
-        <div className="flex size-14 items-center justify-center rounded-full bg-success/15 text-success">
+        <div className="flex size-12 items-center justify-center rounded-full bg-success/15 text-success">
           <Check size={28} />
         </div>
         <h2 className="mt-4 text-[19px] font-semibold text-ink">{t("phone.success.title")}</h2>
         <p className="mt-1.5 text-[13px] text-ink-secondary">
           {t("phone.success.detail")}
         </p>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={() => {
             c.finish();
             onComplete?.();
           }}
-          className="mt-5 w-full max-w-[280px] rounded-lg bg-accent py-2.5 text-[14px] font-medium text-white"
+          className="mt-5 w-full max-w-[280px]"
         >
           {variant === "onboarding" ? t("phone.success.start", { app: brand().name }) : t("phone.success.done")}
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center text-center">
-      <div className="flex size-12 items-center justify-center rounded-xl bg-white text-black">
-        <QrCode size={23} />
+      <div className="flex size-11 items-center justify-center border border-hairline bg-raised text-ink">
+        <QrCode size={22} />
       </div>
       <h2 className="mt-3 text-[18px] font-semibold text-ink">
         {c.pairingExpired ? t("phone.code.expired") : t("phone.code.title")}
@@ -1219,32 +1240,56 @@ export function PhoneSetupFlowView({
         {c.pairingExpired ? t("phone.code.expiredDetail") : t("phone.code.detail")}
       </p>
       {!c.pairingExpired && c.pairingLink && (
-        <div className="mt-4 rounded-2xl bg-white p-3.5" aria-label={t("phone.code.qrAria")}>
+        <Frame surface="card" className="mt-4 bg-white p-3.5" aria-label={t("phone.code.qrAria")}>
           <QRCodeSVG value={c.pairingLink} size={180} level="M" bgColor="#ffffff" fgColor="#111111" />
-        </div>
+        </Frame>
       )}
       {!c.pairingExpired && manualCodeMode === "direct" && c.state?.pairing && (
-        <div className="mt-4 w-full max-w-[320px] rounded-xl bg-inset px-4 py-3 text-[12.5px] text-ink-secondary">
-          <div>{t("phone.code.manualIntro")}</div>
-          <div className="mt-2 font-mono text-[22px] tracking-[0.25em] text-ink">
-            {c.state.pairing.code}
+        <div className="mt-4 w-full max-w-[340px] border border-hairline bg-inset p-3 text-center">
+          <div className="label-mono text-ink-secondary">{t("phone.code.manualIntro")}</div>
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5 font-mono">
+            {c.state.pairing.code.split("").map((ch, i) =>
+              ch === "-" ? (
+                <span key={i} className="px-0.5 text-ink-secondary">-</span>
+              ) : (
+                <span
+                  key={i}
+                  className="inline-flex size-9 items-center justify-center border border-hairline bg-card text-[18px] font-semibold text-ink"
+                >
+                  {ch}
+                </span>
+              )
+            )}
           </div>
         </div>
       )}
       {!c.pairingExpired && manualCodeMode === "details" && c.state?.pairing && (
-        <p className="mt-3 text-[11.5px] text-ink-secondary">{t("phone.code.expiresIn", { seconds: c.secondsLeft })}</p>
+        <p className="mt-3 font-mono text-[11px] text-ink-secondary">{t("phone.code.expiresIn", { seconds: c.secondsLeft })}</p>
       )}
       {c.pairingExpired && (
-        <button onClick={c.refreshCode} className="mt-5 rounded-lg bg-accent px-5 py-2.5 text-[14px] font-medium text-white">
+        <Button variant="primary" size="md" onClick={c.refreshCode} className="mt-5">
           {t("phone.code.createNew")}
-        </button>
+        </Button>
       )}
       {!c.pairingExpired && c.state?.pairing && (
-        <details className="mt-4 w-full max-w-[390px] rounded-lg border border-hairline/40 px-3 py-2 text-left">
-          <summary className="cursor-pointer text-[12px] text-ink-secondary">{t("phone.code.trouble")}</summary>
+        <details className="mt-4 w-full max-w-[390px] border border-hairline p-3 text-left">
+          <summary className="cursor-pointer font-mono text-[11px] text-ink-secondary hover:text-ink">{t("phone.code.trouble")}</summary>
           <div className="mt-3 text-[12px] text-ink-secondary">
-            {t("phone.code.manual")}
-            <div className="mt-1 font-mono text-[22px] tracking-[0.25em] text-ink">{c.state.pairing.code}</div>
+            <div>{t("phone.code.manual")}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-1 font-mono">
+              {c.state.pairing.code.split("").map((ch, i) =>
+                ch === "-" ? (
+                  <span key={i} className="px-0.5 text-ink-secondary">-</span>
+                ) : (
+                  <span
+                    key={i}
+                    className="inline-flex size-7 items-center justify-center border border-hairline bg-inset text-[13px] font-semibold text-ink"
+                  >
+                    {ch}
+                  </span>
+                )
+              )}
+            </div>
             {c.address && (
               <div className="mt-3">
                 <ConnectionDetail label={t("phone.code.address")} value={`${c.address}:${c.pairingPort}`} />
@@ -1253,11 +1298,10 @@ export function PhoneSetupFlowView({
           </div>
         </details>
       )}
-      <button onClick={c.cancel} className="mt-4 text-[12px] text-ink-secondary hover:text-ink">{t("common.cancel")}</button>
+      <Button variant="ghost" size="sm" onClick={c.cancel} className="mt-4">{t("common.cancel")}</Button>
     </div>
   );
 }
-
 export function PhoneSetupFlow({
   profileEmail,
   variant,

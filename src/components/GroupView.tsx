@@ -40,7 +40,7 @@ import { AttachmentGallery, MessageAttachmentGallery } from "./AttachmentGallery
 import { OptionCard } from "./OptionCard";
 import { GroupCallButton, GroupCallOverlay } from "./GroupCallView";
 import { OkxAgentInvite, canInviteOkxAgent } from "./OkxAgentInvite";
-
+import { Button } from "@/components/ui/button";
 import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
 import { ManageMembersPanel } from "./ManageMembersPanel";
@@ -104,7 +104,7 @@ export function RoomToolChip({ message, roomId }: { message: Message; roomId?: s
             }
           }}
           title={t("room.openBot", { name: comm.withName })}
-          className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
+          className="flex items-center gap-2 border border-hairline bg-panel px-2.5 py-1 font-mono text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"
         >
           <BotAvatar bot={withBot ?? { name: comm.withName, color: comm.withColor }} state="happy" size={16} />
           <span className="max-w-[480px] truncate">{tool.name}</span>
@@ -118,7 +118,7 @@ export function RoomToolChip({ message, roomId }: { message: Message; roomId?: s
     <div className="flex justify-start">
       <div
         className={cn(
-          "flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px]",
+          "flex items-center gap-2 border border-hairline bg-panel px-2.5 py-1 font-mono text-[12px]",
           tool.ok === false ? "text-danger" : "text-ink-secondary",
         )}
       >
@@ -129,10 +129,11 @@ export function RoomToolChip({ message, roomId }: { message: Message; roomId?: s
   );
 }
 
-/** 16px profile avatar + name, shown once per sender cluster. */
+/** 16px profile avatar + name, shown once per sender cluster — the same mono
+ * header row the 1:1 transcript uses. */
 function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: string }) {
   return (
-    <div className="mt-1 flex items-center gap-1.5 pl-0.5">
+    <div className="mt-2 flex items-center gap-1.5 pl-0.5">
       <BotAvatar
         bot={bot ?? { name, color: color as Bot["color"] }}
         state={normalizeState(bot?.mascotExpression) ?? "happy"}
@@ -141,7 +142,19 @@ function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: st
         motionKey={0}
         animated={false}
       />
-      <span className="text-[11px] font-medium text-ink-secondary">{name}</span>
+      <span className="label-mono text-ink">{name}</span>
+    </div>
+  );
+}
+
+/** Day break in the room transcript, matching ChatView's dashed separator. */
+function DaySeparator({ at }: { at: number }) {
+  return (
+    <div className="relative my-4 flex items-center justify-center">
+      <div className="frame-rule absolute inset-x-0" />
+      <span className="label-mono relative bg-app px-2.5 text-ink-secondary">
+        {dayLabel(at)} · {formatTime(at)}
+      </span>
     </div>
   );
 }
@@ -161,7 +174,7 @@ function PinToggle({ group, message }: { group: Group; message: Message }) {
         })
       }
       aria-label={pinned ? t("chat.unpinMessage") : t("chat.pinMessage")}
-      className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+      className="p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
       title={pinned ? t("chat.unpinHint") : t("room.pinHint")}
     >
       {pinned ? <PinOff size={14} /> : <Pin size={14} />}
@@ -226,11 +239,7 @@ const Transcript = memo(function Transcript({
           const cluster = !prev || prev.role !== first.role || prev.from?.botId !== first.from?.botId || newDay;
           return (
             <div key={item.id} className="contents">
-              {newDay && (
-                <div className="py-3 text-center text-[13px] text-ink-secondary">
-                  {dayLabel(first.at)} {formatTime(first.at)}
-                </div>
-              )}
+              {newDay && <DaySeparator at={first.at} />}
               {first.from && cluster && (
                 <ClusterLabel bot={memberOf(first.from.botId)} name={first.from.name} color={first.from.color} />
               )}
@@ -320,7 +329,7 @@ const Transcript = memo(function Transcript({
                       onClick={() => onReply(m)}
                       aria-label={t("chat.replyToMessage")}
                       title={t("chat.reply")}
-                      className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                      className="p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                     >
                       <MessageSquareReply size={14} />
                     </button>
@@ -329,9 +338,9 @@ const Transcript = memo(function Transcript({
                 )}
                 <div
                   className={cn(
-                    "w-fit max-w-[min(42rem,78%)] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed",
+                    "w-fit max-w-[min(42rem,78%)] border border-hairline px-4 py-2.5 text-[14px] leading-relaxed",
                     !user && m.id === emergingId && "turn-answer",
-                    user ? "chat-text whitespace-pre-wrap bg-bubble-user text-ink" : "bg-card text-ink",
+                    user ? "chat-text whitespace-pre-wrap bg-raised text-ink" : "bg-card text-ink",
                   )}
                   title={new Date(m.at).toLocaleString()}
                 >
@@ -372,7 +381,7 @@ const Transcript = memo(function Transcript({
                       onClick={() => onReply(m)}
                       aria-label={t("chat.replyToMessage")}
                       title={t("chat.reply")}
-                      className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                      className="p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                     >
                       <MessageSquareReply size={14} />
                     </button>
@@ -388,11 +397,7 @@ const Transcript = memo(function Transcript({
         if (!row) return null;
         return (
           <div key={m.id} className="contents" data-mid={m.id}>
-            {newDay && (
-              <div className="py-3 text-center text-[13px] text-ink-secondary">
-                {dayLabel(m.at)} {formatTime(m.at)}
-              </div>
-            )}
+            {newDay && <DaySeparator at={m.at} />}
             {!user && m.from && newCluster && !(m.kind === "activity" && m.comm) && (
               <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} />
             )}
@@ -430,7 +435,7 @@ function DefaultResponderSelect({ group, members }: { group: Group; members: Bot
         aria-label={t("room.responder.aria")}
         value={value}
         onChange={(event) => change(event.target.value)}
-        className="h-8 max-w-[190px] appearance-none truncate rounded-full border border-hairline/40 bg-raised/60 py-1 pl-3 pr-7 text-[12.5px] font-medium text-ink outline-none hover:bg-raised focus:border-accent"
+        className="h-7 max-w-[190px] appearance-none truncate border border-hairline bg-raised py-0.5 pl-2.5 pr-6 font-mono text-[11px] text-ink outline-none hover:border-ink-secondary/60 focus:border-ink"
       >
         <optgroup label={t("room.responder.groupLead")}>
           {members.map((member) => (
@@ -445,9 +450,9 @@ function DefaultResponderSelect({ group, members }: { group: Group; members: Bot
         </optgroup>
       </select>
       <ChevronDown
-        size={13}
+        size={11}
         aria-hidden="true"
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-secondary"
+        className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-secondary"
       />
     </div>
   );
@@ -489,30 +494,30 @@ function RoomWorkingFolder({ group }: { group: Group }) {
   };
 
   return (
-    <div className="rounded-xl bg-card p-4">
-      <div className="text-[15px] font-medium text-ink">{t("room.folder.title")}</div>
-      <div className="mt-0.5 text-[13px] text-ink-secondary">{t("room.folder.detail")}</div>
+    <div className="border border-hairline bg-card p-4">
+      <div className="text-[14px] font-medium text-ink">{t("room.folder.title")}</div>
+      <div className="mt-0.5 text-[12px] text-ink-secondary">{t("room.folder.detail")}</div>
       {locked ? (
         <div className="mt-3">
-          <div className="truncate rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12.5px] text-ink" title={shownCwd}>
+          <div className="truncate border border-hairline bg-inset px-3 py-1.5 font-mono text-[12px] text-ink" title={shownCwd}>
             {shownCwd ? shortPath(shownCwd, home) : <span className="text-ink-secondary">{t("room.folder.own")}</span>}
           </div>
-          <div className="mt-2 text-[12px] text-ink-secondary">
+          <div className="mt-1.5 font-mono text-[11px] text-ink-secondary">
             {t("room.folder.locked")}
           </div>
         </div>
       ) : canPick ? (
         <div className="mt-3 flex items-center gap-2">
-          <div className="min-w-0 flex-1 truncate rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12.5px] text-ink" title={group.cwd}>
+          <div className="min-w-0 flex-1 truncate border border-hairline bg-inset px-3 py-1.5 font-mono text-[12px] text-ink" title={group.cwd}>
             {group.cwd ? shortPath(group.cwd, home) : <span className="text-ink-secondary">{t("room.folder.own")}</span>}
           </div>
-          <button onClick={() => void pick()} disabled={saving} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
-            <FolderOpen size={14} /> {t("room.folder.choose")}
-          </button>
+          <Button variant="secondary" size="sm" onClick={() => void pick()} disabled={saving}>
+            <FolderOpen size={13} /> {t("room.folder.choose")}
+          </Button>
           {group.cwd && (
-            <button onClick={() => void save(null)} disabled={saving} className="shrink-0 rounded-lg px-2 py-2 text-[13px] text-ink-secondary hover:text-ink disabled:opacity-50">
+            <Button variant="ghost" size="sm" onClick={() => void save(null)} disabled={saving}>
               {t("keys.clear")}
-            </button>
+            </Button>
           )}
         </div>
       ) : (
@@ -525,17 +530,17 @@ function RoomWorkingFolder({ group }: { group: Group }) {
           }}
         >
           <input
-            className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2.5 font-mono text-[12.5px] text-ink placeholder:text-ink-secondary focus:outline-none focus:border-hairline"
+            className="w-full border border-hairline bg-inset px-3 py-1.5 font-mono text-[12px] text-ink placeholder:text-ink-secondary/70 focus:outline-none focus:border-ink"
             placeholder={t("room.folder.placeholder")}
             value={draft ?? group.cwd ?? ""}
             onChange={(e) => setDraft(e.target.value)}
           />
-          <button type="submit" disabled={saving || draft === null} className="shrink-0 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
+          <Button type="submit" variant="primary" size="sm" disabled={saving || draft === null}>
             {t("common.save")}
-          </button>
+          </Button>
         </form>
       )}
-      {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
+      {error && <div className="mt-2 font-mono text-[11px] text-danger">{error}</div>}
     </div>
   );
 }
@@ -547,25 +552,29 @@ function RoomWorkingFolderChip({ group, onToggle }: { group: Group; onToggle: ()
   const folder = group.pinnedCwd === undefined ? group.cwd : (group.pinnedCwd ?? undefined);
   if (!folder) {
     return (
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
+        icon
         onClick={onToggle}
-        className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
         title={t("room.folder.chipTitle")}
       >
-        <Folder size={14} />
-      </button>
+        <Folder size={13} />
+      </Button>
     );
   }
   const name = folder.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || folder;
   return (
-    <button
+    <Button
+      variant="secondary"
+      size="sm"
       onClick={onToggle}
-      className="flex max-w-[180px] items-center gap-1.5 rounded-full border border-hairline/40 bg-raised/60 px-2.5 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
+      className="max-w-[180px]"
       title={t("chat.workingFolder", { folder })}
     >
       <Folder size={12} />
       <span className="truncate font-mono">{name}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -686,14 +695,14 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
     <section
       data-testid="room-setup"
       aria-labelledby="room-setup-title"
-      className="relative z-20 w-full overflow-visible rounded-3xl border border-hairline/50 bg-card shadow-xl shadow-black/10"
+      className="relative z-20 w-full overflow-visible border border-hairline bg-card shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
     >
-      <div className="rounded-t-3xl border-b border-hairline/40 bg-panel/70 px-5 py-5 sm:px-7">
+      <div className="border-b border-hairline bg-panel/70 px-5 py-4 sm:px-7">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white">1</span>
+          <span className="flex size-7 shrink-0 items-center justify-center border border-hairline bg-control font-mono text-[11px] font-bold text-ink">1</span>
           <div>
-            <h1 id="room-setup-title" className="text-xl font-semibold tracking-tight text-ink">{t("room.setup.title", { name: group.name })}</h1>
-            <p className="mt-1 max-w-[560px] text-[13.5px] leading-relaxed text-ink-secondary">
+            <h1 id="room-setup-title" className="text-lg font-medium tracking-tight text-ink">{t("room.setup.title", { name: group.name })}</h1>
+            <p className="mt-0.5 max-w-[560px] text-[13px] leading-relaxed text-ink-secondary">
               {t("room.setup.detail")}
             </p>
           </div>
@@ -714,14 +723,14 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
               value={folder}
               onChange={(event) => setFolder(event.target.value)}
               placeholder={t("room.folder.own")}
-              className="min-w-0 flex-1 rounded-xl border border-hairline/50 bg-inset px-3 py-2.5 font-mono text-[12.5px] text-ink placeholder:text-ink-secondary focus:border-accent focus:outline-none"
+              className="min-w-0 flex-1 border border-hairline bg-inset px-3 py-2 font-mono text-[12.5px] text-ink placeholder:text-ink-secondary/70 focus:border-ink focus:outline-none"
             />
             {window.ogb?.pickFolder && (
               <button
                 type="button"
                 onClick={() => void pickFolder()}
                 disabled={saving}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-hairline/50 bg-raised px-3 py-2 text-[13px] font-medium text-ink hover:bg-raised-hover disabled:opacity-50"
+                className="flex shrink-0 items-center gap-1.5 border border-hairline bg-raised px-3 py-2 text-[13px] font-medium text-ink hover:bg-raised-hover disabled:opacity-50"
               >
                 <FolderOpen size={14} /> Choose
               </button>
@@ -746,10 +755,10 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
                 }}
                 disabled={saving}
                 className={cn(
-                  "flex min-h-[72px] w-full flex-col items-start justify-between rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50",
+                  "flex min-h-[64px] w-full flex-col items-start justify-between border px-3 py-2.5 text-left transition focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
                   behavior === "lead"
-                    ? "border-accent bg-accent/10 text-ink ring-1 ring-accent/30"
-                    : "border-hairline/50 bg-inset text-ink-secondary hover:border-hairline hover:bg-raised",
+                    ? "border-ink bg-raised text-ink"
+                    : "border-hairline bg-inset text-ink-secondary hover:border-ink-secondary/60 hover:bg-raised",
                 )}
               >
                 <span className="flex w-full items-center justify-between gap-2">
@@ -778,7 +787,7 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
                 <div
                   role="listbox"
                   aria-label={t("room.behavior.chooseLead")}
-                  className="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl shadow-black/20"
+                  className="absolute left-0 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-3rem)] overflow-hidden border border-hairline bg-menu shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
                 >
                   <div className="border-b border-hairline/40 px-3 py-2.5">
                     <div className="text-[12.5px] font-semibold text-ink">{t("room.behavior.chooseLead")}</div>
@@ -798,8 +807,8 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
                             setLeadPickerOpen(false);
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition",
-                            selected ? "bg-accent/10" : "hover:bg-raised",
+                            "flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition",
+                            selected ? "bg-raised" : "hover:bg-raised-hover",
                           )}
                         >
                           <BotAvatar
@@ -831,10 +840,10 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
               }}
               disabled={saving}
               className={cn(
-                "flex min-h-[72px] w-full flex-col items-start justify-between rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50",
+                "flex min-h-[64px] w-full flex-col items-start justify-between border px-3 py-2.5 text-left transition focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
                 behavior === "everyone"
-                  ? "border-accent bg-accent/10 text-ink ring-1 ring-accent/30"
-                  : "border-hairline/50 bg-inset text-ink-secondary hover:border-hairline hover:bg-raised",
+                  ? "border-ink bg-raised text-ink"
+                  : "border-hairline bg-inset text-ink-secondary hover:border-ink-secondary/60 hover:bg-raised",
               )}
             >
               <span className="flex items-center gap-2 text-[13px] font-semibold">
@@ -861,10 +870,10 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
               }}
               disabled={saving}
               className={cn(
-                "flex min-h-[72px] w-full flex-col items-start justify-between rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50",
+                "flex min-h-[64px] w-full flex-col items-start justify-between border px-3 py-2.5 text-left transition focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
                 behavior === "mentions"
-                  ? "border-accent bg-accent/10 text-ink ring-1 ring-accent/30"
-                  : "border-hairline/50 bg-inset text-ink-secondary hover:border-hairline hover:bg-raised",
+                  ? "border-ink bg-raised text-ink"
+                  : "border-hairline bg-inset text-ink-secondary hover:border-ink-secondary/60 hover:bg-raised",
               )}
             >
               <span className="flex items-center gap-2 text-[13px] font-semibold">
@@ -891,26 +900,26 @@ function RoomSetup({ group, members }: { group: Group; members: Bot[] }) {
             onChange={(event) => setInstructions(event.target.value)}
             rows={5}
             placeholder={t("room.setup.instructionsPlaceholder")}
-            className="mt-2 w-full resize-y rounded-xl border border-hairline/50 bg-inset px-3 py-2.5 text-[13px] leading-relaxed text-ink placeholder:text-ink-secondary focus:border-accent focus:outline-none"
+            className="mt-2 w-full resize-y border border-hairline bg-inset px-3 py-2 font-mono text-[12.5px] leading-relaxed text-ink placeholder:text-ink-secondary/70 focus:border-ink focus:outline-none"
           />
         </label>
 
-        {error && <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{error}</div>}
+        {error && <div role="alert" className="border border-danger/40 bg-danger/10 px-3 py-2 font-mono text-[12px] text-danger">{error}</div>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={() => void finish("skip")}
             disabled={saving}
-            className="rounded-xl px-3 py-2 text-left text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-50"
+            className="px-3 py-2 text-left text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-50"
           >
             {t("room.setup.skip")}
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-semibold text-white hover:brightness-110 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 border border-accent bg-accent px-4 py-2 font-mono text-[11.5px] uppercase tracking-[0.06em] text-accent-ink hover:opacity-85 disabled:opacity-50"
           >
-            {saving && <Loader2 size={14} className="animate-spin" />}
+            {saving && <Loader2 size={13} className="animate-spin" />}
             {t("room.setup.save")}
           </button>
         </div>
@@ -1151,34 +1160,33 @@ export function GroupView({ group }: { group: Group }) {
       <div
         style={headerDragStyle}
         className={cn(
-          "flex items-center justify-between border-b border-hairline/15 px-5 py-2.5",
+          "h-11 shrink-0 frame-rule-below bg-app px-4 flex items-center justify-between gap-3",
           // Room for the drawer button, which overlays this corner below md.
-          "pl-11 md:pl-5",
+          "pl-11 md:pl-4",
         )}
       >
         <div className="flex min-w-0 items-center gap-2" style={headerNoDragStyle}>
-          <span className="truncate text-[15px] font-semibold text-ink">{group.name}</span>
+          <span className="truncate font-mono text-[14px] font-medium text-ink">{group.name}</span>
           {!setupPending && !group.dm && <GroupTaskPicker group={group} />}
         </div>
         <div
-          className="flex items-center gap-1.5"
+          className="flex items-center gap-2"
           // The caption buttons sit over the header's right end; drop this
           // control row 16px (visual only) below the 26px overlay.
           style={controlsShiftStyle}
         >
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            icon
             onClick={() => setFindOpen((open) => !open)}
             aria-label={t("chat.find")}
             aria-pressed={findOpen}
-            className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
-              findOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
-            )}
+            className={findOpen ? "text-ink bg-raised" : "text-ink-secondary"}
             title={t("chat.findShortcut")}
           >
-            <Search size={18} />
-          </button>
+            <Search size={14} />
+          </Button>
           <ExportTranscriptMenu
             title={group.name}
             messages={group.messages}
@@ -1189,7 +1197,7 @@ export function GroupView({ group }: { group: Group }) {
           {!remoteClient && !setupPending && !group.dm && <RoomWorkingFolderChip group={group} onToggle={() => setFolderOpen((open) => !open)} />}
           {!remoteClient && !setupPending && !group.dm && <DefaultResponderSelect group={group} members={members} />}
           {group.dm || remoteClient ? (
-            memberMauses
+            <div className="flex -space-x-1.5 items-center">{memberMauses}</div>
           ) : (
             // The roster lives where you already look to see who is in the
             // room; a dashed + says the row is editable without shouting.
@@ -1203,11 +1211,11 @@ export function GroupView({ group }: { group: Group }) {
                   ? t("room.members.ariaOne")
                   : t("room.members.ariaMany", { count: members.length })
               }
-              className="flex items-center gap-1.5 rounded-full py-0.5 pl-1 pr-1.5 hover:bg-raised/60"
+              className="flex items-center gap-1 border border-hairline bg-raised px-1.5 py-1 hover:border-ink-secondary/60 hover:bg-raised-hover"
             >
-              {memberMauses}
-              <span className="flex size-[18px] items-center justify-center rounded-full border border-dashed border-hairline/70 text-ink-secondary">
-                <Plus size={11} />
+              <div className="flex -space-x-1.5 items-center">{memberMauses}</div>
+              <span className="flex size-4 items-center justify-center text-ink-secondary">
+                <Plus size={10} />
               </span>
             </button>
           )}
@@ -1217,40 +1225,46 @@ export function GroupView({ group }: { group: Group }) {
       {findOpen && <ChatFindBar threadId={group.threadId} onClose={() => setFindOpen(false)} />}
 
       {/* Bulletin: one pinned line; click to edit */}
-      {!setupPending && <div className="w-full px-5">
-        {bulletinOpen ? (
-          <div className="mb-1 rounded-lg border border-hairline/40 bg-panel p-2">
-            <textarea
-              autoFocus
-              value={bulletinDraft}
-              onChange={(e) => setBulletinDraft(e.target.value)}
-              onBlur={saveBulletin}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveBulletin();
-                if (e.key === "Escape") {
-                  setBulletinDraft(group.bulletin);
-                  setBulletinOpen(false);
-                }
-              }}
-              placeholder={t("room.bulletin.placeholder")}
-              rows={4}
-              className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink placeholder:text-ink-secondary focus:outline-none"
-            />
-          </div>
-        ) : (
-          <button
-            disabled={remoteClient}
-            onClick={() => { if (!remoteClient) setBulletinOpen(true); }}
-            className={cn("mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left", !remoteClient && "hover:bg-raised/40")}
-            title={t("room.bulletin.title")}
-          >
-            <Pin size={12} className="shrink-0 text-ink-secondary" />
-            <span className={cn("truncate text-[12.5px]", group.bulletin ? "text-ink-secondary" : "text-ink-secondary/60")}>
-              {group.bulletin.split("\n")[0] || (remoteClient ? t("room.bulletin.none") : t("room.bulletin.add"))}
-            </span>
-          </button>
-        )}
-      </div>}
+      {!setupPending && (
+        <div className="frame-rule-below w-full bg-app px-4 py-1.5">
+          {bulletinOpen ? (
+            <div className="border border-hairline bg-inset p-2">
+              <textarea
+                autoFocus
+                value={bulletinDraft}
+                onChange={(e) => setBulletinDraft(e.target.value)}
+                onBlur={saveBulletin}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveBulletin();
+                  if (e.key === "Escape") {
+                    setBulletinDraft(group.bulletin);
+                    setBulletinOpen(false);
+                  }
+                }}
+                placeholder={t("room.bulletin.placeholder")}
+                rows={3}
+                className="w-full resize-none bg-transparent font-mono text-[12px] leading-relaxed text-ink placeholder:text-ink-secondary/70 focus:outline-none"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={remoteClient}
+              onClick={() => { if (!remoteClient) setBulletinOpen(true); }}
+              className={cn("flex w-full items-center gap-2 text-left transition-colors", !remoteClient && "hover:text-ink")}
+              title={t("room.bulletin.title")}
+            >
+              <span className="label-mono shrink-0 text-ink-secondary flex items-center gap-1.5">
+                <Pin size={10} className="shrink-0" />
+              </span>
+              <span className="h-3 w-px bg-hairline" />
+              <span className={cn("truncate font-mono text-[11.5px]", group.bulletin ? "text-ink" : "text-ink-secondary/70")}>
+                {group.bulletin.split("\n")[0] || (remoteClient ? t("room.bulletin.none") : t("room.bulletin.add"))}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Working folder card — the chip in the header toggles it */}
       {!setupPending && folderOpen && !group.dm && (
@@ -1268,24 +1282,24 @@ export function GroupView({ group }: { group: Group }) {
         if (!pinned || !text) return null;
         const sender = pinned.role === "user" ? t("chat.you") : (pinned.from?.name ?? t("room.aBot"));
         return (
-          <div className="w-full px-5">
-            <div className="mb-2 flex items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-1.5">
-              <Pin size={12} className="shrink-0 text-accent" />
+          <div className="w-full px-4 pt-2">
+            <div className="flex items-center gap-2 border border-hairline bg-raised px-3 py-1.5">
+              <Pin size={12} className="shrink-0 text-ink" />
               <button
                 onClick={() => dispatch({ type: "focusMessage", threadId: group.threadId, messageId: pinned.id })}
                 className="flex min-w-0 flex-1 items-baseline gap-2 text-left"
                 title={t("chat.pinnedJump")}
               >
-                <span className="shrink-0 text-[11.5px] font-medium text-accent">{sender}</span>
-                <span className="truncate text-[12.5px] text-ink-secondary">{text}</span>
+                <span className="shrink-0 font-mono text-[11px] font-medium text-ink">{sender}</span>
+                <span className="truncate font-mono text-[11.5px] text-ink-secondary">{text}</span>
               </button>
               <button
                 onClick={() => dispatch({ type: "patchGroup", groupId: group.id, patch: { pinnedMessageId: "" } })}
                 aria-label={t("chat.unpinMessage")}
                 title={t("chat.unpin")}
-                className={cn("shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink", remoteClient && "hidden")}
+                className={cn("shrink-0 p-0.5 text-ink-secondary hover:text-ink", remoteClient && "hidden")}
               >
-                <X size={13} />
+                <X size={12} />
               </button>
             </div>
           </div>
@@ -1334,15 +1348,15 @@ export function GroupView({ group }: { group: Group }) {
           aria-label={t("room.aria", { name: group.name })}
         >
           {devDayGate && hasDevDayConversation && (
-            <details className="self-center rounded-xl border border-hairline/40 bg-panel px-3 py-2">
-              <summary className="cursor-pointer text-[12px] font-medium text-ink-secondary hover:text-ink">Starters</summary>
+            <details className="self-center border border-hairline bg-panel px-3 py-2">
+              <summary className="cursor-pointer font-mono text-[11.5px] font-medium text-ink-secondary hover:text-ink">Starters</summary>
               <div className="mt-2">
                 <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} compact />
               </div>
             </details>
           )}
           {group.messages.length === 0 || (devDayGate && !hasDevDayConversation) ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-center">
               <div className="flex -space-x-2">
                 {members.slice(0, 3).map((b) => (
                   <BotAvatar
@@ -1356,8 +1370,8 @@ export function GroupView({ group }: { group: Group }) {
                   />
                 ))}
               </div>
-              <div className="text-[17px] font-semibold text-ink">{group.name}</div>
-              <div className="max-w-[380px] text-[14px] text-ink-secondary">
+              <div className="font-mono text-[16px] font-medium tracking-tight text-ink">{group.name}</div>
+              <div className="max-w-[420px] font-mono text-[12px] leading-relaxed text-ink-secondary">
                 {devDayGate ? "Markets, Listing Coach, and Spend Scout gate every listing and spend." : groupResponseHint(group, members)}
               </div>
               {devDayGate && <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} />}
@@ -1365,12 +1379,13 @@ export function GroupView({ group }: { group: Group }) {
           ) : null}
           {hiddenCount > 0 && (
             <div className="flex justify-center pt-2">
-              <button
+              <Button
+                variant="secondary"
+                size="xs"
                 onClick={showEarlier}
-                className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
                 {t("chat.showEarlier", { count: hiddenCount })}
-              </button>
+              </Button>
             </div>
           )}
           <Transcript
@@ -1384,12 +1399,13 @@ export function GroupView({ group }: { group: Group }) {
           />
           {laterCount > 0 && (
             <div className="flex justify-center">
-              <button
+              <Button
+                variant="secondary"
+                size="xs"
                 onClick={showLater}
-                className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
                 {t("chat.showLater", { count: laterCount })}
-              </button>
+              </Button>
             </div>
           )}
           {(speaker || presenceVisible) && (
@@ -1421,10 +1437,10 @@ export function GroupView({ group }: { group: Group }) {
             });
           }}
           aria-label={t("chat.jumpToLatestAria")}
-          className="animate-pop-in absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline/40 bg-raised px-3 py-1.5 text-[12.5px] text-ink shadow-lg hover:bg-raised-hover"
+          className="animate-pop-in absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 border border-hairline bg-raised px-3 py-1 font-mono text-[11.5px] text-ink shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-ink hover:bg-raised-hover"
           style={{ bottom: composerDock.height }}
         >
-          <ArrowDown size={13} /> {t("chat.jumpToLatest")}
+          <ArrowDown size={12} /> {t("chat.jumpToLatest")}
         </button>
       )}
 

@@ -1,58 +1,95 @@
-"use client";
+import { Frame } from "@/components/ui/frame";
+import { Tag } from "@/components/ui/tag";
 
-import "./neat-annotations.css";
-
-function Brace({ label }: { label: string }) {
-  return (
-    <div className="hidden w-20 shrink-0 items-center gap-1.5 text-[#8a837c] lg:flex" aria-hidden="true">
-      <svg viewBox="0 0 24 100" preserveAspectRatio="none" width="16" fill="none" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" className="h-full w-4">
-        <path d="M5 2 C17 2 17 18 17 34 C17 43 20 48 23 50 C20 52 17 57 17 66 C17 82 17 98 5 98" />
-      </svg>
-      <span className="-rotate-2 whitespace-nowrap text-base">{label}</span>
-    </div>
-  );
-}
-
+/**
+ * Restyled console specification and operational task breakdown.
+ * Styled in the Nymspace register using Frame and token colors.
+ */
 export function InviteSpec() {
   return (
-    <section
-      className="mx-auto w-full max-w-5xl px-6 pb-16 text-[#3d3834]"
-      style={{ ["--ann-font" as string]: "var(--font-shantell), cursive" }}
-      aria-label="Spec and tasks"
-    >
-      <div className="flex items-stretch gap-3 font-mono text-[14px] leading-7">
-        <div className="min-w-0 flex-1">
-          <p className="text-lg font-semibold"># Invite</p>
-          <p className="mt-2 text-[#8a837c]">Open a room that is not a direct message.</p>
-          <p className="text-[#8a837c]">Channel 1 is created once. Invite lives on that header.</p>
-          <p className="text-[#8a837c]">Markets, Listing Coach, and Spend Scout are Free · read-only.</p>
-        </div>
-        <Brace label="spec" />
-      </div>
+    <section className="w-full py-4 text-ink" aria-label="Spec and tasks">
+      <Frame title="DOSSIER SPECIFICATION &amp; TASKS" index="02" surface="app" className="bg-card p-6">
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Spec Column */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="label-mono text-ink-secondary">// SPECIFICATION</span>
+              <Tag tone="cyan" variant="outline" size="sm">
+                A2MCP
+              </Tag>
+            </div>
+            <div className="space-y-2 font-mono text-[13px] leading-relaxed text-ink-secondary">
+              <p className="font-medium text-ink"># Agent Invocation Protocol</p>
+              <p>• Open a room that is not a direct message.</p>
+              <p>• Channel 1 is created once. Invite lives on that header.</p>
+              <p>• Markets, Listing Coach, and Spend Scout are Free · read-only.</p>
+              <p>• Two-tier architecture: In-process tool mount (ASP #13851) + OKX Onchain OS dynamic proxy router.</p>
+            </div>
+          </div>
 
-      <div className="mt-8 flex items-stretch gap-3 font-mono text-[14px] leading-7">
-        <div className="min-w-0 flex-1">
-          <p className="text-lg font-semibold"># Tasks</p>
-          <p className="mt-2">
-            <a href="/docs/getting-started/first-bot" className="hover:text-[#2f8f5b]">- [x] INV-001 Invite an OKX agent #invite</a>
-          </p>
-          <p className="pl-6 text-[#8a837c]">Open Channel 1 and choose Invite OKX agent.</p>
-          <p>
-            <a href="/docs/okx/agents" className="hover:text-[#2f8f5b]">- [x] INV-002 Open the catalog #catalog</a>
-          </p>
-          <p className="pl-6 text-[#8a837c]">The catalog is local. It is not the live Portal.</p>
-          <p>
-            <a href="/docs/okx/rooms" className="hover:text-[#2f8f5b]">- [x] INV-003 Use a room #rooms</a>
-          </p>
-          <p className="pl-6 text-[#8a837c]">A direct message cannot take an invite.</p>
-          <p className="mt-3 text-[#8a837c]">- [ ] INV-005 Ship Bloomberg #bloomberg !high @blocked_by:INV-004</p>
-          <p className="pl-6 text-[#8a837c]">Sample figures. No page.</p>
-          <p className="text-[#8a837c]">- [ ] INV-006 Open the scheduler #scheduler !high</p>
-          <p className="pl-6 text-[#8a837c]">No sidebar control. No page.</p>
-        </div>
-        <Brace label="tasks" />
-      </div>
+          {/* Tasks Column */}
+          <div className="space-y-4 border-t border-hairline pt-6 lg:border-t-0 lg:border-l lg:pl-8 lg:pt-0">
+            <div className="flex items-center gap-2">
+              <span className="label-mono text-ink-secondary">// OPERATIONAL TASKS</span>
+              <Tag tone="success" variant="outline" size="sm">
+                ROUTINES
+              </Tag>
+            </div>
+            <div className="space-y-2.5 font-mono text-[13px] leading-relaxed">
+              <div>
+                <a
+                  href="/docs/getting-started/first-bot"
+                  className="flex items-center gap-1.5 text-ink hover:underline"
+                >
+                  <span className="font-bold text-success">[x]</span>
+                  <span>INV-001 Invite an OKX agent #invite</span>
+                </a>
+                <p className="pl-6 text-xs text-ink-secondary">Open Channel 1 and choose Invite OKX agent.</p>
+              </div>
 
+              <div>
+                <a
+                  href="/docs/okx/agents"
+                  className="flex items-center gap-1.5 text-ink hover:underline"
+                >
+                  <span className="font-bold text-success">[x]</span>
+                  <span>INV-002 Open the catalog #catalog</span>
+                </a>
+                <p className="pl-6 text-xs text-ink-secondary">The catalog is local. It is not the live Portal.</p>
+              </div>
+
+              <div>
+                <a
+                  href="/docs/okx/rooms"
+                  className="flex items-center gap-1.5 text-ink hover:underline"
+                >
+                  <span className="font-bold text-success">[x]</span>
+                  <span>INV-003 Use a room #rooms</span>
+                </a>
+                <p className="pl-6 text-xs text-ink-secondary">A direct message cannot take an invite.</p>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 text-ink-secondary">
+                  <span className="font-bold text-ink-secondary">[ ]</span>
+                  <span>INV-005 Ship Bloomberg #bloomberg !high</span>
+                </div>
+                <p className="pl-6 text-xs text-ink-secondary">Sample figures. Evaluator jury and market stats.</p>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 text-ink-secondary">
+                  <span className="font-bold text-ink-secondary">[ ]</span>
+                  <span>INV-006 Open the scheduler #scheduler !high</span>
+                </div>
+                <p className="pl-6 text-xs text-ink-secondary">Autonomous cron/interval routines with treasury controls.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Frame>
     </section>
   );
 }
+
+export default InviteSpec;

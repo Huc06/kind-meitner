@@ -9,7 +9,8 @@ import type { TeamMapSection } from "@/lib/team-map";
 import type { Bot } from "@/state/store";
 import type { BotWorkflowInfo } from "./TeamCanvas";
 import { BotAvatar } from "./Avatar";
-
+import { Tag } from "@/components/ui/tag";
+import { tileFor, TILE_FILL } from "@/components/ui/tile";
 export interface TeamMapBoardViewProps {
   sections: TeamMapSection<Bot>[];
   workflowMap?: Record<string, BotWorkflowInfo>;
@@ -94,32 +95,32 @@ export function TeamMapBoardView({
           <section
             key={section.key}
             aria-label={`${section.name} team`}
-            className="flex flex-col overflow-hidden rounded-lg border border-white/[0.08] bg-[#14171C] shadow-sm"
+            className="flex flex-col border border-hairline bg-panel shadow-sm"
           >
             {/* Team Container Header */}
-            <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+            <div className="flex h-11 shrink-0 items-center justify-between frame-rule-below px-3.5">
               <div className="flex items-center gap-2 truncate">
-                <Users size={14} className="shrink-0 text-white/40" aria-hidden="true" />
-                <h3 className="truncate text-[14px] font-semibold text-white/90">
+                <Users size={13} className="shrink-0 text-ink-secondary" aria-hidden="true" />
+                <h3 className="truncate label-mono text-[12px] font-semibold text-ink">
                   {section.name}
                 </h3>
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-[6px] bg-white/[0.08] px-1.5 font-mono text-[10.5px] font-medium text-white/60">
+                <span className="flex h-4 min-w-4 items-center justify-center border border-hairline bg-inset px-1 font-mono text-[10.5px] tabular-nums text-ink-secondary">
                   {count}
                 </span>
               </div>
 
               {attentionCount > 0 && (
-                <span className="flex items-center gap-1 rounded-[6px] bg-danger/15 px-2 py-0.5 text-[10.5px] font-bold text-danger">
-                  <AlertCircle size={11} aria-hidden="true" />
+                <Tag tone="danger" variant="solid" size="sm">
+                  <AlertCircle size={10} aria-hidden="true" />
                   <span>{attentionCount} issue</span>
-                </span>
+                </Tag>
               )}
             </div>
 
             {/* Team Bot List */}
-            <div className="flex-1 space-y-2.5 overflow-y-auto p-3.5">
+            <div className="flex-1 space-y-2 overflow-y-auto p-3">
               {section.bots.length === 0 ? (
-                <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/[0.08] p-4 text-center text-[12px] text-white/40">
+                <div className="flex h-24 items-center justify-center frame-edge p-4 text-center label-mono text-[11px] text-ink-secondary">
                   No agents match this view in {section.name}
                 </div>
               ) : (
@@ -130,6 +131,8 @@ export function TeamMapBoardView({
                   const isBlocked = wf?.presence === "blocked" || wf?.taskState === "blocked";
                   const isWorking = wf?.presence === "working" || bot.busy;
                   const isReviewing = wf?.presence === "reviewing" || wf?.taskState === "reviewing";
+                  const tileTone = tileFor(bot.id);
+                  const tileBg = TILE_FILL[tileTone].split(" ")[0];
 
                   return (
                     <button
@@ -137,19 +140,21 @@ export function TeamMapBoardView({
                       type="button"
                       onClick={() => onSelectBot(bot.id)}
                       className={cn(
-                        "group relative flex w-full flex-col rounded-md border p-2.5 text-left outline-none transition-all cursor-pointer shadow-sm",
+                        "group relative flex w-full flex-col border p-2.5 pl-3.5 text-left outline-none transition-colors cursor-pointer",
                         isBlocked
-                          ? "border-danger/60 ring-1 ring-danger/30 bg-[#181B20]"
+                          ? "border-danger bg-card ring-1 ring-danger/40"
                           : isReviewing
-                            ? "border-accent/60 ring-1 ring-accent/25 bg-[#181B20]"
+                            ? "border-warning bg-card ring-1 ring-warning/30"
                             : isWorking
-                              ? "border-white/[0.14] bg-[#181B20]"
+                              ? "border-hairline bg-card hover:border-ink-secondary"
                               : isSelected || isHighlighted
-                                ? "border-accent ring-2 ring-accent/30 bg-[#1D2128]"
-                                : "border-white/[0.08] bg-[#181B20] hover:border-white/[0.16] hover:bg-[#1D2128]",
-                        "focus-visible:ring-2 focus-visible:ring-accent",
+                                ? "border-ink ring-1 ring-ink bg-raised"
+                                : "border-hairline bg-card hover:border-ink-secondary hover:bg-raised-hover",
                       )}
                     >
+                      {/* 3px Tile bar for agent identity */}
+                      <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", tileBg)} aria-hidden="true" />
+
                       {/* Top: Avatar, Name & Chief */}
                       <div className="flex w-full items-start gap-2.5">
                         <BotAvatar
@@ -164,14 +169,14 @@ export function TeamMapBoardView({
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 truncate">
-                            <span className="truncate text-[13px] font-semibold text-white/95">
+                            <span className="truncate text-[13px] font-semibold text-ink">
                               {bot.name}
                             </span>
                             {bot.chiefOfStaff && (
                               <Crown size={12} className="shrink-0 text-warning" aria-label="Chief of staff" />
                             )}
                           </div>
-                          <span className="block truncate text-[11px] text-white/50">
+                          <span className="block truncate text-[11px] text-ink-secondary">
                             {bot.okxImport?.kind === "okx-catalog"
                               ? `${bot.title || "OKX.ai Agent"} · Free · read-only`
                               : bot.title || "Bot"}
@@ -182,48 +187,48 @@ export function TeamMapBoardView({
                         <div className="flex shrink-0 items-center gap-1">
                           <span
                             className={cn(
-                              "size-2 rounded-full",
+                              "size-1.5 rounded-full shrink-0",
                               isBlocked
                                 ? "bg-danger animate-pulse"
                                 : isWorking
                                   ? "bg-success"
                                   : isReviewing
-                                    ? "bg-accent"
-                                    : "bg-white/30",
+                                    ? "bg-warning"
+                                    : "bg-ink-secondary/40",
                             )}
                             aria-hidden="true"
                           />
-                          <span className="text-[10px] capitalize text-white/60">
+                          <span className="font-mono text-[10.5px] capitalize text-ink-secondary">
                             {wf?.presence ?? (bot.busy ? "working" : "ready")}
                           </span>
                         </div>
                       </div>
 
-                      {/* Active Task (1 readable line) & Progress bar */}
+                      {/* Active Task & Progress bar */}
                       {wf?.taskTitle && (
-                        <div className="mt-2 w-full rounded-lg bg-black/30 px-2 py-1.5 text-[11px]">
+                        <div className="mt-2 w-full border border-hairline bg-inset p-1.5 text-[11px]">
                           <div className="flex items-center justify-between gap-1 truncate">
-                            <span className="truncate font-medium text-white/85">
+                            <span className="truncate font-medium text-ink">
                               {wf.taskTitle}
                             </span>
                             {wf.progress !== undefined && (
-                              <span className="shrink-0 font-mono text-[10px] text-white/50 tabular-nums">
+                              <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-ink-secondary">
                                 {wf.progress}%
                               </span>
                             )}
                           </div>
 
                           {wf.progress !== undefined && wf.progress > 0 && wf.progress < 100 && (
-                            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                            <div className="mt-1 h-1.5 w-full overflow-hidden border border-hairline bg-inset">
                               <div
-                                className="h-full bg-accent transition-all duration-300"
+                                className={cn("h-full transition-all duration-300", isBlocked ? "bg-danger" : "bg-accent")}
                                 style={{ width: `${wf.progress}%` }}
                               />
                             </div>
                           )}
 
                           {wf.waitingReason && (
-                            <p className="mt-1 truncate text-[10px] font-medium text-danger">
+                            <p className="mt-1 truncate font-mono text-[10.5px] text-danger">
                               {wf.waitingReason}
                             </p>
                           )}
@@ -234,18 +239,18 @@ export function TeamMapBoardView({
                       <div className="mt-2 flex items-center justify-between text-[10.5px]">
                         <div className="flex items-center gap-1.5">
                           {wf?.hasIncomingHelp && (
-                            <span className="rounded-[5px] bg-warning/20 px-1.5 py-0.5 font-semibold text-warning">
+                            <Tag tone="warning" size="sm">
                               Help requested
-                            </span>
+                            </Tag>
                           )}
                           {wf?.reviewRequested && (
-                            <span className="rounded-[5px] bg-accent/20 px-1.5 py-0.5 font-semibold text-accent">
+                            <Tag tone="accent" size="sm">
                               Review pending
-                            </span>
+                            </Tag>
                           )}
                         </div>
 
-                        <span className="text-[10px] text-white/40 group-hover:text-white/70">
+                        <span className="font-mono text-[10.5px] text-ink-secondary group-hover:text-ink">
                           Inspect details →
                         </span>
                       </div>

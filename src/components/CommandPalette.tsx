@@ -8,7 +8,8 @@ import { rankByName } from "@/lib/palette-rank";
 import { cn } from "@/lib/cn";
 import type { SearchHit } from "@/lib/search-hit";
 import { landOnSearchHit } from "@/lib/focus-message";
-
+import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/eyebrow";
 type PaletteEntry =
   | { kind: "bot"; bot: Bot }
   | { kind: "room"; group: Group }
@@ -138,9 +139,11 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
       // (hits arriving) must not steal the keyboard selection
       onMouseMove={() => setCursor(index)}
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left",
-        twoLine && "flex-col items-stretch gap-0.5",
-        index === selected ? "bg-raised" : "hover:bg-raised/50",
+        "flex w-full items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors",
+        twoLine ? "flex-col items-stretch gap-1 py-2" : "min-h-[34px]",
+        index === selected
+          ? "bg-raised shadow-[inset_2px_0_0_var(--color-ink)] text-ink"
+          : "text-ink hover:bg-raised-hover",
       )}
     >
       {children}
@@ -148,38 +151,34 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
   );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-6 pt-[14vh]"
-      onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
+    <DialogBackdrop
+      className="items-start pt-[14vh]"
+      onDismiss={() => setOpen(false)}
       onKeyDown={onKeyDown}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
+      <DialogPanel
         aria-label="Command palette"
-        className="flex max-h-[min(480px,70vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-xl border border-hairline/50 bg-card shadow-2xl shadow-black/60"
+        className="max-h-[min(520px,70vh)] w-full max-w-[580px] overflow-hidden p-0"
       >
-        <div className="flex items-center gap-3 border-b border-hairline/40 px-4 py-3">
+        <div className="frame-rule-below flex items-center gap-3 bg-panel px-4 py-3">
           <Search size={16} className="shrink-0 text-ink-secondary" />
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search bots, channels, messages…"
-            className="w-full bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            className="w-full bg-transparent font-mono text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
           />
-          <kbd className="shrink-0 rounded-md border border-hairline/40 px-1.5 py-0.5 text-[11px] text-ink-secondary">
-            esc
-          </kbd>
+          <Kbd className="shrink-0">esc</Kbd>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {entries.length === 0 && (
-            <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">
+            <div className="px-3 py-8 text-center font-mono text-[12px] text-ink-secondary">
               {q ? `Nothing matches “${query}”` : "Nothing to switch to yet"}
             </div>
           )}
           {bots.length > 0 && (
-            <div className="px-3 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono px-2.5 pb-1 pt-2 text-ink-secondary">
               Bots
             </div>
           )}
@@ -189,16 +188,16 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
               i,
               () => void activate({ kind: "bot", bot }),
               <>
-                <BotIcon size={16} className="shrink-0 text-ink-secondary" />
-                <span className="truncate text-[14px] text-ink">{bot.name}</span>
+                <BotIcon size={15} className="shrink-0 text-ink-secondary" />
+                <span className="truncate text-[13px] font-medium text-ink">{bot.name}</span>
                 {bot.title && (
-                  <span className="min-w-0 truncate text-[12.5px] text-ink-secondary">{bot.title}</span>
+                  <span className="ml-auto min-w-0 truncate font-mono text-[11px] text-ink-secondary">{bot.title}</span>
                 )}
               </>,
             ),
           )}
           {rooms.length > 0 && (
-            <div className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono px-2.5 pb-1 pt-3 text-ink-secondary">
               Groups
             </div>
           )}
@@ -208,13 +207,13 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
               roomOffset + i,
               () => void activate({ kind: "room", group }),
               <>
-                <Users size={16} className="shrink-0 text-ink-secondary" />
-                <span className="truncate text-[14px] text-ink">{group.name}</span>
+                <Users size={15} className="shrink-0 text-ink-secondary" />
+                <span className="truncate text-[13px] font-medium text-ink">{group.name}</span>
               </>,
             ),
           )}
           {q && messageHits.length > 0 && (
-            <div className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono px-2.5 pb-1 pt-3 text-ink-secondary">
               Messages
             </div>
           )}
@@ -231,17 +230,17 @@ export function CommandPalette({ onOpenChange }: { onOpenChange?: (open: boolean
                   <span className="flex items-center gap-2 truncate text-[13px] font-medium text-ink">
                     <MessageSquare size={13} className="shrink-0 text-ink-secondary" />
                     {hit.name}
-                    {hit.task ? <span className="font-normal text-ink-secondary"> · {hit.task}</span> : null}
+                    {hit.task ? <span className="font-mono text-[11px] text-ink-secondary"> · {hit.task}</span> : null}
                   </span>
-                  <span className="line-clamp-2 text-[12.5px] text-ink-secondary">
-                    {before}<mark className="rounded-sm bg-accent/25 px-0.5 text-ink">{match}</mark>{after}
+                  <span className="line-clamp-2 font-mono text-[12px] text-ink-secondary">
+                    {before}<mark className="bg-raised-hover font-semibold text-ink underline">{match}</mark>{after}
                   </span>
                 </>,
                 true,
               );
             })}
         </div>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogBackdrop>
   );
 }

@@ -403,7 +403,7 @@ export function AttachmentPreviewDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05050a]/80 p-3 backdrop-blur-[2px] sm:p-6 animate-view-enter"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div
@@ -412,18 +412,18 @@ export function AttachmentPreviewDialog({
         aria-modal="true"
         aria-label={t("attach.previewAria", { name: current.name })}
         tabIndex={-1}
-        className="animate-pop-in flex h-full max-h-[900px] w-full max-w-[1200px] flex-col overflow-hidden rounded-2xl border border-white/15 bg-black/70 shadow-2xl outline-none"
+        className="relative flex h-full max-h-[900px] w-full max-w-[1200px] flex-col overflow-hidden border border-hairline bg-card shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)] outline-none"
       >
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-black/45 px-4 py-3">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline bg-panel px-4 py-2.5">
           <div className="min-w-0">
-            <div className="truncate text-[13px] font-medium text-white">{current.name}</div>
-            <div className="text-[10.5px] text-white/50">
+            <div className="truncate text-[13px] font-medium text-ink">{current.name}</div>
+            <div className="font-mono text-[10.5px] text-ink-secondary">
               {items.length > 1
                 ? t("attach.position", { index: index + 1, count: items.length })
                 : t("attach.imagePreview")}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1.5">
             {current.downloadUrl && (
               <a
                 href={current.downloadUrl}
@@ -431,11 +431,11 @@ export function AttachmentPreviewDialog({
                   fallback: current.name,
                   source: current.downloadUrl,
                 })}
-                className="flex size-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white"
+                className="flex size-7 items-center justify-center border border-hairline text-ink-secondary hover:bg-raised-hover hover:text-ink cursor-pointer"
                 aria-label={t("attach.downloadAria", { name: current.name })}
                 title={t("attach.download")}
               >
-                <Download size={17} />
+                <Download size={15} />
               </a>
             )}
             {current.openUrl && (
@@ -443,40 +443,40 @@ export function AttachmentPreviewDialog({
                 href={current.openUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex size-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white"
+                className="flex size-7 items-center justify-center border border-hairline text-ink-secondary hover:bg-raised-hover hover:text-ink cursor-pointer"
                 aria-label={t("attach.openOriginalAria", { name: current.name })}
                 title={t("attach.openOriginal")}
               >
-                <ExternalLink size={17} />
+                <ExternalLink size={15} />
               </a>
             )}
             <button
               onClick={onClose}
-              className="flex size-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white"
+              className="flex size-7 items-center justify-center border border-hairline text-ink-secondary hover:bg-raised-hover hover:text-ink cursor-pointer"
               aria-label={t("attach.close")}
             >
-              <X size={19} />
+              <X size={15} />
             </button>
           </div>
         </header>
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8 bg-inset/50">
           {!loaded && !failed && (
-            <div className="absolute inset-4 flex animate-pulse items-center justify-center rounded-xl bg-white/[0.055] sm:inset-8" role="status">
-              <span className="flex items-center gap-2 text-[13px] text-white/55">
-                <LoaderCircle size={17} className="animate-spin" /> Loading image…
+            <div className="absolute inset-4 flex items-center justify-center sm:inset-8" role="status">
+              <span className="flex items-center gap-2 font-mono text-[12px] text-ink-secondary">
+                <LoaderCircle size={16} className="animate-spin" /> Loading image…
               </span>
             </div>
           )}
           {failed ? (
-            <div className="flex flex-col items-center gap-3 text-white/60" role="alert">
-              <ImageOff size={34} />
+            <div className="flex flex-col items-center gap-3 text-ink-secondary" role="alert">
+              <ImageOff size={32} />
               <span className="text-[13px]">This image could not be loaded.</span>
               <button
                 type="button"
                 onClick={retry}
-                className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-[12px] text-white hover:bg-white/15"
+                className="flex items-center gap-1.5 border border-hairline bg-card px-2.5 py-1 font-mono text-[11px] text-ink hover:bg-raised-hover cursor-pointer"
               >
-                <RotateCcw size={13} /> Retry
+                <RotateCcw size={12} /> Retry
               </button>
             </div>
           ) : (
@@ -487,7 +487,7 @@ export function AttachmentPreviewDialog({
               onLoad={() => setLoadedSources((sources) => new Set(sources).add(current.src))}
               onError={() => setFailedSource(current.src)}
               className={cn(
-                "block max-h-full max-w-full rounded-lg object-contain shadow-2xl transition-opacity duration-150",
+                "block max-h-full max-w-full object-contain shadow-2xl transition-opacity duration-150",
                 loaded ? "opacity-100" : "opacity-0",
               )}
             />
@@ -498,17 +498,17 @@ export function AttachmentPreviewDialog({
                 type="button"
                 onClick={() => navigate(-1)}
                 aria-label={t("attach.previous")}
-                className="absolute left-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-sm hover:bg-black/75 hover:text-white sm:left-4"
+                className="absolute left-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center border border-hairline bg-card text-ink hover:bg-raised-hover cursor-pointer sm:left-4"
               >
-                <ChevronLeft size={21} />
+                <ChevronLeft size={18} />
               </button>
               <button
                 type="button"
                 onClick={() => navigate(1)}
                 aria-label={t("attach.next")}
-                className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-sm hover:bg-black/75 hover:text-white sm:right-4"
+                className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center border border-hairline bg-card text-ink hover:bg-raised-hover cursor-pointer sm:right-4"
               >
-                <ChevronRight size={21} />
+                <ChevronRight size={18} />
               </button>
             </>
           )}
@@ -537,7 +537,7 @@ export function AttachmentThumbnail({
   const [attempt, setAttempt] = useState(0);
 
   return (
-    <span className={cn("group/image relative block aspect-[4/3] min-w-0 overflow-hidden rounded-xl border border-hairline/40 bg-inset", className)}>
+    <span className={cn("group/image relative block aspect-[4/3] min-w-0 overflow-hidden border border-hairline bg-inset", className)}>
       {state === "loading" && (
         <span className="absolute inset-0 flex animate-pulse items-center justify-center bg-raised/65" role="status">
           <LoaderCircle size={17} className="animate-spin text-ink-secondary/65" />
@@ -564,7 +564,7 @@ export function AttachmentThumbnail({
               setState("loading");
               setAttempt((value) => value + 1);
             }}
-            className="flex items-center gap-1 rounded-md border border-hairline/50 bg-panel px-2 py-1 text-[11px] text-ink hover:bg-raised"
+            className="cursor-pointer flex items-center gap-1 border border-hairline bg-panel px-2 py-1 font-mono text-[11px] text-ink hover:bg-raised-hover"
             aria-label={t("attach.retryAria", { name: image.name })}
           >
             <RotateCcw size={11} /> {t("chat.retry")}
@@ -603,7 +603,7 @@ export function AttachmentThumbnail({
               state === "ready" ? "opacity-100" : "opacity-0",
             )}
           />
-          <span className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover/image:opacity-100 group-focus-within/image:opacity-100">
+          <span className="absolute right-2 top-2 flex size-6 items-center justify-center border border-hairline bg-card text-ink opacity-0 transition-opacity group-hover/image:opacity-100 group-focus-within/image:opacity-100">
             <Maximize2 size={13} />
           </span>
         </span>
@@ -720,25 +720,25 @@ export function MarkdownImagePreview({
     <>
       <span ref={containerRef} className="my-2 block w-[min(36rem,70vw)] max-w-full">
         {external && !externalAllowed ? (
-          <span className="flex aspect-[4/3] max-h-96 flex-col items-center justify-center gap-2 rounded-xl border border-hairline/40 bg-inset px-4 text-center text-[12px] text-ink-secondary">
+          <span className="flex aspect-[4/3] max-h-96 flex-col items-center justify-center gap-2 border border-hairline bg-inset px-4 text-center text-[12px] text-ink-secondary">
             <ImageOff size={20} />
             <span>{t("attach.externalHidden")}</span>
-            <button type="button" className="rounded-md border border-hairline/50 bg-panel px-2.5 py-1 text-ink hover:bg-raised" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setApprovedExternalSource(src); }}>{t("attach.loadImage")}</button>
+            <button type="button" className="cursor-pointer border border-hairline bg-panel px-2.5 py-1 font-mono text-[11px] text-ink hover:bg-raised-hover" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setApprovedExternalSource(src); }}>{t("attach.loadImage")}</button>
           </span>
         ) : filePath && (!threadId || !messageId || localSourceOffset === null) ? (
-          <span className="flex aspect-[4/3] max-h-96 items-center justify-center gap-2 rounded-xl border border-hairline/40 bg-inset text-[12px] text-ink-secondary" role="alert">
+          <span className="flex aspect-[4/3] max-h-96 items-center justify-center gap-2 border border-hairline bg-inset text-[12px] text-ink-secondary" role="alert">
             <ImageOff size={17} /> {t("attach.oldImage")}
           </span>
         ) : visibleSource ? (
           <AttachmentThumbnail key={image.src} image={image} onPreview={() => setOpen(true)} className="max-h-96" eager />
         ) : (
-          <span className="flex aspect-[4/3] max-h-96 animate-pulse items-center justify-center rounded-xl border border-hairline/40 bg-inset" role="status">
+          <span className="flex aspect-[4/3] max-h-96 animate-pulse items-center justify-center border border-hairline bg-inset" role="status">
             <LoaderCircle size={17} className="animate-spin text-ink-secondary/65" />
             <span className="sr-only">Loading {name}</span>
           </span>
         )}
         {openUrl && (
-          <a href={openUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-[11px] text-accent hover:underline">
+          <a href={openUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex font-mono text-[11px] text-ink underline decoration-hairline hover:decoration-ink">
             Open original
           </a>
         )}
@@ -759,7 +759,7 @@ export function AttachedFileChip({ file, message, linked = false, className }: {
   const failed = save.state === "failed";
   if (!message || (!file.private && !linked)) {
     return (
-      <div title={t("attach.legacyFile", { name: file.name })} className={cn("flex max-w-[280px] items-center gap-2 overflow-hidden rounded-lg border border-hairline/40 bg-inset/70 px-2.5 py-2 text-[12px] text-ink-secondary", className)}>
+      <div title={t("attach.legacyFile", { name: file.name })} className={cn("flex max-w-[280px] items-center gap-2 overflow-hidden border border-hairline bg-inset px-2.5 py-2 text-[12px] text-ink-secondary", className)}>
         <FileText size={14} className="shrink-0" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate text-ink">{file.name}</span>
         <span className="text-[10.5px]">{t("attach.unavailable")}</span>
@@ -769,7 +769,7 @@ export function AttachedFileChip({ file, message, linked = false, className }: {
   return (
     <div
       title={save.state === "saved" && save.savedTo ? t("attach.savedTo", { path: save.savedTo }) : file.name}
-      className={cn("max-w-[280px] overflow-hidden rounded-lg border border-hairline/40 bg-inset/70 text-[12px] text-ink-secondary", className)}
+      className={cn("max-w-[280px] overflow-hidden border border-hairline bg-inset text-[12px] text-ink-secondary", className)}
     >
       <button
         type="button"
@@ -780,7 +780,7 @@ export function AttachedFileChip({ file, message, linked = false, className }: {
             ? t("attach.retrySaveAria", { name: file.name })
             : t("attach.saveAria", { name: file.name })
         }
-        className="flex min-h-10 w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-raised/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 disabled:cursor-wait disabled:hover:bg-transparent"
+        className="flex min-h-10 w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-raised-hover cursor-pointer disabled:cursor-wait disabled:hover:bg-transparent"
       >
         <FileText size={14} className="shrink-0" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate text-ink">{file.name}</span>

@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
-import {
-  Activity,
-  Filter,
-  Search,
-} from "lucide-react";
+import { Activity, Filter, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Frame } from "@/components/ui/frame";
+import { Button } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
+import { Input } from "@/components/ui/field";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 export interface AspItem {
   id: string;
@@ -109,6 +110,13 @@ const DEFAULT_ASPS: AspItem[] = [
   },
 ];
 
+const TIER_TONES: Record<AspItem["trustTier"], "success" | "cyan" | "danger" | "neutral"> = {
+  elite: "success",
+  verified: "cyan",
+  high_risk: "danger",
+  neutral: "neutral",
+};
+
 export function BloombergView({
   asps = DEFAULT_ASPS,
   benchmarks = [],
@@ -151,197 +159,201 @@ export function BloombergView({
     });
   }, [asps, selectedCategory, searchQuery]);
 
-  const tierBadge = (tier: AspItem["trustTier"]) => {
-    switch (tier) {
-      case "elite":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-      case "verified":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
-      case "high_risk":
-        return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
-      default:
-        return "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20";
-    }
-  };
-
   return (
-    <div className={cn("flex flex-col h-full overflow-y-auto p-4 space-y-4 bg-panel text-ink", className)}>
-      {/* Header Snapshot Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline/40 pb-3">
-        <div>
-          <h2 className="text-base font-bold flex items-center gap-2">
-            <Activity className="text-accent" size={18} />
-            Bloomberg for OKX Agents
-          </h2>
-          <p className="text-xs text-ink-secondary">
+    <div className={cn("flex flex-col h-full overflow-y-auto bg-app text-ink", className)}>
+      {/* View Header */}
+      <header className="h-11 shrink-0 frame-rule-below bg-app px-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Activity className="size-4 text-ink-secondary shrink-0" />
+          <h1 className="text-sm font-medium text-ink truncate">Bloomberg for OKX Agents</h1>
+          <span aria-hidden className="h-3 w-px bg-hairline" />
+          <span className="label-mono text-ink-secondary truncate hidden md:inline">
             Live marketplace intelligence, pricing benchmarks, and friction diagnostics
-          </p>
+          </span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg border border-hairline/40 bg-card px-3 py-1.5 text-center">
-            <div className="text-[10px] uppercase font-semibold text-ink-secondary">Active ASPs</div>
-            <div className="text-sm font-bold text-ink">{activeAsps24h}</div>
-          </div>
-          <div className="rounded-lg border border-hairline/40 bg-card px-3 py-1.5 text-center">
-            <div className="text-[10px] uppercase font-semibold text-ink-secondary">24h Est. Volume</div>
-            <div className="text-sm font-bold text-accent">${totalVolume24h.toLocaleString()}</div>
-          </div>
-          <div className="rounded-lg border border-hairline/40 bg-card px-3 py-1.5 text-center">
-            <div className="text-[10px] uppercase font-semibold text-ink-secondary">Market Reject Rate</div>
-            <div className={cn("text-sm font-bold", overallRejectRate > 0.1 ? "text-danger" : "text-emerald-500")}>
-              {(overallRejectRate * 100).toFixed(1)}%
-            </div>
-          </div>
-        </div>
-      </div>
+      </header>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          <Filter size={14} className="text-ink-secondary mr-1 shrink-0" />
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
+      <div className="p-4 space-y-4">
+        {/* KPI Strip of Frames */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Frame surface="app" className="bg-card p-3">
+            <div className="label-mono text-ink-secondary">Active ASPs</div>
+            <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{activeAsps24h}</div>
+          </Frame>
+          <Frame surface="app" className="bg-card p-3">
+            <div className="label-mono text-ink-secondary">24h Est. Volume</div>
+            <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-accent">
+              ${totalVolume24h.toLocaleString()}
+            </div>
+          </Frame>
+          <Frame surface="app" className="bg-card p-3">
+            <div className="label-mono text-ink-secondary">Market Reject Rate</div>
+            <div
               className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                selectedCategory.toLowerCase() === cat.toLowerCase()
-                  ? "bg-accent text-ink"
-                  : "bg-raised text-ink-secondary hover:text-ink",
+                "mt-1 font-mono text-2xl font-semibold tabular-nums",
+                overallRejectRate > 0.1 ? "text-danger" : "text-success",
               )}
             >
-              {cat}
-            </button>
-          ))}
+              {(overallRejectRate * 100).toFixed(1)}%
+            </div>
+          </Frame>
         </div>
 
-        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-          <Search size={14} className="absolute left-2.5 top-2.5 text-ink-secondary" />
-          <input
-            type="text"
-            placeholder="Search ASPs or categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-hairline/50 bg-inset py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-secondary/60 focus:border-accent focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* ASP Leaderboard Table */}
-      <div className="rounded-xl border border-hairline/40 bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-hairline/40 bg-raised/50 text-[11px] font-semibold text-ink-secondary uppercase">
-                <th className="px-3.5 py-2.5">Rank</th>
-                <th className="px-3.5 py-2.5">ASP Agent</th>
-                <th className="px-3.5 py-2.5">Category</th>
-                <th className="px-3.5 py-2.5">Trust Tier</th>
-                <th className="px-3.5 py-2.5 text-right">Reputation</th>
-                <th className="px-3.5 py-2.5 text-right">Median Price</th>
-                <th className="px-3.5 py-2.5 text-right">7d Volume</th>
-                <th className="px-3.5 py-2.5 text-right">Reject Rate</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-hairline/30">
-              {filteredAsps.map((asp, idx) => (
-                <tr
-                  key={asp.id}
-                  onClick={() => onSelectAsp?.(asp)}
-                  className="hover:bg-raised/40 cursor-pointer transition-colors"
+        {/* Filter and Search Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+            <Filter size={13} className="text-ink-secondary mr-1 shrink-0" />
+            {categories.map((cat) => {
+              const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
+              return (
+                <Button
+                  key={cat}
+                  variant={isSelected ? "primary" : "secondary"}
+                  size="xs"
+                  onClick={() => setSelectedCategory(cat)}
                 >
-                  <td className="px-3.5 py-2.5 font-mono text-ink-secondary">
-                    {asp.trendingRank ? `#${asp.trendingRank}` : `#${idx + 1}`}
-                  </td>
-                  <td className="px-3.5 py-2.5">
-                    <div className="font-medium text-ink">{asp.name}</div>
-                    <div className="font-mono text-[10px] text-ink-secondary">{asp.id}</div>
-                  </td>
-                  <td className="px-3.5 py-2.5 capitalize text-ink-secondary">{asp.category}</td>
-                  <td className="px-3.5 py-2.5">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
-                        tierBadge(asp.trustTier),
-                      )}
-                    >
-                      {asp.trustTier.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-3.5 py-2.5 text-right font-semibold">
-                    <span
-                      className={
-                        asp.reputationScore >= 90
-                          ? "text-emerald-500"
-                          : asp.reputationScore >= 75
-                            ? "text-accent"
-                            : "text-rose-500"
-                      }
-                    >
-                      {asp.reputationScore}/100
-                    </span>
-                  </td>
-                  <td className="px-3.5 py-2.5 text-right font-mono">${asp.medianPrice} USDT</td>
-                  <td className="px-3.5 py-2.5 text-right font-mono">{asp.recentVolume7d}</td>
-                  <td className="px-3.5 py-2.5 text-right font-mono">
-                    <span className={asp.rejectRate > 0.15 ? "text-danger font-semibold" : "text-ink"}>
-                      {(asp.rejectRate * 100).toFixed(1)}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {filteredAsps.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-ink-secondary">
-                    No ASP providers match the selected criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  {cat}
+                </Button>
+              );
+            })}
+          </div>
 
-      {/* Category Benchmark Insights */}
-      {benchmarks.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            Category Friction & Pricing Distributions
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {benchmarks.map((b) => (
-              <div key={b.category} className="rounded-xl border border-hairline/40 bg-card p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-xs capitalize text-ink">{b.category}</span>
-                  <span className="text-[10px] text-ink-secondary">{b.aspCount} ASPs</span>
-                </div>
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-ink-secondary">Price Range:</span>
-                  <span className="font-mono text-ink">
-                    ${b.minPrice} - ${b.maxPrice} USDT
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-ink-secondary">Median Price:</span>
-                  <span className="font-mono font-semibold text-accent">${b.medianPrice} USDT</span>
-                </div>
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-ink-secondary">Avg Reject Rate:</span>
-                  <span
-                    className={cn(
-                      "font-mono font-semibold",
-                      b.averageRejectRate > 0.12 ? "text-danger" : "text-emerald-500",
-                    )}
-                  >
-                    {(b.averageRejectRate * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <Search size={14} className="absolute left-2.5 top-2.5 text-ink-secondary pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Search ASPs or categories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 pl-8 pr-3 text-xs"
+            />
           </div>
         </div>
-      )}
+
+        {/* ASP Leaderboard Table */}
+        <Frame title="ASP LEADERBOARD" index="01" surface="app" className="bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="label-mono text-ink-secondary frame-rule-below bg-raised/30">
+                  <th className="px-3.5 py-2.5">Rank</th>
+                  <th className="px-3.5 py-2.5">ASP Agent</th>
+                  <th className="px-3.5 py-2.5">Category</th>
+                  <th className="px-3.5 py-2.5">Trust Tier</th>
+                  <th className="px-3.5 py-2.5 text-right">Reputation</th>
+                  <th className="px-3.5 py-2.5 text-right">Median Price</th>
+                  <th className="px-3.5 py-2.5 text-right">7d Volume</th>
+                  <th className="px-3.5 py-2.5 text-right">Reject Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline">
+                {filteredAsps.map((asp, idx) => (
+                  <tr
+                    key={asp.id}
+                    onClick={() => onSelectAsp?.(asp)}
+                    className="frame-rule-below hover:bg-raised-hover cursor-pointer transition-colors duration-150"
+                  >
+                    <td className="px-3.5 py-2.5 font-mono text-ink-secondary tabular-nums">
+                      {asp.trendingRank ? `#${asp.trendingRank}` : `#${idx + 1}`}
+                    </td>
+                    <td className="px-3.5 py-2.5">
+                      <div className="font-medium text-ink">{asp.name}</div>
+                      <div className="font-mono text-[10px] text-ink-secondary">{asp.id}</div>
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono text-xs uppercase text-ink-secondary">
+                      {asp.category}
+                    </td>
+                    <td className="px-3.5 py-2.5">
+                      <Tag tone={TIER_TONES[asp.trustTier] ?? "neutral"} variant="soft" size="sm">
+                        {asp.trustTier.replace("_", " ")}
+                      </Tag>
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right">
+                      <Tag
+                        tone={
+                          asp.reputationScore >= 90
+                            ? "success"
+                            : asp.reputationScore >= 75
+                              ? "accent"
+                              : "danger"
+                        }
+                        variant="soft"
+                        size="sm"
+                      >
+                        {asp.reputationScore}/100
+                      </Tag>
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-mono tabular-nums text-[12px] text-ink">
+                      ${asp.medianPrice} USDT
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-mono tabular-nums text-[12px] text-ink-secondary">
+                      {asp.recentVolume7d}
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-mono tabular-nums text-[12px]">
+                      <span
+                        className={
+                          asp.rejectRate > 0.15 ? "text-danger font-medium" : "text-ink"
+                        }
+                      >
+                        {(asp.rejectRate * 100).toFixed(1)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {filteredAsps.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-xs text-ink-secondary">
+                      No ASP providers match the selected criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Frame>
+
+        {/* Category Benchmark Insights */}
+        {benchmarks.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <Eyebrow index="02">Category Friction & Pricing Distributions</Eyebrow>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {benchmarks.map((b) => (
+                <Frame key={b.category} surface="app" className="bg-card p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-xs capitalize text-ink">{b.category}</span>
+                    <Tag tone="neutral" variant="soft" size="sm">
+                      {b.aspCount} ASPs
+                    </Tag>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-ink-secondary">Price Range:</span>
+                    <span className="font-mono tabular-nums text-ink">
+                      ${b.minPrice} - ${b.maxPrice} USDT
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-ink-secondary">Median Price:</span>
+                    <span className="font-mono tabular-nums font-semibold text-accent">
+                      ${b.medianPrice} USDT
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-ink-secondary">Avg Reject Rate:</span>
+                    <span
+                      className={cn(
+                        "font-mono tabular-nums font-semibold",
+                        b.averageRejectRate > 0.12 ? "text-danger" : "text-success",
+                      )}
+                    >
+                      {(b.averageRejectRate * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </Frame>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

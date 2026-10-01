@@ -70,57 +70,55 @@ export function Hands({ playing, onCue, onEnded, label }: SceneProps) {
 
   return (
     <div className="relative flex h-full w-full overflow-hidden bg-inset" role="img" aria-label={label}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_0%,transparent_55%,rgba(0,0,0,0.28)_100%)]" aria-hidden="true" />
-
       {/* the app: chat on the left, the panel arriving on the right */}
-      <div className="animate-rise relative m-4 flex flex-1 overflow-hidden rounded-xl border border-hairline/40 bg-app shadow-[0_18px_44px_-20px_rgba(0,0,0,0.6)]">
+      <div className="animate-rise relative m-4 flex flex-1 overflow-hidden border border-hairline bg-app">
         {/* chat */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between border-b border-hairline/40 px-3 py-2">
+          <div className="flex items-center justify-between border-b border-hairline px-3 py-2">
             <div className="flex items-center gap-2">
               <MausAvatar color="green" state={busy ? "working" : replied ? "proud" : "happy"} size={18} animated={!still} />
-              <span className="text-[12px] font-semibold text-ink">Maus</span>
+              <span className="font-mono text-[11px] font-semibold text-ink">Maus</span>
             </div>
-            <span className={cn("flex size-6 items-center justify-center rounded-md transition-colors duration-300", panel ? "bg-raised text-accent" : "text-ink-secondary")}>
+            <span className={cn("flex size-6 items-center justify-center transition-colors duration-300", panel ? "bg-raised text-accent" : "text-ink-secondary")}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
             </span>
           </div>
           <div className="flex flex-1 flex-col justify-end gap-2 px-3 pb-2.5">
             <div className="flex justify-end">
-              <div className="max-w-[200px] rounded-2xl rounded-br-md bg-bubble-user px-3 py-2 text-[11.5px] leading-snug text-ink shadow-md shadow-black/15">{ASK}</div>
+              <div className="max-w-[200px] border border-hairline bg-raised px-3 py-2 text-[11.5px] leading-snug text-ink">{ASK}</div>
             </div>
             {awake && (
               <div className="animate-rise flex items-start gap-2">
                 <MausAvatar color="green" state={busy ? "working" : "proud"} size={22} animated={!still} />
                 <div className="min-w-0">
-                  <div className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium transition-colors duration-300", done ? "bg-success/15 text-success" : "bg-raised text-ink-secondary")}>
+                  <div className={cn("inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider transition-colors duration-300", done ? "border-success/60 bg-success/12 text-success" : "border-hairline bg-raised text-ink-secondary")}>
                     {done ? <Check size={10} strokeWidth={3} /> : <Loader2 size={10} className="animate-spin" />}
                     {done ? "clicked Book" : clicked ? "clicking Book…" : "using the computer"}
                   </div>
                   {replied && (
-                    <div className="animate-spot-in mt-1.5 max-w-[210px] rounded-2xl rounded-tl-md border border-hairline/40 bg-card px-3 py-2 text-[11.5px] leading-relaxed text-ink shadow-[0_10px_30px_-12px_rgba(0,0,0,0.55)]">
+                    <div className="animate-spot-in mt-1.5 max-w-[210px] border border-hairline bg-card px-3 py-2 text-[11.5px] leading-relaxed text-ink">
                       {REPLY}
                     </div>
                   )}
                 </div>
               </div>
             )}
-            <div className="mt-1 h-7 rounded-lg border border-hairline/40 bg-inset px-2.5 text-[10.5px] leading-7 text-ink-secondary">Message Maus</div>
+            <div className="mt-1 h-7 border border-hairline bg-inset px-2.5 font-mono text-[10px] leading-7 text-ink-secondary">Message Maus</div>
           </div>
         </div>
 
         {/* the Computer panel, as ComputerPanel draws it */}
         <aside
           className={cn(
-            "flex w-[58%] shrink-0 flex-col border-l border-hairline/40 bg-panel transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "flex w-[58%] shrink-0 flex-col border-l border-hairline bg-panel transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
             panel ? "translate-x-0 opacity-100" : "translate-x-7 opacity-0",
           )}
         >
           <div className="flex items-center justify-between px-2.5 py-2">
             <Settings2 size={13} className="text-ink-secondary" />
-            <div className="flex overflow-hidden rounded-md border border-hairline/40">
+            <div className="flex overflow-hidden border border-hairline">
               {TABS.map((tab, i) => (
-                <span key={tab} className={cn("px-2 py-0.5 text-[9px] font-medium", i === 0 ? "bg-raised text-ink" : "text-ink-secondary")}>
+                <span key={tab} className={cn("px-2 py-0.5 font-mono text-[8.5px] uppercase", i === 0 ? "bg-raised text-ink" : "text-ink-secondary")}>
                   {tab}
                 </span>
               ))}
@@ -129,16 +127,16 @@ export function Hands({ playing, onCue, onEnded, label }: SceneProps) {
           </div>
 
           {/* the screen */}
-          <div className="relative mx-2.5 aspect-[16/10] overflow-hidden rounded-lg border border-hairline/40 bg-black">
+          <div className="relative mx-2.5 aspect-[16/10] overflow-hidden border border-hairline bg-black">
             {/* desktop */}
             <div className={cn("absolute inset-0 transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]", awake ? "opacity-100" : "opacity-0")}>
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,#1f3a5f_0%,#2a5d8c_45%,#6b3fa0_100%)]" />
+              <div className="absolute inset-0 bg-[#162332]" />
               <div className="absolute inset-x-0 top-0 flex h-3 items-center justify-between bg-black/30 px-1.5 text-[6px] text-white/80">
                 <span>Ubuntu</span>
                 <span className="tabular-nums">14:58</span>
               </div>
               {/* the browser window with the booking form */}
-              <div className="absolute left-[10%] right-[10%] top-[16%] bottom-[18%] overflow-hidden rounded-md bg-[#f4f5f7] shadow-[0_10px_30px_-8px_rgba(0,0,0,0.7)]">
+              <div className="absolute left-[10%] right-[10%] top-[16%] bottom-[18%] overflow-hidden border border-hairline bg-[#f4f5f7]">
                 <div className="flex h-3.5 items-center gap-1 bg-[#e4e6ea] px-1.5">
                   <span className="size-1.5 rounded-full bg-[#ff5f57]" />
                   <span className="size-1.5 rounded-full bg-[#febc2e]" />
@@ -166,9 +164,9 @@ export function Hands({ playing, onCue, onEnded, label }: SceneProps) {
                 </div>
               </div>
               {/* dock */}
-              <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-1 rounded-md bg-white/15 px-1.5 py-0.5">
+              <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-1 border border-hairline/30 bg-black/40 px-1.5 py-0.5">
                 {[0, 1, 2, 3].map((i) => (
-                  <span key={i} className="size-2 rounded-sm bg-white/70" />
+                  <span key={i} className="size-2 bg-white/70" />
                 ))}
               </div>
               {/* the bot's pointer: a full-size layer, so its percentages are
@@ -180,7 +178,7 @@ export function Hands({ playing, onCue, onEnded, label }: SceneProps) {
                 )}
               >
                 {clicked && !done && <span className="absolute -left-1.5 -top-1.5 size-4 animate-ripple rounded-full" />}
-                <MousePointer2 size={11} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="#fff" />
+                <MousePointer2 size={11} className="text-white" fill="#fff" />
               </div>
             </div>
             {/* the screen before it wakes */}
@@ -199,10 +197,10 @@ export function Hands({ playing, onCue, onEnded, label }: SceneProps) {
               {awake ? "Cloud screen connected" : "Starting…"}
             </div>
             <div className="flex items-center gap-1">
-              <span className="flex items-center gap-1 rounded-md bg-raised px-1.5 py-0.5 text-[9px] text-ink">
+              <span className="flex items-center gap-1 border border-hairline bg-raised px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wider text-ink">
                 <ExternalLink size={9} /> Open live desktop
               </span>
-              <span className="flex items-center gap-1 rounded-md bg-raised px-1.5 py-0.5 text-[9px] text-ink">
+              <span className="flex items-center gap-1 border border-hairline bg-raised px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wider text-ink">
                 <Hand size={9} /> Take control
               </span>
             </div>

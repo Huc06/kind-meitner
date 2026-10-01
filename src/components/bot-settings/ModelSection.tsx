@@ -10,14 +10,14 @@ import type { Bot } from "@/state/store";
 export function ModelSection({ bot }: { bot: Bot }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-card p-4">
+      <div className="border border-hairline bg-card p-4">
         <ModelPicker
           bot={bot}
           contained
           label={
             <div>
-              <div className="text-[15px] font-medium text-ink">Default model</div>
-              <div className="mt-0.5 text-[13px] text-ink-secondary">
+              <div className="text-[14px] font-medium text-ink">Default model</div>
+              <div className="mt-0.5 text-[12.5px] text-ink-secondary">
                 For groups and new threads. Also updates the selected idle thread; other existing threads keep their model.
               </div>
             </div>
@@ -28,16 +28,16 @@ export function ModelSection({ bot }: { bot: Bot }) {
       {/* Share the model picker's effort choices, but edit the profile default. */}
       <EffortRow
         bot={bot}
-        className="rounded-xl bg-card p-4"
+        className="border border-hairline bg-card p-4"
         label={
           <div>
-            <div className="text-[15px] font-medium text-ink">Effort</div>
+            <div className="text-[14px] font-medium text-ink">Effort</div>
             {/* Says what the app does, not what the engine ends up at:
                 Codex applies a level to the whole thread and has no way to
                 take one back, so "currently: engine default" was a promise
                 we could not keep for a thread that had already been sent
                 one. Sending nothing is true on every engine. */}
-            <div className="mt-0.5 text-[13px] text-ink-secondary">
+            <div className="mt-0.5 text-[12.5px] text-ink-secondary">
               How hard this bot thinks in groups and new threads{bot.modelSelection.effort ? "" : " (Default: no level is sent)"}
             </div>
           </div>

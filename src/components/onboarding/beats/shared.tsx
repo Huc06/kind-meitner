@@ -1,6 +1,8 @@
 // Small pieces every beat of the welcome flow shares, so the beats read as
 // one surface: the same input, the same primary button.
 import type { CSSProperties } from "react";
+import { Button } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
 import type { MausMotion, MausState } from "@/lib/mascot";
 
@@ -16,8 +18,7 @@ export interface BeatProps {
   bump: (motion: Exclude<MausMotion, "none">) => void;
 }
 
-export const inputClass =
-  "w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none";
+export const inputClass = fieldClass;
 
 /** Index for the `.stagger` utility; each sibling arrives 40ms after the last. */
 export function staggerIndex(i: number): CSSProperties {
@@ -30,16 +31,15 @@ export function PrimaryButton({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
+    <Button
+      variant="primary"
+      size="md"
       data-primary=""
+      className={cn("w-full", className)}
       {...rest}
-      className={cn(
-        "w-full shrink-0 rounded-lg bg-accent py-2.5 text-[15px] font-medium text-white transition-[transform,opacity] duration-150 active:scale-[0.98] disabled:opacity-40",
-        className,
-      )}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -49,12 +49,14 @@ export function QuietButton({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn("text-ink-secondary", className)}
       {...rest}
-      className={cn("text-[12px] text-ink-secondary transition-colors hover:text-ink", className)}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 

@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "@/lib/i18n";
 import { Laptop, Loader2, Unplug } from "lucide-react";
 import { Card } from "./SettingsPrimitives";
-
-const inputClass =
-  "w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[14px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none";
+import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
 
 function errorText(error: unknown): string {
   return String((error as { message?: string })?.message ?? error).replace(
@@ -92,45 +91,46 @@ export function RemoteComputerSection() {
         <p className="text-[13px] text-ink-secondary">{t("remote.client.desktopOnly")}</p>
       ) : state.active ? (
         <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-3 rounded-lg border border-success/25 bg-success/10 px-3 py-3">
+          <div className="flex items-start gap-3 border border-success/40 bg-success/10 px-3 py-3">
             <Laptop size={18} className="mt-0.5 shrink-0 text-success" />
             <div className="min-w-0">
               <div className="text-[14px] font-medium text-ink">
                 {t("remote.client.connected", { name: state.serverName || t("remote.client.fallbackName") })}
               </div>
-              <div className="mt-1 break-all text-[12px] text-ink-secondary">{state.endpoint}</div>
+              <div className="mt-1 break-all font-mono text-[11.5px] text-ink-secondary">{state.endpoint}</div>
             </div>
           </div>
           <p className="text-[12.5px] leading-relaxed text-ink-secondary">
             {t("remote.client.mode")}
           </p>
-          <button
+          <Button
+            variant="danger"
+            size="sm"
             type="button"
             disabled={busy}
             onClick={() => void disconnect()}
-            className="flex w-fit items-center gap-2 rounded-lg border border-danger/30 px-3 py-2 text-[13px] text-danger hover:bg-danger/10 disabled:opacity-50"
+            className="w-fit"
           >
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}
+            {busy ? <Loader2 size={13} className="animate-spin" /> : <Unplug size={14} />}
             {t("remote.client.disconnect")}
-          </button>
+          </Button>
         </div>
       ) : (
         <form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void pair(); }}>
           {environments && bridge ? (
             <label className="flex flex-col gap-1.5 text-[12px] text-ink-secondary">
               {t("remote.client.connectionType")}
-              <select
+              <Select
                 value={connection}
                 disabled={busy}
                 onChange={(event) => {
                   setConnection(event.target.value as "server" | "companion");
                   setError("");
                 }}
-                className={inputClass}
               >
                 <option value="server">{t("remote.client.server.option")}</option>
                 <option value="companion">{t("remote.client.companion.option")}</option>
-              </select>
+              </Select>
             </label>
           ) : null}
           {serverMode ? (
@@ -138,12 +138,12 @@ export function RemoteComputerSection() {
               <p className="text-[12.5px] leading-relaxed text-ink-secondary">
                 {t("remote.client.server.hint")}
               </p>
-              <code className="select-all rounded-lg bg-inset px-3 py-2 text-[12px] text-ink">
+              <code className="select-all border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink">
                 npx kind-meitner pair --client
               </code>
               <label className="flex flex-col gap-1.5 text-[12px] text-ink-secondary">
                 {t("remote.client.server.pairingLink")}
-                <input
+                <Input
                   value={serverLink}
                   onChange={(event) => setServerLink(event.target.value)}
                   placeholder="https://bots.example.com/pair#code=XXXX-XXXX-XXXX"
@@ -152,7 +152,6 @@ export function RemoteComputerSection() {
                   autoCorrect="off"
                   autoComplete="off"
                   spellCheck={false}
-                  className={inputClass}
                 />
               </label>
               <p className="text-[11.5px] leading-relaxed text-ink-secondary">
@@ -166,7 +165,7 @@ export function RemoteComputerSection() {
               </p>
               <label className="flex flex-col gap-1.5 text-[12px] text-ink-secondary">
                 {t("remote.client.companion.address")}
-                <input
+                <Input
                   value={endpoint}
                   onChange={(event) => setEndpoint(event.target.value)}
                   placeholder="https://…kind-meitner.com or computer.tailnet.ts.net"
@@ -174,32 +173,33 @@ export function RemoteComputerSection() {
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  className={inputClass}
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-[12px] text-ink-secondary">
                 {t("remote.client.companion.code")}
-                <input
+                <Input
                   value={code}
                   onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="000000"
                   disabled={busy}
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  className={`${inputClass} max-w-40 font-mono tracking-[0.2em]`}
+                  className="max-w-40 font-mono tracking-[0.2em]"
                 />
               </label>
             </>
           )}
           {error ? <p role="alert" className="text-[12.5px] text-danger">{error}</p> : null}
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             type="submit"
             disabled={busy || (serverMode ? !serverLink.trim() : endpoint.trim() === "" || code.length !== 6)}
-            className="flex w-fit items-center gap-2 rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-white hover:brightness-110 disabled:opacity-50"
+            className="w-fit"
           >
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <Laptop size={14} />}
+            {busy ? <Loader2 size={13} className="animate-spin" /> : <Laptop size={14} />}
             {serverMode ? t("remote.client.server.connect") : t("remote.client.pair")}
-          </button>
+          </Button>
           <p className="text-[11.5px] leading-relaxed text-ink-secondary">
             {serverMode ? t("remote.client.server.switchNote") : t("remote.client.restartNote")}
           </p>

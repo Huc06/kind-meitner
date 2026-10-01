@@ -7,7 +7,8 @@ import { track } from "@/lib/analytics";
 import { useStore, type Group } from "@/state/store";
 import { BotPickerList } from "./BotPickerList";
 import { nextMemberIds } from "@/lib/room-members";
-
+import { DialogBackdrop, DialogPanel, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 export function ManageMembersPanel({
   group,
   onClose,
@@ -100,42 +101,31 @@ export function ManageMembersPanel({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
+    <DialogBackdrop onDismiss={onClose}>
+      <DialogPanel
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         aria-label={`Manage members of ${group.name}`}
-        className="w-[340px] rounded-2xl border border-hairline/50 bg-card p-4 shadow-2xl"
+        className="w-[360px] max-w-[calc(100vw-2rem)]"
       >
-        <div className="mb-1 text-[15px] font-semibold text-ink">Manage Members</div>
-        <div className="mb-3 truncate text-[13px] text-ink-secondary">{group.name}</div>
-        <BotPickerList bots={bots} picked={picked} onToggle={toggle} emptyHint="Create a bot first — groups are made of bots." />
-        {!memberIds.length && <div className="mt-2 text-[12px] text-ink-secondary">A group needs at least one bot.</div>}
-        {saveError && (
-          <div role="alert" className="mt-2 text-[12px] text-danger">
-            {saveError}
-          </div>
-        )}
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg bg-raised py-2 text-[14px] font-medium text-ink hover:brightness-110"
-          >
+        <DialogHeader title="Manage Members" subtitle={group.name} onClose={onClose} />
+        <DialogBody className="p-4">
+          <BotPickerList bots={bots} picked={picked} onToggle={toggle} emptyHint="Create a bot first — groups are made of bots." />
+          {!memberIds.length && <div className="mt-2 font-mono text-[11.5px] text-ink-secondary">A group needs at least one bot.</div>}
+          {saveError && (
+            <div role="alert" className="mt-2 font-mono text-[11.5px] text-danger">
+              {saveError}
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter className="px-4 py-3">
+          <Button variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={save}
-            disabled={!memberIds.length}
-            className="flex-1 rounded-lg bg-accent py-2 text-[14px] font-medium text-white hover:brightness-110 disabled:opacity-40"
-          >
+          </Button>
+          <Button variant="primary" onClick={save} disabled={!memberIds.length}>
             Save{memberIds.length ? ` · ${memberIds.length} ${memberIds.length === 1 ? "bot" : "bots"}` : ""}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogPanel>
+    </DialogBackdrop>
   );
 }

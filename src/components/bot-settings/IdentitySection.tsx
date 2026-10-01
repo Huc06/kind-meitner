@@ -9,12 +9,12 @@ import { BookOpen } from "lucide-react";
 import type { Bot } from "@/state/store";
 import type { MausMotion, MausState } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { fieldClass, FieldLabel } from "@/components/ui/field";
 import { BOT_PROFILE_LIMITS } from "../../../shared/bot-profile";
 import { BotProfileAvatarCard } from "../BotProfileAvatarCard";
 import { BotInstructionsDialog } from "../BotInstructionsDialog";
-import { Field, inputCls } from "./field";
 import type { BotPatch } from "./useBotSettingsDerived";
-
 export function IdentitySection({
   bot,
   patch,
@@ -32,39 +32,43 @@ export function IdentitySection({
     <div className="flex flex-col gap-4">
       <BotProfileAvatarCard bot={bot} activeState={activeState} mascotMotion={mascotMotion} onPatch={patch} />
 
-      <Field label="Name">
+      <label className="block">
+        <FieldLabel>Name</FieldLabel>
         <input
-          className={inputCls}
+          className={cn(fieldClass, "h-9")}
           maxLength={BOT_PROFILE_LIMITS.name}
           value={bot.name}
           onChange={(e) => patch({ name: e.target.value })}
         />
-      </Field>
-      <Field label="Title">
+      </label>
+
+      <label className="block">
+        <FieldLabel>Title</FieldLabel>
         <input
-          className={inputCls}
+          className={cn(fieldClass, "h-9")}
           maxLength={BOT_PROFILE_LIMITS.title}
           placeholder="Describe what your agent does"
           value={bot.title}
           onChange={(e) => patch({ title: e.target.value })}
         />
-      </Field>
+      </label>
+
       <div className="block">
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <label htmlFor={`bot-instructions-${bot.id}`} className="text-[13px] text-ink-secondary">
+          <FieldLabel htmlFor={`bot-instructions-${bot.id}`} className="mb-0">
             Blurb
-          </label>
-          <button
-            type="button"
+          </FieldLabel>
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setInstructionsOpen(true)}
-            className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11.5px] font-medium text-accent-text hover:bg-accent/10"
           >
             <BookOpen size={12} /> View full
-          </button>
+          </Button>
         </div>
         <textarea
           id={`bot-instructions-${bot.id}`}
-          className={cn(inputCls, "min-h-[72px] resize-y leading-relaxed")}
+          className={cn(fieldClass, "min-h-[72px] resize-y leading-relaxed")}
           maxLength={BOT_PROFILE_LIMITS.description}
           placeholder="One line on what this bot is for"
           aria-label="Blurb"
@@ -76,7 +80,7 @@ export function IdentitySection({
           {/* The cap only matters when someone is near it; a counter under a
               one-line field otherwise reads as an invitation to fill it. */}
           {bot.description.length > 3_000 && (
-            <span className="shrink-0 tabular-nums">
+            <span className="shrink-0 font-mono tabular-nums text-[10.5px]">
               {bot.description.length.toLocaleString()} / {BOT_PROFILE_LIMITS.description.toLocaleString()}
             </span>
           )}

@@ -205,7 +205,7 @@ export function GuidedTour() {
       onDone={finish}
     >
       {copy(step.id)}
-      {failed && <p role="alert" className="mt-2 text-danger">{t("onboarding.tour.error")}</p>}
+      {failed && <p role="alert" className="mt-2 font-mono text-[11px] text-danger">{t("onboarding.tour.error")}</p>}
     </Spotlight>
   );
 }

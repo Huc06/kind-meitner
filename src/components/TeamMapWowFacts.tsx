@@ -183,23 +183,23 @@ export function TeamMapWowFacts({
   return (
     <section
       aria-label="Workflow facts"
-      className={cn("overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]", className)}
+      className={cn("border border-hairline bg-card", className)}
     >
-      {/* Header (48-52px) */}
-      <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-5">
-        <div className="flex items-center gap-2.5">
-          <Zap size={15} className="text-accent" aria-hidden="true" />
-          <h3 className="text-[15px] font-semibold text-white/90">Workflow facts</h3>
-          <span className="text-[12px] text-white/45">Derived from events</span>
+      {/* Header */}
+      <div className="flex h-11 items-center justify-between frame-rule-below px-4">
+        <div className="flex items-center gap-2">
+          <Zap size={14} className="text-ink" aria-hidden="true" />
+          <h3 className="label-mono text-[12px] font-semibold text-ink">Workflow facts</h3>
+          <span className="label-mono text-[10.5px] text-ink-secondary">Derived from events</span>
         </div>
 
-        <span className="text-[12px] text-white/45 hidden sm:inline">
+        <span className="label-mono text-[10.5px] text-ink-secondary hidden sm:inline">
           Select a metric to inspect supporting events
         </span>
       </div>
 
-      {/* Responsive CSS Grid */}
-      <div className="grid grid-cols-2 divide-x divide-y divide-white/[0.06] sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+      {/* Responsive Grid */}
+      <div className="grid grid-cols-2 divide-x divide-y divide-hairline sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
         {metrics.map((m) => {
           const isSelected = activeMetricId === m.id;
           const Icon = m.icon;
@@ -224,24 +224,23 @@ export function TeamMapWowFacts({
               className={cn(
                 "relative flex min-h-[82px] cursor-pointer flex-col justify-between p-3.5 text-left outline-none transition-colors",
                 isSelected
-                  ? "bg-[#1C2025] ring-inset ring-2 ring-accent/60"
-                  : "bg-transparent hover:bg-[#20242A]/60",
-                "focus-visible:ring-2 focus-visible:ring-accent",
+                  ? "bg-raised"
+                  : "bg-transparent hover:bg-raised-hover",
               )}
             >
               {/* Top: Icon + Label */}
               <div className="flex items-start justify-between gap-1.5">
-                <span className="line-clamp-2 text-[11.5px] font-medium leading-tight text-white/60">
+                <span className="line-clamp-2 label-mono text-[10.5px] text-ink-secondary">
                   {m.label}
                 </span>
-                <Icon size={13} className="shrink-0 text-white/35 mt-0.5" aria-hidden="true" />
+                <Icon size={13} className="shrink-0 text-ink-secondary/60 mt-0.5" aria-hidden="true" />
               </div>
 
               {/* Bottom: Metric Value */}
               <div
                 className={cn(
-                  "font-mono text-[20px] font-semibold tabular-nums leading-none",
-                  m.empty ? "text-white/40 font-normal text-[14px]" : "text-white/95",
+                  "font-mono text-[22px] font-semibold tabular-nums leading-none",
+                  m.empty ? "text-ink-secondary/50 font-normal text-[14px]" : "text-ink",
                 )}
               >
                 {m.value}
@@ -261,20 +260,20 @@ export function TeamMapWowFacts({
         <div
           role="region"
           aria-label="Metric calculation details"
-          className="flex flex-wrap items-center justify-between gap-3 border-t border-accent/20 bg-[#1C2025] px-5 py-3 text-[12.5px]"
+          className="flex flex-wrap items-center justify-between gap-3 frame-rule-above bg-raised px-4 py-3 text-[12px] text-ink"
         >
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <Sparkles size={14} className="shrink-0 text-accent" aria-hidden="true" />
+            <Sparkles size={14} className="shrink-0 text-ink" aria-hidden="true" />
             <div className="min-w-0">
-              <span className="font-semibold text-white/90">{activeMetric.label}:</span>{" "}
-              <span className="text-white/70">{activeMetric.explanation}</span>
+              <span className="font-semibold text-ink">{activeMetric.label}:</span>{" "}
+              <span className="text-ink-secondary">{activeMetric.explanation}</span>
             </div>
           </div>
 
           <button
             type="button"
             onClick={onResetMetric}
-            className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[11.5px] font-medium text-white/80 hover:bg-white/[0.08] hover:text-white"
+            className="flex items-center gap-1.5 border border-hairline bg-inset px-2.5 py-1 font-mono text-[11px] text-ink hover:border-ink hover:bg-raised-hover"
           >
             <X size={12} aria-hidden="true" />
             <span>Reset filter</span>

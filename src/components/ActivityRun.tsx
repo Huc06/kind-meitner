@@ -3,7 +3,7 @@
 // Collapsed by default. A search hit inside a run opens it, and a run stays
 // open once the user has opened it. Failed steps never enter a folded run.
 import { useEffect, useState } from "react";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { Message } from "@/state/store";
 import { describeRun } from "@/lib/activity-runs";
 import { t } from "@/lib/i18n";
@@ -24,37 +24,29 @@ export function ActivityRun({
   useEffect(() => {
     if (forceOpen) setOpen(true);
   }, [forceOpen]);
-  if (open) {
-    return (
-      <div className="flex flex-col gap-1">
-        <div className="flex justify-start">
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-expanded
-            className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-control"
-          >
-            <ChevronRight size={13} className="rotate-90" />
-            <span>{describeRun(messages)}</span>
-          </button>
-        </div>
-        {children}
-      </div>
-    );
-  }
+
+  const summary = describeRun(messages);
+
   return (
-    <div className="flex justify-start">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-expanded={false}
-        title={t("chat.run.showSteps")}
-        className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-control"
-      >
-        <Check size={13} className="text-success" />
-        <span className="max-w-[480px] truncate">{describeRun(messages)}</span>
-        <ChevronRight size={13} />
-      </button>
+    <div className="flex flex-col gap-1.5 my-1">
+      <div className="flex justify-start">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          title={open ? undefined : t("chat.run.showSteps")}
+          className="cursor-pointer flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1 font-mono text-[11px] text-ink-secondary hover:bg-raised-hover hover:text-ink"
+        >
+          <span className="text-ink-secondary select-none">&gt;_</span>
+          <span className="max-w-[480px] truncate text-ink">{summary}</span>
+          <ChevronRight size={12} className={open ? "rotate-90 text-ink-secondary" : "text-ink-secondary"} />
+        </button>
+      </div>
+      {open && (
+        <div className="border border-hairline bg-inset p-2.5 flex flex-col gap-1">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

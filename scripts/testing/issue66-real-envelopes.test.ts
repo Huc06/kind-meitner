@@ -17,6 +17,11 @@ function message(toolName: string, file: string) {
     tool: { name: toolName, ok: true, output: envelope(file) },
   };
 }
+/** The rendered Continue button's own opening tag, so a `disabled:` utility
+ * class elsewhere in the markup cannot pass for the attribute. */
+function continueButton(html: string) {
+  return html.match(/<button[^>]*aria-label="Continue free tools"[^>]*>/)?.[0] ?? "";
+}
 
 it("parses real production vercel FAIL envelope and exposes Apply host", () => {
   const msg = message("scan_free_mcp_readiness", "scan-vercel-envelope.json");
@@ -57,7 +62,7 @@ it("parses real production 99999 NO_GO with Block spend and Continue disabled", 
   }));
   expect(html).toContain("Block spend");
   expect(html).toContain("Continue free tools");
-  expect(html).toMatch(/disabled[^>]{0,120}aria-label="Continue free tools"|aria-label="Continue free tools"[^>]{0,80}disabled/);
+  expect(continueButton(html)).toMatch(/\sdisabled=""/);
 });
 
 it("parses real production GO envelope for live listing agent 11167 and enables Continue", () => {
@@ -79,7 +84,7 @@ it("parses real production GO envelope for live listing agent 11167 and enables 
   }));
   expect(html).toContain("Continue free tools");
   expect(html).not.toContain("Block spend");
-  expect(html).not.toMatch(/disabled[^>]{0,120}aria-label="Continue free tools"|aria-label="Continue free tools"[^>]{0,80}disabled/);
+  expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
 });
 
 it("parses real production 13837+endpoint as NO_GO due to listing_page HTTP 404", () => {
@@ -112,5 +117,5 @@ it("parses real production GO envelope for Kind Meitner Markets #13851", () => {
     fallback: createElement("div", null, "fallback"),
   }));
   expect(html).toContain("Continue free tools");
-  expect(html).not.toMatch(/disabled[^>]{0,120}aria-label="Continue free tools"|aria-label="Continue free tools"[^>]{0,80}disabled/);
+  expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
 });

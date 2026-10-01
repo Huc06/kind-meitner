@@ -17,9 +17,9 @@ import {
   type BotAvatarCrop,
 } from "../../shared/bot-avatar";
 import { MASCOT_BODIES, MASCOT_BODY_IDS } from "../../shared/mascot-bodies";
+import { Button } from "@/components/ui/button";
 import { BotAvatar, MausAvatar } from "./Avatar";
 import { AvatarImageGenerator } from "./AvatarImageGenerator";
-
 type AvatarPatch = Partial<
   Pick<Bot, "avatarCrop" | "avatarUrl" | "color" | "mascotExpression" | "mascotBody">
 >;
@@ -111,16 +111,17 @@ export function BotProfileAvatarCard({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-hairline/40 bg-card">
-      <div className="flex items-center justify-between border-b border-hairline/40 px-3 py-2.5">
-        <span className="rounded-lg bg-control px-3 py-1.5 text-[14px] font-medium text-ink">Avatar</span>
-        <button
+    <div className="border border-hairline bg-card">
+      <div className="flex items-center justify-between frame-rule-below px-3 py-2.5">
+        <span className="label-mono bg-raised px-2.5 py-1 text-ink">Avatar</span>
+        <Button
+          variant="ghost"
+          size="xs"
           disabled={busy}
           onClick={() => onPatch({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "cursor" })}
-          className="rounded-md px-2 py-1.5 text-[13px] text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-50"
         >
           Reset mascot
-        </button>
+        </Button>
       </div>
 
       <div className="p-3">
@@ -142,34 +143,36 @@ export function BotProfileAvatarCard({
             className="sr-only"
             onChange={(event) => void upload(event.target.files?.[0])}
           />
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
+            className="flex-1"
           >
-            {uploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
             Upload image
-          </button>
+          </Button>
           {bot.avatarUrl && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              icon
+              size="sm"
               onClick={removeImage}
               disabled={busy}
               aria-label="Remove custom avatar image"
               title="Remove custom image"
-              className="flex size-10 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-danger disabled:opacity-50"
             >
-              <Trash2 size={14} />
-            </button>
+              <Trash2 size={14} className="text-danger" />
+            </Button>
           )}
         </div>
-        <div className="mt-1.5 text-[11.5px] text-ink-secondary">PNG, JPEG, GIF, or WebP · up to 10 MB</div>
+        <div className="mt-1.5 font-mono text-[11px] text-ink-secondary">PNG, JPEG, GIF, or WebP · up to 10 MB</div>
 
-        <div className="mb-2 mt-4 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+        <div className="label-mono mb-2 mt-4 text-ink-secondary">
           Shape
         </div>
-        <div className="grid grid-cols-4 overflow-hidden rounded-lg border border-hairline/40">
+        <div className="grid grid-cols-4 border border-hairline bg-inset">
           {BOT_AVATAR_CROPS.map((candidate, index) => (
             <button
               key={candidate}
@@ -178,9 +181,9 @@ export function BotProfileAvatarCard({
               aria-pressed={crop === candidate}
               onClick={() => onPatch({ avatarCrop: candidate })}
               className={cn(
-                "py-1.5 text-[12.5px] disabled:opacity-50",
-                index > 0 && "border-l border-hairline/40",
-                crop === candidate ? "bg-control text-ink" : "text-ink-secondary hover:bg-control/60 hover:text-ink",
+                "py-1.5 font-mono text-[11.5px] uppercase tracking-[0.06em] disabled:opacity-50 transition-colors",
+                index > 0 && "border-l border-hairline",
+                crop === candidate ? "bg-raised text-ink shadow-[inset_0_-2px_0_var(--color-ink)]" : "text-ink-secondary hover:bg-raised-hover hover:text-ink",
               )}
             >
               {CROP_LABEL[candidate]}
@@ -190,10 +193,10 @@ export function BotProfileAvatarCard({
 
         {crop === "mascot" && (
           <>
-            <div className="mb-2 mt-4 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono mb-2 mt-4 text-ink-secondary">
               Expression
             </div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {PICKABLE_STATES.map((expression) => (
                 <button
                   key={expression}
@@ -202,21 +205,21 @@ export function BotProfileAvatarCard({
                   aria-pressed={activeState === expression}
                   onClick={() => onPatch({ mascotExpression: expression })}
                   className={cn(
-                    "flex h-[58px] items-center justify-center rounded-xl bg-inset transition-colors hover:bg-control disabled:opacity-50",
-                    activeState === expression && "ring-2 ring-accent-border",
+                    "flex h-[56px] items-center justify-center border border-hairline bg-inset transition-colors hover:bg-raised-hover disabled:opacity-50",
+                    activeState === expression && "border-ink bg-raised",
                   )}
                   title={expression}
                   aria-label={`Use ${expression} expression`}
                 >
-                  <MausAvatar color={bot.color} bodyId={bot.mascotBody ?? undefined} state={expression} size={42} animated={false} />
+                  <MausAvatar color={bot.color} bodyId={bot.mascotBody ?? undefined} state={expression} size={40} animated={false} />
                 </button>
               ))}
             </div>
 
-            <div className="mb-2 mt-4 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono mb-2 mt-4 text-ink-secondary">
               Color
             </div>
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-2">
               {MAUS_COLOR_NAMES.map((color) => (
                 <button
                   key={color}
@@ -225,8 +228,8 @@ export function BotProfileAvatarCard({
                   aria-pressed={bot.color === color}
                   onClick={() => onPatch({ color })}
                   className={cn(
-                    "size-10 rounded-full border-2 border-transparent transition-transform hover:scale-110 disabled:opacity-50",
-                    bot.color === color && "ring-2 ring-accent-border ring-offset-2 ring-offset-card",
+                    "size-7 border transition-transform hover:scale-105 disabled:opacity-50",
+                    bot.color === color ? "border-ink shadow-[0_0_0_2px_var(--color-app),0_0_0_3px_var(--color-ink)]" : "border-hairline",
                   )}
                   style={{ backgroundColor: MAUS_COLORS[color] }}
                   title={color}
@@ -235,7 +238,7 @@ export function BotProfileAvatarCard({
               ))}
             </div>
 
-            <div className="mb-2 mt-4 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono mb-2 mt-4 text-ink-secondary">
               Body
             </div>
             <div className="grid grid-cols-5 gap-1.5">
@@ -248,13 +251,13 @@ export function BotProfileAvatarCard({
                   aria-label={`Use the ${MASCOT_BODIES[id].name} body`}
                   onClick={() => onPatch({ mascotBody: id })}
                   className={cn(
-                    "flex items-center justify-center rounded-lg py-1.5 disabled:opacity-50",
+                    "flex items-center justify-center border border-hairline bg-inset py-1.5 disabled:opacity-50 transition-colors",
                     (bot.mascotBody ?? "cursor") === id
-                      ? "bg-control text-ink"
-                      : "text-ink-secondary hover:bg-control/60",
+                      ? "border-ink bg-raised text-ink"
+                      : "text-ink-secondary hover:bg-raised-hover",
                   )}
                 >
-                  <MausAvatar color={bot.color} bodyId={id} size={34} animated={false} />
+                  <MausAvatar color={bot.color} bodyId={id} size={32} animated={false} />
                 </button>
               ))}
             </div>
@@ -269,7 +272,7 @@ export function BotProfileAvatarCard({
           onSavingChange={setSavingConnection}
         />
 
-        {error && <div role="alert" className="mt-3 text-[12px] text-danger">{error}</div>}
+        {error && <div role="alert" className="mt-3 border border-danger/40 bg-danger/10 p-2 font-mono text-[12px] text-danger">{error}</div>}
       </div>
     </div>
   );

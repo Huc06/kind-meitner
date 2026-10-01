@@ -49,7 +49,7 @@ export function QueuedComposerMessages({
 
   return (
     <div
-      className="relative z-[1] mx-3 -mb-3 max-h-36 overflow-y-auto rounded-t-2xl border border-b-0 border-hairline/40 bg-raised/95 pb-3 shadow-sm backdrop-blur-sm"
+      className="relative z-[1] mx-3 -mb-3 max-h-36 overflow-y-auto border border-b-0 border-hairline bg-raised pb-3"
       aria-label={
         items.length === 1
           ? t("composer.queued.regionOne")
@@ -60,7 +60,7 @@ export function QueuedComposerMessages({
       {items.some((item) => item.reason === "capacity") && (
         <p className="px-3 pt-2 text-[12px] text-ink-secondary">{t("composer.queued.capacity")}</p>
       )}
-      <ul className="divide-y divide-hairline/25" aria-label={t("composer.queued.list")}>
+      <ul className="divide-y divide-hairline" aria-label={t("composer.queued.list")}>
         {items.map((item, index) => (
           <li key={item.queueId} className="flex min-h-10 min-w-0 items-center gap-2 px-2.5 py-1.5">
             <CornerDownRight
@@ -69,7 +69,7 @@ export function QueuedComposerMessages({
               className="shrink-0 text-ink-secondary"
               aria-hidden="true"
             />
-            <span dir="auto" className="min-w-0 flex-1 truncate text-[14px] text-ink" title={item.text}>
+            <span dir="auto" className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink" title={item.text}>
               {item.text}
             </span>
             {index === 0 && onSteer && (
@@ -79,7 +79,7 @@ export function QueuedComposerMessages({
                 disabled={steering}
                 aria-label={steering ? t("composer.queued.steeringAria") : steerDescription}
                 title={steerDescription}
-                className="flex h-7 shrink-0 items-center gap-1 rounded-lg px-2 text-[13px] font-medium text-ink-secondary outline-none hover:bg-raised-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-wait disabled:opacity-60"
+                className="cursor-pointer flex h-6 shrink-0 items-center gap-1 border border-hairline bg-inset px-2 font-mono text-[10.5px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink disabled:cursor-wait disabled:opacity-60"
               >
                 <CornerDownRight
                   size={13}
@@ -95,7 +95,7 @@ export function QueuedComposerMessages({
               onClick={() => onCancel(item.queueId)}
               aria-label={t("composer.queued.deleteAria", { index: index + 1, count: items.length })}
               title={t("composer.queued.deleteTitle")}
-              className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-secondary outline-none hover:bg-raised-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="cursor-pointer flex size-6 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink"
             >
               <Trash2 size={14} aria-hidden="true" />
             </button>

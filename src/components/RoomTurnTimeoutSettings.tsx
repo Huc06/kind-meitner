@@ -56,8 +56,8 @@ export function RoomTurnTimeoutSettings() {
         {t("settings.roomTurns.label")}
       </label>
       <div
-        className={`flex max-w-[220px] items-center rounded-lg border bg-inset ${
-          error ? "border-danger/60" : "border-hairline/40 focus-within:border-hairline"
+        className={`flex max-w-[220px] items-center border bg-inset ${
+          error ? "border-danger" : "border-hairline focus-within:border-ink"
         }`}
       >
         <input
@@ -80,9 +80,9 @@ export function RoomTurnTimeoutSettings() {
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
           }}
-          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[14px] tabular-nums text-ink focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent px-3 py-1.5 font-mono text-[13px] tabular-nums text-ink focus:outline-none"
         />
-        <span className="pr-3 text-[13px] text-ink-secondary">{t("settings.roomTurns.minutes")}</span>
+        <span className="pr-3 font-mono text-[12px] text-ink-secondary">{t("settings.roomTurns.minutes")}</span>
       </div>
       <p id="room-turn-timeout-help" className="text-[12px] leading-relaxed text-ink-secondary">
         {t("settings.roomTurns.help")}

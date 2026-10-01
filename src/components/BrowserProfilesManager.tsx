@@ -4,7 +4,9 @@ import { api, ApiError, useStore, type Bot, type BotAnnouncement, type BrowserPr
 import { browserProfileDeletionBlockReason, browserProfilesMutation, newBrowserProfileId } from "@/lib/browser-profiles";
 import { readSessionState } from "@/lib/session";
 import { t } from "@/lib/i18n";
-
+import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
+import { Tag } from "@/components/ui/tag";
 /** Browser-panel and workspace settings share one editor. The server owns
  * session routing and erasure; this UI never handles cookies or partitions. */
 export function BrowserProfilesManager({ bot, onProfileChanged, disabled = false }: {
@@ -131,27 +133,24 @@ export function BrowserProfilesManager({ bot, onProfileChanged, disabled = false
 
   if (canManage === false) return <p className="text-[12px] text-ink-secondary">{t("settings.profiles.ownerOnly")}</p>;
 
-  const inputClass = "min-w-0 flex-1 rounded-md border border-hairline/40 bg-inset px-2.5 py-2 text-[13px] text-ink outline-none focus:border-accent disabled:opacity-50";
-  const buttonClass = "shrink-0 rounded-md bg-control px-2.5 py-2 text-[12px] text-ink hover:bg-control-hover disabled:opacity-50";
   const selected = currentBot?.browserProfile ?? "";
   return (
     <div className="flex min-w-0 flex-col gap-3" aria-busy={busy}>
       {currentBot && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${fieldId}-profile`} className="text-[12px] font-medium text-ink">{t("settings.profiles.browserSession")}</label>
-          <select
+          <Select
             id={`${fieldId}-profile`}
             value={selected}
             disabled={locked || currentBot.busy}
             onChange={(event) => void select(event.target.value)}
-            className={inputClass}
           >
             <option value="">{t("settings.profiles.own")}</option>
             {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
             <option value="guest">{t("settings.profiles.temporary")}</option>
             {selected && selected !== "guest" && !profiles.some((profile) => profile.id === selected)
               ? <option value={selected} disabled>{t("settings.profiles.removed")}</option> : null}
-          </select>
+          </Select>
           <p className="text-[11px] leading-relaxed text-ink-secondary">
             {currentBot.busy ? t("settings.profiles.stopToSwitch") : selected === "guest" ? t("settings.profiles.temporaryHint") : t("settings.profiles.sharedHint")}
           </p>
@@ -162,33 +161,33 @@ export function BrowserProfilesManager({ bot, onProfileChanged, disabled = false
         <div className="mt-3 flex flex-col gap-3">
           <form className="flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); void create(); }}>
             <label htmlFor={`${fieldId}-new`} className="sr-only">{t("settings.profiles.newName")}</label>
-            <input id={`${fieldId}-new`} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} required disabled={locked || profiles.length >= 20} placeholder={t("settings.profiles.newName")} className={inputClass} />
-            <button type="submit" disabled={locked || !name.trim() || profiles.length >= 20} className={`${buttonClass} flex items-center gap-1`}><Plus size={13} />{t("settings.profiles.create")}</button>
+            <Input id={`${fieldId}-new`} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} required disabled={locked || profiles.length >= 20} placeholder={t("settings.profiles.newName")} className="min-w-0 flex-1" />
+            <Button type="submit" variant="secondary" size="md" disabled={locked || !name.trim() || profiles.length >= 20} className="gap-1"><Plus size={13} />{t("settings.profiles.create")}</Button>
           </form>
-          {profiles.length >= 20 && <p className="text-[11px] text-ink-secondary">{t("settings.profiles.limit")}</p>}
+          {profiles.length >= 20 && <p className="font-mono text-[11px] text-ink-secondary">{t("settings.profiles.limit")}</p>}
           {!profiles.length && <p className="text-[12px] text-ink-secondary">{t("settings.profiles.sharedEmpty")}</p>}
-          <div className="divide-y divide-hairline/30">
+          <div className="flex flex-col">
             {profiles.map((profile) => {
               const users = bots.filter((candidate) => candidate.browserProfile === profile.id).map((candidate) => candidate.name);
               const blocked = browserProfileDeletionBlockReason(bots, profile.id);
               return (
-                <div key={profile.id} className="flex flex-col gap-1 py-2">
+                <div key={profile.id} className="frame-rule-below flex flex-col gap-1.5 py-2.5">
                   <div className="flex min-w-0 items-center gap-2">
                     <Globe size={14} className="shrink-0 text-ink-secondary" />
                     {renaming?.id === profile.id ? (
-                      <form className="flex min-w-0 flex-1 flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); void rename(); }}>
-                        <input autoFocus value={renaming.name} onChange={(event) => setRenaming({ id: profile.id, name: event.target.value })} maxLength={40} required disabled={locked} className={inputClass} aria-label={t("settings.profiles.nameAria")} />
-                        <button type="submit" disabled={locked || !renaming.name.trim()} className={buttonClass}>{t("common.save")}</button>
-                        <button type="button" disabled={busy} onClick={() => setRenaming(null)} className={buttonClass}>{t("common.cancel")}</button>
+                      <form className="flex min-w-0 flex-1 flex-wrap items-center gap-2" onSubmit={(event) => { event.preventDefault(); void rename(); }}>
+                        <Input autoFocus value={renaming.name} onChange={(event) => setRenaming({ id: profile.id, name: event.target.value })} maxLength={40} required disabled={locked} className="min-w-0 flex-1" aria-label={t("settings.profiles.nameAria")} />
+                        <Button type="submit" variant="secondary" size="md" disabled={locked || !renaming.name.trim()}>{t("common.save")}</Button>
+                        <Button type="button" variant="ghost" size="md" disabled={busy} onClick={() => setRenaming(null)}>{t("common.cancel")}</Button>
                       </form>
                     ) : (
                       <>
                         <button type="button" disabled={locked} onClick={() => { setRenaming({ id: profile.id, name: profile.name }); setError(""); }} className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-ink hover:underline disabled:opacity-50" title={t("settings.profiles.rename")}>{profile.name}</button>
-                        <button type="button" onClick={() => void remove(profile)} disabled={locked || Boolean(blocked)} title={blocked ?? t("settings.profiles.deleteTitle")} aria-label={`${t("common.delete")} ${profile.name}`} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-ink-secondary hover:bg-control hover:text-danger disabled:opacity-50"><Trash2 size={13} />{t("common.delete")}</button>
+                        <Tag tone="neutral" size="sm">{users.length ? t("settings.profiles.usedBy", { names: users.join(", ") }) : t("settings.profiles.notInUse")}</Tag>
+                        <Button type="button" variant="ghost" size="xs" onClick={() => void remove(profile)} disabled={locked || Boolean(blocked)} title={blocked ?? t("settings.profiles.deleteTitle")} aria-label={`${t("common.delete")} ${profile.name}`} className="gap-1 text-danger hover:text-danger"><Trash2 size={13} />{t("common.delete")}</Button>
                       </>
                     )}
                   </div>
-                  <p className="break-words pl-6 text-[11px] text-ink-secondary">{users.length ? t("settings.profiles.usedBy", { names: users.join(", ") }) : t("settings.profiles.notInUse")}</p>
                 </div>
               );
             })}

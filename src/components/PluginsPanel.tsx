@@ -3,7 +3,7 @@
 // Composio API key is configured, a curated set otherwise. Icons resolve
 // logo → favicon → monogram.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Loader2, RefreshCw, Search, TriangleAlert, X } from "lucide-react";
+import { Check, Loader2, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { api, useStore, type Bot, type InstanceInfo } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -11,7 +11,9 @@ import type { LocaleKey } from "@/locales";
 import { readCachedInventory, writeCachedInventory } from "@/lib/connected-apps-cache";
 import { managedConnectorUnavailableReason } from "../../shared/connector-availability";
 import { McpServersPanel } from "./McpServersPanel";
-
+import { DialogBackdrop, DialogBody, DialogHeader, DialogPanel } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 export interface ToolkitCard {
   slug: string;
   label: string;
@@ -206,7 +208,7 @@ export function ServiceIcon({ card, className = "size-11" }: { card: Pick<Toolki
         src={card.logo}
         alt=""
         loading="lazy"
-        className={cn("rounded-xl object-contain", className)}
+        className={cn("border border-hairline object-contain", className)}
         onError={() => setStage(1)}
       />
     );
@@ -217,13 +219,13 @@ export function ServiceIcon({ card, className = "size-11" }: { card: Pick<Toolki
         src={`https://www.google.com/s2/favicons?domain=${card.domain}&sz=64`}
         alt=""
         loading="lazy"
-        className={cn("rounded-xl object-contain", className)}
+        className={cn("border border-hairline object-contain", className)}
         onError={() => setStage(2)}
       />
     );
   }
   return (
-    <div className={cn("flex items-center justify-center rounded-xl bg-raised text-[15px] font-semibold text-ink-secondary", className)}>
+    <div className={cn("flex items-center justify-center border border-hairline bg-raised text-[15px] font-semibold text-ink-secondary", className)}>
       {card.label.slice(0, 1).toUpperCase()}
     </div>
   );
@@ -516,46 +518,49 @@ export function PluginsPanel() {
     : [];
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px] sm:p-6"
-      onMouseDown={(event) => event.target === event.currentTarget && close()}
-    >
-      <div
+    <DialogBackdrop onDismiss={close}>
+      <DialogPanel
         ref={dialogRef}
         data-tour="apps-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="plugins-title"
         tabIndex={-1}
-        className="animate-pop-in flex h-[min(780px,calc(100dvh-2rem))] w-full max-w-[1040px] flex-col overflow-hidden rounded-[24px] border border-hairline/50 bg-panel shadow-2xl shadow-black/50"
+        className="flex h-[min(780px,calc(100dvh-2rem))] w-full max-w-[1040px] flex-col overflow-hidden"
       >
-        <header className="flex items-start justify-between gap-4 px-6 pb-3 pt-6 sm:px-8 sm:pt-7">
-          <div>
-            <h2 id="plugins-title" className="text-[22px] font-semibold tracking-[-0.01em] text-ink">{t("connectors.title")}</h2>
-            <p className="mt-1 text-[13px] text-ink-secondary">{t("connectors.subtitle")}</p>
-          </div>
-          <div className="flex items-center gap-1">
-            {surface === "apps" && (
-              <button
-                onClick={() => void loadConnectionInventory(true)}
-                disabled={refreshing}
-                className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-50"
-                title={t("connectors.refreshTitle")}
+        <DialogHeader
+          title={t("connectors.title")}
+          titleId="plugins-title"
+          subtitle={t("connectors.subtitle")}
+          actions={
+            <div className="flex items-center gap-1">
+              {surface === "apps" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon
+                  onClick={() => void loadConnectionInventory(true)}
+                  disabled={refreshing}
+                  title={t("connectors.refreshTitle")}
+                >
+                  <RefreshCw size={14} className={cn(refreshing && "animate-spin")} />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                icon
+                data-tour="apps-close"
+                onClick={close}
+                aria-label={t("connectors.closeAria")}
               >
-                <RefreshCw size={17} className={cn(refreshing && "animate-spin")} />
-              </button>
-            )}
-            <button data-tour="apps-close"
-              onClick={close}
-              aria-label={t("connectors.closeAria")}
-              className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
-            >
-              <X size={21} />
-            </button>
-          </div>
-        </header>
+                <X size={15} />
+              </Button>
+            </div>
+          }
+        />
 
-        <div className="border-b border-hairline/40 px-6 sm:px-8">
+        <div className="frame-rule-below px-5 sm:px-6">
           <div className="flex gap-6" role="tablist" aria-label={t("connectors.typeAria")}>
             {(["apps", "mcp"] as const).map((item) => (
               <button
@@ -565,7 +570,7 @@ export function PluginsPanel() {
                 aria-selected={surface === item}
                 onClick={() => dispatch({ type: "togglePlugins", open: true, surface: item })}
                 className={cn(
-                  "border-b-2 px-0.5 pb-3 pt-1 text-[13.5px] font-medium transition-colors",
+                  "border-b-2 px-1 pb-2.5 pt-2 text-[13px] font-medium transition-colors",
                   surface === item ? "border-accent text-ink" : "border-transparent text-ink-secondary hover:text-ink",
                 )}
               >
@@ -576,300 +581,296 @@ export function PluginsPanel() {
         </div>
 
         {surface === "apps" ? (
-          <>
-        {stale && (
-          // Say which of the two things is true. Silence here is what makes a
-          // remembered list indistinguishable from a confirmed one.
-          <div className="mx-6 mb-1 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12.5px] text-warning sm:mx-8">
-            <TriangleAlert size={14} className="mt-px shrink-0" />
-            <span>
-              {t("connectors.stale")}
-            </span>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3 px-6 pb-4 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div className="flex w-fit rounded-xl bg-raised/70 p-1" role="tablist" aria-label={t("connectors.viewAria")}>
-            <button
-              role="tab"
-              aria-selected={tab === "marketplace"}
-              onClick={() => setTab("marketplace")}
-              className={cn(
-                "rounded-lg px-4 py-2 text-[13.5px] transition-colors",
-                tab === "marketplace" ? "bg-card text-ink shadow-sm" : "text-ink-secondary hover:text-ink",
-              )}
-            >
-              {t("connectors.tab.marketplace")}
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "connected"}
-              onClick={() => setTab("connected")}
-              className={cn(
-                "rounded-lg px-4 py-2 text-[13.5px] transition-colors",
-                tab === "connected" ? "bg-card text-ink shadow-sm" : "text-ink-secondary hover:text-ink",
-              )}
-            >
-              {t("connectors.tab.connected")}{connectedCount > 0 ? ` ${connectedCount}` : ""}
-            </button>
-          </div>
-          <label className="flex h-11 w-full items-center gap-2.5 rounded-xl bg-raised/70 px-3.5 sm:w-[320px]">
-            <Search size={17} className="shrink-0 text-ink-secondary" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("connectors.searchPlaceholder")}
-              aria-label={t("connectors.searchPlaceholder")}
-              className="min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
-            />
-          </label>
-        </div>
-
-        {/* Two notices about the same fact is one too many: the stale banner
-            above already explains this launch, and "configure your own
-            connection service" is advice for someone who never set one up. */}
-        {!configured && !stale && (
-          <div className="mx-6 mb-1 rounded-xl bg-warning/10 px-4 py-3 text-[13px] text-warning sm:mx-8">
-            {t("connectors.notConfigured")}{" "}
-            <button
-              className={cn("font-medium underline underline-offset-2", remoteClient && "hidden")}
-              onClick={() => {
-                close();
-                dispatch({ type: "toggleAppSettings", open: true });
-              }}
-            >
-              {t("connectors.openSettings")}
-            </button>
-          </div>
-        )}
-        {botsWithoutApps.length > 0 && (
-          <div className="mx-6 mb-1 rounded-xl bg-inset px-4 py-3 text-[12.5px] leading-relaxed text-ink-secondary sm:mx-8">
-            <span className="font-medium text-ink">{t("connectors.perBot.title")}</span>{" "}
-            {t("connectors.perBot.body")}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {botsWithoutApps.map((candidate) => (
-                <button
-                  key={candidate.id}
-                  type="button"
-                  onClick={() => dispatch({ type: "updateBot", botId: candidate.id, patch: { composio: true } })}
-                  className="rounded-full bg-control px-2.5 py-1 text-[11.5px] font-medium text-ink hover:bg-raised-hover"
-                >
-                  {t("connectors.perBot.allow", { name: candidate.name })}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {configured && !remoteClient && source === "curated" && mode === "self-hosted" && (
-          <div className="mx-6 mb-1 text-[12px] text-ink-secondary sm:mx-8">
-            {t("connectors.featuredBefore")}{" "}
-            <button
-              className="underline underline-offset-2 hover:text-ink"
-              onClick={() => {
-                close();
-                dispatch({ type: "toggleAppSettings", open: true });
-              }}
-            >
-              {t("connectors.updateKey")}
-            </button>{" "}
-            {t("connectors.featuredAfter")}
-          </div>
-        )}
-        {error && <div role="alert" className="mx-6 mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger sm:mx-8">{typeof error === "string" ? error : t(error.key)}</div>}
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-7 pt-5 sm:px-8">
-          {cards === null ? (
-            <div className="flex items-center justify-center gap-2 py-24 text-[13px] text-ink-secondary">
-              <Loader2 size={14} className="animate-spin" /> {t("connectors.loadingCatalog")}
-            </div>
-          ) : (
-            <div>
-              <div className="mb-3 text-[12px] font-medium text-ink-secondary">
-                {tab === "connected"
-                  ? t("connectors.section.yours")
-                  : search
-                    ? t("connectors.section.results")
-                    : t("connectors.section.available")}
+          <DialogBody className="flex flex-col gap-4 p-5 sm:p-6">
+            {stale && (
+              <div className="flex items-start gap-2 border border-warning bg-card px-3 py-2 text-[12px] text-warning">
+                <TriangleAlert size={14} className="mt-px shrink-0" />
+                <span>{t("connectors.stale")}</span>
               </div>
-              <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
-              {visible.map((card) => {
-              const serviceStatus = status[card.slug];
-              const pending = serviceStatus?.pending;
-              const failed = serviceStatus?.status && /^(expired|failed)$/i.test(serviceStatus.status);
-              const accounts = serviceStatus?.accounts ?? [];
-              // connected with no accounts and nothing in flight = a no-auth
-              // toolkit: there is no OAuth to run, so "Connect" would mint a
-              // pointless authorize. It ships included.
-              const included = card.noAuth === true
-                || (serviceStatus?.connected === true && !accounts.length && !pending && !failed);
-              const addingAccount = aliasSlug === card.slug && !pending;
-              const busy = busySlug === card.slug;
-              const unavailableReason = managedConnectorUnavailableReason(mode, card.slug)
-                ? t("connectors.selfHostOnlyReason")
-                : null;
-              return (
-                <div
-                  key={card.slug}
-                  className="min-h-[88px] border-b border-hairline/35 px-1 py-4"
+            )}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="inline-flex border border-hairline bg-inset p-0.5" role="tablist" aria-label={t("connectors.viewAria")}>
+                <button
+                  role="tab"
+                  aria-selected={tab === "marketplace"}
+                  onClick={() => setTab("marketplace")}
+                  className={cn(
+                    "px-3 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors",
+                    tab === "marketplace" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink",
+                  )}
                 >
-                  <div className="flex items-center gap-3">
-                    <ServiceIcon card={card} />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[14px] font-medium text-ink">{card.label}</div>
-                      <div
-                        className="mt-0.5 truncate text-[12.5px] text-ink-secondary"
-                        title={unavailableReason ?? undefined}
-                      >
-                        {unavailableReason ?? (
-                          pending
-                            ? pendingUrls[card.slug]
-                              ? t("connectors.finishSetup")
-                              : t("connectors.finishSetupOrDisconnect")
-                            : failed && !accounts.length
-                              ? t("connectors.authExpired")
-                              : card.blurb
-                        )}
-                      </div>
-                    </div>
-                    <button
+                  {t("connectors.tab.marketplace")}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={tab === "connected"}
+                  onClick={() => setTab("connected")}
+                  className={cn(
+                    "px-3 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors",
+                    tab === "connected" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink",
+                  )}
+                >
+                  {t("connectors.tab.connected")}{connectedCount > 0 ? ` ${connectedCount}` : ""}
+                </button>
+              </div>
+              <div className="w-full sm:w-[280px]">
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t("connectors.searchPlaceholder")}
+                  aria-label={t("connectors.searchPlaceholder")}
+                />
+              </div>
+            </div>
+
+            {!configured && !stale && (
+              <div className="border border-warning bg-card px-3 py-2 text-[12px] text-warning">
+                {t("connectors.notConfigured")}{" "}
+                <button
+                  className={cn("font-medium underline underline-offset-2", remoteClient && "hidden")}
+                  onClick={() => {
+                    close();
+                    dispatch({ type: "toggleAppSettings", open: true });
+                  }}
+                >
+                  {t("connectors.openSettings")}
+                </button>
+              </div>
+            )}
+            {botsWithoutApps.length > 0 && (
+              <div className="border border-hairline bg-inset px-3 py-2.5 text-[12px] leading-relaxed text-ink-secondary">
+                <span className="font-medium text-ink">{t("connectors.perBot.title")}</span>{" "}
+                {t("connectors.perBot.body")}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {botsWithoutApps.map((candidate) => (
+                    <Button
+                      key={candidate.id}
                       type="button"
-                      disabled={!configured || inventoryPhase !== "ready" || busy || included || Boolean(unavailableReason)}
-                      title={unavailableReason ?? undefined}
-                      onClick={() => {
-                        if (pending) {
-                          if (pendingUrls[card.slug]) {
-                            setError(null);
-                            void openConnectUrl(pendingUrls[card.slug]).catch((e) => setError(e.message));
-                          } else {
-                            setAliasSlug(null);
-                            setError(null);
-                            void refreshStatus([card.slug]);
-                            startPolling(card.slug);
-                          }
-                        } else {
-                          setAliasSlug((current) => current === card.slug ? null : card.slug);
-                          setAliasDraft("");
-                        }
-                      }}
-                      className="flex min-w-[88px] items-center justify-center gap-1.5 rounded-full bg-raised px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-raised-hover disabled:opacity-40"
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => dispatch({ type: "updateBot", botId: candidate.id, patch: { composio: true } })}
                     >
-                      {unavailableReason ? (
-                        t("connectors.selfHostOnly")
-                      ) : busy ? (
-                        <Loader2 size={13} className="mx-auto animate-spin" />
-                      ) : (
-                        connectorActionLabel(inventoryPhase, {
-                          busy,
-                          included,
-                          canContinue: Boolean(pending && pendingUrls[card.slug]),
-                          pending,
-                          hasAccounts: accounts.length > 0,
-                          failed: Boolean(failed),
-                        })
-                      )}
-                    </button>
+                      {t("connectors.perBot.allow", { name: candidate.name })}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {configured && !remoteClient && source === "curated" && mode === "self-hosted" && (
+              <div className="font-mono text-[11px] text-ink-secondary">
+                {t("connectors.featuredBefore")}{" "}
+                <button
+                  className="underline underline-offset-2 hover:text-ink"
+                  onClick={() => {
+                    close();
+                    dispatch({ type: "toggleAppSettings", open: true });
+                  }}
+                >
+                  {t("connectors.updateKey")}
+                </button>{" "}
+                {t("connectors.featuredAfter")}
+              </div>
+            )}
+            {error && <div role="alert" className="border border-danger bg-card px-3 py-2 text-[12px] text-danger">{typeof error === "string" ? error : t(error.key)}</div>}
+
+            <div className="min-h-0 flex-1">
+              {cards === null ? (
+                <div className="flex items-center justify-center gap-2 py-24 font-mono text-[12px] text-ink-secondary">
+                  <Loader2 size={14} className="animate-spin" /> {t("connectors.loadingCatalog")}
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-3 label-mono text-ink-secondary">
+                    {tab === "connected"
+                      ? t("connectors.section.yours")
+                      : search
+                        ? t("connectors.section.results")
+                        : t("connectors.section.available")}
                   </div>
-                  {accounts.length > 0 && (
-                    <div className="ml-14 mt-3 space-y-2">
-                      {accounts.map((account) => {
-                        const active = /^active$/i.test(account.status);
-                        return (
-                          <div key={account.id} className="flex items-center gap-2 rounded-lg bg-raised/45 px-3 py-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {visible.map((card) => {
+                      const serviceStatus = status[card.slug];
+                      const pending = serviceStatus?.pending;
+                      const failed = serviceStatus?.status && /^(expired|failed)$/i.test(serviceStatus.status);
+                      const accounts = serviceStatus?.accounts ?? [];
+                      const included = card.noAuth === true
+                        || (serviceStatus?.connected === true && !accounts.length && !pending && !failed);
+                      const addingAccount = aliasSlug === card.slug && !pending;
+                      const busy = busySlug === card.slug;
+                      const unavailableReason = managedConnectorUnavailableReason(mode, card.slug)
+                        ? t("connectors.selfHostOnlyReason")
+                        : null;
+                      return (
+                        <div
+                          key={card.slug}
+                          className="border border-hairline bg-card p-3.5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <ServiceIcon card={card} />
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-ink">
-                                {active && <Check size={13} className="shrink-0 text-success" />}
-                                <span className="truncate">{account.alias || account.id}</span>
-                              </div>
-                              <div className="mt-0.5 truncate text-[10.5px] text-ink-secondary">
-                                {account.alias ? `${account.id} · ` : ""}{account.status.toLowerCase()}
+                              <div className="truncate text-[14px] font-medium text-ink">{card.label}</div>
+                              <div
+                                className="mt-0.5 truncate text-[12px] text-ink-secondary"
+                                title={unavailableReason ?? undefined}
+                              >
+                                {unavailableReason ?? (
+                                  pending
+                                    ? pendingUrls[card.slug]
+                                      ? t("connectors.finishSetup")
+                                      : t("connectors.finishSetupOrDisconnect")
+                                    : failed && !accounts.length
+                                      ? t("connectors.authExpired")
+                                      : card.blurb
+                                )}
                               </div>
                             </div>
-                            <button
+                            <Button
+                              variant={included ? "ghost" : "secondary"}
+                              size="sm"
                               type="button"
-                              disabled={busy}
+                              disabled={!configured || inventoryPhase !== "ready" || busy || included || Boolean(unavailableReason)}
+                              title={unavailableReason ?? undefined}
                               onClick={() => {
-                                if (!window.confirm(disconnectAccountConfirmation(card.label, account))) return;
-                                disconnectAccount(card.slug, account.id);
+                                if (pending) {
+                                  if (pendingUrls[card.slug]) {
+                                    setError(null);
+                                    void openConnectUrl(pendingUrls[card.slug]).catch((e) => setError(e.message));
+                                  } else {
+                                    setAliasSlug(null);
+                                    setError(null);
+                                    void refreshStatus([card.slug]);
+                                    startPolling(card.slug);
+                                  }
+                                } else {
+                                  setAliasSlug((current) => current === card.slug ? null : card.slug);
+                                  setAliasDraft("");
+                                }
                               }}
-                              className="rounded-md px-2 py-1 text-[11px] text-ink-secondary transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                              aria-label={t("connectors.disconnectAria", {
-                                account: account.alias || account.id,
-                                service: card.label,
-                              })}
+                              className="shrink-0"
                             >
-                              {t("connectors.disconnect")}
-                            </button>
+                              {unavailableReason ? (
+                                t("connectors.selfHostOnly")
+                              ) : busy ? (
+                                <Loader2 size={13} className="mx-auto animate-spin" />
+                              ) : (
+                                connectorActionLabel(inventoryPhase, {
+                                  busy,
+                                  included,
+                                  canContinue: Boolean(pending && pendingUrls[card.slug]),
+                                  pending,
+                                  hasAccounts: accounts.length > 0,
+                                  failed: Boolean(failed),
+                                })
+                              )}
+                            </Button>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {addingAccount && (
-                    <form
-                      className="ml-14 mt-3 flex items-center gap-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        const alias = aliasDraft.trim();
-                        if (!alias) {
-                          setError({ key: "connectors.aliasRequired" });
-                          return;
-                        }
-                        void connect(card.slug, alias);
-                      }}
+                          {accounts.length > 0 && (
+                            <div className="ml-14 mt-3 space-y-2">
+                              {accounts.map((account) => {
+                                const active = /^active$/i.test(account.status);
+                                return (
+                                  <div key={account.id} className="flex items-center gap-2 border border-hairline bg-inset px-3 py-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 text-[12px] font-medium text-ink">
+                                        {active && <Check size={13} className="shrink-0 text-success" />}
+                                        <span className="truncate">{account.alias || account.id}</span>
+                                      </div>
+                                      <div className="mt-0.5 truncate font-mono text-[10.5px] text-ink-secondary">
+                                        {account.alias ? `${account.id} · ` : ""}{account.status.toLowerCase()}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="xs"
+                                      disabled={busy}
+                                      onClick={() => {
+                                        if (!window.confirm(disconnectAccountConfirmation(card.label, account))) return;
+                                        disconnectAccount(card.slug, account.id);
+                                      }}
+                                      className="text-danger hover:text-danger"
+                                      aria-label={t("connectors.disconnectAria", {
+                                        account: account.alias || account.id,
+                                        service: card.label,
+                                      })}
+                                    >
+                                      {t("connectors.disconnect")}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {addingAccount && (
+                            <form
+                              className="ml-14 mt-3 flex items-center gap-2"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                const alias = aliasDraft.trim();
+                                if (!alias) {
+                                  setError({ key: "connectors.aliasRequired" });
+                                  return;
+                                }
+                                void connect(card.slug, alias);
+                              }}
+                            >
+                              <Input
+                                autoFocus
+                                value={aliasDraft}
+                                maxLength={64}
+                                onChange={(event) => setAliasDraft(event.target.value)}
+                                placeholder={t("connectors.aliasPlaceholder")}
+                                aria-label={accounts.length > 0
+                                  ? t("connectors.aliasAriaAnother", { service: card.label })
+                                  : t("connectors.aliasAriaNew", { service: card.label })}
+                                className="min-w-0 flex-1 text-[12px]"
+                              />
+                              <Button
+                                type="submit"
+                                variant="primary"
+                                size="sm"
+                                disabled={busy || !aliasDraft.trim()}
+                              >
+                                {t("connectors.action.continue")}
+                              </Button>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {cards !== null && visible.length === 0 && (
+                <div className="flex min-h-56 flex-col items-center justify-center border border-dashed border-hairline p-6 text-center">
+                  <div className="text-[14px] font-medium text-ink">
+                    {tab === "connected" ? connectedEmptyCopy.title : t("connectors.noAppsFound")}
+                  </div>
+                  <div className="mt-1 text-[12.5px] text-ink-secondary">
+                    {tab === "connected" ? connectedEmptyCopy.description : t("connectors.tryDifferentSearch")}
+                  </div>
+                  {tab === "connected" && inventoryPhase === "error" && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={refreshing}
+                      onClick={() => void loadConnectionInventory(true)}
+                      className="mt-4 gap-1.5"
                     >
-                      <input
-                        autoFocus
-                        value={aliasDraft}
-                        maxLength={64}
-                        onChange={(event) => setAliasDraft(event.target.value)}
-                        placeholder={t("connectors.aliasPlaceholder")}
-                        aria-label={accounts.length > 0
-                          ? t("connectors.aliasAriaAnother", { service: card.label })
-                          : t("connectors.aliasAriaNew", { service: card.label })}
-                        className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-2 text-[12px] text-ink placeholder:text-ink-secondary focus:outline-none focus:ring-1 focus:ring-accent"
-                      />
-                      <button
-                        type="submit"
-                        disabled={busy || !aliasDraft.trim()}
-                        className="rounded-lg bg-accent px-3 py-2 text-[12px] font-medium text-white disabled:opacity-40"
-                      >
-                        {t("connectors.action.continue")}
-                      </button>
-                    </form>
+                      <RefreshCw size={13} className={cn(refreshing && "animate-spin")} />
+                      {t("connectors.action.retry")}
+                    </Button>
                   )}
                 </div>
-              );
-              })}
-              </div>
-            </div>
-          )}
-          {cards !== null && visible.length === 0 && (
-            <div className="flex min-h-56 flex-col items-center justify-center text-center">
-              <div className="text-[14px] font-medium text-ink">
-                {tab === "connected" ? connectedEmptyCopy.title : t("connectors.noAppsFound")}
-              </div>
-              <div className="mt-1 text-[12.5px] text-ink-secondary">
-                {tab === "connected" ? connectedEmptyCopy.description : t("connectors.tryDifferentSearch")}
-              </div>
-              {tab === "connected" && inventoryPhase === "error" && (
-                <button
-                  type="button"
-                  disabled={refreshing}
-                  onClick={() => void loadConnectionInventory(true)}
-                  className="mt-4 flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-raised-hover disabled:opacity-50"
-                >
-                  <RefreshCw size={13} className={cn(refreshing && "animate-spin")} />
-                  {t("connectors.action.retry")}
-                </button>
               )}
             </div>
-          )}
-        </div>
-          </>
+          </DialogBody>
         ) : (
           <McpServersPanel />
         )}
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogBackdrop>
   );
 }

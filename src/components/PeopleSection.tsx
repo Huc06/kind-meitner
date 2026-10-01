@@ -13,6 +13,9 @@ import { readSessionState, type SessionState } from "../lib/session";
 import { canPairDevices } from "./ServerPairingCard";
 import { normalizeAccessEntry, withEntry, withoutEntry, type SignInLists } from "./SignInAccessCard";
 import { Card } from "./SettingsPrimitives";
+import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
+import { Tag } from "@/components/ui/tag";
 
 export type Role = "admin" | "member";
 
@@ -77,11 +80,11 @@ export function PeopleTable({ people, busy, onRole, onRemove, onLink }: {
   onRemove: (person: Person) => void;
   onLink: (person: Person) => void;
 }) {
-  if (people.length === 0) return <p className="text-[13px] text-ink-secondary">{t("people.empty")}</p>;
+  if (people.length === 0) return <p className="font-mono text-[12px] text-ink-secondary">{t("people.empty")}</p>;
   const columns = "grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4";
   return (
     <div className="flex flex-col">
-      <div className={cn(columns, "border-b border-hairline/40 pb-2 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary")}>
+      <div className={cn(columns, "border-b border-hairline pb-2 label-mono text-ink-secondary")}>
         <span>{t("people.colPerson")}</span>
         <span>{t("people.colRole")}</span>
         <span className="text-right">{t("people.colLastSeen")}</span>
@@ -89,24 +92,28 @@ export function PeopleTable({ people, busy, onRole, onRemove, onLink }: {
         <span />
       </div>
       {people.map((person) => (
-        <div key={person.entry} className={cn(columns, "border-b border-hairline/20 py-2 text-[13px]")}>
+        <div key={person.entry} className={cn(columns, "border-b border-hairline/40 py-2.5 text-[13px]")}>
           <span className="min-w-0">
             <span className="block truncate text-ink">{person.isDomain ? t("people.everyoneAt", { domain: person.entry.slice(1) }) : person.entry}</span>
-            {person.devices > 0 && <span className="block text-[11.5px] text-ink-secondary">{t("people.devices", { count: String(person.devices) })}</span>}
+            {person.devices > 0 && <span className="block font-mono text-[11px] text-ink-secondary">{t("people.devices", { count: String(person.devices) })}</span>}
           </span>
-          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", person.role === "admin" ? "bg-accent/15 text-accent" : "bg-control text-ink-secondary")}>
+          <Tag tone={person.role === "admin" ? "accent" : "neutral"} size="sm">
             {person.role === "admin" ? t("people.roleAdmin") : t("people.roleMember")}
-          </span>
-          <span className="text-right tabular-nums text-ink-secondary">{person.isDomain ? "—" : lastSeenLabel(person.lastSeenAt)}</span>
-          <span className="text-right tabular-nums text-ink" title={t("people.turns", { turns: String(person.turns) })}>
+          </Tag>
+          <span className="text-right font-mono text-[12px] tabular-nums text-ink-secondary">{person.isDomain ? "—" : lastSeenLabel(person.lastSeenAt)}</span>
+          <span className="text-right font-mono text-[12px] tabular-nums text-ink" title={t("people.turns", { turns: String(person.turns) })}>
             {hasFiniteCost(person.costUsd) ? formatUsd(person.costUsd) : "—"}
           </span>
-          <span className="flex items-center justify-end gap-2 text-[12px]">
-            <button type="button" disabled={busy} onClick={() => onLink(person)} aria-label={t("people.link")} title={t("people.link")} className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-50"><Link2 size={13} /></button>
-            <button type="button" disabled={busy} onClick={() => onRole(person, person.role === "admin" ? "member" : "admin")} className="text-ink-secondary hover:text-ink disabled:opacity-50">
+          <span className="flex items-center justify-end gap-1.5 text-[12px]">
+            <Button variant="ghost" size="xs" icon disabled={busy} onClick={() => onLink(person)} aria-label={t("people.link")} title={t("people.link")}>
+              <Link2 size={13} />
+            </Button>
+            <Button variant="ghost" size="xs" disabled={busy} onClick={() => onRole(person, person.role === "admin" ? "member" : "admin")}>
               {person.role === "admin" ? t("people.makeMember") : t("people.makeAdmin")}
-            </button>
-            <button type="button" disabled={busy} onClick={() => onRemove(person)} className="text-danger hover:underline disabled:opacity-50">{t("people.remove")}</button>
+            </Button>
+            <Button variant="ghost" size="xs" disabled={busy} onClick={() => onRemove(person)} className="text-danger hover:text-danger">
+              {t("people.remove")}
+            </Button>
           </span>
         </div>
       ))}
@@ -130,13 +137,13 @@ export function CopyLink({ link }: { link: string }) {
     }
   };
   return (
-    <div className="mt-3 rounded-lg border border-hairline/40 bg-inset p-3 text-[12.5px]">
-      <div className="mb-1 text-ink-secondary">{t("people.link")}</div>
+    <div className="mt-3 border border-hairline bg-inset p-3 text-[12.5px]">
+      <div className="label-mono mb-1 text-ink-secondary">{t("people.link")}</div>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 select-all break-all text-ink">{link}</code>
-        <button type="button" onClick={() => void copy()} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-ink-secondary hover:bg-control hover:text-ink">
-          {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}{copied ? t("people.copied") : t("people.copy")}
-        </button>
+        <code className="min-w-0 flex-1 select-all break-all font-mono text-[12px] text-ink">{link}</code>
+        <Button variant="ghost" size="xs" onClick={() => void copy()}>
+          {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}{copied ? t("people.copied") : t("people.copy")}
+        </Button>
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-secondary">{t("people.linkHint")}</p>
     </div>
@@ -217,24 +224,26 @@ export function PeopleSection() {
   if (!canPairDevices(session)) return null;
   return (
     <Card title={t("people.title")} subtitle={t("people.subtitle")}>
-      {emailOffered === false && <p className="mb-3 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2 text-[12.5px] text-ink-secondary">{t("people.notHosted")}</p>}
+      {emailOffered === false && <p className="mb-3 border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] text-warning">{t("people.notHosted")}</p>}
       <form className="flex flex-wrap items-center gap-2" onSubmit={(event) => { event.preventDefault(); void invite(); }}>
-        <input
+        <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("remote.signInAccess.placeholder")}
           aria-label={t("people.inviteEmail")}
           disabled={busy}
-          className="min-w-[16rem] flex-1 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none disabled:opacity-50"
+          className="min-w-[16rem] flex-1"
         />
-        <select value={role} onChange={(e) => setRole(e.target.value as Role)} aria-label={t("people.colRole")} disabled={busy} className="rounded-lg border border-hairline/40 bg-inset px-2 py-2 text-[12.5px] text-ink focus:border-hairline focus:outline-none">
+        <Select value={role} onChange={(e) => setRole(e.target.value as Role)} aria-label={t("people.colRole")} disabled={busy} className="w-auto">
           <option value="member">{t("people.roleMember")}</option>
           <option value="admin">{t("people.roleAdmin")}</option>
-        </select>
-        <button type="submit" disabled={busy || !draft.trim()} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
+        </Select>
+        <Button variant="primary" size="sm" type="submit" disabled={busy || !draft.trim()}>
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}{t("people.invite")}
-        </button>
-        <button type="button" onClick={() => void load()} disabled={loading || busy} aria-label={t("people.refresh")} title={t("people.refresh")} className="rounded-md p-1.5 text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-50"><RefreshCw size={13} className={cn(loading && "animate-spin")} /></button>
+        </Button>
+        <Button variant="ghost" size="sm" icon onClick={() => void load()} disabled={loading || busy} aria-label={t("people.refresh")} title={t("people.refresh")}>
+          <RefreshCw size={13} className={cn(loading && "animate-spin")} />
+        </Button>
       </form>
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-secondary">{t("people.inviteHint")}</p>
       {link && <CopyLink link={link} />}

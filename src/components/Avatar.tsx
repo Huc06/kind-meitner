@@ -154,7 +154,7 @@ export function ChartAvatar({
       role="img"
       aria-label={label}
       title={label}
-      className="inline-flex shrink-0 items-center justify-center rounded-full border border-app-bg/70 text-ink shadow-sm"
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-hairline text-ink shadow-sm"
       style={{ width: size, height: size, background: `linear-gradient(135deg, ${highlight}99, ${fill}66)` }}
     >
       {isSpend ? (

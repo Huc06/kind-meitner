@@ -34,7 +34,8 @@ import { QuietButton } from "./beats/shared";
 import { withViewTransition } from "./view-transition";
 import { ProgressDots } from "./ProgressDots";
 import { FeatureReel } from "./reel/FeatureReel";
-
+import { formatIndex } from "@/components/ui/frame";
+import { WordTiles } from "@/components/ui/word-tiles";
 /** The guide's resting face per beat; beats may override it as they learn
  * more (the engines beat looks proud or curious once the harness answers). */
 const MASCOT_FOR_BEAT: Record<BeatId, MausState> = {
@@ -45,7 +46,22 @@ const MASCOT_FOR_BEAT: Record<BeatId, MausState> = {
   phone: "sending",
   bot: "celebrate",
 };
-
+function beatTag(b: BeatId): string {
+  switch (b) {
+    case "hello":
+      return "WELCOME";
+    case "reel":
+      return "OVERVIEW";
+    case "engines":
+      return "ENGINES";
+    case "permissions":
+      return "PERMISSIONS";
+    case "phone":
+      return "COMPANION";
+    case "bot":
+      return "ASSISTANT";
+  }
+}
 function beatTitle(beat: BeatId): string | null {
   switch (beat) {
     case "hello":
@@ -216,12 +232,22 @@ export function WelcomeFlow({
         aria-label={t("onboarding.dialog")}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="welcome-card relative flex max-h-full w-full flex-col overflow-y-auto rounded-2xl border border-hairline/40 bg-panel p-5 sm:p-8 shadow-[0_30px_80px_-28px_rgba(0,0,0,0.45),0_8px_24px_-12px_rgba(0,0,0,0.25)] outline-none"
+        className="welcome-card relative flex max-h-full w-full flex-col overflow-y-auto border border-hairline bg-panel p-5 sm:p-8 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] outline-none"
         style={{ maxWidth: beatWidth(beat) }}
       >
-        <QuietButton onClick={() => void finish("skipped")} className="absolute right-4 top-4">
-          {t("onboarding.skipTour")}
-        </QuietButton>
+        <span aria-hidden className="frame-corner" data-corner="tl" />
+        <span aria-hidden className="frame-corner" data-corner="tr" />
+        <span aria-hidden className="frame-corner" data-corner="bl" />
+        <span aria-hidden className="frame-corner" data-corner="br" />
+
+        <div className="mb-4 flex items-center justify-between">
+          <span className="label-mono text-ink-secondary">
+            [ {formatIndex(current)} / {formatIndex(beats.length)} · {beatTag(beat)} ]
+          </span>
+          <QuietButton onClick={() => void finish("skipped")}>
+            {t("onboarding.skipTour")}
+          </QuietButton>
+        </div>
 
         <div className={cn("flex shrink-0", hello ? "flex-col items-center" : "items-center gap-3")}>
           <div className="welcome-maus flex shrink-0">
@@ -239,9 +265,15 @@ export function WelcomeFlow({
             )}
           </div>
           {title && (
-            <h1 className={cn("welcome-title font-semibold text-ink", hello ? "mt-4 text-[20px]" : "text-[18px]")}>
-              {title}
-            </h1>
+            hello ? (
+              <h1 className="welcome-title mt-4 flex justify-center text-center">
+                <WordTiles sentence={title} className="text-[20px] sm:text-[24px] flex-wrap justify-center" />
+              </h1>
+            ) : (
+              <h1 className="welcome-title text-[18px] font-semibold text-ink">
+                {title}
+              </h1>
+            )
           )}
         </div>
 
@@ -269,7 +301,7 @@ export function WelcomeFlow({
             <span />
           )}
           <ProgressDots items={beats.map((id) => ({ id }))} index={current - 1} />
-          <span className="text-[11px] text-ink-secondary" aria-live="polite">
+          <span className="font-mono text-[11px] tabular-nums text-ink-secondary" aria-live="polite">
             {t("onboarding.progress", { current, total: beats.length })}
           </span>
         </div>

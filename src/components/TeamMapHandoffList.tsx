@@ -130,8 +130,8 @@ export function TeamMapHandoffList({
   }
 
   return (
-    <section aria-label="Agent handoffs" className={cn("overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]", className)}>
-      {/* Section Header (48-52px) */}
+    <section aria-label="Agent handoffs" className={cn("border border-hairline bg-card", className)} data-slot="team-map-handoff-list">
+      {/* Section Header */}
       <div
         role="button"
         tabIndex={0}
@@ -144,29 +144,29 @@ export function TeamMapHandoffList({
             setIsOpen((prev) => !prev);
           }
         }}
-        className="flex h-12 w-full cursor-pointer items-center justify-between px-5 text-left outline-none transition-colors hover:bg-white/[0.02] focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex h-11 w-full cursor-pointer items-center justify-between px-4 text-left outline-none transition-colors hover:bg-raised-hover"
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-white/50 transition-transform duration-150">
-            {isOpen ? <ChevronDown size={15} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}
+        <div className="flex items-center gap-2">
+          <span className="text-ink-secondary transition-transform duration-150">
+            {isOpen ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
           </span>
-          <h3 className="text-[15px] font-semibold text-white/90">Agent handoffs</h3>
+          <h3 className="label-mono text-[12px] font-semibold text-ink">Agent handoffs</h3>
           <span
-            className="flex h-5 min-w-5 items-center justify-center rounded-[6px] bg-white/[0.08] px-1.5 font-mono text-[11px] font-medium text-white/70"
+            className="flex h-4 min-w-4 items-center justify-center border border-hairline bg-inset px-1 font-mono text-[10.5px] font-medium text-ink-secondary"
             aria-label={`${items.length} handoffs`}
           >
             {items.length}
           </span>
         </div>
 
-        <span className="text-[12px] text-white/45">
+        <span className="label-mono text-[10.5px] text-ink-secondary">
           {items.some((i) => i.kind === "transfer") ? "Context-preserved transfers" : "Active channels"}
         </span>
       </div>
 
       {/* Structured List Rows */}
       {isOpen && (
-        <div id="handoff-list-content" className="max-h-[50vh] overflow-y-auto divide-y divide-white/[0.06] border-t border-white/[0.08]">
+        <div id="handoff-list-content" className="max-h-[50vh] overflow-y-auto divide-y divide-hairline frame-rule-above">
           {items.map((item) => {
             const isSelected = selectedTaskId === item.taskId;
             const isExpanded = expandedId === item.id;
@@ -177,37 +177,37 @@ export function TeamMapHandoffList({
                 className={cn(
                   "transition-colors",
                   isSelected
-                    ? "bg-[#1C2025] border-l-2 border-accent"
-                    : "hover:bg-[#20242A]/60 border-l-2 border-transparent",
+                    ? "bg-raised border-l-2 border-accent"
+                    : "hover:bg-raised-hover border-l-2 border-transparent",
                 )}
               >
                 {/* Main Row: accessible select button and expand button */}
-                <div className="flex min-h-[64px] items-center justify-between px-5 py-3 gap-3">
+                <div className="flex min-h-[56px] items-center justify-between px-4 py-2.5 gap-3">
                   <button
                     type="button"
                     onClick={() => onSelectHandoff(item)}
-                    className="flex min-w-0 flex-1 flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md sm:flex-row sm:items-center sm:justify-between"
+                    className="flex min-w-0 flex-1 flex-col text-left outline-none sm:flex-row sm:items-center sm:justify-between"
                   >
                     {/* Left Column: Task & Transfer path */}
                     <div className="min-w-0 flex-1 pr-4">
-                      <h4 className="truncate text-[14px] font-semibold leading-snug text-white/90">
+                      <h4 className="truncate text-[13px] font-semibold text-ink">
                         {item.taskTitle}
                       </h4>
-                      <div className="mt-1 flex items-center gap-2 text-[13px] text-white/60">
-                        <span className="font-medium text-white/80">{item.fromName}</span>
-                        <ArrowRight size={12} className="shrink-0 text-white/40" aria-hidden="true" />
-                        <span className="font-medium text-white/80">{item.toName}</span>
-                        <span className="text-white/30">·</span>
-                        <span className="text-[12px] text-white/50">{item.statusText}</span>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-secondary">
+                        <span className="font-medium text-ink">{item.fromName}</span>
+                        <ArrowRight size={11} className="shrink-0 text-ink-secondary/60" aria-hidden="true" />
+                        <span className="font-medium text-ink">{item.toName}</span>
+                        <span className="text-ink-secondary/40">·</span>
+                        <span className="text-[11.5px] text-ink-secondary">{item.statusText}</span>
                       </div>
                     </div>
 
                     {/* Right Column: Metadata */}
-                    <div className="mt-1.5 flex shrink-0 items-center gap-3 sm:mt-0">
-                      <span className="rounded-[6px] bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
+                    <div className="mt-1 flex shrink-0 items-center gap-2.5 sm:mt-0">
+                      <span className="border border-hairline bg-raised px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-ink">
                         {item.kind === "transfer" ? "Ownership transfer" : "Peer channel"}
                       </span>
-                      <span className="font-mono text-[11px] tabular-nums text-white/45">
+                      <span className="font-mono text-[11px] tabular-nums text-ink-secondary">
                         {item.timeStr}
                       </span>
                     </div>
@@ -218,51 +218,51 @@ export function TeamMapHandoffList({
                     aria-label={isExpanded ? "Collapse handoff details" : "Expand handoff details"}
                     aria-expanded={isExpanded}
                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                    className="shrink-0 rounded-lg p-1.5 text-white/40 hover:bg-white/[0.08] hover:text-white/80 focus-visible:ring-2 focus-visible:ring-accent outline-none"
+                    className="shrink-0 p-1 text-ink-secondary hover:text-ink outline-none"
                   >
-                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </button>
                 </div>
 
                 {/* Expanded Details without nested bordered card */}
                 {isExpanded && (
-                  <div className="space-y-3 bg-black/20 px-5 pb-4 pt-1 text-[13px] leading-relaxed">
+                  <div className="space-y-2.5 bg-inset/50 px-4 pb-3.5 pt-1 text-[12.5px] leading-relaxed">
                     {/* Reason */}
                     {item.reason && (
                       <div className="max-w-2xl">
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-white/45">
+                        <span className="label-mono text-[10.5px] text-ink-secondary block">
                           Reason
                         </span>
-                        <p className="mt-0.5 text-[13px] text-white/80">
+                        <p className="mt-0.5 text-[12.5px] text-ink">
                           {item.reason}
                         </p>
                       </div>
                     )}
 
-                    {/* Context Transferred Inline Metadata (rendered only when data is present) */}
+                    {/* Context Transferred Inline Metadata */}
                     {item.kind === "transfer" && (item.messagesTransferred !== undefined || item.artifactsTransferred !== undefined || item.decisionsTransferred !== undefined) && (
-                      <div className="flex flex-wrap items-center gap-3 border-t border-white/[0.06] pt-2.5 text-[12px] text-white/60">
-                        <span className="text-white/40">Context transferred:</span>
+                      <div className="flex flex-wrap items-center gap-2.5 frame-rule-above pt-2 text-[11.5px] text-ink-secondary">
+                        <span>Context transferred:</span>
                         {item.messagesTransferred !== undefined && (
-                          <span className="inline-flex items-center gap-1 font-medium text-white/80">
-                            <MessageSquare size={13} className="text-accent" aria-hidden="true" />
+                          <span className="inline-flex items-center gap-1 font-medium text-ink">
+                            <MessageSquare size={12} className="text-ink" aria-hidden="true" />
                             <span>{item.messagesTransferred} messages</span>
                           </span>
                         )}
                         {item.artifactsTransferred !== undefined && (
                           <>
-                            <span className="text-white/30">·</span>
-                            <span className="inline-flex items-center gap-1 font-medium text-white/80">
-                              <FileText size={13} className="text-accent" aria-hidden="true" />
+                            <span className="text-ink-secondary/40">·</span>
+                            <span className="inline-flex items-center gap-1 font-medium text-ink">
+                              <FileText size={12} className="text-ink" aria-hidden="true" />
                               <span>{item.artifactsTransferred} artifacts</span>
                             </span>
                           </>
                         )}
                         {item.decisionsTransferred !== undefined && (
                           <>
-                            <span className="text-white/30">·</span>
-                            <span className="inline-flex items-center gap-1 font-medium text-white/80">
-                              <Scale size={13} className="text-accent" aria-hidden="true" />
+                            <span className="text-ink-secondary/40">·</span>
+                            <span className="inline-flex items-center gap-1 font-medium text-ink">
+                              <Scale size={12} className="text-ink" aria-hidden="true" />
                               <span>{item.decisionsTransferred} decision</span>
                             </span>
                           </>
@@ -271,14 +271,14 @@ export function TeamMapHandoffList({
                     )}
                     {/* Progress Line */}
                     {item.progress !== undefined && item.progress > 0 && (
-                      <div className="flex items-center gap-3 pt-1">
-                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+                      <div className="flex items-center gap-2.5 pt-1">
+                        <div className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset">
                           <div
                             className="h-full bg-accent transition-all duration-300"
                             style={{ width: `${item.progress}%` }}
                           />
                         </div>
-                        <span className="font-mono text-[11px] tabular-nums text-white/45">
+                        <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">
                           {item.progress}% preserved
                         </span>
                       </div>

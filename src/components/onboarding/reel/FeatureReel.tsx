@@ -30,7 +30,7 @@ export function FeatureReel({ onNext, setMascot }: BeatProps) {
 
   return (
     <div className="stagger flex min-h-0 flex-col">
-      <div key={`${id}-${round}`} className="animate-rise mt-4 aspect-[8/5] w-full overflow-hidden rounded-xl border border-hairline/40">
+      <div key={`${id}-${round}`} className="animate-rise mt-4 aspect-[8/5] w-full overflow-hidden border border-hairline bg-inset">
         <Scene playing label={t(copyKey(id, "title"))} onEnded={advance} onCue={setMascot} />
       </div>
       <div key={id} className="animate-rise mt-4" style={staggerIndex(1)}>

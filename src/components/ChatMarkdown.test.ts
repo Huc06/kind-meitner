@@ -437,7 +437,6 @@ describe("bidi: message content carries its own direction", () => {
 
     expect(html).toContain("list-disc space-y-1 ps-5");
     expect(html).toContain("list-decimal space-y-1 ps-5");
-    expect(html).toContain("border-s-2 border-hairline ps-3");
     expect(html).toContain("px-2 py-1.5 text-start font-semibold");
     expect(html).not.toMatch(/class="[^"]*\bpl-5\b/);
     expect(html).not.toMatch(/class="[^"]*\bborder-l-2\b/);

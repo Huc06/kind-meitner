@@ -37,6 +37,9 @@ import { LocalScreenPreview } from "./LocalScreenPreview";
 import { LinuxLocalControl } from "./LinuxLocalControl";
 import { MacLocalControl } from "./MacLocalControl";
 import { LocalComputerAutoWarning } from "./LocalComputerAutoWarning";
+import { Button } from "@/components/ui/button";
+import { Frame } from "@/components/ui/frame";
+import { Tag } from "@/components/ui/tag";
 import {
   instanceSupportsLocalComputer,
   localComputerDisabledReason,
@@ -559,7 +562,7 @@ export function ComputerPanel({
   return (
     <>
     <aside
-      className="animate-panel-in relative flex h-full shrink-0 flex-col border-l border-hairline/40 bg-panel"
+      className="animate-panel-in relative flex h-full shrink-0 flex-col border-l border-hairline bg-panel"
       style={{ width: panelWidth }}
     >
       <div
@@ -570,275 +573,303 @@ export function ComputerPanel({
         onPointerMove={onResizeMove}
         onPointerUp={onResizeEnd}
         onPointerCancel={onResizeEnd}
-        className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize hover:bg-accent/40"
+        className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize hover:bg-raised-hover active:bg-raised"
       />
-      {/* Header */}
-      <div className={cn("flex items-center justify-between px-4 py-3", padClass)}>
+      {/* View Header */}
+      <div className={cn("flex h-11 shrink-0 items-center justify-between frame-rule-below bg-app px-4 gap-3", padClass)}>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium text-[14px] text-ink">{bot.name}</span>
+          <Tag
+            tone={control.held ? "warning" : (viewerOpen || Boolean(frameSrc) || phase === "ready" || phase === "local") ? "success" : "neutral"}
+            size="sm"
+          >
+            {control.held ? "controlled" : (viewerOpen || Boolean(frameSrc) || phase === "ready" || phase === "local") ? "live" : "idle"}
+          </Tag>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            icon
+            size="sm"
+            onClick={() => {
+              dispatch({ type: "toggleComputer", open: false });
+              dispatch({ type: "toggleSettings", open: true, section: "access" });
+            }}
+            title={t("computer.botSettings")}
+            aria-label={t("computer.botSettings")}
+          >
+            <Settings size={15} />
+          </Button>
+          <Button
+            variant="ghost"
+            icon
+            size="sm"
+            onClick={() => dispatch({ type: "toggleComputer", open: false })}
+            aria-label="Close computer panel"
+          >
+            <X size={15} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex h-9 shrink-0 items-center gap-4 frame-rule-below bg-app px-4" data-tour="computer-tabs" aria-label="Bot panel view">
         <button
-          onClick={() => {
-            // Keep the panel/modal states exclusive at this entry point. That
-            // removes the still-mounted Computer panel from the settings
-            // dialog's focus path, and dismissing Settings returns directly
-            // to the conversation that opened it.
-            dispatch({ type: "toggleComputer", open: false });
-            dispatch({ type: "toggleSettings", open: true, section: "access" });
-          }}
-          className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink"
-          title={t("computer.botSettings")}
+          onClick={() => selectPanelView("computer")}
+          data-active={panelView === "computer" ? "" : undefined}
+          aria-pressed={panelView === "computer"}
+          aria-selected={panelView === "computer"}
+          className={cn(
+            "nav-link flex items-center gap-1.5 py-1.5 font-mono text-[11px] uppercase tracking-wider",
+            panelView === "computer" ? "text-ink" : "text-ink-secondary hover:text-ink",
+          )}
         >
-          <Settings size={18} />
+          <Monitor size={12} /> {t("computer.tab.computer")}
         </button>
-        {(
-          <div className="mx-2 flex min-w-0 flex-wrap overflow-hidden rounded-lg border border-hairline/40" data-tour="computer-tabs" aria-label="Bot panel view">
-            <button
-              onClick={() => selectPanelView("computer")}
-              aria-pressed={panelView === "computer"}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 text-[12.5px]",
-                panelView === "computer" ? "bg-control text-ink" : "text-ink-secondary hover:text-ink",
-              )}
-            >
-              <Monitor size={13} /> {t("computer.tab.computer")}
-            </button>
-            <button
-              type="button"
-              onClick={() => selectPanelView("routines")}
-              aria-pressed={panelView === "routines"}
-              className={cn("flex items-center gap-1.5 border-l border-hairline/40 px-2.5 py-1 text-[12.5px]", panelView === "routines" ? "bg-control text-ink" : "text-ink-secondary hover:text-ink")}
-            ><CalendarClock size={13} />{t("computer.tab.routines")}</button>
-            {browserEnabled && (
-            <button
-              data-tour="computer-browser"
-              onClick={() => {
-                setError(null);
-                selectPanelView("browser");
-              }}
-              aria-pressed={panelView === "browser"}
-              className={cn(
-                "flex items-center gap-1.5 border-l border-hairline/40 px-2.5 py-1 text-[12.5px]",
-                panelView === "browser" ? "bg-control text-ink" : "text-ink-secondary hover:text-ink",
-              )}
-            >
-              <Globe size={13} /> {t("computer.tab.browser")}
-            </button>
+        <button
+          type="button"
+          onClick={() => selectPanelView("routines")}
+          data-active={panelView === "routines" ? "" : undefined}
+          aria-pressed={panelView === "routines"}
+          aria-selected={panelView === "routines"}
+          className={cn(
+            "nav-link flex items-center gap-1.5 py-1.5 font-mono text-[11px] uppercase tracking-wider",
+            panelView === "routines" ? "text-ink" : "text-ink-secondary hover:text-ink",
+          )}
+        >
+          <CalendarClock size={12} /> {t("computer.tab.routines")}
+        </button>
+        {browserEnabled && (
+          <button
+            data-tour="computer-browser"
+            onClick={() => {
+              setError(null);
+              selectPanelView("browser");
+            }}
+            data-active={panelView === "browser" ? "" : undefined}
+            aria-pressed={panelView === "browser"}
+            aria-selected={panelView === "browser"}
+            className={cn(
+              "nav-link flex items-center gap-1.5 py-1.5 font-mono text-[11px] uppercase tracking-wider",
+              panelView === "browser" ? "text-ink" : "text-ink-secondary hover:text-ink",
             )}
-          </div>
+          >
+            <Globe size={12} /> {t("computer.tab.browser")}
+          </button>
         )}
-        <button
-          onClick={() => dispatch({ type: "toggleComputer", open: false })}
-          className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink"
-        >
-          <X size={18} />
-        </button>
       </div>
 
       {panelView === "routines" ? (
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-3">
           <RoutinesSection key={bot.id} bot={bot} routines={botRoutines} runs={state.routineRuns} defaultRunOn="maus" />
         </div>
       ) : panelView === "browser" && browserEnabled ? (
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-3">
           <BrowserPanel bot={bot} />
           {errorText && (
-            <div role="alert" className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">
-              {errorText}
+            <div role="alert" className="mt-2 flex items-center gap-2 border border-danger/40 bg-card p-3 font-mono text-[12px] text-danger">
+              <span>{errorText}</span>
             </div>
           )}
         </div>
       ) : (
-      <div className="flex-1 overflow-y-auto px-5 pb-5">
+        <div className="flex-1 overflow-y-auto px-4 pb-5">
           {/* Screen preview */}
-          <div className="mb-1.5 mt-2 flex items-center justify-between text-[13px] text-ink-secondary">
-            <span>{t("computer.screenOf", { name: bot.name })}</span>
-            {currentTeamComputer && <span className="text-[11px]">Team default</span>}
-            {phase === "local" && <span className="text-[11px]">{t("computer.badge.local")}</span>}
-        </div>
-        <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-xl bg-card">
-          {cloudPreviewReady || (bot.computer === "cloud" && phase === "starting") ? (
-            <CloudScreenPreview
-              key={`${bot.id}:${cloudBackend}`}
-              src={frameSrc}
-              name={bot.name}
-              error={panelErrorText(previewError)}
-              refreshing={previewRefreshing}
-              retry={previewRetry}
-              starting={phase === "starting"}
-              opening={pending === "join"}
-              disabled={controlPending}
-              onOpen={() => void openDesktop()}
-              onRetry={(discardFrame) => {
-                latestLive.current.at = 0;
-                if (discardFrame) setPolledFrame(null);
-                setPreviewError(null);
-                setPreviewRefreshing(true);
-                setPreviewRetry((n) => n + 1);
-              }}
-            />
-          ) : frameSrc && previewOpensDesktop ? (
-            <button
-              type="button"
-              onClick={() => void openDesktop()}
-              disabled={controlPending || pending === "join"}
-              className="group relative flex h-full w-full cursor-pointer items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-wait"
-              aria-label={t("computer.openLiveDesktopAria", { name: bot.name })}
-              title={t("computer.openLiveDesktop")}
-            >
+          <div className="mb-2 mt-3 flex items-center justify-between">
+            <span className="label-mono text-ink-secondary">{t("computer.screenOf", { name: bot.name })}</span>
+            {currentTeamComputer && <Tag tone="neutral" size="sm">Team default</Tag>}
+            {phase === "local" && <Tag tone="neutral" size="sm">{t("computer.badge.local")}</Tag>}
+          </div>
+          <Frame surface="panel" corners className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden bg-card">
+            {cloudPreviewReady || (bot.computer === "cloud" && phase === "starting") ? (
+              <CloudScreenPreview
+                key={`${bot.id}:${cloudBackend}`}
+                src={frameSrc}
+                name={bot.name}
+                error={panelErrorText(previewError)}
+                refreshing={previewRefreshing}
+                retry={previewRetry}
+                starting={phase === "starting"}
+                opening={pending === "join"}
+                disabled={controlPending}
+                onOpen={() => void openDesktop()}
+                onRetry={(discardFrame) => {
+                  latestLive.current.at = 0;
+                  if (discardFrame) setPolledFrame(null);
+                  setPreviewError(null);
+                  setPreviewRefreshing(true);
+                  setPreviewRetry((n) => n + 1);
+                }}
+              />
+            ) : frameSrc && previewOpensDesktop ? (
+              <button
+                type="button"
+                onClick={() => void openDesktop()}
+                disabled={controlPending || pending === "join"}
+                className="group relative flex h-full w-full cursor-pointer items-center justify-center focus-visible:outline-none disabled:cursor-wait"
+                aria-label={t("computer.openLiveDesktopAria", { name: bot.name })}
+                title={t("computer.openLiveDesktop")}
+              >
+                <img
+                  src={frameSrc}
+                  alt={t("computer.screenOf", { name: bot.name })}
+                  className="h-full w-full object-contain transition group-hover:brightness-75 group-focus-visible:brightness-75"
+                />
+                <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1.5 border border-hairline bg-card/90 px-2 py-1 font-mono text-[10.5px] uppercase tracking-wider text-ink opacity-90 transition group-hover:opacity-100">
+                  {pending === "join" ? <Loader2 size={12} className="animate-spin" /> : <Maximize2 size={12} />}
+                  <span>{t("computer.open")}</span>
+                </span>
+              </button>
+            ) : frameSrc ? (
               <img
                 src={frameSrc}
                 alt={t("computer.screenOf", { name: bot.name })}
-                className="h-full w-full object-contain transition group-hover:brightness-75 group-focus-visible:brightness-75"
+                className="h-full w-full object-contain"
               />
-              <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white opacity-80 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
-                {pending === "join" ? <Loader2 size={12} className="animate-spin" /> : <Maximize2 size={12} />}
-                {t("computer.open")}
-              </span>
-            </button>
-          ) : frameSrc ? (
-            <img
-              src={frameSrc}
-              alt={t("computer.screenOf", { name: bot.name })}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-2 px-6 text-center text-ink-secondary">
-              {phase === "checking" || phase === "starting" || (phase === "local" && !isLinux) ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : phase === "off" ? (
-                <Power size={22} />
-              ) : (
-                <Monitor size={22} />
-              )}
-              <span className="text-[12px]">
-                {currentTeamComputer
-                  ? currentTeamComputer.name
-                  : cloudPreviewReady
-                  ? t("computer.waitingFrame")
-                  : phase === "ready"
-                    ? t("computer.autoChooseCloudOpen")
-                  : phase === "local"
-                    ? isLinux
-                      ? t("computer.linuxReady")
-                      : localMisses >= 3
-                      ? t("computer.needsScreenPerm")
-                      : t("computer.capturingLocal")
-                    : emptyState[phase]}
-              </span>
-              {currentTeamComputer && <>
-                <p className="text-[12px]">Shared files and signed-in accounts. Auto uses this Box, not a private computer.</p>
-                <button type="button" onClick={() => dispatch({ type: "showTeamMap" })}
-                  className="mt-1 rounded-lg bg-control px-3 py-1.5 text-[12px] text-ink hover:bg-raised-hover">Open Team map</button>
-                <button type="button" onClick={() => setRetry(n => n + 1)}
-                  className="text-[11px] text-ink-secondary hover:text-ink">Refresh shared computer status</button>
-              </>}
-              {phase === "local" && !isLinux && localMisses >= 3 && (
-                <button
-                  onClick={() => window.ogb?.permOpenSettings?.("screen")}
-                  className="mt-1 rounded-lg bg-control px-3 py-1.5 text-[12px] text-ink hover:bg-raised-hover"
-                >
-                  {t("computer.openSettings")}
-                </button>
-              )}
-              {phase === "browser" && browserEnabled && (
-                <button
-                  onClick={() => selectPanelView("browser")}
-                  className="mt-1 rounded-lg bg-control px-3 py-1.5 text-[12px] text-ink hover:bg-raised-hover"
-                >
-                  {t("computer.openBrowserTab")}
-                </button>
-              )}
+            ) : (
+              <div className="flex flex-col items-center gap-2 px-6 text-center text-ink-secondary">
+                {phase === "checking" || phase === "starting" || (phase === "local" && !isLinux) ? (
+                  <Loader2 size={18} className="animate-spin text-ink-secondary" />
+                ) : phase === "off" ? (
+                  <Power size={22} className="text-ink-secondary" />
+                ) : (
+                  <Monitor size={22} className="text-ink-secondary" />
+                )}
+                <span className="text-[12px]">
+                  {currentTeamComputer
+                    ? currentTeamComputer.name
+                    : cloudPreviewReady
+                    ? t("computer.waitingFrame")
+                    : phase === "ready"
+                      ? t("computer.autoChooseCloudOpen")
+                    : phase === "local"
+                      ? isLinux
+                        ? t("computer.linuxReady")
+                        : localMisses >= 3
+                        ? t("computer.needsScreenPerm")
+                        : t("computer.capturingLocal")
+                      : emptyState[phase]}
+                </span>
+                {currentTeamComputer && <>
+                  <p className="text-[12px] text-ink-secondary">Shared files and signed-in accounts. Auto uses this Box, not a private computer.</p>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => dispatch({ type: "showTeamMap" })} className="mt-1">Open Team map</Button>
+                  <button type="button" onClick={() => setRetry(n => n + 1)}
+                    className="font-mono text-[11px] text-ink-secondary hover:text-ink">Refresh shared computer status</button>
+                </>}
+                {phase === "local" && !isLinux && localMisses >= 3 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={() => window.ogb?.permOpenSettings?.("screen")}
+                    className="mt-1"
+                  >
+                    {t("computer.openSettings")}
+                  </Button>
+                )}
+                {phase === "browser" && browserEnabled && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    type="button"
+                    onClick={() => selectPanelView("browser")}
+                    className="mt-1"
+                  >
+                    {t("computer.openBrowserTab")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </Frame>
+
+          {errorText && (
+            <div role="alert" className="mt-2 flex items-center gap-2 border border-danger/40 bg-card p-3 font-mono text-[12px] text-danger">
+              <span>{errorText}</span>
             </div>
           )}
-        </div>
 
-        {errorText && (
-          <div className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">
-            {errorText}
-          </div>
-        )}
+          {(bot.computer !== undefined || computerStatusCurrent) && <>
+            <LocalScreenPreview />
+            <LinuxLocalControl />
+            <MacLocalControl />
+          </>}
 
-        {(bot.computer !== undefined || computerStatusCurrent) && <>
-          <LocalScreenPreview />
-          <LinuxLocalControl />
-          <MacLocalControl />
-        </>}
-
-        {/* Computer source */}
-          <div className="mt-4 rounded-xl bg-card p-4">
-            <div className="text-[15px] font-medium text-ink">{t("computer.worksOn")}</div>
+          {/* Computer source */}
+          <div className="mt-4 border border-hairline bg-card p-4">
+            <div className="text-[14px] font-medium text-ink">{t("computer.worksOn")}</div>
             <p className="mt-1 text-[12px] leading-5 text-ink-secondary">
               {t("computer.worksOnHint")}
             </p>
-          <div role="group" aria-label={t("computer.destinationAria")} className="mt-3 grid auto-rows-fr grid-cols-2 gap-2">
-            {([
-              ["local", "vm.dest.local", "computer.dest.localDesc", Monitor],
-              ["off", "vm.dest.off", "computer.dest.offDesc", Power],
-            ] as const).map(([mode, labelKey, descriptionKey, Icon]) => {
-                const selected = bot.computer === mode;
-                const disabled = mode === "local" && !localSelectable;
-                const unavailableTitle = mode === "local" && !localSelectable
-                  ? localDisabledReason ?? t("computer.unavailableLocal")
-                  : undefined;
-                return (
-              <button
-                key={mode ?? "auto"}
-                disabled={disabled}
-                title={unavailableTitle}
-                onClick={() => {
-                  if (mode === bot.computer) return;
-                  if (mode === "local" && approvalModeFor(bot) === "auto") {
-                    setLocalAutoWarningTarget(bot.id);
-                  } else updateComputerSelection({ computer: mode });
-                }}
-                type="button"
-                aria-pressed={selected}
-                className={cn(
-                  "min-w-0 rounded-lg border px-2.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card",
-                  selected
-                    ? "border-accent/60 bg-accent/10 text-ink"
-                    : "border-hairline/50 bg-panel/30 text-ink-secondary",
-                  disabled
-                    ? "cursor-not-allowed"
-                    : "hover:border-accent/40 hover:bg-control/60",
-                )}
-              >
-                <span className="flex items-center gap-2 text-[12px] font-medium leading-4">
-                  {selected ? <Check size={14} className="shrink-0 text-accent" /> : <Icon size={14} className="shrink-0 text-ink-secondary" />}
-                  <span>{t(labelKey)}</span>
-                </span>
-                <span className="mt-1.5 block text-[11px] leading-4 text-ink-secondary">
-                  {disabled ? t("computer.unavailableHere") : t(descriptionKey)}
-                </span>
-              </button>
-                );
-            })}
+            <div role="group" aria-label={t("computer.destinationAria")} className="mt-3 grid auto-rows-fr grid-cols-2 gap-2">
+              {([
+                ["local", "vm.dest.local", "computer.dest.localDesc", Monitor],
+                ["off", "vm.dest.off", "computer.dest.offDesc", Power],
+              ] as const).map(([mode, labelKey, descriptionKey, Icon]) => {
+                  const selected = bot.computer === mode;
+                  const disabled = mode === "local" && !localSelectable;
+                  const unavailableTitle = mode === "local" && !localSelectable
+                    ? localDisabledReason ?? t("computer.unavailableLocal")
+                    : undefined;
+                  return (
+                <button
+                  key={mode ?? "auto"}
+                  disabled={disabled}
+                  title={unavailableTitle}
+                  onClick={() => {
+                    if (mode === bot.computer) return;
+                    if (mode === "local" && approvalModeFor(bot) === "auto") {
+                      setLocalAutoWarningTarget(bot.id);
+                    } else updateComputerSelection({ computer: mode });
+                  }}
+                  type="button"
+                  aria-pressed={selected}
+                  className={cn(
+                    "min-w-0 border p-3 text-left transition-colors",
+                    selected
+                      ? "border-ink bg-raised text-ink"
+                      : "border-hairline bg-panel text-ink-secondary",
+                    disabled
+                      ? "cursor-not-allowed opacity-50"
+                      : "hover:border-ink-secondary hover:bg-raised-hover",
+                  )}
+                >
+                  <span className="flex items-center gap-2 text-[12px] font-medium leading-4">
+                    {selected ? <Check size={14} className="shrink-0 text-ink" /> : <Icon size={14} className="shrink-0 text-ink-secondary" />}
+                    <span className={selected ? "text-ink" : "text-ink-secondary"}>{t(labelKey)}</span>
+                  </span>
+                  <span className="mt-1.5 block text-[11px] leading-4 text-ink-secondary">
+                    {disabled ? t("computer.unavailableHere") : t(descriptionKey)}
+                  </span>
+                </button>
+                  );
+              })}
+            </div>
+            <div className="mt-3 frame-rule-above pt-3 text-[11.5px] leading-5 text-ink-secondary" aria-live="polite">
+              {!bot.computer ? (
+                t("computer.hint.autoLocal")
+              ) : bot.computer === "local" ? (
+                t("computer.hint.local")
+              ) : bot.computer === "browser" ? (
+                t("computer.hint.browser")
+              ) : bot.computer === "off" ? (
+                t("computer.hint.off")
+              ) : (
+                "Cloud computers and local VMs are no longer available. Choose This computer or Off."
+              )}
+            </div>
           </div>
-          <div className="mt-3 border-t border-hairline/40 pt-3 text-[11.5px] leading-5 text-ink-secondary" aria-live="polite">
-            {!bot.computer ? (
-              t("computer.hint.autoLocal")
-            ) : bot.computer === "local" ? (
-              t("computer.hint.local")
-            ) : bot.computer === "browser" ? (
-              t("computer.hint.browser")
-            ) : bot.computer === "off" ? (
-              t("computer.hint.off")
-            ) : (
-              "Cloud computers and local VMs are no longer available. Choose This computer or Off."
-            )}
-          </div>
+
+          {/* A compact entry beneath the computer; the tab owns the full list. */}
+          <button type="button" onClick={() => selectPanelView("routines")} className="mt-4 flex w-full items-start gap-3 border border-hairline bg-card p-4 text-left transition-colors hover:bg-raised">
+            <CalendarClock size={16} className="mt-0.5 shrink-0 text-ink" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13.5px] font-medium text-ink">{t("computer.tab.routines")} <span className="ml-1 font-mono text-[11px] text-ink-secondary">({botRoutines.length})</span></span>
+              <span className={cn("mt-1 block truncate text-[11.5px]", activeRoutineRun ? routineRunTone(activeRoutineRun) : "text-ink-secondary")}>{activeRoutineRun ? `${activeRoutineRun.routineName} · ${routineRunLabel(activeRoutineRun)}` : t("computer.routines.openTitle")}</span>
+            </span>
+            <span className="font-mono text-ink-secondary" aria-hidden="true">→</span>
+          </button>
         </div>
-
-        {/* A compact entry beneath the computer; the tab owns the full list. */}
-        <button type="button" onClick={() => selectPanelView("routines")} className="mt-4 flex w-full items-start gap-3 rounded-xl bg-card p-4 text-left hover:bg-raised">
-          <CalendarClock size={17} className="mt-0.5 shrink-0 text-accent" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-medium text-ink">{t("computer.tab.routines")} <span className="ml-1 text-[11px] text-ink-secondary">{botRoutines.length}</span></span>
-            <span className={cn("mt-1 block truncate text-[11.5px]", activeRoutineRun ? routineRunTone(activeRoutineRun) : "text-ink-secondary")}>{activeRoutineRun ? `${activeRoutineRun.routineName} · ${routineRunLabel(activeRoutineRun)}` : t("computer.routines.openTitle")}</span>
-          </span>
-          <span className="text-ink-secondary" aria-hidden="true">→</span>
-        </button>
-      </div>
       )}
-
     </aside>
     <LocalComputerAutoWarning
       open={localAutoWarningTarget !== null}

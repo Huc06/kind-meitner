@@ -70,7 +70,6 @@ export function AgentChat({ playing, onCue, onEnded, label }: SceneProps) {
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-inset px-6" role="img" aria-label={label}>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-12 bg-gradient-to-t from-inset to-transparent" />
       <div
         className={cn(
           "flex w-full max-w-[420px] flex-col gap-3 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
@@ -79,7 +78,7 @@ export function AgentChat({ playing, onCue, onEnded, label }: SceneProps) {
       >
         {/* the ask, from the right */}
         <div className="flex items-end justify-end gap-2.5">
-          <div className="animate-rise max-w-[300px] rounded-2xl rounded-br-md bg-bubble-user px-3.5 py-2.5 text-[13px] leading-snug text-ink shadow-md shadow-black/15">
+          <div className="animate-rise max-w-[300px] border border-hairline bg-raised px-3.5 py-2.5 text-[13px] leading-snug text-ink">
             {ASK}
           </div>
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-raised text-[11px] font-semibold text-ink">
@@ -89,7 +88,7 @@ export function AgentChat({ playing, onCue, onEnded, label }: SceneProps) {
 
         {/* the bot: dots while it works, then the reply grows out of it */}
         <div className="flex items-start gap-2.5">
-          <div className="shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]">
+          <div className="shrink-0">
             <MausAvatar
               color="green"
               state={replied ? (done ? "proud" : "writing") : phase === "think" ? "working" : "listening"}
@@ -99,7 +98,7 @@ export function AgentChat({ playing, onCue, onEnded, label }: SceneProps) {
           </div>
           <div className="relative min-h-[44px] flex-1">
             {phase === "think" && (
-              <div className="animate-spot-in inline-flex items-center gap-1 rounded-2xl rounded-tl-md bg-card px-3.5 py-3">
+              <div className="animate-spot-in inline-flex items-center gap-1.5 border border-hairline bg-card px-3.5 py-2.5">
                 {[0, 1, 2].map((i) => (
                   <span
                     key={i}
@@ -110,15 +109,15 @@ export function AgentChat({ playing, onCue, onEnded, label }: SceneProps) {
               </div>
             )}
             {replied && (
-              <div className="animate-spot-in origin-top-left rounded-2xl rounded-tl-md border border-hairline/40 bg-card p-3.5 shadow-lg shadow-black/20">
+              <div className="animate-spot-in origin-top-left border border-hairline bg-card p-3.5">
                 <div
                   className={cn(
-                    "mb-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors duration-300",
-                    done ? "bg-success/15 text-success" : "bg-raised text-ink-secondary",
+                    "mb-2 inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider transition-colors duration-300",
+                    done ? "border-success/60 bg-success/12 text-success" : "border-hairline bg-raised text-ink-secondary",
                   )}
                 >
                   {done ? <Check size={11} strokeWidth={3} /> : <TerminalSquare size={11} />}
-                  <code className="font-mono">pnpm test</code>
+                  <code>pnpm test</code>
                   <span>{done ? "passed" : "running…"}</span>
                 </div>
                 <p className="text-[13px] leading-relaxed text-ink">

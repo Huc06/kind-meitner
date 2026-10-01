@@ -730,9 +730,9 @@ export function Composer({
         {failedSends.map((failed) => (
           <div
             key={failed.id}
-            className="mb-2 flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger"
+            className="mb-2 flex items-center gap-2 border border-danger/60 bg-danger/10 px-3 py-2 text-[12px] text-danger"
           >
-            <span className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate font-mono">
               {t("composer.failed.notSent", {
                 text: failed.text.trim() || t("composer.failed.attachment"),
               })}
@@ -740,7 +740,7 @@ export function Composer({
             <button
               type="button"
               onClick={() => retryFailedSend(failed)}
-              className="shrink-0 rounded px-2 py-1 font-medium hover:bg-danger/10"
+              className="cursor-pointer shrink-0 border border-danger/40 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide hover:bg-danger/20"
             >
               {t("chat.retry")}
             </button>
@@ -749,9 +749,9 @@ export function Composer({
               onClick={() => forgetFailedComposerSend(draftId, failed.id)}
               aria-label={t("composer.failed.dismissAria")}
               title={t("composer.failed.dismiss")}
-              className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-danger/10"
+              className="cursor-pointer flex size-5 shrink-0 items-center justify-center border border-danger/40 hover:bg-danger/20"
             >
-              <X size={13} strokeWidth={2.5} />
+              <X size={12} strokeWidth={2.5} />
             </button>
           </div>
         ))}
@@ -759,9 +759,9 @@ export function Composer({
           <div
             role="listbox"
             aria-label={t("composer.commands.aria")}
-            className="absolute bottom-full left-2 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-hairline/40 bg-raised shadow-lg"
+            className="absolute bottom-full left-2 z-20 mb-2 w-80 overflow-hidden border border-hairline bg-menu shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
           >
-            <div className="border-b border-hairline/20 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono frame-rule-below px-3 py-1.5 text-ink-secondary">
               {t("composer.commands.title")}
             </div>
             {commandCandidates.map((command, index) => (
@@ -774,20 +774,20 @@ export function Composer({
                 onClick={() => pickCommand(command)}
                 onMouseEnter={() => setHighlight(index)}
                 className={cn(
-                  "flex w-full items-center gap-3 px-3 py-2.5 text-left",
-                  index === highlight ? "bg-raised-hover" : "",
+                  "cursor-pointer flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-raised-hover",
+                  index === highlight ? "bg-raised" : "",
                 )}
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <span className="flex size-7 shrink-0 items-center justify-center border border-hairline bg-inset text-ink">
                   {command.id === "goal" ? (
-                    <Target size={15} aria-hidden="true" />
+                    <Target size={14} aria-hidden="true" />
                   ) : (
-                    <BookOpen size={15} aria-hidden="true" />
+                    <BookOpen size={14} aria-hidden="true" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-medium text-accent">{command.label}</span>
-                  <span className="block truncate text-xs text-ink-secondary">
+                  <span className="block text-[13px] font-medium text-ink">{command.label}</span>
+                  <span className="block truncate text-xs text-ink-secondary font-sans">
                     {command.description}
                   </span>
                 </span>
@@ -800,7 +800,7 @@ export function Composer({
             ref={mentionListRef}
             role="listbox"
             aria-label={t("composer.mention.aria")}
-            className="absolute bottom-full left-2 z-20 mb-2 max-h-72 w-72 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-hairline/40 bg-raised shadow-lg"
+            className="absolute bottom-full left-2 z-20 mb-2 max-h-72 w-72 overflow-x-hidden overflow-y-auto overscroll-contain border border-hairline bg-menu shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
           >
             {candidates.map((peer, i) => (
               <button
@@ -811,23 +811,23 @@ export function Composer({
                 onClick={() => pickMention(peer)}
                 onMouseEnter={() => setHighlight(i)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2 text-left",
-                  i === highlight ? "bg-raised-hover" : "",
+                  "cursor-pointer flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-raised-hover",
+                  i === highlight ? "bg-raised" : "",
                 )}
               >
                 {peer.bot ? (
                   <BotAvatar
                     bot={peer.bot}
                     state={normalizeState(peer.bot.mascotExpression) ?? "happy"}
-                    size={24}
+                    size={22}
                   />
                 ) : (
-                  <span className="flex size-6 items-center justify-center rounded-full bg-raised text-ink-secondary">
-                    <Users size={14} aria-hidden="true" />
+                  <span className="flex size-5 items-center justify-center border border-hairline bg-raised text-ink-secondary">
+                    <Users size={12} aria-hidden="true" />
                   </span>
                 )}
-                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{peer.name}</span>
-                <span className="shrink-0 text-xs text-ink-secondary">
+                <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-ink">{peer.name}</span>
+                <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-wide text-ink-secondary">
                   {peer.bot ? t("composer.mention.agent") : t("composer.mention.channel")}
                 </span>
               </button>
@@ -837,7 +837,7 @@ export function Composer({
         {/* An approval takes over the composer: you answer it before you
             can type again, so a waiting bot is impossible to miss. */}
         {approval && (
-          <div className="mb-2 overflow-hidden rounded-2xl border border-accent/40 bg-card">
+          <div className="mb-2 overflow-hidden border border-hairline bg-card">
             {/* locale: the panel is memoized and its other props do not
                 change with the language — see MessagesList in ChatView */}
             <PendingApprovalPanel
@@ -895,7 +895,7 @@ export function Composer({
             data-composer-backdrop
             className="pointer-events-none absolute -left-5 -right-5 -bottom-3 top-1/2 bg-app"
           />
-        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-3 py-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_12px_24px_-4px_rgba(0,0,0,0.06)] ring-1 ring-composer-ring backdrop-blur transition-all focus-within:ring-accent/50">
+        <div data-tour="composer" className="relative z-[1] border border-composer-ring bg-composer px-3 py-2 transition-all">
         <div className="flex items-end gap-1.5">
           <input
             ref={fileInput}
@@ -915,9 +915,9 @@ export function Composer({
                 onClick={() => fileInput.current?.click()}
                 aria-label={t("composer.attach")}
                 title={t("composer.attach")}
-                className="cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-all hover:bg-control hover:text-ink active:scale-95"
+                className="cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary transition-colors hover:border-hairline hover:bg-control hover:text-ink"
               >
-                <Paperclip size={17} />
+                <Paperclip size={16} />
               </button>
               {group && !group.dm && (
                 <button
@@ -941,10 +941,10 @@ export function Composer({
                     setChannelMode((current) => current === "goal" ? "chat" : "goal");
                   }}
                   className={cn(
-                    "cursor-pointer flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[12px] font-medium transition-all active:scale-95",
+                    "cursor-pointer flex h-7 items-center gap-1.5 whitespace-nowrap border px-2 font-mono text-[11px] uppercase tracking-wide transition-colors",
                     effectiveChannelMode === "goal"
-                      ? "border-accent/40 bg-accent/15 text-accent"
-                      : "border-hairline/30 bg-raised/40 text-ink-secondary hover:bg-raised hover:text-ink",
+                      ? "border-accent bg-accent text-accent-ink"
+                      : "border-hairline bg-transparent text-ink-secondary hover:bg-raised-hover hover:text-ink",
                   )}
                 >
                   <Target size={14} aria-hidden="true" />
@@ -1069,10 +1069,10 @@ export function Composer({
           <button
             onClick={interruptTurn}
             aria-label={t("chat.stopTurn")}
-            className="cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl bg-danger/15 text-danger transition-all hover:bg-danger/25 active:scale-95"
+            className="cursor-pointer flex size-7 shrink-0 items-center justify-center border border-danger bg-danger text-danger-ink transition-opacity hover:opacity-85"
             title={t("chat.stop")}
           >
-            <Square size={13} className="fill-current" />
+            <Square size={12} className="fill-current" />
           </button>
         )}
         {!locked && !busy && !hasContent && capabilities.dictation.available && (
@@ -1080,10 +1080,10 @@ export function Composer({
             onClick={toggleMic}
             aria-label={recording ? t("composer.dictation.stop") : t("composer.dictation.start")}
             className={cn(
-              "cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
+              "cursor-pointer flex size-7 shrink-0 items-center justify-center border transition-colors",
               recording
-                ? "animate-pulse bg-danger/20 text-danger"
-                : "text-ink-secondary hover:bg-raised hover:text-ink",
+                ? "border-danger bg-danger/20 text-danger animate-status-pulse"
+                : "border-transparent text-ink-secondary hover:border-hairline hover:bg-raised hover:text-ink",
             )}
             title={recording ? t("composer.dictation.stopHint") : t("composer.dictation.hint")}
           >
@@ -1109,13 +1109,13 @@ export function Composer({
                     : t("chat.send")
             }
             className={cn(
-              "cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
+              "cursor-pointer flex size-7 shrink-0 items-center justify-center border transition-all",
               busy && !canSteer
-                  ? "bg-raised text-ink-secondary hover:bg-raised-hover"
-                  : "bg-accent text-white shadow-sm hover:brightness-110",
+                  ? "border-hairline bg-raised text-ink-secondary hover:bg-raised-hover"
+                  : "border-accent bg-accent text-accent-ink hover:opacity-85",
             )}
           >
-            {busy && !canSteer ? <Clock size={14} /> : <ArrowUp size={16} strokeWidth={2.5} />}
+            {busy && !canSteer ? <Clock size={13} /> : <ArrowUp size={15} strokeWidth={2.5} />}
           </button>
         )}
           </div>

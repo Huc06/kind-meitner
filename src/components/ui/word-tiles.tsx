@@ -5,14 +5,14 @@ export type Swatch = { bg: string; fg: string };
 
 const SWATCHES: Swatch[] = [
   { bg: "var(--tile-neutral-bg, #0a0a0a)", fg: "var(--tile-neutral-fg, #ffffff)" },
-  { bg: "#ff2e20", fg: "#0a0a0a" },
-  { bg: "#f0c2f7", fg: "#0a0a0a" },
-  { bg: "#22e58b", fg: "#0a0a0a" },
-  { bg: "#7c4dff", fg: "#ffffff" },
-  { bg: "#ffe14d", fg: "#0a0a0a" },
-  { bg: "#18b6ff", fg: "#0a0a0a" },
-  { bg: "#ff7a1a", fg: "#0a0a0a" },
-  { bg: "#ff4fa3", fg: "#0a0a0a" },
+  { bg: "var(--color-tile-red, #ff2e20)", fg: "var(--color-tile-ink, #0a0a0a)" },
+  { bg: "var(--color-tile-pink, #f0c2f7)", fg: "var(--color-tile-ink, #0a0a0a)" },
+  { bg: "var(--color-tile-green, #22e58b)", fg: "var(--color-tile-ink, #0a0a0a)" },
+  { bg: "var(--color-tile-violet, #7c4dff)", fg: "#ffffff" },
+  { bg: "var(--color-tile-yellow, #ffe14d)", fg: "var(--color-tile-ink, #0a0a0a)" },
+  { bg: "var(--color-tile-cyan, #18b6ff)", fg: "var(--color-tile-ink, #0a0a0a)" },
+  { bg: "var(--color-tile-orange, #ff7a1a)", fg: "var(--color-tile-ink, #0a0a0a)" },
+  { bg: "var(--color-tile-magenta, #ff4fa3)", fg: "var(--color-tile-ink, #0a0a0a)" },
 ];
 
 const INITIAL = [0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -90,9 +90,11 @@ export function WordTiles({
       role="heading"
       aria-level={1}
       className={cn(
-        "inline-flex max-w-full overflow-hidden rounded-2xl align-middle shadow-sm",
+        // Wraps rather than scrolls: a clipped headline reads as broken, a
+        // two-row bar still reads as one set of tiles.
+        "inline-flex max-w-full flex-wrap justify-center align-middle",
         "font-sans font-bold tracking-tight",
-        "text-[clamp(1.75rem,5.6vw,3.6rem)] leading-none",
+        "text-[clamp(2.25rem,4.6vw,3.75rem)] leading-none",
         className,
       )}
       {...props}
@@ -108,7 +110,7 @@ export function WordTiles({
             }}
             onPointerEnter={() => reroll(i)}
             aria-hidden
-            className="shrink-0 px-[0.38em] py-[0.34em] transition-transform duration-200 hover:scale-105 select-none cursor-pointer"
+            className="shrink-0 px-[0.36em] py-[0.3em] transition-transform duration-200 hover:scale-105 select-none cursor-pointer"
             style={
               {
                 "--tile-index": i,

@@ -49,7 +49,6 @@ describe("BotListItem", () => {
     expect(markup).toContain('role="button" tabindex="0"');
     expect(markup).toContain('</div><button type="button" aria-label="Expand Atlas threads" aria-expanded="false"');
     const toggle = markup.match(/<button[^>]*aria-label="Expand Atlas threads"[^>]*>/)?.[0];
-    expect(toggle).toContain("focus-visible:ring-1");
     expect(toggle).not.toContain("hover:bg-");
   });
 

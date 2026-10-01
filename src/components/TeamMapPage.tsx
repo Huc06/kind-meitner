@@ -44,8 +44,9 @@ import {
 } from "@/lib/team-map-sample-workflow";
 import { createEmptyWorkflow, computeWowFacts, type WorkflowArtifact } from "@/lib/team-map-workflow";
 import type { ActivityKind } from "@/lib/team-map-demo-ui";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
 import { t } from "@/lib/i18n";
-
 function SectionContextDialog({ section, label, onClose }: { section: string; label: string; onClose: () => void }) {
   const [text, setText] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -106,7 +107,7 @@ function SectionContextDialog({ section, label, onClose }: { section: string; la
       role="dialog"
       aria-modal="true"
       aria-labelledby="section-instructions-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.stopPropagation();
@@ -114,25 +115,25 @@ function SectionContextDialog({ section, label, onClose }: { section: string; la
         }
       }}
     >
-      <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <header className="flex items-center justify-between border-b border-hairline/40 px-6 py-4 sm:px-8">
+      <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col border border-hairline bg-panel text-ink shadow-2xl">
+        <header className="flex h-11 shrink-0 items-center justify-between frame-rule-below bg-app px-5 sm:px-6">
           <div className="flex items-center gap-2">
-            <BookOpen size={16} className="text-accent" />
-            <h3 id="section-instructions-title" className="text-[15px] font-semibold text-ink">
-              {t("team.instructionsTitle", { name: label })}
+            <BookOpen size={14} className="text-ink" />
+            <h3 id="section-instructions-title" className="label-mono text-[12px] font-semibold text-ink">
+              [ {t("team.instructionsTitle", { name: label }).toUpperCase()} ]
             </h3>
           </div>
           <button
             type="button"
             aria-label={t("common.close")}
             onClick={requestClose}
-            className="rounded-lg p-1.5 text-ink-secondary hover:bg-control hover:text-ink"
+            className="p-1 text-ink-secondary hover:text-ink"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-8">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           <p className="text-[12.5px] leading-relaxed text-ink-secondary">
             {t("team.instructionsHint")}
           </p>
@@ -147,31 +148,32 @@ function SectionContextDialog({ section, label, onClose }: { section: string; la
             }}
             placeholder={t("room.setup.instructionsPlaceholder")}
             rows={8}
-            className="mt-3 w-full rounded-xl border border-hairline/50 bg-inset p-3.5 font-mono text-[12.5px] leading-relaxed text-ink placeholder:text-ink-secondary/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="mt-3 w-full border border-hairline bg-inset p-3.5 font-mono text-[12.5px] leading-relaxed text-ink placeholder:text-ink-secondary/50 focus:border-ink focus:outline-none"
           />
 
-          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-secondary">
+          <div className="mt-2 flex items-center justify-between font-mono text-[10.5px] text-ink-secondary">
             <span>
               {bytes} / {maxBytes} bytes
             </span>
             {bytes > maxBytes && <span className="text-danger font-medium">Text too large</span>}
           </div>
 
-          {error && <div className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">{error}</div>}
+          {error && <div className="mt-3 border border-danger/40 bg-danger/10 px-3 py-2 font-mono text-[11.5px] text-danger">{error}</div>}
         </div>
 
-        <footer className="flex items-center justify-end gap-2 border-t border-hairline/40 px-6 py-4 sm:px-8">
-          <button onClick={requestClose} disabled={saving} className="rounded-lg px-3.5 py-2 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40">
+        <footer className="flex items-center justify-end gap-2 frame-rule-above bg-app px-5 py-3 sm:px-6">
+          <Button variant="secondary" size="sm" onClick={requestClose} disabled={saving}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void save()}
             disabled={loading || saving || !dirty || bytes > maxBytes}
-            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-white hover:brightness-110 disabled:opacity-40"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
             {t("team.instructionsSave")}
-          </button>
+          </Button>
         </footer>
       </div>
     </div>,
@@ -566,48 +568,48 @@ export function TeamMapPage() {
     setHighlightBotIds([]);
   }, []);
   return (
-    <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#0B0C0E] text-ink">
-      <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#121519] px-6 py-1.5">
-        {/* Left: Title, bot count, and clean segmented view switcher */}
+    <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-app text-ink">
+      <header className="h-11 shrink-0 frame-rule-below bg-app px-4 flex items-center justify-between gap-3">
+        {/* Left: [ TEAM MAP ] label, bot count Tag, segmented view switcher */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Network size={15} className="text-accent" />
-            <h1 className="text-[13.5px] font-bold text-white tracking-tight">Team map</h1>
-            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[10px] text-white/60">
+            <Network size={14} className="text-ink" />
+            <h1 className="label-mono text-[12px] font-semibold text-ink">[ TEAM MAP ]</h1>
+            <Tag tone="neutral" size="sm">
               {bots.length}
-            </span>
+            </Tag>
           </div>
 
           {/* Data Mode Indicator */}
           {dataMode === "sample" ? (
-            <span className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-medium text-amber-400 sm:inline-flex">
-              <span className="size-1.5 rounded-full bg-amber-400" />
+            <Tag tone="warning" size="sm" className="hidden sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-warning" />
               <span>Sample data — not live</span>
-            </span>
+            </Tag>
           ) : dataMode === "live" ? (
-            <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-medium text-emerald-400 sm:inline-flex">
-              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <Tag tone="success" size="sm" className="hidden sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-success animate-pulse" />
               <span>Live workflow</span>
-            </span>
+            </Tag>
           ) : (
             <a
               href="?fixture=sample"
-              className="hidden items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10.5px] font-medium text-white/70 hover:bg-white/[0.08] hover:text-white sm:inline-flex transition"
+              className="hidden items-center gap-1 border border-hairline bg-inset px-2 py-0.5 font-mono text-[10.5px] text-ink-secondary hover:border-ink hover:text-ink sm:inline-flex"
             >
               <span>Load sample scenario</span>
             </a>
           )}
 
           {/* Segmented View Switcher (Canvas vs Board) */}
-          <div className="flex items-center rounded-md border border-white/[0.1] bg-black/40 p-0.5" role="group" aria-label="View mode">
+          <div className="flex items-center border border-hairline bg-inset p-0.5" role="group" aria-label="View mode">
             <button
               type="button"
               role="radio"
               aria-checked={viewMode === "map"}
               onClick={() => setViewMode("map")}
               className={cn(
-                "flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-all outline-none",
-                viewMode === "map" ? "bg-white/[0.12] text-white shadow-sm font-semibold" : "text-white/60 hover:text-white"
+                "flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors outline-none",
+                viewMode === "map" ? "bg-raised text-ink font-semibold" : "text-ink-secondary hover:text-ink"
               )}
             >
               <MapIcon size={11} />
@@ -619,8 +621,8 @@ export function TeamMapPage() {
               aria-checked={viewMode === "board"}
               onClick={() => setViewMode("board")}
               className={cn(
-                "flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[11px] font-medium transition-all outline-none",
-                viewMode === "board" ? "bg-white/[0.12] text-white shadow-sm font-semibold" : "text-white/60 hover:text-white"
+                "flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors outline-none",
+                viewMode === "board" ? "bg-raised text-ink font-semibold" : "text-ink-secondary hover:text-ink"
               )}
             >
               <LayoutGrid size={11} />
@@ -640,48 +642,53 @@ export function TeamMapPage() {
 
         {/* Right: Needs attention toggle, Zoom controls, and Add button */}
         <div className="flex items-center gap-2">
-          {/* Needs attention pill */}
+          {/* Health Tag */}
           <button
             type="button"
             onClick={() => setOnlyNeedsAttention((p) => !p)}
-            className={cn(
-              "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition",
-              onlyNeedsAttention
-                ? "border-danger/60 bg-danger/15 text-danger font-semibold"
-                : "border-white/[0.08] bg-white/[0.03] text-white/60 hover:bg-white/[0.06] hover:text-white"
-            )}
+            className="outline-none"
           >
-            {attentionItems.length > 0 && <span className="size-1.5 rounded-full bg-danger animate-pulse" />}
-            <span>{attentionItems.length > 0 ? `${attentionItems.length} issue` : "All healthy"}</span>
+            {attentionItems.length > 0 ? (
+              <Tag tone="danger" variant={onlyNeedsAttention ? "solid" : "outline"} size="md" className="cursor-pointer">
+                <span className="size-1.5 rounded-full bg-danger animate-pulse" />
+                <span>{attentionItems.length} issue</span>
+              </Tag>
+            ) : (
+              <Tag tone="success" variant="outline" size="md" className="cursor-pointer">
+                <span>All healthy</span>
+              </Tag>
+            )}
           </button>
 
           {/* Zoom controls in Canvas mode */}
           {viewMode === "map" && (
-            <div className="flex items-center gap-0.5 rounded-md border border-white/[0.08] bg-black/30 p-0.5">
-              <button
-                type="button"
+            <div className="flex items-center gap-0.5 border border-hairline bg-inset p-0.5">
+              <Button
+                variant="ghost"
+                icon
+                size="xs"
                 aria-label="Zoom out"
                 onClick={() => setZoomPercent((z) => Math.max(30, z / 1.2))}
-                className="flex size-6 items-center justify-center rounded text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <Minus size={11} />
-              </button>
+              </Button>
               <button
                 type="button"
                 aria-label="Reset zoom"
                 onClick={() => setZoomPercent(100)}
-                className="px-1.5 font-mono text-[10.5px] text-white/60 hover:text-white"
+                className="px-1.5 font-mono text-[10.5px] tabular-nums text-ink-secondary hover:text-ink"
               >
                 {Math.round(zoomPercent)}%
               </button>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                icon
+                size="xs"
                 aria-label="Zoom in"
                 onClick={() => setZoomPercent((z) => Math.min(150, z * 1.2))}
-                className="flex size-6 items-center justify-center rounded text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <Plus size={11} />
-              </button>
+              </Button>
             </div>
           )}
 
@@ -689,20 +696,20 @@ export function TeamMapPage() {
             <details className="relative">
               <summary
                 aria-label="Add to team map"
-                className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-white/[0.1] bg-[#1C2025] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden"
+                className={cn(buttonClass({ variant: "secondary", size: "sm" }), "gap-1 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-mono uppercase tracking-[0.06em]")}
               >
                 <Plus size={12} />
                 <span>Add</span>
               </summary>
               <div
-                className="absolute right-0 top-full z-40 mt-1.5 w-44 rounded-xl border border-white/[0.1] bg-[#15171A] p-1.5 shadow-xl"
+                className="absolute right-0 top-full z-40 mt-1 w-44 border border-hairline bg-menu p-1 shadow-2xl"
                 onClick={(e) => {
                   const d = e.currentTarget.closest("details");
                   d?.removeAttribute("open");
                 }}
               >
                 <button
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11.5px] text-white/80 hover:bg-white/[0.08] hover:text-white"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11px] text-ink-secondary hover:bg-raised-hover hover:text-ink"
                   onClick={() => setTeamEditor({})}
                 >
                   <Users size={13} />
@@ -716,11 +723,11 @@ export function TeamMapPage() {
 
       {/* Ultra-Slim Alert Strip (Only visible when an item needs urgent attention) */}
       {attentionItems.length > 0 && (
-        <div className="flex h-7 shrink-0 items-center justify-between border-b border-danger/30 bg-danger/10 px-6 text-[11px] text-danger">
+        <div className="flex h-7 shrink-0 items-center justify-between border-b border-danger/40 bg-danger/10 px-6 text-[11px] text-danger">
           <div className="flex items-center gap-2 truncate">
             <AlertTriangle size={12} className="shrink-0" />
             <span className="font-semibold">{attentionItems[0].agentName}:</span>
-            <span className="truncate text-white/80">{attentionItems[0].summary}</span>
+            <span className="truncate text-ink">{attentionItems[0].summary}</span>
           </div>
           <button
             type="button"
@@ -729,7 +736,7 @@ export function TeamMapPage() {
               else setSelectedWorkflowBotId(attentionItems[0].agentId);
               setHighlightBotIds([attentionItems[0].agentId]);
             }}
-            className="inline-flex items-center gap-1 font-semibold text-danger hover:underline shrink-0 ml-3"
+            className="inline-flex items-center gap-1 font-semibold text-danger hover:underline shrink-0 ml-3 font-mono text-[10.5px] uppercase"
           >
             <span>{attentionItems[0].actionLabel}</span>
             <ArrowRight size={10} />
@@ -835,24 +842,24 @@ export function TeamMapPage() {
       </div>
 
       {/* 5. Lower Content: Collapsed Supporting Details Bar in Map mode, Full footer in Board mode */}
-      <footer className="shrink-0 border-t border-white/[0.08] bg-[#0B0C0E]">
+      <footer className="shrink-0 frame-rule-above bg-app">
         {viewMode === "map" ? (
           <details className="group/details">
-            <summary className="flex h-9 cursor-pointer list-none items-center justify-between px-6 text-[12px] font-medium text-white/70 hover:bg-white/[0.03] hover:text-white transition-colors">
+            <summary className="flex h-9 cursor-pointer list-none items-center justify-between px-6 text-[12px] font-medium text-ink-secondary hover:bg-raised-hover hover:text-ink transition-colors">
               <div className="flex items-center gap-2.5">
-                <span className="text-white/40 group-open/details:rotate-180 transition-transform duration-150">▲</span>
-                <span>Supporting details</span>
-                <span className="rounded-[5px] bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10.5px] text-white/60">
+                <span className="text-ink-secondary/60 group-open/details:rotate-180 transition-transform duration-150">▲</span>
+                <span className="label-mono text-[11px] font-semibold text-ink">Supporting details</span>
+                <span className="border border-hairline bg-inset px-1.5 py-0.5 font-mono text-[10.5px] tabular-nums text-ink-secondary">
                   Handoffs {unifiedHandoffs.length}
                 </span>
-                <span className="text-white/30">·</span>
-                <span className="text-white/40">Workflow insights &amp; event trail</span>
+                <span className="text-ink-secondary/40">·</span>
+                <span className="text-ink-secondary">Workflow insights &amp; event trail</span>
               </div>
-              <span className="text-[11px] text-white/40">
+              <span className="font-mono text-[10.5px] text-ink-secondary">
                 Click to expand / collapse
               </span>
             </summary>
-            <div className="max-h-[340px] overflow-y-auto px-6 py-4 space-y-3.5 border-t border-white/[0.06] bg-[#121417]">
+            <div className="max-h-[340px] overflow-y-auto px-6 py-4 space-y-3.5 frame-rule-above bg-panel">
               {/* Flat Structured Handoffs */}
               <TeamMapHandoffList
                 items={unifiedHandoffs}
@@ -898,19 +905,19 @@ export function TeamMapPage() {
 
             <details
               open={activeMetricId !== null}
-              className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#15171A]"
+              className="border border-hairline bg-panel"
             >
-              <summary className="flex h-11 cursor-pointer list-none items-center justify-between px-5 text-[13.5px] font-semibold text-white/85 hover:bg-white/[0.02]">
+              <summary className="flex h-11 cursor-pointer list-none items-center justify-between px-5 text-[13px] font-semibold text-ink hover:bg-raised-hover">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={14} className="text-accent" aria-hidden="true" />
-                  <span>Workflow insights</span>
-                  <span className="text-[11px] font-normal text-white/40">Historical metrics &amp; event audit</span>
+                  <Sparkles size={14} className="text-ink" aria-hidden="true" />
+                  <span className="label-mono text-[12px] font-semibold text-ink">Workflow insights</span>
+                  <span className="text-[11px] font-normal text-ink-secondary">Historical metrics &amp; event audit</span>
                 </div>
-                <span className="text-[11.5px] font-normal text-white/45">
+                <span className="font-mono text-[11px] font-normal text-ink-secondary">
                   {activeMetricId ? "Filtering by metric" : "Expand metrics"}
                 </span>
               </summary>
-              <div className="space-y-4 border-t border-white/[0.08] p-4">
+              <div className="space-y-4 frame-rule-above p-4">
                 <TeamMapWowFacts
                   facts={wowFacts}
                   activeMetricId={activeMetricId}
@@ -918,10 +925,10 @@ export function TeamMapPage() {
                   onResetMetric={handleResetMetric}
                 />
 
-                <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0C0E]/50">
-                  <div className="flex h-9 items-center justify-between border-b border-white/[0.06] px-4 text-[12px]">
-                    <span className="font-semibold text-white/80">Activity Event Trail</span>
-                    <span className="text-[11px] text-white/40">Chronological</span>
+                <div className="border border-hairline bg-inset">
+                  <div className="flex h-9 items-center justify-between frame-rule-below px-4 text-[12px]">
+                    <span className="label-mono text-[11px] font-semibold text-ink">Activity Event Trail</span>
+                    <span className="font-mono text-[10.5px] text-ink-secondary">Chronological</span>
                   </div>
                   <div className="h-[180px]">
                     <TeamMapActivityFeed
@@ -1008,25 +1015,25 @@ function SessionLog({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   }, [bot.id, bot.threadId]);
 
   return (
-    <section className="shrink-0 border-t border-hairline/40 bg-panel px-6 py-3" aria-label={`Session log for ${bot.name}`}>
+    <section className="shrink-0 frame-rule-above bg-panel px-6 py-3" aria-label={`Session log for ${bot.name}`}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[12px] font-medium">{bot.name} session log</p>
+        <p className="label-mono text-[11px] font-semibold text-ink">{bot.name} session log</p>
         <div className="flex items-center gap-2">
-          <button className="text-[12px] text-accent hover:underline" onClick={() => dispatch({ type: "select", id: bot.id })}>
+          <button className="font-mono text-[11px] text-ink underline hover:text-ink-secondary" onClick={() => dispatch({ type: "select", id: bot.id })}>
             Open session
           </button>
-          <button aria-label="Close session log" className="rounded p-1 text-ink-secondary hover:bg-control" onClick={onClose}>
+          <button aria-label="Close session log" className="p-1 text-ink-secondary hover:text-ink" onClick={onClose}>
             <X size={14} />
           </button>
         </div>
       </div>
       <p className="mt-1 text-[11px] text-ink-secondary">Our transcript only. Not a remote ASP process log.</p>
-      {failed && <p className="mt-2 text-[12px] text-danger">Could not load the transcript.</p>}
+      {failed && <p className="mt-2 font-mono text-[11px] text-danger">Could not load the transcript.</p>}
       <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
         {lines.length === 0 && !failed && <li className="text-[12px] text-ink-secondary">No transcript lines yet.</li>}
         {lines.map((line) => (
-          <li key={line.id} className="truncate text-[12px]">
-            <span className="text-ink-secondary">{line.role}:</span> {line.text}
+          <li key={line.id} className="truncate text-[12px] text-ink">
+            <span className="font-mono text-[11px] text-ink-secondary">{line.role}:</span> {line.text}
           </li>
         ))}
       </ul>

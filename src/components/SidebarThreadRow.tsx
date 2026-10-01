@@ -88,41 +88,41 @@ export function SidebarThreadRow({ task, current, compact, folders, onSelect, on
     return () => window.removeEventListener("mousedown", outside);
   }, [menu]);
   return <>
-    <div className={cn("group/thread relative flex min-w-0 items-center rounded-md", current ? "bg-raised/50" : "hover:bg-raised/25")}>
+    <div className={cn("group/thread relative flex min-w-0 items-center transition-colors", current ? "bg-raised shadow-[inset_2px_0_0_var(--color-ink)]" : "hover:bg-raised-hover")}>
       {renaming ? <input autoFocus value={draft} maxLength={80} aria-label={t("task.renameAria")}
         onFocus={(event) => event.currentTarget.select()} onChange={(event) => setDraft(event.target.value)} onBlur={() => finishRename(true)}
         onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); finishRename(true); } else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishRename(false); } }}
-        className="m-1 min-w-0 flex-1 rounded border border-accent/50 bg-inset px-2 py-1 text-[12.5px] text-ink outline-none" /> : <button
+        className="m-0.5 min-w-0 flex-1 border border-hairline bg-inset px-2 py-1 text-[12.5px] text-ink outline-none" /> : <button
         type="button" data-sidebar-thread-row={task.threadId} aria-current={current ? "page" : undefined}
         title={`${task.title}${status ? ` · ${status}` : closed ? ` · ${t("task.closed")}` : ""}${task.unread ? ` · ${t("task.unread")}` : ""}`}
         onClick={onSelect} onDoubleClick={startRename}
         onContextMenu={(event) => { event.preventDefault(); openMenu(event.clientX, event.clientY); }}
         onKeyDown={(event) => { if (event.key === "ContextMenu" || event.shiftKey && event.key === "F10") { event.preventDefault(); const rect = event.currentTarget.getBoundingClientRect(); openMenu(rect.left, rect.bottom); } }}
-        className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-md pl-3 pr-1 text-left text-[13px] font-medium outline-none focus-visible:ring-1 focus-visible:ring-accent/60", compact ? "min-h-7 py-1" : "min-h-8 py-1.5", current ? "font-semibold text-ink" : "text-ink-secondary hover:text-ink")}>
+        className={cn("flex min-w-0 flex-1 items-center gap-2 pl-2.5 pr-1 text-left text-[12.5px] transition-colors outline-none", compact ? "min-h-7 py-1" : "min-h-8 py-1.5", current ? "font-semibold text-ink" : "text-ink-secondary hover:text-ink")}>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className={cn("min-w-0 truncate", task.unread && "font-semibold text-ink", closed && !current && "text-ink-secondary/70")}>{task.title}</span>
-          {byline && <span className="min-w-0 truncate text-[10.5px] leading-tight text-ink-secondary/80">{byline}</span>}
+          {byline && <span className="min-w-0 truncate font-mono text-[10.5px] leading-tight text-ink-secondary/80">{byline}</span>}
         </span>
-        {task.activity === "waiting-on-you" ? <span className="shrink-0 text-[10px] font-medium text-warning">{t("task.waiting")}</span> : task.busy ? <Loader2 size={11} className="shrink-0 animate-spin text-success" aria-label={t("chat.activity.working")} /> : task.queued ? <span className="shrink-0 text-[10px] text-ink-secondary">{t("task.queued")}</span> : null}
+        {task.activity === "waiting-on-you" ? <span className="shrink-0 font-mono text-[10px] font-medium text-warning">{t("task.waiting")}</span> : task.busy ? <Loader2 size={11} className="shrink-0 animate-spin text-success" aria-label={t("chat.activity.working")} /> : task.queued ? <span className="shrink-0 font-mono text-[10px] text-ink-secondary">{t("task.queued")}</span> : null}
         {task.unread && <span className="size-1.5 shrink-0 rounded-full bg-accent" aria-label={t("task.unread")} />}
       </button>}
       <button ref={actionRef} type="button" aria-label={t("task.actions", { title: task.title })} aria-expanded={Boolean(menu)}
         onClick={(event) => { if (menu) { setMenu(null); return; } const rect = event.currentTarget.getBoundingClientRect(); openMenu(rect.left, rect.bottom); }}
-        className="mr-0.5 flex size-6 shrink-0 items-center justify-center rounded text-ink-secondary opacity-0 hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover/thread:opacity-100 max-md:opacity-70">
+        className="mr-0.5 flex size-6 shrink-0 items-center justify-center text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover/thread:opacity-100 max-md:opacity-70">
         <MoreHorizontal size={13} />
       </button>
     </div>
     {menu && createPortal(<div ref={menuRef} data-thread-overlay role="group" aria-label={t("task.actions", { title: task.title })} style={menu}
-      className="fixed z-50 w-[220px] rounded-lg border border-hairline/50 bg-card p-1 shadow-xl"
+      className="fixed z-50 w-[220px] border border-hairline bg-menu p-1 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
       onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setMenu(null); actionRef.current?.focus(); } }}>
-      <button type="button" onClick={startRename} className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[12px] text-ink hover:bg-raised"><Pencil size={12} />{t("task.renameAria")}</button>
-      {onMove && Boolean(folders?.length) && <label className="block rounded px-2.5 py-2 text-[12px] text-ink"><span className="mb-1 flex items-center gap-2 text-ink-secondary"><FolderInput size={12} />{t("folder.move")}</span>
+      <button type="button" onClick={startRename} className="flex h-8 w-full items-center gap-2 px-2.5 text-left text-[12px] text-ink hover:bg-raised-hover"><Pencil size={12} />{t("task.renameAria")}</button>
+      {onMove && Boolean(folders?.length) && <label className="block px-2.5 py-1.5 text-[12px] text-ink"><span className="mb-1 flex items-center gap-2 text-ink-secondary"><FolderInput size={12} />{t("folder.move")}</span>
         <select aria-label={t("folder.moveNamed", { title: task.title })} value={folders?.some((folder) => folder.id === task.projectId) ? task.projectId : ""}
-          onChange={(event) => { onMove(event.target.value || null); setMenu(null); }} className="w-full rounded border border-hairline/40 bg-card px-1 py-1 text-ink outline-none">
+          onChange={(event) => { onMove(event.target.value || null); setMenu(null); }} className="w-full border border-hairline bg-card px-1.5 py-1 text-[12px] text-ink outline-none">
           <option value="">{t("folder.none")}</option>{folders?.map((folder) => <option key={folder.id} value={folder.id}>{folder.emoji ? `${folder.emoji} ` : ""}{folder.name}</option>)}
         </select>
       </label>}
-      <button type="button" disabled={Boolean(task.busy)} onClick={() => { setMenu(null); setDeleting(true); }} className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[12px] text-danger hover:bg-raised disabled:opacity-40"><Trash2 size={12} />{t("task.deleteAria")}</button>
+      <button type="button" disabled={Boolean(task.busy)} onClick={() => { setMenu(null); setDeleting(true); }} className="flex h-8 w-full items-center gap-2 px-2.5 text-left text-[12px] text-danger hover:bg-raised-hover disabled:opacity-40"><Trash2 size={12} />{t("task.deleteAria")}</button>
     </div>, document.body)}
     <ConfirmDialog open={deleting} title={t("task.deleteConfirm")} body={t("task.deleteBody", { title: task.title })} confirmLabel={t("task.deleteAria")}
       onCancel={() => setDeleting(false)} onConfirm={() => { if (!task.busy) onDelete(); setDeleting(false); }} returnFocusRef={actionRef} />

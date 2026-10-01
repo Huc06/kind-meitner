@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { DesktopWorkspaceSwitcher } from "../components/DesktopWorkspaceSwitcher";
-
+import { Button } from "@/components/ui/button";
+import { FieldLabel, Input } from "@/components/ui/field";
+import { Frame } from "@/components/ui/frame";
 import {
   defaultDeviceLabel,
   newAttemptId,
@@ -13,9 +15,7 @@ import {
   type SessionState,
 } from "../lib/session";
 
-const input = "mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-accent-border";
-const button = "mt-5 w-full rounded-md bg-accent px-4 py-2 text-[14px] font-medium text-accent-ink disabled:opacity-50";
-const fieldLabel = "mt-4 block text-[12px] font-medium text-ink-secondary";
+// styled via UI primitives
 
 /** The page a pairing link opens: /pair#code=XXXX-XXXX-XXXX. Also what the
  * app shows instead of itself when a remote browser has no session yet.
@@ -90,9 +90,11 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
   return (
     <main className="flex min-h-screen items-center justify-center bg-app px-6 text-ink">
       <div className="absolute left-3 top-12 max-w-[280px]"><DesktopWorkspaceSwitcher /></div>
-      <div className="w-full max-w-[420px]">
-        <h1 className="text-[20px] font-semibold">{mode === "email" ? "Sign in to" : "Connect to"} {environment?.label ?? "this kind-meitner"}</h1>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-secondary">
+      <Frame title={mode === "email" ? "SIGN IN" : "PAIRING"} surface="app" className="w-full max-w-[440px] bg-card p-6">
+        <h1 className="text-[18px] font-semibold text-ink">
+          {mode === "email" ? "Sign in to" : "Connect to"} {environment?.label ?? "this kind-meitner"}
+        </h1>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">
           {environment ? `Version ${environment.version} on ${environment.platform}. ` : ""}
           {mode === "email"
             ? sent
@@ -100,7 +102,7 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
               : "Enter your email and we will send you a one-time code."
             : "Enter the pairing code shown on the server. Codes work once and expire after five minutes."}
         </p>
-        {reasonWorthShowing(reason) && !connected ? <p className="mt-3 text-[13px] text-ink-secondary">{reasonWorthShowing(reason)}</p> : null}
+        {reasonWorthShowing(reason) && !connected ? <p className="mt-3 font-mono text-[11px] text-ink-secondary">{reasonWorthShowing(reason)}</p> : null}
         {connected ? (
           <p className="mt-4 text-[13.5px]">
             This browser is already connected.{" "}
@@ -109,11 +111,9 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
             </a>
           </p>
         ) : mode === "email" ? (
-          <form onSubmit={submitEmail}>
-            <label className={fieldLabel} htmlFor="signin-email">
-              Email
-            </label>
-            <input
+          <form onSubmit={submitEmail} className="mt-4">
+            <FieldLabel htmlFor="signin-email">Email</FieldLabel>
+            <Input
               id="signin-email"
               type="email"
               value={email}
@@ -125,14 +125,11 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
               autoComplete="email"
               inputMode="email"
               spellCheck={false}
-              className={input}
             />
             {sent ? (
-              <>
-                <label className={fieldLabel} htmlFor="signin-code">
-                  Code from the email
-                </label>
-                <input
+              <div className="mt-4">
+                <FieldLabel htmlFor="signin-code">Code from the email</FieldLabel>
+                <Input
                   id="signin-code"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -140,33 +137,51 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
                   autoComplete="one-time-code"
                   inputMode="numeric"
                   spellCheck={false}
-                  className={`${input} font-mono text-[15px] tracking-[0.12em]`}
+                  className="font-mono text-[15px] tracking-[0.12em]"
                 />
-                <label className={fieldLabel} htmlFor="signin-label">
-                  This device
-                </label>
-                <input id="signin-label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} className={input} />
-              </>
+                <div className="mt-2.5 flex items-center justify-center gap-1.5 font-mono">
+                  {Array.from({ length: 8 }).map((_, i) => {
+                    const clean = otp.replace(/\D/g, "");
+                    const digit = clean[i] ?? "";
+                    return (
+                      <span
+                        key={i}
+                        className="inline-flex size-8 items-center justify-center border border-hairline bg-inset text-[16px] font-semibold text-ink"
+                      >
+                        {digit}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="mt-4">
+                  <FieldLabel htmlFor="signin-label">This device</FieldLabel>
+                  <Input id="signin-label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} />
+                </div>
+              </div>
             ) : null}
-            {error ? <p className="mt-3 text-[13px] text-danger">{error}</p> : null}
-            <button type="submit" disabled={busy || !email.includes("@") || (sent && otp.replace(/\D/g, "").length < 8)} className={button}>
+            {error ? <p role="alert" className="mt-3 font-mono text-[11px] text-danger">{error}</p> : null}
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={busy || !email.includes("@") || (sent && otp.replace(/\D/g, "").length < 8)}
+              className="mt-5 w-full"
+            >
               {busy ? (sent ? "Signing in…" : "Sending…") : sent ? "Sign in" : "Send code"}
-            </button>
+            </Button>
             {sent ? (
-              <button type="button" onClick={() => setSent(false)} className="mt-3 w-full text-[13px] text-ink-secondary underline">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSent(false)} className="mt-3 w-full">
                 Send a new code
-              </button>
+              </Button>
             ) : null}
-            <button type="button" onClick={() => switchMode("code")} className="mt-3 w-full text-[13px] text-ink-secondary underline">
+            <Button type="button" variant="ghost" size="sm" onClick={() => switchMode("code")} className="mt-3 w-full">
               Have a pairing code instead?
-            </button>
+            </Button>
           </form>
         ) : (
-          <form onSubmit={submitCode}>
-            <label className={fieldLabel} htmlFor="pair-code">
-              Pairing code
-            </label>
-            <input
+          <form onSubmit={submitCode} className="mt-4">
+            <FieldLabel htmlFor="pair-code">Pairing code</FieldLabel>
+            <Input
               id="pair-code"
               value={code}
               onChange={(e) => {
@@ -177,24 +192,45 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
               autoComplete="one-time-code"
               autoCapitalize="characters"
               spellCheck={false}
-              className={`${input} font-mono text-[15px] tracking-[0.12em]`}
+              className="font-mono text-[15px] tracking-[0.12em] uppercase"
             />
-            <label className={fieldLabel} htmlFor="pair-label">
-              This device
-            </label>
-            <input id="pair-label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} className={input} />
-            {error ? <p className="mt-3 text-[13px] text-danger">{error}</p> : null}
-            <button type="submit" disabled={busy || code.replace(/[^a-z0-9]/gi, "").length < 12} className={button}>
+            {/* Visual Kbd-like digit cells */}
+            <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1 font-mono">
+              {Array.from({ length: 12 }).map((_, i) => {
+                const clean = code.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+                const char = clean[i] ?? "";
+                return (
+                  <span
+                    key={i}
+                    className="inline-flex size-7 items-center justify-center border border-hairline bg-inset text-[13px] font-semibold text-ink"
+                  >
+                    {char}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="mt-4">
+              <FieldLabel htmlFor="pair-label">This device</FieldLabel>
+              <Input id="pair-label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} />
+            </div>
+            {error ? <p role="alert" className="mt-3 font-mono text-[11px] text-danger">{error}</p> : null}
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={busy || code.replace(/[^a-z0-9]/gi, "").length < 12}
+              className="mt-5 w-full"
+            >
               {busy ? "Connecting…" : "Connect"}
-            </button>
+            </Button>
             {emailOffered ? (
-              <button type="button" onClick={() => switchMode("email")} className="mt-3 w-full text-[13px] text-ink-secondary underline">
+              <Button type="button" variant="ghost" size="sm" onClick={() => switchMode("email")} className="mt-3 w-full">
                 Sign in with your email instead
-              </button>
+              </Button>
             ) : null}
           </form>
         )}
-      </div>
+      </Frame>
     </main>
   );
 }

@@ -6,6 +6,8 @@ import { cn } from "@/lib/cn";
 import { useCaptionChrome } from "@/components/DesktopCapabilities";
 import { VoiceSettings } from "./VoiceSettings";
 import { Switch } from "./SettingsPrimitives";
+import { Button } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 import { BotAvatar } from "./Avatar";
 import { imageAttachmentFromFile } from "@/lib/composer-attachments";
 import { botAvatarUrlFromStoredPath } from "../../shared/bot-avatar";
@@ -73,46 +75,54 @@ export function RemoteAgentSettingsPanel({ bot }: { bot: Bot }) {
   };
 
   return (
-    <aside className="animate-panel-in relative z-20 flex h-full w-[400px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
-      <div className={cn("flex items-center justify-between px-4 py-3", padClass)}>
-        <button
+    <aside className="animate-panel-in relative z-20 flex h-full w-[400px] shrink-0 flex-col border-l border-hairline bg-panel">
+      <div className={cn("flex items-center justify-between gap-3 frame-rule-below bg-panel px-4 py-3", padClass)}>
+        <Button
+          variant="ghost"
+          icon
+          size="sm"
           onClick={close}
           aria-label="Collapse remote agent settings"
-          className="flex size-10 items-center justify-center rounded-md text-ink-secondary hover:bg-control hover:text-ink"
         >
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-[15px] font-semibold text-ink">Remote agent settings</span>
-        <button
+          <ChevronLeft size={16} />
+        </Button>
+        <span className="label-mono text-ink">Remote agent settings</span>
+        <Button
+          variant="ghost"
+          icon
+          size="sm"
           onClick={close}
           aria-label="Close remote agent settings"
-          className="flex size-10 items-center justify-center rounded-md text-ink-secondary hover:bg-control hover:text-ink"
         >
-          <X size={18} />
-        </button>
+          <X size={16} />
+        </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5">
-        <div className="flex flex-col gap-4 pt-4">
-          <div className="rounded-xl bg-card p-4">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-col gap-4">
+          <div className="border border-hairline bg-card p-4">
             <div className="mb-4 flex items-center gap-3">
-              <BotAvatar bot={bot} state="idle" size={64} motion="none" motionKey={0} animated={false} />
+              <BotAvatar bot={bot} state="idle" size={56} motion="none" motionKey={0} animated={false} />
               <div className="flex gap-2">
                 <input ref={avatarInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="sr-only" onChange={(event) => void uploadAvatar(event.target.files?.[0])} />
-                <button type="button" disabled={uploading || saving} onClick={() => avatarInput.current?.click()} className="flex items-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
-                  {uploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />} Avatar
-                </button>
-                {bot.avatarUrl && <button type="button" disabled={saving} onClick={() => void patch({ avatarUrl: null, avatarCrop: "mascot" })} aria-label="Remove custom avatar" className="flex size-9 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-danger"><Trash2 size={14} /></button>}
+                <Button variant="secondary" size="sm" disabled={uploading || saving} onClick={() => avatarInput.current?.click()}>
+                  {uploading ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />} Avatar
+                </Button>
+                {bot.avatarUrl && (
+                  <Button variant="ghost" icon size="sm" disabled={saving} onClick={() => void patch({ avatarUrl: null, avatarCrop: "mascot" })} aria-label="Remove custom avatar">
+                    <Trash2 size={13} className="text-danger" />
+                  </Button>
+                )}
               </div>
             </div>
-            <label className="block text-[12px] font-medium text-ink-secondary">Name
-              <input key={bot.id} defaultValue={bot.name} maxLength={BOT_PROFILE_LIMITS.name} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name && name !== bot.name) void patch({ name }); }} className="mt-1 w-full rounded-lg bg-inset px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-1 focus:ring-accent" />
+            <label className="label-mono block text-ink-secondary">Name
+              <input key={bot.id} defaultValue={bot.name} maxLength={BOT_PROFILE_LIMITS.name} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name && name !== bot.name) void patch({ name }); }} className={cn(fieldClass, "mt-1 h-8 font-mono text-[12px]")} />
             </label>
-            <label className="mt-3 block text-[12px] font-medium text-ink-secondary">Title
-              <input key={bot.id} defaultValue={bot.title ?? ""} maxLength={BOT_PROFILE_LIMITS.title} onBlur={(event) => { if (event.currentTarget.value !== (bot.title ?? "")) void patch({ title: event.currentTarget.value }); }} className="mt-1 w-full rounded-lg bg-inset px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-1 focus:ring-accent" />
+            <label className="label-mono mt-3 block text-ink-secondary">Title
+              <input key={bot.id} defaultValue={bot.title ?? ""} maxLength={BOT_PROFILE_LIMITS.title} onBlur={(event) => { if (event.currentTarget.value !== (bot.title ?? "")) void patch({ title: event.currentTarget.value }); }} className={cn(fieldClass, "mt-1 h-8 font-mono text-[12px]")} />
             </label>
-            <label className="mt-3 block text-[12px] font-medium text-ink-secondary">Description
-              <textarea key={bot.id} defaultValue={bot.description ?? ""} maxLength={BOT_PROFILE_LIMITS.description} rows={4} onBlur={(event) => { if (event.currentTarget.value !== (bot.description ?? "")) void patch({ description: event.currentTarget.value }); }} className="mt-1 w-full resize-y rounded-lg bg-inset px-3 py-2 text-[13px] leading-relaxed text-ink focus:outline-none focus:ring-1 focus:ring-accent" />
+            <label className="label-mono mt-3 block text-ink-secondary">Description
+              <textarea key={bot.id} defaultValue={bot.description ?? ""} maxLength={BOT_PROFILE_LIMITS.description} rows={4} onBlur={(event) => { if (event.currentTarget.value !== (bot.description ?? "")) void patch({ description: event.currentTarget.value }); }} className={cn(fieldClass, "mt-1 font-mono text-[12px]")} />
             </label>
           </div>
 
@@ -122,11 +132,11 @@ export function RemoteAgentSettingsPanel({ bot }: { bot: Bot }) {
             onPatch={(next) => void patch(next)}
           />
 
-          <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">
+          <div className="flex items-center justify-between gap-4 border border-hairline bg-card p-4">
             <div className="flex min-w-0 items-start gap-3">
-              <Bell size={16} className="mt-0.5 shrink-0 text-ink-secondary" />
+              <Bell size={15} className="mt-0.5 shrink-0 text-ink-secondary" />
               <div>
-                <div className="text-[15px] font-medium text-ink">Notifications</div>
+                <div className="text-[14px] font-medium text-ink">Notifications</div>
                 <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
                   Enable completion and attention notifications for this agent on the host and paired clients.
                 </div>
@@ -140,7 +150,7 @@ export function RemoteAgentSettingsPanel({ bot }: { bot: Bot }) {
             />
           </div>
 
-          {error ? <div role="alert" className="text-[12px] text-danger">{error}</div> : null}
+          {error ? <div role="alert" className="border border-danger/40 bg-danger/10 p-2 font-mono text-[12px] text-danger">{error}</div> : null}
         </div>
       </div>
     </aside>

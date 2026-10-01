@@ -31,5 +31,5 @@ export function WorkingTimer({ since, className }: { since: number; className?: 
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [since]);
-  return <span ref={node} className={cn("tabular-nums", className)} />;
+  return <span ref={node} className={cn("font-mono tabular-nums", className)} />;
 }

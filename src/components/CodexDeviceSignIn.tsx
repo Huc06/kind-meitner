@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, Loader2, LogIn } from "lucide-react";
 import { api, ApiError, useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
-
+import { Button, buttonClass } from "@/components/ui/button";
 export interface DeviceSignInStatus {
   phase: "waiting" | "succeeded" | "failed" | "expired" | "cancelled";
   flowId: string | null;
@@ -62,27 +62,28 @@ export function DeviceSignInProgress({ auth }: { auth: DeviceSignInStatus }) {
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-hairline/50 bg-app p-3">
+    <div className="space-y-2 border border-hairline bg-inset p-3">
       <p className="text-[12px] text-ink-secondary">{t("engineSetup.device.enterCode")}</p>
-      <div className="flex items-center justify-between gap-2 rounded-lg bg-inset px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border border-hairline bg-app px-3 py-2">
         <code className="select-all font-mono text-lg font-semibold tracking-widest text-ink">{auth.userCode}</code>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
+          icon
           aria-label={t("engineSetup.device.copyCode")}
           onClick={() => void copy()}
-          className="rounded-md p-2 text-ink-secondary hover:bg-control hover:text-ink"
         >
-          {copied ? <Check size={15} className="text-success" /> : <Copy size={15} />}
-        </button>
+          {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+        </Button>
       </div>
-      <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110">
+      <a href={link} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: "primary", size: "sm", className: "w-full" })}>
         {t("engineSetup.device.openChatGPT")} <ExternalLink size={13} />
       </a>
-      <p role="status" className="flex items-center gap-1.5 text-[11.5px] text-ink-secondary">
+      <p role="status" className="flex items-center gap-1.5 font-mono text-[11.5px] text-ink-secondary">
         <Loader2 size={12} className="animate-spin" /> {t("engineSetup.device.waiting")}
       </p>
       {auth.expiresAt && Number.isFinite(Date.parse(auth.expiresAt)) && (
-        <p className="text-[11px] text-ink-secondary">{t("engineSetup.device.expires", { time: new Date(auth.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p>
+        <p className="font-mono text-[11px] text-ink-secondary">{t("engineSetup.device.expires", { time: new Date(auth.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p>
       )}
       <p className="text-[11px] leading-relaxed text-ink-secondary">{t("engineSetup.device.security")}</p>
     </div>
@@ -169,14 +170,14 @@ export function CodexDeviceSignIn({ instanceId }: { instanceId: string }) {
     <div className="mt-3 space-y-2" data-codex-device-sign-in>
       {auth && <DeviceSignInProgress auth={auth} />}
       {auth?.phase === "waiting" ? (
-        <button type="button" disabled={busy} onClick={() => void cancel()} className="w-full rounded-lg bg-control px-3 py-2 text-[12px] font-medium text-ink disabled:opacity-50">
+        <Button variant="secondary" size="sm" type="button" disabled={busy} onClick={() => void cancel()} className="w-full">
           {busy ? t("engineSetup.device.cancelling") : t("engineSetup.device.cancel")}
-        </button>
+        </Button>
       ) : auth?.phase !== "succeeded" && (
-        <button type="button" disabled={busy} onClick={() => void start()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-50">
+        <Button variant="primary" size="sm" type="button" disabled={busy} onClick={() => void start()} className="w-full">
           {busy ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
           {busy ? t("engineSetup.device.starting") : t("engineSetup.device.start")}
-        </button>
+        </Button>
       )}
       {error && <p role="alert" className="text-[12px] text-danger">{error}</p>}
       <p className="text-[11px] leading-relaxed text-ink-secondary">{t("engineSetup.device.enableHint")}</p>

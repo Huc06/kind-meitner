@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
-
+import { Button } from "@/components/ui/button";
 export const LOCAL_COMPUTER_AUTO_WARNING =
   "Auto mode will let this bot click, type, and run tools on this computer without asking first. Destructive and sensitive actions still stop. Continue only if you are watching.";
 
@@ -32,7 +32,7 @@ export function LocalComputerAutoWarning({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#05050a]/75 p-6 backdrop-blur-[2px] animate-view-enter"
       onMouseDown={(event) => event.target === event.currentTarget && onCancel()}
     >
       <div
@@ -40,7 +40,7 @@ export function LocalComputerAutoWarning({
         aria-modal="true"
         aria-labelledby="local-auto-warning-title"
         aria-describedby="local-auto-warning-body"
-        className="w-full max-w-[420px] rounded-2xl border border-hairline/50 bg-panel p-5 shadow-2xl"
+        className="relative w-full max-w-[420px] border border-warning/60 bg-card p-5 shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)]"
       >
         <div className="flex items-start gap-3">
           <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
@@ -54,21 +54,23 @@ export function LocalComputerAutoWarning({
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={onCancel}
-            className="rounded-xl px-4 py-2 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             ref={confirmRef}
             type="button"
+            variant="primary"
+            size="sm"
             onClick={onConfirm}
-            className="rounded-xl bg-accent px-4 py-2 text-[13px] font-medium text-white hover:brightness-110"
           >
             OK
-          </button>
+          </Button>
         </div>
       </div>
     </div>

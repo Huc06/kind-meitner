@@ -28,17 +28,20 @@ export function BotPickerList({
           role="checkbox"
           aria-label={b.name}
           aria-checked={picked.has(b.id)}
-          className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-raised/50"
+          className={cn(
+            "flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors",
+            picked.has(b.id) ? "bg-raised hover:bg-raised-hover" : "hover:bg-raised-hover",
+          )}
         >
-          <BotAvatar bot={b} state="happy" size={28} />
-          <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{b.name}</span>
+          <BotAvatar bot={b} state="happy" size={26} />
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{b.name}</span>
           <span
             className={cn(
-              "flex size-[18px] shrink-0 items-center justify-center rounded-full border",
-              picked.has(b.id) ? "border-accent bg-accent text-white" : "border-hairline/60",
+              "flex size-4 shrink-0 items-center justify-center border transition-colors",
+              picked.has(b.id) ? "border-accent bg-accent text-accent-ink" : "border-hairline bg-inset",
             )}
           >
-            {picked.has(b.id) && <Check size={12} />}
+            {picked.has(b.id) && <Check size={11} />}
           </span>
         </button>
       ))}

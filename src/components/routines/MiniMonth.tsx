@@ -55,23 +55,23 @@ export function MiniMonth({ anchor, onSelect }: MiniMonthProps) {
   return (
     <section aria-label="Mini calendar" className="select-none px-3 py-3">
       <div className="mb-2 flex items-center justify-between px-1">
-        <div className="text-[12.5px] font-semibold text-ink">{monthLabel}</div>
+        <div className="text-[12px] font-mono uppercase tracking-[0.06em] text-ink">{monthLabel}</div>
         <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => setVisibleMonth((month) => moveMonth(month, -1))}
-            className="flex size-7 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="flex size-6 items-center justify-center text-ink-secondary transition-colors hover:bg-raised-hover hover:text-ink"
             aria-label="Previous month"
           >
-            <ChevronLeft size={15} aria-hidden="true" />
+            <ChevronLeft size={14} aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={() => setVisibleMonth((month) => moveMonth(month, 1))}
-            className="flex size-7 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="flex size-6 items-center justify-center text-ink-secondary transition-colors hover:bg-raised-hover hover:text-ink"
             aria-label="Next month"
           >
-            <ChevronRight size={15} aria-hidden="true" />
+            <ChevronRight size={14} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -80,7 +80,7 @@ export function MiniMonth({ anchor, onSelect }: MiniMonthProps) {
         {WEEKDAY_LABELS.map((label, index) => (
           <div
             key={`${label}-${index}`}
-            className="flex h-6 items-center justify-center text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-secondary/75"
+            className="flex h-6 items-center justify-center font-mono text-[9px] uppercase tracking-[0.08em] text-ink-secondary/70"
           >
             {label}
           </div>
@@ -107,17 +107,19 @@ export function MiniMonth({ anchor, onSelect }: MiniMonthProps) {
               aria-label={label}
               aria-current={isToday ? "date" : undefined}
               aria-pressed={isSelected}
-              className="group flex h-7 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="group flex h-7 items-center justify-center"
             >
               <span
-                className={`flex size-6 items-center justify-center rounded-full text-[10.5px] transition-colors ${
-                  isSelected
-                    ? "bg-accent font-semibold text-white shadow-sm"
-                    : isToday
-                      ? "font-semibold text-accent group-hover:bg-accent/12"
+                className={`flex size-6 items-center justify-center font-mono text-[10.5px] tabular-nums transition-colors ${
+                  isToday
+                    ? isSelected
+                      ? "border border-ink bg-accent font-semibold text-accent-ink"
+                      : "bg-accent font-semibold text-accent-ink"
+                    : isSelected
+                      ? "border border-ink font-semibold text-ink"
                       : isOutsideMonth
-                        ? "text-ink-secondary/35 group-hover:bg-raised group-hover:text-ink-secondary"
-                        : "text-ink-secondary group-hover:bg-raised group-hover:text-ink"
+                        ? "text-ink-secondary/35 group-hover:bg-raised-hover group-hover:text-ink-secondary"
+                        : "text-ink-secondary group-hover:bg-raised-hover group-hover:text-ink"
                 }`}
               >
                 {date.getDate()}

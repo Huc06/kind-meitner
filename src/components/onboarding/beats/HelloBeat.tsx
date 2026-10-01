@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { identifyEmail, track } from "@/lib/analytics";
 import { t } from "@/lib/i18n";
 import { api, useStore } from "@/state/store";
-import { inputClass, PrimaryButton, QuietButton, staggerIndex, type BeatProps } from "./shared";
+import { Input } from "@/components/ui/field";
+import { PrimaryButton, QuietButton, staggerIndex, type BeatProps } from "./shared";
 
 export function HelloBeat({ onNext, onSkip }: BeatProps) {
   const { dispatch } = useStore();
@@ -46,28 +47,28 @@ export function HelloBeat({ onNext, onSkip }: BeatProps) {
       <p className="animate-rise mt-1.5 text-center text-[14px] leading-relaxed text-ink-secondary" style={staggerIndex(0)}>
         {t("onboarding.intro")}
       </p>
-      <input
+      <Input
         autoFocus
         type="text"
         aria-label={t("onboarding.name")}
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={t("onboarding.name")}
-        className={`animate-rise mt-5 ${inputClass}`}
+        className="animate-rise mt-5"
         style={staggerIndex(1)}
       />
-      <input
+      <Input
         type="email"
         aria-label={t("phone.signIn.email")}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && void saveProfile()}
         placeholder="you@example.com"
-        className={`animate-rise mt-3 ${inputClass}`}
+        className="animate-rise mt-3"
         style={staggerIndex(2)}
       />
-      {failed && <p role="alert" className="mt-3 text-[13px] text-danger">{t("onboarding.profile.error")}</p>}
-      <PrimaryButton onClick={() => void saveProfile()} disabled={!valid || saving} className="animate-rise mt-3" style={staggerIndex(3)}>
+      {failed && <p role="alert" className="mt-3 font-mono text-[11px] text-danger">{t("onboarding.profile.error")}</p>}
+      <PrimaryButton onClick={() => void saveProfile()} disabled={!valid || saving} className="animate-rise mt-4" style={staggerIndex(3)}>
         {t("onboarding.continue")}
       </PrimaryButton>
       <QuietButton

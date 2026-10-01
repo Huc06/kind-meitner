@@ -7,7 +7,9 @@ import { api, useStore, type ConfigStatus } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
-
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
+import { Tag } from "@/components/ui/tag";
 export type ConfigSection = "composio" | "box" | "opencodeGo" | "anthropic" | "openaiCompat" | "xai";
 /** Sections whose key can be tried against the provider from the server. */
 export type TestableProvider = "anthropic" | "openaiCompat" | "xai";
@@ -149,7 +151,7 @@ function CredentialHelp({ section }: { section: ConfigSection }) {
         aria-expanded={open}
         aria-controls={popoverId}
         onClick={() => setOpen((current) => !current)}
-        className="flex size-6 items-center justify-center rounded-md text-ink-secondary outline-none transition-colors hover:bg-control hover:text-ink focus-visible:ring-2 focus-visible:ring-accent/70"
+        className="flex size-6 items-center justify-center text-ink-secondary outline-none transition-colors hover:bg-raised-hover hover:text-ink"
       >
         <CircleHelp size={14} aria-hidden="true" />
       </button>
@@ -158,11 +160,11 @@ function CredentialHelp({ section }: { section: ConfigSection }) {
           id={popoverId}
           role="group"
           aria-label={t("keys.helpAria", { label: credential.label })}
-          className="animate-pop-in absolute right-0 z-30 mt-1.5 w-[270px] rounded-xl border border-hairline bg-panel p-3 text-left shadow-2xl"
+          className="animate-pop-in absolute right-0 z-30 mt-1.5 w-[280px] border border-hairline bg-menu p-3 text-left shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
         >
           <div className="text-[12px] leading-[1.45] text-ink-secondary">{credential.description}</div>
           {credential.warning && (
-            <div className="mt-2 flex gap-1.5 rounded-lg border border-warning/25 bg-warning/10 px-2 py-1.5 text-[11px] leading-[1.4] text-warning">
+            <div className="mt-2 flex gap-1.5 border border-warning/40 bg-warning/10 px-2 py-1.5 text-[11px] leading-[1.4] text-warning">
               <TriangleAlert size={13} className="mt-px shrink-0" aria-hidden="true" />
               <span>{credential.warning}</span>
             </div>
@@ -172,7 +174,7 @@ function CredentialHelp({ section }: { section: ConfigSection }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setOpen(false)}
-            className="mt-2.5 flex items-center gap-1.5 text-[12px] font-medium text-accent hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+            className="mt-2.5 flex items-center gap-1.5 font-mono text-[11px] uppercase text-ink hover:underline focus-visible:outline-none"
           >
             {credential.linkLabel}
             <ExternalLink size={12} aria-hidden="true" />
@@ -266,18 +268,18 @@ export function ApiKeyRow({
   return (
     <div>
       <div className="mb-1.5 flex items-center gap-2 text-[13px] text-ink-secondary">
-        <span className={cn("size-1.5 rounded-full", configured ? "bg-success" : "bg-raised-hover")} />
+        <span className={cn("size-1.5 rounded-full", configured ? "bg-success" : "bg-ink-secondary/40")} />
         <span>{credential.label}</span>
         {credential.optional && (
-          <span className="rounded bg-control px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-secondary">
+          <Tag tone="neutral" size="sm">
             {t("keys.optional")}
-          </span>
+          </Tag>
         )}
-        {configured && <span className="text-[11px] text-ink-secondary">{t("keys.configured")}</span>}
+        {configured && <span className="font-mono text-[11px] uppercase text-ink-secondary">{t("keys.configured")}</span>}
         <CredentialHelp section={section} />
       </div>
       <div className="flex gap-2">
-        <input
+        <Input
           type="password"
           value={value}
           onChange={(e) => { testGeneration.current++; setVerdict(null); setEdited(true); setValue(e.target.value); }}
@@ -286,31 +288,28 @@ export function ApiKeyRow({
           placeholder={configured ? t("keys.replace") : credential.placeholder}
           aria-label={credential.label}
           autoComplete="off"
-          className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
         />
-        <button
+        <Button
+          variant={clearing ? "danger" : "secondary"}
+          size="md"
           onClick={save}
           disabled={saving || (!value.trim() && !configured)}
-          className={cn(
-            "flex w-[72px] shrink-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px]",
-            clearing
-              ? "bg-control text-danger hover:bg-raised-hover"
-              : "bg-control text-ink hover:bg-raised-hover",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-          )}
+          className="w-[84px] shrink-0"
           title={clearing ? t("keys.removeKey") : t("common.save")}
         >
           {saving ? <Loader2 size={13} className="animate-spin" /> : clearing ? t("keys.clear") : <><Check size={13} />{t("common.save")}</>}
-        </button>
+        </Button>
         {testProvider && (configured || value.trim()) && (
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             type="button"
             onClick={() => void test()}
             disabled={testing || saving || emptyDraft}
-            className="flex shrink-0 items-center justify-center rounded-lg border border-hairline/40 px-3 py-2 text-[13px] text-ink-secondary hover:bg-raised/50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0"
           >
             {testing ? t("keys.testing") : t("keys.test")}
-          </button>
+          </Button>
         )}
       </div>
       {error && <div className="mt-1 text-[12px] text-danger">{error}</div>}
@@ -344,7 +343,7 @@ export function OpenAiCompatUrl() {
     <div>
       <div className="mb-1.5 text-[13px] text-ink-secondary">{t("keys.openaiCompat.url")}</div>
       <div className="flex gap-2">
-        <input
+        <Input
           type="url"
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -352,15 +351,17 @@ export function OpenAiCompatUrl() {
           placeholder="https://openrouter.ai/api/v1"
           aria-label={t("keys.openaiCompat.url")}
           spellCheck={false}
-          className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+          className="font-mono text-[12px]"
         />
-        <button
+        <Button
+          variant="secondary"
+          size="md"
           onClick={save}
           disabled={saving || !dirty}
-          className="flex w-[72px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-control py-2 text-[13px] text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-[84px] shrink-0"
         >
           {saving ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} />{t("common.save")}</>}
-        </button>
+        </Button>
       </div>
       <p className="mt-1 text-[11.5px] leading-relaxed text-ink-secondary">{t("keys.openaiCompat.urlHint")}</p>
       {error && <div className="mt-1 text-[12px] text-danger">{error}</div>}

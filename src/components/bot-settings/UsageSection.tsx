@@ -17,45 +17,46 @@ export function UsageSection({ bot }: { bot: Bot }) {
 
   if (usage.turns === 0) {
     return (
-      <div className="rounded-xl bg-card p-4 text-[13px] text-ink-secondary">
+      <div className="border border-hairline bg-card p-4 font-mono text-[12px] text-ink-secondary">
         No usage recorded yet for this bot.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-card p-4">
+    <div className="border border-hairline bg-card p-4">
       <div className="flex items-baseline justify-between">
-        <div className="text-[15px] font-medium text-ink">Usage</div>
+        <div className="text-[14px] font-medium text-ink">Usage</div>
         <button
+          type="button"
           onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: "usage" })}
-          className="text-[12px] text-ink-secondary hover:text-ink"
+          className="font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:text-ink"
         >
           All bots →
         </button>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-3 text-[13px]">
-        <div>
-          <div className="text-[11.5px] uppercase tracking-wide text-ink-secondary">Turns</div>
-          <div className="mt-0.5 tabular-nums text-ink">{usage.turns}</div>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        <div className="border border-hairline bg-inset p-2.5">
+          <div className="label-mono text-ink-secondary">Turns</div>
+          <div className="mt-1 font-mono text-[14px] tabular-nums font-medium text-ink">{usage.turns}</div>
         </div>
-        <div>
-          <div className="text-[11.5px] uppercase tracking-wide text-ink-secondary">Tokens</div>
+        <div className="border border-hairline bg-inset p-2.5">
+          <div className="label-mono text-ink-secondary">Tokens</div>
           <div
-            className="mt-0.5 tabular-nums text-ink"
+            className="mt-1 font-mono text-[14px] tabular-nums font-medium text-ink"
             title={`${formatTokens(usage.input)} in · ${formatTokens(usage.output)} out`}
           >
             {formatTokens(usage.input + usage.output)}
           </div>
         </div>
-        <div>
-          <div className="text-[11.5px] uppercase tracking-wide text-ink-secondary">Cost</div>
-          <div className="mt-0.5 tabular-nums text-ink">
+        <div className="border border-hairline bg-inset p-2.5">
+          <div className="label-mono text-ink-secondary">Cost</div>
+          <div className="mt-1 font-mono text-[14px] tabular-nums font-medium text-ink">
             {hasFiniteCost(usage.costUsd) ? formatUsd(usage.costUsd) : "—"}
           </div>
         </div>
       </div>
-      <div className="mt-2 text-[12px] text-ink-secondary">
+      <div className="mt-3 text-[12px] text-ink-secondary">
         {hasFiniteCost(usage.costUsd)
           ? `Cost ${costCaption(instance?.snapshot.billing)}.`
           : "This engine doesn't report a price; tokens are counted."}

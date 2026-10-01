@@ -14,12 +14,12 @@
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { MausAvatar } from "@/components/Avatar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { MausState } from "@/lib/mascot";
 import { reducedMotion } from "@/lib/onboarding";
 
 const PAD = 8;
-const RADIUS = 14;
 const CARD_W = 320;
 const GAP = 12;
 
@@ -193,17 +193,13 @@ export function Spotlight({
       />
       {rect && (
         <div
-          className="absolute ring-2 ring-accent transition-opacity duration-300"
+          className="absolute border border-accent transition-opacity duration-300"
           style={{
             left: rect.x,
             top: rect.y,
             width: rect.w,
             height: rect.h,
             opacity: settled ? 1 : 0,
-            borderRadius: RADIUS,
-            // a soft halo so the control reads as lit, not merely outlined
-            boxShadow:
-              "0 0 0 5px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 0 36px 6px color-mix(in srgb, var(--color-accent) 30%, transparent)",
           }}
           aria-hidden="true"
         />
@@ -219,7 +215,7 @@ export function Spotlight({
         <div
           role="dialog"
           className={cn(
-            "flex items-start gap-3 rounded-2xl border border-hairline/50 bg-panel p-3.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]",
+            "relative flex items-start gap-3 border border-hairline bg-panel p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]",
             rect
               ? beside
                 ? "origin-left"
@@ -230,7 +226,11 @@ export function Spotlight({
             settled ? "animate-spot-in motion-reduce:animate-none" : "opacity-0",
           )}
         >
-          <div className="shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]">
+          <span aria-hidden className="frame-corner" data-corner="tl" />
+          <span aria-hidden className="frame-corner" data-corner="tr" />
+          <span aria-hidden className="frame-corner" data-corner="bl" />
+          <span aria-hidden className="frame-corner" data-corner="br" />
+          <div className="shrink-0">
             <MausAvatar
               color="green"
               state={mascot}
@@ -241,33 +241,34 @@ export function Spotlight({
             key={anchor ?? "centre"}
             className="min-w-0 flex-1 animate-rise motion-reduce:animate-none"
           >
-            <div className="text-[13.5px] leading-relaxed text-ink">
+            <div className="text-[13px] leading-relaxed text-ink">
               {children}
             </div>
-            <div className="mt-2.5 flex items-center gap-3">
+            <div className="mt-3 flex items-center gap-3">
               {primary && (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="sm"
                   autoFocus
                   onClick={primary.onClick}
-                  className="rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white transition-transform duration-150 active:scale-[0.98]"
                 >
                   {primary.label}
-                </button>
+                </Button>
               )}
               {progress && (
-                <span className="text-[11.5px] tabular-nums text-ink-secondary">
+                <span className="font-mono text-[11px] tabular-nums text-ink-secondary">
                   {progress}
                 </span>
               )}
               {secondary && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={secondary.onClick}
-                  className="ml-auto text-[12px] text-ink-secondary transition-colors hover:text-ink"
+                  className="ml-auto"
                 >
                   {secondary.label}
-                </button>
+                </Button>
               )}
             </div>
           </div>

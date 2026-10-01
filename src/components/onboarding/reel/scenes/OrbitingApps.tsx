@@ -63,10 +63,10 @@ function loadCatalog(): Promise<Map<string, ToolkitCard>> {
 function Badge({ card, connected }: { card: Pick<ToolkitCard, "logo" | "domain" | "label">; connected?: boolean }) {
   return (
     <div className="relative flex flex-col items-center gap-1.5">
-      <ServiceIcon card={card} className="size-9 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]" />
-      <span className="max-w-[56px] truncate text-[9.5px] font-semibold leading-none text-ink-secondary">{card.label}</span>
+      <ServiceIcon card={card} className="size-9" />
+      <span className="label-mono max-w-[64px] truncate text-[8.5px] text-ink-secondary">{card.label}</span>
       {connected && (
-        <span className="animate-spot-in absolute -right-1 -top-1.5 flex size-4 items-center justify-center rounded-full bg-success text-white ring-2 ring-inset">
+        <span className="animate-spot-in absolute -right-1 -top-1.5 flex size-4 items-center justify-center rounded-full bg-success text-accent ring-2 ring-inset">
           <Check size={10} strokeWidth={3} />
         </span>
       )}
@@ -93,7 +93,7 @@ function Ring({
   return (
     <>
       <div
-        className="animate-spot-in pointer-events-none absolute rounded-full border border-hairline/50 bg-gradient-to-b from-ink/[0.04] to-transparent"
+        className="animate-spot-in pointer-events-none absolute rounded-full border border-dashed border-hairline"
         style={{ width: radius * 2, height: radius * 2, left: `calc(50% - ${radius}px)`, top: `calc(50% - ${radius}px)`, animationDelay: `${index * 160}ms` }}
       />
       {children.map((child, i) => (
@@ -157,17 +157,12 @@ export function OrbitingApps({ playing, onCue, onEnded, label }: SceneProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-inset" role="img" aria-label={label}>
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-14 bg-gradient-to-b from-inset to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-14 bg-gradient-to-t from-inset to-transparent" />
-
-      {/* the guide, bare, over a soft glow so it still reads as the centre */}
+      {/* the guide in the centre */}
       <div className="absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2">
-        <div className="absolute inset-0 -m-6 rounded-full bg-accent/15 blur-2xl" aria-hidden="true" />
-        <div className="relative drop-shadow-[0_10px_24px_rgba(0,0,0,0.4)]">
+        <div className="relative">
           <MausAvatar color="green" state={connected ? "proud" : "curious"} size={76} animated={!still} />
         </div>
       </div>
-
       <div className="relative flex h-full w-full items-center justify-center">
         {RINGS.map((apps, ring) => (
           <Ring key={ring} radius={[92, 140, 186][ring]!} duration={[22, 34, 46][ring]!} reverse={ring !== 1} index={ring} still={still}>

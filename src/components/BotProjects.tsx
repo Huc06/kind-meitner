@@ -4,6 +4,8 @@ import { ArrowDown, ArrowUp, CheckCheck, Folder, MoreHorizontal, Pencil, Plus, X
 import { useStore, type Bot, type BotProject } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { Button, buttonClass } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 
 const FOLDER_EMOJI = ["📁", "💼", "🏠", "📬", "💡", "🚀", "🎨", "🧪", "📚", "🌱", "⭐", "🛠️"];
 
@@ -57,15 +59,15 @@ export function FolderActions({ project, canMoveUp, canMoveDown, canMarkRead, sa
   return <>
     <button ref={actionRef} type="button" aria-label={t("folder.actions", { name: project.name })} title={t("folder.actions", { name: project.name })} aria-haspopup="menu" aria-expanded={Boolean(menu)}
       onClick={(event) => { if (menu) { close(); return; } const rect = event.currentTarget.getBoundingClientRect(); onMenuChange({ left: rect.left, top: rect.bottom + 4 }); }}
-      className="flex size-6 shrink-0 items-center justify-center rounded opacity-0 hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover/folder:opacity-100 max-md:opacity-70"><MoreHorizontal size={13} /></button>
+      className="flex size-6 shrink-0 items-center justify-center opacity-0 hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover/folder:opacity-100 max-md:opacity-70"><MoreHorizontal size={13} /></button>
     {position && createPortal(<div ref={menuRef} role="menu" aria-label={t("folder.actions", { name: project.name })} aria-busy={saving || undefined} data-thread-overlay style={position}
-      className="fixed z-50 w-[220px] rounded-lg border border-hairline/50 bg-card p-1 shadow-xl"
+      className="fixed z-50 w-[220px] border border-hairline bg-menu p-1 shadow-xl"
       onMouseDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); } else navigateThreadMenu(event); }}>
-      <button type="button" role="menuitem" onClick={() => { close(); onEdit(); }} className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[12px] text-ink hover:bg-raised"><Pencil size={12} />{t("folder.settings")}</button>
-      <button type="button" role="menuitem" disabled={!canMarkRead || saving} onClick={() => onMarkRead(close)} className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[12px] text-ink hover:bg-raised disabled:opacity-40"><CheckCheck size={12} />{t("folder.markRead")}</button>
-      <button type="button" role="menuitem" disabled={!canMoveUp || saving} onClick={() => move(-1)} className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[12px] text-ink hover:bg-raised disabled:opacity-40"><ArrowUp size={12} />{t("folder.moveUp")}</button>
-      <button type="button" role="menuitem" disabled={!canMoveDown || saving} onClick={() => move(1)} className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[12px] text-ink hover:bg-raised disabled:opacity-40"><ArrowDown size={12} />{t("folder.moveDown")}</button>
+      <button type="button" role="menuitem" onClick={() => { close(); onEdit(); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11.5px] text-ink hover:bg-raised-hover"><Pencil size={12} />{t("folder.settings")}</button>
+      <button type="button" role="menuitem" disabled={!canMarkRead || saving} onClick={() => onMarkRead(close)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"><CheckCheck size={12} />{t("folder.markRead")}</button>
+      <button type="button" role="menuitem" disabled={!canMoveUp || saving} onClick={() => move(-1)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"><ArrowUp size={12} />{t("folder.moveUp")}</button>
+      <button type="button" role="menuitem" disabled={!canMoveDown || saving} onClick={() => move(1)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"><ArrowDown size={12} />{t("folder.moveDown")}</button>
     </div>, document.body)}
   </>;
 }
@@ -103,7 +105,7 @@ export function BotProjectDialog({ bot, project, onClose, onCreated }: {
     };
   }, []);
   return createPortal(
-    <div data-thread-overlay className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+    <div data-thread-overlay className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(event) => { event.stopPropagation(); if (event.target === event.currentTarget) onClose(); }}
       onKeyDown={(event) => {
         if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCloseRef.current(); }
@@ -116,10 +118,10 @@ export function BotProjectDialog({ bot, project, onClose, onCreated }: {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }}>
       <div ref={dialogRef} role="dialog" tabIndex={-1} aria-modal="true" aria-busy={saving || undefined} aria-label={t(project ? "folder.settings" : "folder.create")}
-        className="max-h-[85dvh] w-full max-w-[420px] overflow-y-auto rounded-2xl border border-hairline/50 bg-panel p-5 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-semibold text-ink">{t(project ? "folder.settings" : "folder.create")}</h2>
-          <button type="button" onClick={onClose} aria-label={t("folder.close")} className="rounded p-1 text-ink-secondary hover:bg-raised"><X size={16} /></button>
+        className="max-h-[85dvh] w-full max-w-[420px] overflow-y-auto border border-hairline bg-panel p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between gap-3 frame-rule-below pb-3">
+          <h2 className="text-[14px] font-semibold text-ink">{t(project ? "folder.settings" : "folder.create")}</h2>
+          <Button variant="ghost" icon size="sm" onClick={onClose} aria-label={t("folder.close")}><X size={15} /></Button>
         </div>
         <form onSubmit={(event) => {
           event.preventDefault();
@@ -134,41 +136,41 @@ export function BotProjectDialog({ bot, project, onClose, onCreated }: {
               onCreated: (created) => { onCreated?.(created); onClose(); } });
           }
         }}>
-          <label className="block text-[12px] text-ink-secondary">{t("folder.name")}
+          <label className="label-mono block text-ink-secondary">{t("folder.name")}
             <input ref={nameRef} value={name} maxLength={80} disabled={saving} onChange={(event) => setName(event.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[13px] text-ink focus:border-accent/60 focus:outline-none" />
+              className={cn(fieldClass, "mt-1.5 h-8 font-mono text-[12.5px]")} />
           </label>
           <button ref={iconRef} type="button" disabled={saving} aria-label={t("folder.icon")} aria-expanded={choosingIcon} onClick={() => setChoosingIcon((open) => !open)}
-            className="mt-3 flex items-center gap-2 rounded-lg border border-hairline/50 px-2.5 py-2 text-[12px] text-ink-secondary hover:bg-raised"><FolderIcon emoji={emoji} size={18} />{t("folder.icon")}</button>
-          {choosingIcon && <div className="mt-2 rounded-lg border border-hairline/40 bg-inset p-3"
+            className={buttonClass({ variant: "secondary", size: "sm", className: "mt-3 w-full justify-start gap-2" })}><FolderIcon emoji={emoji} size={16} />{t("folder.icon")}</button>
+          {choosingIcon && <div className="mt-2 border border-hairline bg-inset p-3"
             onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setChoosingIcon(false); iconRef.current?.focus(); } }}>
-            <p className="mb-2 text-[12px] text-ink-secondary">{t("folder.emojiHint")}</p>
+            <p className="mb-2 font-mono text-[11px] text-ink-secondary">{t("folder.emojiHint")}</p>
             <div className="flex flex-wrap gap-1">
-              <button type="button" disabled={saving} aria-label={t("folder.defaultIcon")} aria-pressed={!emoji} onClick={() => setEmoji("")} className="flex size-8 items-center justify-center rounded hover:bg-raised aria-pressed:bg-raised"><FolderIcon size={18} /></button>
-              {FOLDER_EMOJI.map((icon) => <button key={icon} type="button" disabled={saving} aria-label={icon} aria-pressed={emoji === icon} onClick={() => setEmoji(icon)} className="size-8 rounded text-lg hover:bg-raised aria-pressed:bg-raised">{icon}</button>)}
+              <button type="button" disabled={saving} aria-label={t("folder.defaultIcon")} aria-pressed={!emoji} onClick={() => setEmoji("")} className="flex size-7 items-center justify-center border border-hairline hover:bg-raised aria-pressed:border-ink aria-pressed:bg-raised"><FolderIcon size={16} /></button>
+              {FOLDER_EMOJI.map((icon) => <button key={icon} type="button" disabled={saving} aria-label={icon} aria-pressed={emoji === icon} onClick={() => setEmoji(icon)} className="size-7 border border-hairline text-base hover:bg-raised aria-pressed:border-ink aria-pressed:bg-raised">{icon}</button>)}
             </div>
-            <label className="mt-2 block text-[12px] text-ink-secondary">{t("folder.emoji")}
-              <input value={emoji} disabled={saving} maxLength={64} onChange={(event) => setEmoji(event.target.value)} className="mt-1 w-full rounded border border-hairline/50 bg-panel px-2 py-1.5 text-[14px] text-ink focus:outline-none" />
+            <label className="label-mono mt-2.5 block text-ink-secondary">{t("folder.emoji")}
+              <input value={emoji} disabled={saving} maxLength={64} onChange={(event) => setEmoji(event.target.value)} className={cn(fieldClass, "mt-1 h-8 font-mono text-[13px]")} />
             </label>
           </div>}
           <p className="mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("folder.detail", { name: bot.name })}</p>
-          {error && <p role="alert" className="mt-3 text-[12px] text-danger">{error}</p>}
+          {error && <p role="alert" className="mt-3 border border-danger/40 bg-danger/10 p-2 font-mono text-[12px] text-danger">{error}</p>}
           <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-[13px] text-ink-secondary hover:bg-raised">{t("common.cancel")}</button>
-            <button type="submit" disabled={!name.trim() || saving} className="rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-white disabled:opacity-40">{t(saving ? "folder.saving" : project ? "folder.save" : "folder.create")}</button>
+            <button type="button" onClick={onClose} className={buttonClass({ variant: "secondary", size: "sm" })}>{t("common.cancel")}</button>
+            <button type="submit" disabled={!name.trim() || saving} className={buttonClass({ variant: "primary", size: "sm" })}>{t(saving ? "folder.saving" : project ? "folder.save" : "folder.create")}</button>
           </div>
         </form>
-        {project && <div className="mt-4 border-t border-hairline/40 pt-3">
+        {project && <div className="mt-4 frame-rule-above pt-3">
           {deleting ? <>
             <p className="text-[12px] leading-relaxed text-ink-secondary">{t("folder.deleteBody")}</p>
             <div className="mt-2 flex items-center gap-3">
               <button type="button" disabled={saving} onClick={() => {
                 setSaving(true); setError(null);
                 dispatch({ type: "deleteProject", botId: bot.id, projectId: project.id, onDeleted: onClose, onError: (message) => { setSaving(false); setError(message); } });
-              }} className="text-[12px] text-danger hover:underline disabled:opacity-40">{t("folder.deleteConfirm")}</button>
-              <button type="button" onClick={() => setDeleting(false)} className="text-[12px] text-ink-secondary hover:underline">{t("common.cancel")}</button>
+              }} className="font-mono text-[11px] uppercase tracking-wide text-danger hover:underline disabled:opacity-40">{t("folder.deleteConfirm")}</button>
+              <button type="button" onClick={() => setDeleting(false)} className="font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:underline">{t("common.cancel")}</button>
             </div>
-          </> : <button type="button" disabled={saving} onClick={() => setDeleting(true)} className="text-[12px] text-danger hover:underline disabled:opacity-40">{t("folder.delete")}</button>}
+          </> : <button type="button" disabled={saving} onClick={() => setDeleting(true)} className="font-mono text-[11px] uppercase tracking-wide text-danger hover:underline disabled:opacity-40">{t("folder.delete")}</button>}
         </div>}
       </div>
     </div>, document.body,
@@ -185,7 +187,7 @@ export function NewThreadButton({ bot, className, compact = false, onCreated }: 
       dispatch({ type: "newTask", botId: bot.id, ...(currentProject ? { projectId: currentProject.id } : {}) });
       onCreated?.();
     }}
-    className={cn("flex min-w-0 items-center gap-2 rounded-lg px-2.5 text-left text-[12px] text-ink-secondary hover:bg-raised/60 hover:text-ink", compact ? "py-1 @max-4xl/chathead:h-[30px] @max-4xl/chathead:px-2" : "py-2", className)}>
+    className={cn("flex min-w-0 items-center gap-2 border border-hairline bg-transparent px-2.5 text-left font-mono text-[11.5px] uppercase tracking-[0.06em] text-ink-secondary hover:bg-raised-hover hover:text-ink transition-colors", compact ? "py-1 @max-4xl/chathead:h-[30px] @max-4xl/chathead:px-2" : "py-1.5", className)}>
     <Plus aria-hidden="true" size={12} /><span className={cn("truncate", compact && "@max-4xl/chathead:hidden")}>{t("task.newShort")}</span>
   </button>;
 }
