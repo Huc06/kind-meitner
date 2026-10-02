@@ -31,7 +31,7 @@ import { ChatMarkdown } from "./ChatMarkdown";
 import { Composer, DefaultResponderSelect } from "./Composer";
 import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
 import { EngineModeBadge } from "./EngineModeBadge";
-import { ExternalAgentLabel } from "./ExternalAgentLabel";
+import { ExternalAgentLabel, ExternalPaymentCard } from "./ExternalAgentLabel";
 import { useExternalAgents } from "@/lib/external-agents";
 import { Tag } from "@/components/ui/tag";
 import { RoomActivityTimeline } from "./RoomActivityTimeline";
@@ -317,6 +317,10 @@ const Transcript = memo(function Transcript({
                   ? () => openNotificationTarget(dispatch, routineTarget, state)
                   : undefined}
               />
+            </div>
+          ) : m.kind === "activity" && m.externalPayment ? (
+            <div className="flex justify-start">
+              <ExternalPaymentCard message={m} />
             </div>
           ) : m.kind === "activity" && m.tool ? (
             roomActivityVisible(m, showToolCalls) || isOkxGateTool(m.tool.name) ? (

@@ -182,8 +182,22 @@ export interface Message {
     upstreamName?: string;
     requestId: string;
     provenance: "direct-endpoint" | "zroute-proxy" | "local-catalog";
-    status: "started" | "completed" | "failed" | "timeout";
+    status: "started" | "streaming" | "completed" | "failed" | "timeout" | "cancelled" | "payment_required";
     latencyMs?: number;
+    contentFlags?: string[];
+  };
+  /** Approval card for an x402 TESTNET payment an external agent asked for. */
+  externalPayment?: {
+    id: string;
+    state: "pending" | "approved" | "declined" | "failed" | "settled" | "unsettled";
+    network: string;
+    asset: string;
+    amount: string;
+    payTo: string;
+    description?: string;
+    expiresAt: number;
+    payer?: string;
+    transaction?: string;
   };
   /** a user-role line another bot delivered into this conversation
    * (ask_bot, delegate_bot, start_thread): the words are that bot's, not

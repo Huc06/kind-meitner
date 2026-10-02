@@ -242,8 +242,23 @@ export interface Message {
     upstreamName?: string;
     requestId: string;
     provenance: "direct-endpoint" | "zroute-proxy" | "local-catalog";
-    status: "started" | "completed" | "failed" | "timeout";
+    status: "started" | "streaming" | "completed" | "failed" | "timeout" | "cancelled" | "payment_required";
     latencyMs?: number;
+    /** Untrusted-content findings from sanitizeReply. */
+    contentFlags?: string[];
+  };
+  /** Approval card for an x402 TESTNET payment an external agent asked for. */
+  externalPayment?: {
+    id: string;
+    state: "pending" | "approved" | "declined" | "failed" | "settled" | "unsettled";
+    network: string;
+    asset: string;
+    amount: string;
+    payTo: string;
+    description?: string;
+    expiresAt: number;
+    payer?: string;
+    transaction?: string;
   };
   /** Set on a room message a bot pushed in with post_to_room instead of by
    * taking a turn there. Internal transport changes custody, not authorship:

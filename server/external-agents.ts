@@ -1,25 +1,35 @@
 // External agents: remote A2A agents a room can talk to, reached either
 // directly or through a zroute proxy. They are room participants, not models:
-// nothing here touches bot records, engine selection, wallets or payments.
+// nothing here touches bot records or engine selection.
 //
 // Protocol: A2A JSON-RPC 2.0. Identity comes from the agent card at
-// /.well-known/agent.json; chat uses `message/send`. A zroute connection is
-// the same wire protocol through a proxy, plus a route ID sent as message
-// metadata and a REQUIRED upstream identity (card `metadata.upstream`).
+// /.well-known/agent.json; chat uses `message/send`, or `message/stream`
+// (Server-Sent Events) when the card advertises streaming, and `tasks/cancel`
+// when the person stops a streamed task. A zroute connection is the same wire
+// protocol through a proxy, plus a route ID sent as message metadata and a
+// REQUIRED upstream identity (card and result `metadata.upstream`).
 //
-// Credentials (development only): a connection may name an environment
-// variable (`credentialEnv`, KIND_MEITNER_EXT_*) whose value the server sends
-// as a bearer token. The value is read at call time, never stored, returned,
-// logged or written into messages.
+// Credentials: a per-connection bearer token in the encrypted server secret
+// store (external-agent-secrets.ts), or — development fallback — a named
+// KIND_MEITNER_EXT_* environment variable. Every request also carries a
+// one-time Ed25519-signed proof (X-KM-Request-Proof) bound to connection,
+// agent, purpose, request ID and expiry, so an agent can reject replays.
+//
+// Payments: off unless the person opts a connection into X Layer TESTNET
+// payments. An HTTP 402 then becomes an approval card (external-payments.ts);
+// nothing is signed without that approval and mainnet is refused outright.
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { decodePaymentRequiredHeader } from "@okxweb3/x402-core/http";
+import type { PaymentRequired } from "@okxweb3/x402-core/types";
 import { z } from "zod";
 
 const Text = z.string().trim().min(1);
 
 export type ExternalTransport = "direct" | "zroute";
 export type ExternalAgentStatus = "draft" | "checking" | "ready" | "offline" | "revoked" | "error";
+type UpstreamIdentity = { agentId?: string; name?: string; provider?: string };
 
 export type ExternalAgentConnection = {
   id: string;
@@ -32,24 +42,29 @@ export type ExternalAgentConnection = {
   upstreamAgentId?: string;
   /** Identity the agent itself reported on the last successful check. */
   reportedName?: string;
-  reportedUpstream?: { agentId?: string; name?: string; provider?: string };
+  reportedUpstream?: UpstreamIdentity;
   capabilities: string[];
+  /** Set from the agent card: the agent supports `message/stream`. */
+  streaming?: boolean;
+  /** The person opted this connection into approval-gated TESTNET payments. */
+  paymentsTestnet?: boolean;
   network?: string;
   status: ExternalAgentStatus;
   provenance: "direct-endpoint" | "zroute-proxy" | "local-catalog";
-  /** Name of the server-side environment variable holding the credential. */
+  /** Development fallback: server environment variable holding the token. */
   credentialEnv?: string;
   lastCheckedAt?: string;
   lastLatencyMs?: number;
   createdAt: string;
 };
 
-/** What the browser may see: no credential variable, no query string. */
+/** What the browser may see: no credential, no variable name, no query. */
 export type PublicExternalAgent = Omit<ExternalAgentConnection, "credentialEnv" | "endpointUrl"> & {
   endpointHost: string;
   endpointPath: string;
   credentialsConfigured: boolean;
-  readOnly: true;
+  credentialSource?: "secret-store" | "environment";
+  readOnly: boolean;
 };
 
 export type ConnectionCheck = {
@@ -58,26 +73,44 @@ export type ConnectionCheck = {
   provider: string;
   agentId?: string;
   agentName?: string;
-  upstream?: { agentId?: string; name?: string; provider?: string };
+  upstream?: UpstreamIdentity;
   capabilities: string[];
+  streaming?: boolean;
   latencyMs?: number;
   provenance: string;
   safeMessage: string;
 };
 
+export type PaymentRequiredChallenge = PaymentRequired;
+
 export type ExternalAgentResult =
-  | { ok: true; text: string; latencyMs: number; upstream?: { agentId?: string; name?: string; provider?: string }; contextId?: string }
-  | { ok: false; status: "timeout" | "unauthorized" | "offline" | "invalid" | "error"; safeMessage: string; latencyMs: number };
+  | { ok: true; text: string; flags: ContentFlag[]; latencyMs: number; upstream?: UpstreamIdentity; contextId?: string; paymentResponse?: string }
+  | { ok: false; status: "timeout" | "unauthorized" | "offline" | "invalid" | "error" | "cancelled"; safeMessage: string; latencyMs: number }
+  | { ok: false; status: "payment_required"; safeMessage: string; latencyMs: number; challenge: PaymentRequiredChallenge };
+
+/** What the adapter needs from the secret store; injectable for tests. */
+export interface ExternalAgentSecretsLike {
+  token(connectionId: string): string | undefined;
+  signProof(payload: string): string;
+}
+
+export interface SendInput {
+  connection: ExternalAgentConnection;
+  roomId: string;
+  requestId: string;
+  message: string;
+  conversationId?: string;
+  /** Streaming: called with the full reply text so far. */
+  onText?: (text: string) => void;
+  /** The person pressed Stop. */
+  signal?: AbortSignal;
+  /** Approved x402 payment headers for the retry after a 402. */
+  paymentHeaders?: Record<string, string>;
+}
 
 export interface ExternalAgentAdapter {
   checkConnection(connection: ExternalAgentConnection): Promise<ConnectionCheck>;
-  sendMessage(input: {
-    connection: ExternalAgentConnection;
-    roomId: string;
-    requestId: string;
-    message: string;
-    conversationId?: string;
-  }): Promise<ExternalAgentResult>;
+  sendMessage(input: SendInput): Promise<ExternalAgentResult>;
 }
 
 export const MESSAGES = {
@@ -90,10 +123,13 @@ export const MESSAGES = {
   timeout: "The request timed out; no fallback was executed.",
   notInRoom: "The agent is connected, but not available in this room.",
   revoked: "This connection was removed; requests to it are refused.",
+  cancelled: "Stopped by you; no fallback was executed.",
+  paymentRequired: "The agent asked for payment.",
+  paymentsOff: "The agent asked for payment, but payments are off for this connection. Nothing was paid.",
 } as const;
 
-/** Read-only milestone: text chat and read-only research only. Anything that
- * moves value or signs is refused even if the agent advertises it. */
+/** Advertised capabilities are untrusted. Value-moving ones are never taken
+ * from a card; testnet payments exist only as the person's own opt-in. */
 const ALLOWED_CAPABILITIES = new Set(["chat", "text", "research", "market-intelligence", "readiness", "trust", "read-only", "summarize", "search"]);
 const FORBIDDEN_CAPABILITY = /wallet|pay|sign|transfer|escrow|swap|trade|execute|mint|withdraw|deposit|x402|key/i;
 
@@ -149,43 +185,73 @@ const CreateInput = z.object({
   capabilities: z.array(z.string()).max(20).optional(),
   credentialEnv: z.union([z.literal(""), z.string().regex(CREDENTIAL_ENV, "Credential variable must look like KIND_MEITNER_EXT_NAME.")]).optional()
     .transform((value) => value || undefined),
+  paymentsTestnet: z.boolean().optional(),
 });
 
-function credentialFor(connection: ExternalAgentConnection): string | undefined {
+function credentialFor(connection: ExternalAgentConnection, secrets?: ExternalAgentSecretsLike): { value: string; source: "secret-store" | "environment" } | undefined {
+  const stored = secrets?.token(connection.id);
+  if (stored) return { value: stored, source: "secret-store" };
   if (!connection.credentialEnv || !validCredentialEnv(connection.credentialEnv)) return undefined;
-  const value = process.env[connection.credentialEnv];
-  return value && value.trim() ? value.trim() : undefined;
+  const value = process.env[connection.credentialEnv]?.trim();
+  return value ? { value, source: "environment" } : undefined;
 }
 
-export function toPublic(connection: ExternalAgentConnection): PublicExternalAgent {
-  const { credentialEnv, endpointUrl, ...rest } = connection;
+export function toPublic(connection: ExternalAgentConnection, secrets?: ExternalAgentSecretsLike): PublicExternalAgent {
+  const { credentialEnv: _credentialEnv, endpointUrl, ...rest } = connection;
   const url = new URL(endpointUrl);
+  const credential = credentialFor(connection, secrets);
   return {
     ...rest,
     endpointHost: url.host,
     endpointPath: url.pathname,
-    credentialsConfigured: Boolean(credentialEnv && credentialFor(connection)),
-    readOnly: true,
+    credentialsConfigured: Boolean(credential),
+    ...(credential ? { credentialSource: credential.source } : {}),
+    readOnly: !connection.paymentsTestnet,
   };
 }
 
 /** Removes anything that looks like a credential before text is stored. */
 export function redact(text: string): string {
   return text
-    .replace(/(authorization|api[_-]?key|token|secret)(["'\s:=]+)(bearer\s+)?[^\s"',}]+/gi, "$1$2$3[redacted]")
+    .replace(/(authorization|api[_-]?key|token|secret)(["']?\s*[:=]\s*["']?)(bearer\s+)?[^\s"',}]+/gi, "$1$2$3[redacted]")
     .replace(/\bbearer\s+(?!\[redacted\])[^\s"',}]+/gi, "Bearer [redacted]")
-    .replace(/\b(sk|pk|xox[a-z])-[A-Za-z0-9_-]{10,}\b/g, "[redacted]");
+    .replace(/\b(sk|pk|xox[a-z])-[A-Za-z0-9_-]{10,}\b/g, "[redacted]")
+    .replace(/\b0x[0-9a-fA-F]{64}\b/g, "[redacted]");
 }
 
-type Fetch = typeof fetch;
-const DEFAULT_TIMEOUT_MS = 30_000;
-function timeoutMs(): number {
-  const fromEnv = Number(process.env.KIND_MEITNER_EXTERNAL_AGENT_TIMEOUT_MS);
-  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_TIMEOUT_MS;
+export type ContentFlag = "hidden-characters" | "unsafe-link" | "instructions-to-agents" | "redacted-secret" | "truncated";
+const MAX_REPLY = 20_000;
+// Control characters are exactly what this pattern exists to strip.
+// oxlint-disable-next-line no-control-regex
+const HIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+const UNSAFE_LINK = /(\]\(\s*|<)(javascript|data|vbscript|file):[^)>\s]*[)>]?/gi;
+const INJECTION = /\b(ignore|disregard|forget)\s+(all\s+|any\s+|the\s+|your\s+)?(previous|prior|above|earlier|system)\s+(instructions|messages|rules|prompts?)\b|\byou\s+are\s+now\b|\b(reveal|print|show)\s+(your|the)\s+(system\s+prompt|instructions|api\s+key|secrets?|private\s+key)\b|\bnew\s+instructions\s*:/i;
+
+/** Reply text is untrusted input. Hidden/control characters and script links
+ * are removed, secrets redacted, length capped; instruction-like text is kept
+ * (it may be legitimate) but flagged so the UI and reading bots treat it as data. */
+export function sanitizeReply(raw: string): { text: string; flags: ContentFlag[] } {
+  const flags: ContentFlag[] = [];
+  let text = raw.normalize("NFC");
+  const visible = text.replace(HIDDEN, "");
+  if (visible !== text) flags.push("hidden-characters");
+  text = visible.replace(/\r\n?/g, "\n");
+  const linked = text.replace(UNSAFE_LINK, (_m, open: string) => (open.startsWith("]") ? "](#blocked-link)" : "[blocked link]"));
+  if (linked !== text) flags.push("unsafe-link");
+  text = linked;
+  const redacted = redact(text);
+  if (redacted !== text) flags.push("redacted-secret");
+  text = redacted;
+  if (INJECTION.test(text)) flags.push("instructions-to-agents");
+  if (text.length > MAX_REPLY) {
+    text = `${text.slice(0, MAX_REPLY)}\n[truncated]`;
+    flags.push("truncated");
+  }
+  return { text, flags };
 }
+
 
 const Upstream = z.object({ agentId: Text.max(120).optional(), name: Text.max(120).optional(), provider: Text.max(120).optional() });
-type UpstreamIdentity = z.infer<typeof Upstream>;
 const Part = z.object({ kind: z.string().optional(), type: z.string().optional(), text: z.string().optional() });
 const Parts = z.array(Part).default([]);
 const Metadata = z.object({ agentId: Text.max(120).optional(), upstream: Upstream.optional() }).partial().default({});
@@ -194,36 +260,62 @@ const Metadata = z.object({ agentId: Text.max(120).optional(), upstream: Upstrea
 const AgentCard = z.object({
   name: Text.max(120),
   provider: z.object({ organization: Text.max(120).optional() }).optional(),
+  capabilities: z.object({ streaming: z.boolean().optional() }).partial().default({}),
   skills: z.array(z.object({ id: z.string().optional(), tags: z.array(z.string()).optional() })).default([]),
   metadata: Metadata,
 });
 
-const SendResult = z.object({
+const MessageResult = z.object({ kind: z.literal("message"), parts: Parts, contextId: z.string().optional(), metadata: Metadata });
+const TaskResult = z.object({
+  kind: z.literal("task"),
+  id: z.string().optional(),
+  contextId: z.string().optional(),
+  status: z.object({ state: z.string(), message: z.object({ parts: Parts }).optional() }),
+  artifacts: z.array(z.object({ parts: Parts })).default([]),
+  metadata: Metadata,
+});
+const RpcError = z.object({ jsonrpc: z.literal("2.0"), error: z.object({ message: z.string() }) });
+const SendResult = z.object({ jsonrpc: z.literal("2.0"), result: z.discriminatedUnion("kind", [MessageResult, TaskResult]) });
+
+/** One Server-Sent Event of `message/stream`. */
+const StreamEvent = z.object({
   jsonrpc: z.literal("2.0"),
   result: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("message"), parts: Parts, contextId: z.string().optional(), metadata: Metadata }),
+    MessageResult,
+    TaskResult,
     z.object({
-      kind: z.literal("task"),
+      kind: z.literal("status-update"),
+      taskId: z.string().optional(),
       contextId: z.string().optional(),
+      final: z.boolean().optional(),
       status: z.object({ state: z.string(), message: z.object({ parts: Parts }).optional() }),
-      artifacts: z.array(z.object({ parts: Parts })).default([]),
+      metadata: Metadata,
+    }),
+    z.object({
+      kind: z.literal("artifact-update"),
+      taskId: z.string().optional(),
+      contextId: z.string().optional(),
+      append: z.boolean().optional(),
+      lastChunk: z.boolean().optional(),
+      artifact: z.object({ parts: Parts }),
       metadata: Metadata,
     }),
   ]),
 });
 
-type CardIdentity = { name: string; agentId: string; provider?: string; capabilities: string[]; upstream?: UpstreamIdentity };
+type CardIdentity = { name: string; agentId: string; provider?: string; capabilities: string[]; streaming: boolean; upstream?: UpstreamIdentity };
 
 function parseCard(body: unknown): CardIdentity | null {
   const card = AgentCard.safeParse(body);
   if (!card.success) return null;
-  const { name, provider, skills, metadata } = card.data;
+  const { name, provider, skills, metadata, capabilities } = card.data;
   const skillCaps = skills.flatMap((skill) => [skill.id ?? "", ...(skill.tags ?? [])]);
   return {
     name,
     agentId: metadata.agentId ?? name,
     provider: provider?.organization,
     capabilities: allowedCapabilities(["chat", ...skillCaps]),
+    streaming: capabilities.streaming === true,
     upstream: metadata.upstream,
   };
 }
@@ -244,34 +336,132 @@ export function parseSendResult(body: unknown): { text: string; contextId?: stri
   return text ? { text, contextId: result.contextId, upstream: result.metadata.upstream } : null;
 }
 
-async function timedFetch(fetchImpl: Fetch, url: string, init: RequestInit): Promise<{ res: Response; latencyMs: number } | { timeout: true; latencyMs: number } | { failed: true; latencyMs: number }> {
-  const started = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs());
-  try {
-    const res = await fetchImpl(url, { ...init, signal: controller.signal, redirect: "error" });
-    return { res, latencyMs: Date.now() - started };
-  } catch (error) {
-    const latencyMs = Date.now() - started;
-    return error instanceof Error && error.name === "AbortError" ? { timeout: true, latencyMs } : { failed: true, latencyMs };
-  } finally {
-    clearTimeout(timer);
+/** Folds `message/stream` events into the reply so far. */
+export class StreamAccumulator {
+  text = "";
+  taskId?: string;
+  contextId?: string;
+  upstream?: UpstreamIdentity;
+  done = false;
+  failed = false;
+  private artifactText = "";
+
+  push(raw: unknown): boolean {
+    const parsed = StreamEvent.safeParse(raw);
+    if (!parsed.success) return false;
+    const event = parsed.data.result;
+    this.contextId = event.contextId ?? this.contextId;
+    this.upstream = event.metadata.upstream ?? this.upstream;
+    if (event.kind === "message") {
+      this.text = textFromParts(event.parts);
+      this.done = true;
+    } else if (event.kind === "task") {
+      this.taskId = event.id ?? this.taskId;
+      const artifacts = event.artifacts.map((artifact) => textFromParts(artifact.parts)).filter(Boolean).join("\n");
+      if (artifacts) this.artifactText = artifacts;
+      this.settle(event.status.state, event.status.message?.parts);
+    } else if (event.kind === "artifact-update") {
+      this.taskId = event.taskId ?? this.taskId;
+      const chunk = textFromParts(event.artifact.parts);
+      this.artifactText = event.append ? this.artifactText + chunk : chunk;
+      this.text = this.artifactText;
+    } else {
+      this.taskId = event.taskId ?? this.taskId;
+      this.settle(event.status.state, event.status.message?.parts, event.final);
+    }
+    return true;
+  }
+
+  private settle(state: string, parts?: z.infer<typeof Parts>, final?: boolean) {
+    const statusText = parts ? textFromParts(parts) : "";
+    this.text = this.artifactText || (state === "working" ? this.text + statusText : statusText || this.text);
+    if (state === "completed") this.done = true;
+    if (state === "failed" || state === "canceled" || state === "rejected") this.failed = true;
+    if (final && !this.failed) this.done = true;
   }
 }
 
-function headersFor(connection: ExternalAgentConnection): Record<string, string> {
-  const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json" };
-  const credential = credentialFor(connection);
-  if (credential) headers.authorization = `Bearer ${credential}`;
-  return headers;
+type Fetch = typeof fetch;
+const DEFAULT_TIMEOUT_MS = 30_000;
+function timeoutMs(): number {
+  const fromEnv = Number(process.env.KIND_MEITNER_EXTERNAL_AGENT_TIMEOUT_MS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_TIMEOUT_MS;
 }
+
+const PROOF_TTL_MS = 120_000;
+/** One-time request proof: Ed25519 over the canonical JSON payload. The
+ * agent verifies it with GET /api/external-agents/proof-key, checks `aud`,
+ * `exp`, and rejects any `nonce` it has seen. */
+export function requestProof(secrets: ExternalAgentSecretsLike, claims: { connectionId: string; agentId?: string; audience: string; purpose: string; requestId: string }): string {
+  const now = Date.now();
+  const payload = Buffer.from(JSON.stringify({
+    v: 1,
+    cid: claims.connectionId,
+    ...(claims.agentId ? { aid: claims.agentId } : {}),
+    aud: claims.audience,
+    purpose: claims.purpose,
+    rid: claims.requestId,
+    nonce: randomUUID(),
+    iat: now,
+    exp: now + PROOF_TTL_MS,
+  })).toString("base64url");
+  return `${payload}.${secrets.signProof(payload)}`;
+}
+
+type Opened = { res: Response; latencyMs: number; done: () => void } | { error: "timeout" | "cancelled" | "failed"; latencyMs: number };
 
 class A2AAdapter implements ExternalAgentAdapter {
   private readonly fetchImpl: Fetch;
   private readonly zroute: boolean;
-  constructor(fetchImpl: Fetch, zroute: boolean) {
+  private readonly secrets?: ExternalAgentSecretsLike;
+  constructor(fetchImpl: Fetch, zroute: boolean, secrets?: ExternalAgentSecretsLike) {
     this.fetchImpl = fetchImpl;
     this.zroute = zroute;
+    this.secrets = secrets;
+  }
+
+  private headers(connection: ExternalAgentConnection, url: URL, purpose: string, requestId: string, accept = "application/json"): Record<string, string> {
+    const headers: Record<string, string> = { "content-type": "application/json", accept };
+    const credential = credentialFor(connection, this.secrets);
+    if (credential) headers.authorization = `Bearer ${credential.value}`;
+    if (this.secrets) {
+      headers["x-km-request-proof"] = requestProof(this.secrets, {
+        connectionId: connection.id,
+        agentId: connection.upstreamAgentId ?? connection.reportedName,
+        audience: url.origin,
+        purpose,
+        requestId,
+      });
+    }
+    return headers;
+  }
+
+  /** fetch bounded by the timeout and the person's Stop, telling them apart. */
+  private async open(url: string, init: RequestInit, signal?: AbortSignal): Promise<Opened> {
+    const started = Date.now();
+    const controller = new AbortController();
+    let reason: "timeout" | "cancelled" | undefined;
+    const timer = setTimeout(() => {
+      reason = "timeout";
+      controller.abort();
+    }, timeoutMs());
+    const onStop = () => {
+      reason = "cancelled";
+      controller.abort();
+    };
+    if (signal?.aborted) onStop();
+    signal?.addEventListener("abort", onStop, { once: true });
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onStop);
+    };
+    try {
+      const res = await this.fetchImpl(url, { ...init, signal: controller.signal, redirect: "error" });
+      return { res, latencyMs: Date.now() - started, done };
+    } catch {
+      done();
+      return { error: reason ?? "failed", latencyMs: Date.now() - started };
+    }
   }
 
   async checkConnection(connection: ExternalAgentConnection): Promise<ConnectionCheck> {
@@ -279,52 +469,64 @@ class A2AAdapter implements ExternalAgentAdapter {
     const base = { provider: connection.provider, capabilities: [] as string[], provenance };
     const valid = validateEndpoint(connection.endpointUrl);
     if (!valid.ok) return { ...base, ok: false, status: "invalid", safeMessage: valid.message };
-    if (connection.credentialEnv && !credentialFor(connection)) {
+    if (connection.credentialEnv && !credentialFor(connection, this.secrets)) {
       return { ...base, ok: false, status: "unauthorized", safeMessage: MESSAGES.noAuth };
     }
     const card = new URL(valid.url);
     card.pathname = `${card.pathname.replace(/\/$/, "")}/.well-known/agent.json`;
     card.search = "";
-    const response = await timedFetch(this.fetchImpl, card.toString(), { method: "GET", headers: headersFor(connection) });
-    if ("timeout" in response) return { ...base, ok: false, status: "timeout", latencyMs: response.latencyMs, safeMessage: "The agent did not answer before the timeout." };
-    if ("failed" in response) return { ...base, ok: false, status: "offline", latencyMs: response.latencyMs, safeMessage: MESSAGES.unreachable };
-    const { res, latencyMs } = response;
-    if (res.status === 401 || res.status === 403) return { ...base, ok: false, status: "unauthorized", latencyMs, safeMessage: connection.credentialEnv ? "The agent rejected the server credential." : MESSAGES.noAuth };
-    if (!res.ok) return { ...base, ok: false, status: "offline", latencyMs, safeMessage: MESSAGES.unreachable };
-    const identity = parseCard(await res.json().catch(() => null));
-    if (!identity) return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: MESSAGES.unsupported };
-    if (connection.upstreamAgentId && !this.zroute && identity.agentId && identity.agentId !== connection.upstreamAgentId) {
-      return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: `The agent reported identity "${identity.agentId}", not "${connection.upstreamAgentId}".` };
+    const opened = await this.open(card.toString(), { method: "GET", headers: this.headers(connection, card, "agent-card", randomUUID()) });
+    if ("error" in opened) {
+      return opened.error === "timeout"
+        ? { ...base, ok: false, status: "timeout", latencyMs: opened.latencyMs, safeMessage: "The agent did not answer before the timeout." }
+        : { ...base, ok: false, status: "offline", latencyMs: opened.latencyMs, safeMessage: MESSAGES.unreachable };
     }
-    if (this.zroute) {
-      if (!identity.upstream?.agentId) return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: MESSAGES.upstreamMissing };
-      if (connection.upstreamAgentId && identity.upstream.agentId !== connection.upstreamAgentId) {
-        return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: `The zroute proxy routes to "${identity.upstream.agentId}", not "${connection.upstreamAgentId}".` };
+    const { res, latencyMs } = opened;
+    try {
+      if (res.status === 401 || res.status === 403) {
+        return { ...base, ok: false, status: "unauthorized", latencyMs, safeMessage: credentialFor(connection, this.secrets) ? "The agent rejected the server credential or request proof." : MESSAGES.noAuth };
       }
+      if (!res.ok) return { ...base, ok: false, status: "offline", latencyMs, safeMessage: MESSAGES.unreachable };
+      const identity = parseCard(await res.json().catch(() => null));
+      if (!identity) return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: MESSAGES.unsupported };
+      if (connection.upstreamAgentId && !this.zroute && identity.agentId !== connection.upstreamAgentId) {
+        return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: `The agent reported identity "${identity.agentId}", not "${connection.upstreamAgentId}".` };
+      }
+      if (this.zroute) {
+        if (!identity.upstream?.agentId) return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: MESSAGES.upstreamMissing };
+        if (connection.upstreamAgentId && identity.upstream.agentId !== connection.upstreamAgentId) {
+          return { ...base, ok: false, status: "invalid", latencyMs, safeMessage: `The zroute proxy routes to "${identity.upstream.agentId}", not "${connection.upstreamAgentId}".` };
+        }
+      }
+      return {
+        ok: true,
+        status: "ready",
+        provider: this.zroute ? "zroute proxy" : identity.provider ?? connection.provider,
+        agentId: identity.agentId,
+        agentName: identity.name,
+        upstream: identity.upstream,
+        capabilities: identity.capabilities,
+        streaming: identity.streaming,
+        latencyMs,
+        provenance,
+        safeMessage: this.zroute ? `Connected through zroute to ${identity.upstream?.name ?? identity.upstream?.agentId}.` : `Connected to ${identity.name}.`,
+      };
+    } finally {
+      opened.done();
     }
-    return {
-      ok: true,
-      status: "ready",
-      provider: this.zroute ? "zroute proxy" : identity.provider ?? connection.provider,
-      agentId: identity.agentId,
-      agentName: identity.name,
-      upstream: identity.upstream,
-      capabilities: identity.capabilities,
-      latencyMs,
-      provenance,
-      safeMessage: this.zroute ? `Connected through zroute to ${identity.upstream?.name ?? identity.upstream?.agentId}.` : `Connected to ${identity.name}.`,
-    };
   }
 
-  async sendMessage(input: { connection: ExternalAgentConnection; roomId: string; requestId: string; message: string; conversationId?: string }): Promise<ExternalAgentResult> {
+  async sendMessage(input: SendInput): Promise<ExternalAgentResult> {
     const { connection } = input;
     const valid = validateEndpoint(connection.endpointUrl);
     if (!valid.ok) return { ok: false, status: "invalid", safeMessage: valid.message, latencyMs: 0 };
-    if (connection.credentialEnv && !credentialFor(connection)) return { ok: false, status: "unauthorized", safeMessage: MESSAGES.noAuth, latencyMs: 0 };
+    if (connection.credentialEnv && !credentialFor(connection, this.secrets)) return { ok: false, status: "unauthorized", safeMessage: MESSAGES.noAuth, latencyMs: 0 };
+    const streaming = Boolean(connection.streaming && input.onText);
+    const method = streaming ? "message/stream" : "message/send";
     const body = {
       jsonrpc: "2.0",
       id: input.requestId,
-      method: "message/send",
+      method,
       params: {
         message: {
           kind: "message",
@@ -337,21 +539,115 @@ class A2AAdapter implements ExternalAgentAdapter {
         metadata: { roomId: input.roomId, ...(this.zroute && connection.routeId ? { routeId: connection.routeId } : {}) },
       },
     };
-    const response = await timedFetch(this.fetchImpl, valid.url.toString(), { method: "POST", headers: headersFor(connection), body: JSON.stringify(body) });
-    if ("timeout" in response) return { ok: false, status: "timeout", safeMessage: MESSAGES.timeout, latencyMs: response.latencyMs };
-    if ("failed" in response) return { ok: false, status: "offline", safeMessage: MESSAGES.unreachable, latencyMs: response.latencyMs };
-    const { res, latencyMs } = response;
-    if (res.status === 401 || res.status === 403) return { ok: false, status: "unauthorized", safeMessage: MESSAGES.noAuth, latencyMs };
-    if (!res.ok) return { ok: false, status: "offline", safeMessage: MESSAGES.unreachable, latencyMs };
-    const parsed = parseSendResult(await res.json().catch(() => null));
-    if (!parsed) return { ok: false, status: "invalid", safeMessage: MESSAGES.unsupported, latencyMs };
-    if (this.zroute && !parsed.upstream?.agentId) return { ok: false, status: "invalid", safeMessage: MESSAGES.upstreamMissing, latencyMs };
-    return { ok: true, text: redact(parsed.text).slice(0, 20_000), latencyMs, upstream: parsed.upstream, contextId: parsed.contextId };
+    const headers = { ...this.headers(connection, valid.url, method, input.requestId, streaming ? "text/event-stream" : "application/json"), ...input.paymentHeaders };
+    const opened = await this.open(valid.url.toString(), { method: "POST", headers, body: JSON.stringify(body) }, input.signal);
+    if ("error" in opened) {
+      if (opened.error === "timeout") return { ok: false, status: "timeout", safeMessage: MESSAGES.timeout, latencyMs: opened.latencyMs };
+      if (opened.error === "cancelled") return { ok: false, status: "cancelled", safeMessage: MESSAGES.cancelled, latencyMs: opened.latencyMs };
+      return { ok: false, status: "offline", safeMessage: MESSAGES.unreachable, latencyMs: opened.latencyMs };
+    }
+    const { res, latencyMs } = opened;
+    try {
+      if (res.status === 402) {
+        const header = res.headers.get("payment-required");
+        let challenge: PaymentRequiredChallenge | undefined;
+        try {
+          challenge = header ? decodePaymentRequiredHeader(header) : undefined;
+        } catch {
+          challenge = undefined;
+        }
+        if (!challenge) return { ok: false, status: "invalid", safeMessage: MESSAGES.unsupported, latencyMs };
+        return { ok: false, status: "payment_required", safeMessage: MESSAGES.paymentRequired, latencyMs, challenge };
+      }
+      if (res.status === 401 || res.status === 403) return { ok: false, status: "unauthorized", safeMessage: MESSAGES.noAuth, latencyMs };
+      if (!res.ok) return { ok: false, status: "offline", safeMessage: MESSAGES.unreachable, latencyMs };
+      const paymentResponse = res.headers.get("payment-response") ?? undefined;
+      if (streaming && res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
+        return await this.readStream(res, input, latencyMs, paymentResponse);
+      }
+      const body: unknown = await res.json().catch(() => null);
+      const parsed = parseSendResult(body);
+      if (!parsed) {
+        const rpcError = RpcError.safeParse(body);
+        return rpcError.success
+          ? { ok: false, status: "error", safeMessage: `The agent returned an error: ${sanitizeReply(rpcError.data.error.message).text.slice(0, 200)}`, latencyMs }
+          : { ok: false, status: "invalid", safeMessage: MESSAGES.unsupported, latencyMs };
+      }
+      if (this.zroute && !parsed.upstream?.agentId) return { ok: false, status: "invalid", safeMessage: MESSAGES.upstreamMissing, latencyMs };
+      const clean = sanitizeReply(parsed.text);
+      return { ok: true, text: clean.text, flags: clean.flags, latencyMs, upstream: parsed.upstream, contextId: parsed.contextId, ...(paymentResponse ? { paymentResponse } : {}) };
+    } catch {
+      return input.signal?.aborted
+        ? { ok: false, status: "cancelled", safeMessage: MESSAGES.cancelled, latencyMs }
+        : { ok: false, status: "timeout", safeMessage: MESSAGES.timeout, latencyMs };
+    } finally {
+      opened.done();
+    }
+  }
+
+  private async readStream(res: Response, input: SendInput, latencyMs: number, paymentResponse?: string): Promise<ExternalAgentResult> {
+    const acc = new StreamAccumulator();
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let last = "";
+    const started = Date.now() - latencyMs;
+    try {
+      while (!acc.done && !acc.failed) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let boundary: number;
+        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+          const event = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          const data = event.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
+          if (!data) continue;
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            continue;
+          }
+          acc.push(parsed);
+          if (acc.text !== last) {
+            last = acc.text;
+            input.onText?.(sanitizeReply(acc.text).text);
+          }
+        }
+      }
+    } catch {
+      if (input.signal?.aborted) {
+        await this.cancelTask(input, acc.taskId);
+        return { ok: false, status: "cancelled", safeMessage: MESSAGES.cancelled, latencyMs: Date.now() - started };
+      }
+      return { ok: false, status: "timeout", safeMessage: MESSAGES.timeout, latencyMs: Date.now() - started };
+    } finally {
+      reader.releaseLock();
+    }
+    if (acc.failed || !acc.done || !acc.text) return { ok: false, status: "invalid", safeMessage: MESSAGES.unsupported, latencyMs: Date.now() - started };
+    if (this.zroute && !acc.upstream?.agentId) return { ok: false, status: "invalid", safeMessage: MESSAGES.upstreamMissing, latencyMs: Date.now() - started };
+    const clean = sanitizeReply(acc.text);
+    return { ok: true, text: clean.text, flags: clean.flags, latencyMs: Date.now() - started, upstream: acc.upstream, contextId: acc.contextId, ...(paymentResponse ? { paymentResponse } : {}) };
+  }
+
+  /** Best effort: tell the agent to stop a task the person cancelled. */
+  private async cancelTask(input: SendInput, taskId?: string): Promise<void> {
+    if (!taskId) return;
+    const valid = validateEndpoint(input.connection.endpointUrl);
+    if (!valid.ok) return;
+    const requestId = `${input.requestId}:cancel`;
+    const opened = await this.open(valid.url.toString(), {
+      method: "POST",
+      headers: this.headers(input.connection, valid.url, "tasks/cancel", requestId),
+      body: JSON.stringify({ jsonrpc: "2.0", id: requestId, method: "tasks/cancel", params: { id: taskId } }),
+    });
+    if (!("error" in opened)) opened.done();
   }
 }
 
-export function adapterFor(transport: ExternalTransport, fetchImpl: Fetch = fetch): ExternalAgentAdapter {
-  return new A2AAdapter(fetchImpl, transport === "zroute");
+export function adapterFor(transport: ExternalTransport, deps: { fetch?: Fetch; secrets?: ExternalAgentSecretsLike } = {}): ExternalAgentAdapter {
+  return new A2AAdapter(deps.fetch ?? fetch, transport === "zroute", deps.secrets);
 }
 
 /** Connections persist in DATA_DIR/external-agents.json, secrets excluded. */
@@ -407,6 +703,7 @@ export class ExternalAgentRegistry {
       status: "draft",
       provenance: body.transport === "zroute" ? "zroute-proxy" : "direct-endpoint",
       ...(body.credentialEnv ? { credentialEnv: body.credentialEnv } : {}),
+      ...(body.paymentsTestnet ? { paymentsTestnet: true, network: "eip155:1952" } : {}),
       createdAt: new Date().toISOString(),
     };
     this.connections.push(connection);
@@ -423,6 +720,7 @@ export class ExternalAgentRegistry {
     if (check.ok) {
       connection.reportedName = check.agentName;
       connection.reportedUpstream = check.upstream;
+      connection.streaming = check.streaming === true;
       // Advertised capabilities stay untrusted: only the intersection with
       // what the user declared and the server allows is kept.
       connection.capabilities = connection.capabilities.filter((cap) => cap === "chat" || check.capabilities.includes(cap));
@@ -436,6 +734,7 @@ export class ExternalAgentRegistry {
     if (!connection) return undefined;
     connection.status = "revoked";
     delete connection.credentialEnv;
+    delete connection.paymentsTestnet;
     this.save();
     return connection;
   }

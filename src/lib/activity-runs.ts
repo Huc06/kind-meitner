@@ -25,7 +25,7 @@ export type TranscriptItem =
 function foldable(message: Message): boolean {
   const tool = message.tool;
   if (message.kind !== "activity" || !tool) return false;
-  if (message.comm || message.threadRef) return false;
+  if (message.comm || message.threadRef || message.externalPayment) return false;
   if (isOkxGateTool(tool.name)) return false;
   if (tool.ok !== true) return false;
   return !tool.name.startsWith("error:");

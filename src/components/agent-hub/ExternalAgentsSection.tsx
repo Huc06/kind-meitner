@@ -1,11 +1,16 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Globe, Route } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { t } from "@/lib/i18n";
 import {
   checkExternalAgent,
+  clearExternalCredential,
   createExternalAgent,
+  fetchTestnetWallet,
+  formatTestnetAmount,
+  setExternalCredential,
+  type TestnetWallet,
   inviteExternalAgent,
   removeExternalAgent,
   useExternalAgents,
@@ -32,6 +37,7 @@ export function ExternalAgentsSection({ currentRoom }: { currentRoom: Group | nu
         </Button>
       </div>
       {adding && <AddExternalAgentForm onDone={() => setAdding(false)} />}
+      {agents.some((agent) => agent.paymentsTestnet) && <TestnetWalletPanel />}
       <ExternalGroup title={t("external.hub.direct")} agents={direct} currentRoom={currentRoom} />
       <ExternalGroup title={t("external.hub.zroute")} agents={zroute} currentRoom={currentRoom} />
     </div>
@@ -112,7 +118,11 @@ function ExternalAgentCard({ agent, currentRoom }: { agent: ExternalAgent; curre
         <dt className="text-ink-secondary">{t("external.field.provenance")}</dt>
         <dd className="truncate text-ink">{t(`external.provenance.${agent.provenance}`)}</dd>
         <dt className="text-ink-secondary">{t("external.field.credentials")}</dt>
-        <dd className="text-ink">{agent.credentialsConfigured ? t("external.credentials.configured") : t("external.credentials.none")}</dd>
+        <dd className="text-ink">
+          {agent.credentialsConfigured
+            ? agent.credentialSource === "environment" ? t("external.credentials.environment") : t("external.credentials.configured")
+            : t("external.credentials.none")}
+        </dd>
         <dt className="text-ink-secondary">{t("external.field.lastChecked")}</dt>
         <dd className="text-ink">
           {agent.lastCheckedAt ? new Date(agent.lastCheckedAt).toLocaleString() : t("external.notChecked")}
@@ -120,10 +130,22 @@ function ExternalAgentCard({ agent, currentRoom }: { agent: ExternalAgent; curre
         </dd>
       </dl>
       <div className="flex flex-wrap gap-1.5" aria-label={t("external.safety.aria")}>
-        <Tag tone="neutral" variant="outline" size="sm">{t("external.readOnly")}</Tag>
-        <Tag tone="neutral" variant="outline" size="sm">{t("external.noWallet")}</Tag>
-        <Tag tone="neutral" variant="outline" size="sm">{t("external.noPayment")}</Tag>
+        {agent.readOnly ? (
+          <>
+            <Tag tone="neutral" variant="outline" size="sm">{t("external.readOnly")}</Tag>
+            <Tag tone="neutral" variant="outline" size="sm">{t("external.noWallet")}</Tag>
+            <Tag tone="neutral" variant="outline" size="sm">{t("external.noPayment")}</Tag>
+          </>
+        ) : (
+          <>
+            <Tag tone="warning" variant="outline" size="sm">{t("external.testnetPayments")}</Tag>
+            <Tag tone="neutral" variant="outline" size="sm">{t("external.approvalEach")}</Tag>
+            <Tag tone="neutral" variant="outline" size="sm">{t("external.noMainnet")}</Tag>
+          </>
+        )}
+        {agent.streaming && <Tag tone="neutral" variant="outline" size="sm">{t("external.streamingSupported")}</Tag>}
       </div>
+      <CredentialField agent={agent} />
       <div className="flex flex-wrap gap-1.5 border-t border-hairline pt-2.5">
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run(async () => {
           const check = await checkExternalAgent(agent.id);
@@ -171,6 +193,7 @@ function AddExternalAgentForm({ onDone }: { onDone: () => void }) {
       ...(transport === "zroute" && field("routeId") ? { routeId: field("routeId") } : {}),
       ...(field("credentialEnv") ? { credentialEnv: field("credentialEnv") } : {}),
       capabilities: field("capabilities").split(",").map((cap) => cap.trim()).filter(Boolean),
+      ...(data.get("paymentsTestnet") === "on" ? { paymentsTestnet: true } : {}),
     };
     setSaving(true);
     setError(null);
@@ -217,6 +240,13 @@ function AddExternalAgentForm({ onDone }: { onDone: () => void }) {
           <input name="credentialEnv" placeholder="KIND_MEITNER_EXT_NAME" pattern="KIND_MEITNER_EXT_[A-Z0-9_]+" className={inputClass} />
         </Field>
       </div>
+      <label className="flex items-start gap-2 font-mono text-[11.5px] text-ink">
+        <input type="checkbox" name="paymentsTestnet" className="mt-0.5" />
+        <span>
+          {t("external.form.paymentsTestnet")}
+          <span className="block text-[10.5px] text-ink-secondary">{t("external.form.paymentsTestnetNote")}</span>
+        </span>
+      </label>
       <p className="font-mono text-[10.5px] leading-relaxed text-ink-secondary">{t("external.form.credentialNote")}</p>
       {error && <p role="alert" className="font-mono text-[11px] text-danger">{error}</p>}
       <div className="flex gap-2">
@@ -233,5 +263,66 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {label}
       {children}
     </label>
+  );
+}
+
+/** Write-only: the token goes to the server's encrypted store and is never read back. */
+function CredentialField({ agent }: { agent: ExternalAgent }) {
+  const [value, setValue] = useState("");
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      await setExternalCredential(agent.id, value);
+      setValue("");
+      setMessage({ ok: true, text: t("external.credentials.saved") });
+    } catch (error) {
+      setMessage({ ok: false, text: error instanceof Error ? error.message : t("external.error.generic") });
+    }
+  };
+  return (
+    <form onSubmit={(event) => void save(event)} className="flex flex-col gap-1.5">
+      <label className="font-mono text-[10.5px] text-ink-secondary" htmlFor={`cred-${agent.id}`}>{t("external.credentials.label")}</label>
+      <div className="flex min-w-0 gap-1.5">
+        <input
+          id={`cred-${agent.id}`}
+          type="password"
+          autoComplete="off"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder={agent.credentialSource === "secret-store" ? t("external.credentials.replace") : t("external.credentials.placeholder")}
+          className={inputClass}
+        />
+        <Button type="submit" size="sm" variant="secondary" disabled={value.trim().length < 8}>{t("external.credentials.save")}</Button>
+        {agent.credentialSource === "secret-store" && (
+          <Button size="sm" variant="ghost" onClick={() => void clearExternalCredential(agent.id).then(() => setMessage({ ok: true, text: t("external.credentials.cleared") }))}>
+            {t("external.credentials.clear")}
+          </Button>
+        )}
+      </div>
+      {message && <p role="status" className={`font-mono text-[10.5px] ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</p>}
+    </form>
+  );
+}
+
+function TestnetWalletPanel() {
+  const [wallet, setWallet] = useState<TestnetWallet | null>(null);
+  useEffect(() => {
+    void fetchTestnetWallet().then(setWallet).catch(() => setWallet(null));
+  }, []);
+  if (!wallet) return null;
+  return (
+    <div className="border border-warning/40 bg-inset p-3 font-mono text-[11px]" data-testid="testnet-wallet">
+      <div className="mb-1.5 label-mono text-[10.5px] text-ink">{t("external.wallet.title")}</div>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1">
+        <dt className="text-ink-secondary">{t("external.pay.network")}</dt>
+        <dd className="text-ink">{wallet.networkName} · {wallet.network}</dd>
+        <dt className="text-ink-secondary">{t("external.wallet.address")}</dt>
+        <dd className="truncate text-ink" title={wallet.address}>{wallet.address}</dd>
+        <dt className="text-ink-secondary">{t("external.wallet.limits")}</dt>
+        <dd className="text-ink">{t("external.wallet.limitsValue", { perRequest: formatTestnetAmount(wallet.perRequestLimit), monthly: formatTestnetAmount(wallet.monthlyLimit), spent: formatTestnetAmount(wallet.spentThisMonth) })}</dd>
+      </dl>
+      <p className="mt-1.5 text-[10.5px] text-ink-secondary">{t("external.wallet.note")}</p>
+    </div>
   );
 }

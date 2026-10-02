@@ -24,7 +24,10 @@ export type ExternalAgent = {
   credentialsConfigured: boolean;
   lastCheckedAt?: string;
   lastLatencyMs?: number;
-  readOnly: true;
+  readOnly: boolean;
+  streaming?: boolean;
+  paymentsTestnet?: boolean;
+  credentialSource?: "secret-store" | "environment";
 };
 
 export type ConnectionCheck = {
@@ -43,6 +46,7 @@ export type NewExternalAgent = {
   upstreamAgentId?: string;
   capabilities?: string[];
   credentialEnv?: string;
+  paymentsTestnet?: boolean;
 };
 
 let cache: ExternalAgent[] = [];
@@ -102,4 +106,31 @@ export function externalSourceLabel(agent: { displayName: string; transport: "di
   return agent.transport === "zroute"
     ? t("external.source.zroute", { name: agent.displayName, upstream: agent.upstreamName ?? agent.upstreamAgentId ?? t("external.upstreamUnknown") })
     : t("external.source.direct", { name: agent.displayName });
+}
+
+export async function setExternalCredential(id: string, token: string): Promise<void> {
+  await api(`/api/external-agents/${id}/credential`, { method: "PUT", body: JSON.stringify({ token }) });
+  await refreshExternalAgents();
+}
+
+export async function clearExternalCredential(id: string): Promise<void> {
+  await api(`/api/external-agents/${id}/credential`, { method: "DELETE" });
+  await refreshExternalAgents();
+}
+
+export type TestnetWallet = { network: string; networkName: string; address: string; perRequestLimit: string; monthlyLimit: string; spentThisMonth: string; mainnet: false };
+export async function fetchTestnetWallet(): Promise<TestnetWallet> {
+  return (await api("/api/external-payments/wallet")) as TestnetWallet;
+}
+
+export async function decideExternalPayment(id: string, approve: boolean): Promise<void> {
+  await api(`/api/external-payments/${id}/${approve ? "approve" : "decline"}`, { method: "POST" });
+}
+
+/** Atomic units → display, assuming the 6-decimal testnet stablecoins x402 uses. */
+export function formatTestnetAmount(atomic: string): string {
+  const value = BigInt(/^\d+$/.test(atomic) ? atomic : "0");
+  const whole = value / 1_000_000n;
+  const fraction = (value % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
 }
