@@ -1852,9 +1852,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close sidebar"
+            aria-label="Close bot list"
             className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus min-[769px]:hidden"
-            title="Close sidebar"
+            title="Close bot list"
           >
             <X size={16} />
           </button>
