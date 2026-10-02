@@ -17,6 +17,9 @@ import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { updateMcpServers } from "@/lib/mcp-servers";
 import { api } from "@/state/store";
+import { Button } from "@/components/ui/button";
+import { FieldLabel, Input, Textarea } from "@/components/ui/field";
+import { Tag } from "@/components/ui/tag";
 
 export interface McpServerListing {
   name: string;
@@ -277,16 +280,20 @@ export function McpServersPanel() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              icon
               type="button"
               onClick={() => void load()}
               disabled={busy !== null}
-              className="rounded-lg p-2 text-ink-secondary transition-colors hover:bg-raised hover:text-ink disabled:opacity-40"
               aria-label={t("mcp.refreshAria")}
             >
-              <RefreshCw size={16} className={cn(busy === "load" && "animate-spin")} />
-            </button>
-            <button
+              <RefreshCw size={14} className={cn(busy === "load" && "animate-spin")} />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               type="button"
               disabled={busy !== null}
               onClick={() => {
@@ -294,11 +301,12 @@ export function McpServersPanel() {
                 setError(null);
                 setNotice(null);
               }}
-              className="flex items-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[12.5px] font-medium text-ink hover:bg-raised-hover disabled:opacity-40"
             >
-              <ClipboardPaste size={14} /> {t("mcp.import")}
-            </button>
-            <button
+              <ClipboardPaste size={13} /> {t("mcp.import")}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
               disabled={busy !== null}
               onClick={() => {
@@ -307,18 +315,17 @@ export function McpServersPanel() {
                 setError(null);
                 setNotice(null);
               }}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-medium text-white disabled:opacity-40"
             >
-              <Plus size={14} /> {t("mcp.addServer")}
-            </button>
+              <Plus size={13} /> {t("mcp.addServer")}
+            </Button>
           </div>
         </div>
 
         {importOpen && (
-          <div className="mt-4 rounded-2xl border border-hairline/60 bg-card p-4 sm:p-5">
+          <div className="mt-4 border border-hairline bg-card p-4 sm:p-5">
             <div className="text-[14px] font-medium text-ink">{t("mcp.import")}</div>
             <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">{t("mcp.importHint")}</p>
-            <textarea
+            <Textarea
               autoFocus
               aria-label={t("mcp.import")}
               value={importText}
@@ -326,100 +333,101 @@ export function McpServersPanel() {
               spellCheck={false}
               rows={8}
               placeholder={'{\n  "mcpServers": {\n    "notes": { "command": "npx", "args": ["-y", "@example/notes-mcp"], "env": { "NOTES_TOKEN": "…" } }\n  }\n}'}
-              className="mt-3 w-full resize-y rounded-lg border border-hairline/60 bg-raised px-3 py-2.5 font-mono text-[12px] leading-relaxed text-ink outline-none focus:border-accent"
+              className="mt-3 font-mono text-[12px]"
             />
             <div className="mt-3 flex items-center justify-end gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 disabled={busy === "import"}
                 onClick={() => {
                   setImportOpen(false);
                   setImportText("");
                 }}
-                className="rounded-lg px-3 py-2 text-[12.5px] text-ink-secondary hover:text-ink"
               >
                 {t("common.cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 type="button"
                 disabled={busy !== null || !importText.trim()}
                 onClick={() => void importServers()}
-                className="rounded-lg bg-accent px-3 py-2 text-[12.5px] font-medium text-accent-ink disabled:opacity-40"
               >
                 {t("mcp.importAction")}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
-        <div className="mt-4 rounded-xl border border-hairline/50 bg-raised/35 px-4 py-3 text-[12px] leading-relaxed text-ink-secondary">
+        <div className="mt-4 border border-hairline bg-inset px-4 py-3 text-[12px] leading-relaxed text-ink-secondary">
           {t("mcp.trustNotice")}
         </div>
 
-        {error && <div role="alert" className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger">{typeof error === "string" ? error : t(error.key, error.params)}</div>}
-        {notice && <div role="status" className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-[12px] text-success">{t(notice.key, {
+        {error && <div role="alert" className="mt-3 border border-danger bg-card px-3 py-2 text-[12px] text-danger">{typeof error === "string" ? error : t(error.key, error.params)}</div>}
+        {notice && <div role="status" className="mt-3 border border-hairline bg-card px-3 py-2 text-[12px] text-success">{t(notice.key, {
           ...notice.params,
-          ...(notice.stateKey ? { state: t(notice.stateKey) } : {}),
+          ...(notice.stateKey ? { state: t(notice.stateKey) } : {})
         })}</div>}
 
         {editing && (
-          <div className="mt-4 rounded-2xl border border-hairline/60 bg-card p-4 sm:p-5">
+          <div className="mt-4 border border-hairline bg-card p-4 sm:p-5">
             <div className="text-[14px] font-medium text-ink">{editing === "new" ? t("mcp.editorNew") : t("mcp.editorEdit", { name: editing })}</div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block">
-                <span className="text-[12px] font-medium text-ink-secondary">{t("mcp.field.name")}</span>
-                <input
+                <FieldLabel>{t("mcp.field.name")}</FieldLabel>
+                <Input
                   autoFocus={editing === "new"}
                   disabled={editing !== "new"}
                   value={draft.name}
                   maxLength={32}
                   onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value.toLowerCase() }))}
                   placeholder="github"
-                  className="mt-1.5 w-full rounded-lg border border-hairline/60 bg-raised px-3 py-2.5 text-[13px] text-ink outline-none focus:border-accent disabled:opacity-60"
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] font-medium text-ink-secondary">{t("mcp.field.command")}</span>
-                <input
+                <FieldLabel>{t("mcp.field.command")}</FieldLabel>
+                <Input
                   autoFocus={editing !== "new"}
                   value={draft.command}
                   onChange={(event) => setDraft((current) => ({ ...current, command: event.target.value }))}
                   placeholder="npx"
-                  className="mt-1.5 w-full rounded-lg border border-hairline/60 bg-raised px-3 py-2.5 text-[13px] text-ink outline-none focus:border-accent"
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] font-medium text-ink-secondary">{t("mcp.field.args")}</span>
-                <textarea
+                <FieldLabel>{t("mcp.field.args")}</FieldLabel>
+                <Textarea
                   value={draft.args}
                   onChange={(event) => setDraft((current) => ({ ...current, args: event.target.value }))}
                   placeholder={"-y\n@modelcontextprotocol/server-github"}
                   rows={5}
-                  className="mt-1.5 w-full resize-y rounded-lg border border-hairline/60 bg-raised px-3 py-2.5 font-mono text-[12px] text-ink outline-none focus:border-accent"
+                  className="font-mono text-[12px]"
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] font-medium text-ink-secondary">{t("mcp.field.env")}</span>
-                <textarea
+                <FieldLabel>{t("mcp.field.env")}</FieldLabel>
+                <Textarea
                   value={draft.env}
                   onChange={(event) => setDraft((current) => ({ ...current, env: event.target.value }))}
                   placeholder="GITHUB_TOKEN=…"
                   rows={5}
-                  className="mt-1.5 w-full resize-y rounded-lg border border-hairline/60 bg-raised px-3 py-2.5 font-mono text-[12px] text-ink outline-none focus:border-accent"
+                  className="font-mono text-[12px]"
                 />
                 {editing !== "new" && <span className="mt-1.5 block text-[11px] text-ink-secondary">{t("mcp.envHint")}</span>}
               </label>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={closeEditor} className="rounded-lg px-3 py-2 text-[12.5px] text-ink-secondary hover:bg-raised">{t("mcp.cancel")}</button>
-              <button
+              <Button variant="ghost" size="sm" type="button" onClick={closeEditor}>{t("mcp.cancel")}</Button>
+              <Button
+                variant="primary"
+                size="sm"
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void save()}
-                className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[12.5px] font-medium text-white disabled:opacity-50"
               >
                 {busy === "save" && <Loader2 size={13} className="animate-spin" />} {t("mcp.save")}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -427,8 +435,8 @@ export function McpServersPanel() {
         {servers === null ? (
           <div className="flex items-center justify-center gap-2 py-24 text-[13px] text-ink-secondary"><Loader2 size={14} className="animate-spin" /> {t("mcp.loading")}</div>
         ) : servers.length === 0 && !editing ? (
-          <div className="mt-5 flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-hairline/60 text-center">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-raised text-ink-secondary"><ServerCog size={21} /></div>
+          <div className="mt-5 flex min-h-64 flex-col items-center justify-center border border-dashed border-hairline text-center p-6">
+            <div className="flex size-11 items-center justify-center border border-hairline bg-raised text-ink-secondary"><ServerCog size={20} /></div>
             <div className="mt-3 text-[14px] font-medium text-ink">{t("mcp.empty.title")}</div>
             <div className="mt-1 max-w-sm text-[12.5px] text-ink-secondary">{t("mcp.empty.desc")}</div>
           </div>
@@ -437,35 +445,35 @@ export function McpServersPanel() {
             {servers.map((server) => {
               const result = probe[server.name];
               return (
-                <div key={server.name} className="rounded-2xl border border-hairline/50 bg-card px-4 py-4 sm:px-5">
+                <div key={server.name} className="border border-hairline bg-card p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", server.enabled ? "bg-success/10 text-success" : "bg-raised text-ink-secondary")}>
-                      <ServerCog size={19} />
+                    <div className={cn("flex size-10 shrink-0 items-center justify-center border border-hairline", server.enabled ? "bg-card text-success" : "bg-raised text-ink-secondary")}>
+                      <ServerCog size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-[14px] font-medium text-ink">{server.name}</span>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10.5px]", server.enabled ? "bg-success/10 text-success" : "bg-raised text-ink-secondary")}>{t(server.enabled ? "mcp.badge.on" : "mcp.badge.off")}</span>
+                        <Tag tone={server.enabled ? "success" : "neutral"} size="sm">{t(server.enabled ? "mcp.badge.on" : "mcp.badge.off")}</Tag>
                       </div>
                       <div className="mt-1 truncate font-mono text-[11.5px] text-ink-secondary">{[server.command, ...server.args].join(" ")}</div>
-                      {server.envKeys.length > 0 && <div className="mt-1 truncate text-[11px] text-ink-secondary">{t("mcp.secretsSaved", { keys: server.envKeys.join(", ") })}</div>}
+                      {server.envKeys.length > 0 && <div className="mt-1 truncate font-mono text-[11px] text-ink-secondary">{t("mcp.secretsSaved", { keys: server.envKeys.join(", ") })}</div>}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button type="button" disabled={busy !== null} onClick={() => void test(server)} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40">
-                        {busy === `test:${server.name}` ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />} {t("mcp.test")}
-                      </button>
-                      <button type="button" disabled={busy !== null} onClick={() => void toggle(server)} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40" aria-label={t("mcp.toggleAria", {
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <Button variant="secondary" size="xs" type="button" disabled={busy !== null} onClick={() => void test(server)}>
+                        {busy === `test:${server.name}` ? <Loader2 size={13} className="animate-spin" /> : <FlaskConical size={13} />} {t("mcp.test")}
+                      </Button>
+                      <Button variant="secondary" size="xs" type="button" disabled={busy !== null} onClick={() => void toggle(server)} aria-label={t("mcp.toggleAria", {
                         name: server.name,
                         state: t(server.enabled ? "mcp.state.off" : "mcp.state.on"),
                       })}>
-                        {busy === `toggle:${server.name}` ? <Loader2 size={14} className="animate-spin" /> : <CirclePower size={14} />} {t(server.enabled ? "mcp.turnOff" : "mcp.turnOn")}
-                      </button>
-                      <button type="button" disabled={busy !== null} onClick={() => { setEditing(server.name); setDraft(draftFor(server)); setError(null); setNotice(null); }} className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40" aria-label={t("mcp.editAria", { name: server.name })}><Pencil size={14} /></button>
-                      <button type="button" disabled={busy !== null} onClick={() => void remove(server)} className="rounded-lg p-2 text-ink-secondary hover:bg-danger/10 hover:text-danger disabled:opacity-40" aria-label={t("mcp.removeAria", { name: server.name })}><Trash2 size={14} /></button>
+                        {busy === `toggle:${server.name}` ? <Loader2 size={13} className="animate-spin" /> : <CirclePower size={13} />} {t(server.enabled ? "mcp.turnOff" : "mcp.turnOn")}
+                      </Button>
+                      <Button variant="ghost" size="xs" icon type="button" disabled={busy !== null} onClick={() => { setEditing(server.name); setDraft(draftFor(server)); setError(null); setNotice(null); }} aria-label={t("mcp.editAria", { name: server.name })}><Pencil size={13} /></Button>
+                      <Button variant="ghost" size="xs" icon type="button" disabled={busy !== null} onClick={() => void remove(server)} aria-label={t("mcp.removeAria", { name: server.name })}><Trash2 size={13} className="text-danger" /></Button>
                     </div>
                   </div>
                   {result && (
-                    <div role="status" className={cn("mt-3 rounded-lg px-3 py-2 text-[12px]", result.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>
+                    <div role="status" className={cn("mt-3 border px-3 py-2 font-mono text-[12px]", result.ok ? "border-hairline bg-inset text-success" : "border-danger bg-card text-danger")}>
                       {result.ok ? (
                         <span className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-px shrink-0" /> {t("mcp.probe.connected")} {probeToolsLabel(result.tools)}</span>
                       ) : result.error}

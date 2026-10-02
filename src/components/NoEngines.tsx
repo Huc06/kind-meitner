@@ -13,7 +13,8 @@ import { ProviderMark } from "@/components/ProviderIcons";
 import { splitEngineRail } from "@/lib/engine-rail";
 import { t } from "@/lib/i18n";
 import { brand } from "../lib/brand";
-
+import { Frame } from "@/components/ui/frame";
+import { Button } from "@/components/ui/button";
 export function NoEngines() {
   const { state, refreshInstances } = useStore();
   const remoteClient = window.ogb?.remoteClient?.active === true;
@@ -29,16 +30,18 @@ export function NoEngines() {
 
   if (remoteClient) {
     return (
-      <main className="flex h-full min-w-0 flex-1 items-center justify-center bg-app px-6">
-        <div className="max-w-[520px] rounded-2xl border border-hairline/40 bg-card p-6 text-center">
-          <h1 className="text-[20px] font-semibold text-ink">The host needs an agent engine</h1>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-secondary">
+      <main className="flex h-full min-w-0 flex-1 items-center justify-center bg-app p-6">
+        <Frame title="NO ENGINES" surface="app" className="max-w-[480px] bg-card p-6 text-center">
+          <h1 className="text-[16px] font-semibold text-ink">The host needs an agent engine</h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary">
             Configure Claude, ACP, or another supported engine in kind-meitner on the host computer, then return here.
           </p>
-          <button onClick={() => void recheck()} disabled={rechecking} className="mt-5 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-60">
-            {rechecking ? "Checking…" : "Check again"}
-          </button>
-        </div>
+          <div className="mt-5 flex justify-center">
+            <Button onClick={() => void recheck()} disabled={rechecking} variant="secondary" size="md">
+              {rechecking ? "Checking…" : "Check again"}
+            </Button>
+          </div>
+        </Frame>
       </main>
     );
   }
@@ -61,8 +64,9 @@ export function NoEngines() {
   return (
     <main className="flex h-full min-w-0 flex-1 flex-col overflow-y-auto bg-app">
       <div className="mx-auto w-full max-w-[560px] px-6 py-12">
+        <div className="label-mono text-ink-secondary mb-1.5">[ 01 · SETUP ]</div>
         <h1 className="text-[20px] font-semibold text-ink">{t("noEngines.title")}</h1>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-secondary">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">
           {t("noEngines.intro", { app: brand().name })}
         </p>
 
@@ -70,9 +74,9 @@ export function NoEngines() {
           {(() => {
             const { subscription, custom } = splitEngineRail(engines);
             const card = (instance: (typeof engines)[number]) => (
-              <div key={instance.instanceId} className="rounded-xl border border-hairline/40 bg-card p-3.5">
-                <div className="flex items-center gap-2 text-[14px] font-medium text-ink">
-                  <ProviderMark driverKind={instance.driverKind} size={16} />
+              <div key={instance.instanceId} className="border border-hairline bg-card p-3.5">
+                <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                  <ProviderMark driverKind={instance.driverKind} size={15} />
                   {instance.displayName}
                 </div>
                 <EngineSetup
@@ -84,23 +88,26 @@ export function NoEngines() {
             );
             return (
               <>
-                {subscription.length > 0 && <EngineGroupLabel className="px-1">{t("engines.cloud")}</EngineGroupLabel>}
+                {subscription.length > 0 && <EngineGroupLabel className="px-0.5">{t("engines.cloud")}</EngineGroupLabel>}
                 {subscription.map(card)}
-                {custom.length > 0 && <EngineGroupLabel className="px-1 pt-1">{t("engines.local")}</EngineGroupLabel>}
+                {custom.length > 0 && <EngineGroupLabel className="px-0.5 pt-1.5">{t("engines.local")}</EngineGroupLabel>}
                 {custom.map(card)}
               </>
             );
           })()}
         </div>
 
-        <button
-          onClick={recheck}
-          disabled={rechecking}
-          className="mt-6 flex items-center gap-2 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-60"
-        >
-          {rechecking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          {rechecking ? t("common.checking") : t("common.checkAgain")}
-        </button>
+        <div className="mt-6">
+          <Button
+            onClick={recheck}
+            disabled={rechecking}
+            variant="secondary"
+            size="md"
+          >
+            {rechecking ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {rechecking ? t("common.checking") : t("common.checkAgain")}
+          </Button>
+        </div>
       </div>
     </main>
   );

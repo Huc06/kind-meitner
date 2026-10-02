@@ -31,23 +31,22 @@ export function CalendarSidebar({ bots, anchor, onSelectDate }: CalendarSidebarP
   return (
     <aside
       aria-label="Schedule sidebar"
-      className="flex h-full w-[320px] shrink-0 flex-col overflow-hidden border-r border-hairline/40 bg-panel"
+      className="flex h-full w-[300px] shrink-0 flex-col overflow-hidden border-r border-hairline bg-panel"
     >
       <MiniMonth anchor={anchor} onSelect={onSelectDate} />
 
-      <div className="mx-4 border-t border-hairline/40" />
+      <div className="frame-rule mx-3 my-1" />
 
-      <section aria-labelledby="calendar-bots-heading" className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3">
+      <section aria-labelledby="calendar-bots-heading" className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-2">
         <div className="mb-2 flex items-center justify-between px-1">
-          <div id="calendar-bots-heading" className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.11em] text-ink-secondary">
+          <div id="calendar-bots-heading" className="label-mono flex items-center gap-2 text-ink-secondary">
             <UsersRound size={13} aria-hidden="true" />
             My bots
           </div>
-          <span className="rounded-full bg-raised px-1.5 py-0.5 text-[9px] tabular-nums text-ink-secondary">
-            {bots.length}
+          <span className="font-mono text-[10px] tabular-nums text-ink-secondary">
+            [{bots.length}]
           </span>
         </div>
-
         <label className="relative mb-2 block">
           <span className="sr-only">Search bots</span>
           <Search
@@ -60,7 +59,7 @@ export function CalendarSidebar({ bots, anchor, onSelectDate }: CalendarSidebarP
             onChange={(event) => setQuery(event.target.value)}
             type="search"
             placeholder="Search bots"
-            className="h-8 w-full rounded-lg border border-hairline/45 bg-control/55 pl-8 pr-2.5 text-[11.5px] text-ink outline-none placeholder:text-ink-secondary/55 focus:border-accent/60 focus:bg-control"
+            className="h-8 w-full border border-hairline bg-inset pl-8 pr-2.5 text-[11.5px] text-ink outline-none placeholder:text-ink-secondary/60 hover:border-ink-secondary/60 focus:border-ink"
           />
         </label>
 
@@ -71,23 +70,23 @@ export function CalendarSidebar({ bots, anchor, onSelectDate }: CalendarSidebarP
               draggable
               onDragStart={(event) => beginBotDrag(event, bot)}
               role="listitem"
-              className="group flex cursor-grab items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-raised/80 active:cursor-grabbing"
+              className="group flex h-9 cursor-grab items-center gap-2.5 px-2.5 transition-colors hover:bg-raised-hover active:cursor-grabbing"
               aria-label={`Drag ${bot.name} onto the schedule`}
               title={`Drag ${bot.name} onto the schedule`}
             >
               <GripVertical
                 size={13}
-                className="shrink-0 text-ink-secondary/35 transition-colors group-hover:text-ink-secondary"
+                className="shrink-0 text-ink-secondary/40 transition-colors group-hover:text-ink-secondary"
                 aria-hidden="true"
               />
-              <BotAvatar bot={bot} size={27} animated={false} />
+              <BotAvatar bot={bot} size={24} animated={false} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[11.5px] font-medium text-ink">{bot.name}</div>
-                <div className="truncate text-[9.5px] text-ink-secondary/75">
+                <div className="truncate text-[12px] font-medium text-ink">{bot.name}</div>
+                <div className="truncate font-mono text-[10px] text-ink-secondary">
                   {bot.title || "BotAgent"}
                 </div>
               </div>
-              <span className="shrink-0 rounded-full border border-hairline/50 px-1.5 py-0.5 text-[8.5px] text-ink-secondary/70 opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="shrink-0 border border-hairline font-mono text-[9px] uppercase tracking-wider text-ink-secondary px-1.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                 Drag
               </span>
             </div>
@@ -100,7 +99,7 @@ export function CalendarSidebar({ bots, anchor, onSelectDate }: CalendarSidebarP
           )}
         </div>
 
-        <p className="mt-2 px-2 text-[9.5px] leading-relaxed text-ink-secondary/65">
+        <p className="mt-2 px-1 font-mono text-[9.5px] uppercase tracking-wider text-ink-secondary/70">
           Drag a bot onto any time to schedule it.
         </p>
       </section>

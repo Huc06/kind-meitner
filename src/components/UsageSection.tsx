@@ -5,10 +5,11 @@
 import { useStore } from "@/state/store";
 import { BotAvatar } from "./Avatar";
 import { Card } from "./SettingsPrimitives";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Frame } from "@/components/ui/frame";
 import { t } from "@/lib/i18n";
 import { botUsage, cachedInput, costCaption, formatTokens, formatUsd, hasFiniteCost, sumUsage, usageDetail } from "@/lib/usage";
 import { UsageHistory } from "./UsageHistory";
-
 export function UsageSection() {
   const { state } = useStore();
   const rows = state.bots
@@ -29,54 +30,72 @@ export function UsageSection() {
   const billings = new Set(rows.map((r) => r.billing));
 
   return (
-    <>
-    <Card title={t("usage.title")} subtitle={t("usage.subtitle")}>
-      {rows.length === 0 ? (
-        <div className="text-[13px] text-ink-secondary">{t("usage.empty")}</div>
-      ) : (
-        <div className="flex flex-col">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-5 border-b border-hairline/40 pb-2 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">
-            <span>{t("usage.colBot")}</span>
-            <span className="text-right">{t("usage.colTurns")}</span>
-            <span className="text-right">{t("usage.colTokens")}</span>
-            <span className="text-right">{t("usage.colCost")}</span>
-          </div>
-          {rows.map(({ bot, usage }) => (
-            <div key={bot.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 border-b border-hairline/20 py-2 text-[13px]">
-              <span className="flex min-w-0 items-center gap-2 text-ink">
-                <BotAvatar bot={bot} state="idle" size={22} animated={false} />
-                <span className="truncate">{bot.name}</span>
-              </span>
-              <span className="text-right tabular-nums text-ink-secondary">{usage.turns}</span>
-              <span className="text-right tabular-nums text-ink" title={usageDetail(usage)}>
-                {formatTokens(usage.input + usage.output)}
-              </span>
-              <span className="text-right tabular-nums text-ink">{hasFiniteCost(usage.costUsd) ? formatUsd(usage.costUsd) : <span className="text-ink-secondary">—</span>}</span>
-            </div>
-          ))}
-          <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 pt-2.5 text-[13px] font-medium text-ink">
-            <span>{t("usage.allBots")}</span>
-            <span className="text-right tabular-nums">{total.turns}</span>
-            <span className="text-right tabular-nums" title={usageDetail(total)}>{formatTokens(total.input + total.output)}</span>
-            <span className="text-right tabular-nums">{hasFiniteCost(total.costUsd) ? formatUsd(total.costUsd) : "—"}</span>
-          </div>
-          {cachedInput(total) > 0 && (
-            <div className="mt-3 text-[12px] leading-relaxed text-ink-secondary">
-              {t("usage.cachedNote", { cached: formatTokens(cachedInput(total)) })}
+    <div className="flex flex-col gap-6">
+      <section>
+        <Eyebrow index={1} className="mb-3">{t("usage.title")}</Eyebrow>
+        <Card subtitle={t("usage.subtitle")}>
+          {rows.length === 0 ? (
+            <div className="font-mono text-[12px] text-ink-secondary">{t("usage.empty")}</div>
+          ) : (
+            <div className="flex flex-col">
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                <Frame surface="panel" className="bg-card p-3">
+                  <div className="label-mono text-ink-secondary">{t("usage.colTurns")}</div>
+                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{total.turns}</div>
+                </Frame>
+                <Frame surface="panel" className="bg-card p-3">
+                  <div className="label-mono text-ink-secondary">{t("usage.colTokens")}</div>
+                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{formatTokens(total.input + total.output)}</div>
+                </Frame>
+                <Frame surface="panel" className="bg-card p-3">
+                  <div className="label-mono text-ink-secondary">{t("usage.colCost")}</div>
+                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-ink">{hasFiniteCost(total.costUsd) ? formatUsd(total.costUsd) : "—"}</div>
+                </Frame>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-5 frame-rule-below pb-2 label-mono text-ink-secondary">
+                <span>{t("usage.colBot")}</span>
+                <span className="text-right">{t("usage.colTurns")}</span>
+                <span className="text-right">{t("usage.colTokens")}</span>
+                <span className="text-right">{t("usage.colCost")}</span>
+              </div>
+              {rows.map(({ bot, usage }) => (
+                <div key={bot.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 frame-rule-below py-2.5 text-[13px]">
+                  <span className="flex min-w-0 items-center gap-2 font-medium text-ink">
+                    <BotAvatar bot={bot} state="idle" size={22} animated={false} />
+                    <span className="truncate">{bot.name}</span>
+                  </span>
+                  <span className="text-right font-mono text-[12px] tabular-nums text-ink-secondary">{usage.turns}</span>
+                  <span className="text-right font-mono text-[12px] tabular-nums text-ink" title={usageDetail(usage)}>
+                    {formatTokens(usage.input + usage.output)}
+                  </span>
+                  <span className="text-right font-mono text-[12px] tabular-nums text-ink">{hasFiniteCost(usage.costUsd) ? formatUsd(usage.costUsd) : <span className="text-ink-secondary">—</span>}</span>
+                </div>
+              ))}
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 pt-2.5 font-mono text-[12px] font-semibold text-ink">
+                <span className="label-mono">{t("usage.allBots")}</span>
+                <span className="text-right tabular-nums">{total.turns}</span>
+                <span className="text-right tabular-nums" title={usageDetail(total)}>{formatTokens(total.input + total.output)}</span>
+                <span className="text-right tabular-nums">{hasFiniteCost(total.costUsd) ? formatUsd(total.costUsd) : "—"}</span>
+              </div>
+              {cachedInput(total) > 0 && (
+                <div className="mt-3 font-mono text-[11px] leading-relaxed text-ink-secondary">
+                  {t("usage.cachedNote", { cached: formatTokens(cachedInput(total)) })}
+                </div>
+              )}
+              {hasFiniteCost(total.costUsd) && (
+                <div className="mt-3 font-mono text-[11px] leading-relaxed text-ink-secondary">
+                  {t("usage.costLine", {
+                    caption:
+                      billings.size === 1 ? costCaption([...billings][0]) : t("usage.costMixed"),
+                  })}
+                </div>
+              )}
             </div>
           )}
-          {hasFiniteCost(total.costUsd) && (
-            <div className="mt-3 text-[12px] leading-relaxed text-ink-secondary">
-              {t("usage.costLine", {
-                caption:
-                  billings.size === 1 ? costCaption([...billings][0]) : t("usage.costMixed"),
-              })}
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
-    <UsageHistory />
-    </>
+        </Card>
+      </section>
+      <div className="frame-rule" />
+      <UsageHistory index={2} />
+    </div>
   );
 }

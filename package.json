@@ -86,6 +86,8 @@
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@hpke/core": "1.9.0",
     "@okxweb3/x402-core": "0.1.0",
     "@okxweb3/x402-evm": "0.2.1",

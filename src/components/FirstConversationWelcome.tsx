@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { api, useStore, type Bot } from "@/state/store";
-import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import {
   draftRevision,
@@ -12,7 +11,7 @@ import {
 } from "@/lib/drafts";
 import {
   applyWelcomeSuggestion,
-  WELCOME_SUGGESTIONS,
+  welcomeSuggestionsForBot,
   welcomeSuggestionLabel,
 } from "@/lib/first-conversation-welcome";
 import {
@@ -23,7 +22,8 @@ import {
 } from "@/lib/welcome-dismissals";
 import { BotAvatar } from "./Avatar";
 import { RenameTitle } from "./RenameTitle";
-
+import { Frame } from "@/components/ui/frame";
+import { WordTiles } from "@/components/ui/word-tiles";
 /**
  * Empty-thread welcome: intro + suggestion card. Never writes into the
  * transcript — suggestions only fill the composer draft; dismissals live in
@@ -119,14 +119,15 @@ export function FirstConversationWelcome({
     return (
       <div className="grid min-h-full flex-1 place-items-center px-4 py-10 text-center">
         <div className="flex flex-col items-center gap-3">
-          <BotAvatar bot={bot} state="idle" size={72} motion="none" motionKey={0} />
+          <WordTiles sentence={bot.name} className="scale-75 origin-center mb-1" />
+          <BotAvatar bot={bot} state="idle" size={56} motion="none" motionKey={0} />
           <RenameTitle
             value={bot.name}
             onCommit={rename}
             className="text-[17px] font-semibold tracking-tight text-ink"
-            inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
+            inputClassName="border border-hairline bg-inset px-2 py-0.5 text-center text-[17px] font-semibold"
           />
-          <div className="max-w-[360px] text-[14px] text-ink-secondary">
+          <div className="max-w-[360px] font-sans text-[13px] text-ink-secondary">
             {bot.description || t("chat.emptyPrompt")}
           </div>
         </div>
@@ -135,52 +136,50 @@ export function FirstConversationWelcome({
   }
 
   return (
-    <div className="grid min-h-full flex-1 place-items-center px-4 py-8 text-center">
-      <div
+    <div className="flex min-h-full flex-1 items-center justify-center p-4 text-center">
+      <Frame
+        surface="app"
+        title="WELCOME"
         data-tour="first-conversation-welcome"
-        className="w-full max-w-[520px] rounded-2xl border border-hairline/35 bg-card p-5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.05)]"
+        className="my-auto w-full max-w-[min(520px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card p-5 text-left"
       >
         <div className="mb-4 flex items-center gap-3.5">
-          <BotAvatar bot={bot} state="idle" size={52} motion="none" motionKey={0} />
+          <BotAvatar bot={bot} state="idle" size={48} motion="none" motionKey={0} />
           <div className="min-w-0 flex-1 text-left">
             <RenameTitle
               value={bot.name}
               onCommit={rename}
               className="text-[15.5px] font-semibold tracking-tight text-ink"
-              inputClassName="rounded bg-inset px-1.5 py-0.5 text-[15.5px] font-semibold"
+              inputClassName="border border-hairline bg-inset px-1.5 py-0.5 text-[15.5px] font-semibold"
             />
-            <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary line-clamp-2">
+            <p className="mt-0.5 text-[12.5px] leading-snug text-ink-secondary line-clamp-2">
               {bot.description || t("chat.welcome.intro")}
             </p>
           </div>
         </div>
 
         <div className="flex items-start justify-between gap-4">
-          <div className="text-[15px] font-semibold tracking-tight text-ink">{t("chat.welcome.heading")}</div>
+          <div className="label-mono text-ink">{t("chat.welcome.heading")}</div>
           <button
             type="button"
             onClick={onDismiss}
             aria-label={t("chat.welcome.dismissAria")}
             title={t("chat.welcome.dismiss")}
-            className="rounded-md p-1 text-ink-secondary hover:bg-control/80 hover:text-ink"
+            className="cursor-pointer p-1 text-ink-secondary hover:bg-raised-hover hover:text-ink"
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className="mt-3.5 overflow-hidden rounded-xl border border-hairline/30">
-          {WELCOME_SUGGESTIONS.map((suggestion, i) => (
+        <div className="mt-3 overflow-hidden border border-hairline bg-inset/40 divide-y divide-hairline">
+          {welcomeSuggestionsForBot(bot).map((suggestion) => (
             <button
               key={suggestion.id}
               type="button"
               onClick={() => applyWelcomeSuggestion(draftId, suggestion)}
-              className={cn(
-                "flex w-full items-center gap-3 px-3.5 py-3 text-left text-[14.5px] leading-snug text-ink",
-                i > 0 && "border-t border-hairline/25",
-                "hover:bg-raised-hover/50",
-              )}
+              className="cursor-pointer flex w-full items-center gap-3 px-3.5 py-2.5 text-left font-sans text-[13.5px] leading-snug text-ink hover:bg-raised-hover"
             >
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-hairline/35 bg-control/80 text-[11.5px] font-medium text-ink-secondary">
+              <span className="flex size-5 shrink-0 items-center justify-center border border-hairline bg-card font-mono text-[10.5px] font-medium text-ink-secondary">
                 {suggestion.letter}
               </span>
               {welcomeSuggestionLabel(suggestion)}
@@ -197,9 +196,9 @@ export function FirstConversationWelcome({
             sendCustom();
           }}
           placeholder={t("chat.welcome.custom")}
-          className="mt-3.5 w-full rounded-xl border border-hairline/30 bg-inset/80 px-3.5 py-2.5 text-[14.5px] text-ink placeholder:text-ink-secondary focus:outline-none focus:border-hairline/60"
+          className="mt-3.5 w-full border border-hairline bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary/70 focus:outline-none focus:border-ink font-sans"
         />
-      </div>
+      </Frame>
     </div>
   );
 }

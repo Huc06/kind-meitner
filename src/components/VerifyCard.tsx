@@ -18,8 +18,7 @@ function StatusIcon({ status }: { status: RunStep["status"] }) {
 }
 
 const ICON_BUTTON =
-  "flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-secondary outline-none hover:bg-raised-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent/60";
-
+  "flex size-6 shrink-0 items-center justify-center border border-hairline bg-inset text-ink-secondary hover:border-ink hover:text-ink";
 /** A bot's run in the current ask as a checklist — every command it ran,
  * the control-CLI ones tagged verified — with one action: put the run into
  * the composer as a skill request, for the person to annotate and send
@@ -51,13 +50,13 @@ export function VerifyCard({
   return (
     <section
       aria-label={t("chat.verify.aria")}
-      className="w-[22rem] max-w-full rounded-2xl border border-hairline/40 bg-raised/95 text-ink shadow-lg backdrop-blur-sm"
+      className="w-[22rem] max-w-full border border-hairline bg-raised text-ink shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
     >
       <div className="flex items-center gap-2 px-3 py-2">
-        <ListChecks size={14} className="shrink-0 text-accent" aria-hidden="true" />
+        <ListChecks size={13} className="shrink-0 text-accent" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="text-[13px] font-medium">{t("chat.verify.title")}</span>
-          <span role="status" aria-live="polite" aria-atomic="true" className="text-[12px] text-ink-secondary">
+          <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] text-ink-secondary">
             {runSummary(steps).label}
           </span>
         </div>
@@ -69,10 +68,10 @@ export function VerifyCard({
           title={toggleLabel}
           className={ICON_BUTTON}
         >
-          {collapsed ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+          {collapsed ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
         </button>
         <button type="button" onClick={onDismiss} aria-label={t("chat.verify.dismiss")} title={t("chat.verify.dismiss")} className={ICON_BUTTON}>
-          <X size={14} aria-hidden="true" />
+          <X size={13} aria-hidden="true" />
         </button>
       </div>
       {!collapsed && (
@@ -80,31 +79,31 @@ export function VerifyCard({
           <ol
             tabIndex={0}
             aria-label={t("chat.verify.steps")}
-            className="max-h-56 overflow-y-auto border-t border-hairline/25 px-3 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="max-h-56 overflow-y-auto border-t border-hairline px-3 py-1.5 outline-none"
           >
             {steps.map((step) => (
               <li key={step.id} className="flex min-w-0 items-center gap-2 py-1">
                 <StatusIcon status={step.status} />
-                <span className="shrink-0 text-[13px] font-medium">{step.label}</span>
+                <span className="shrink-0 text-[12.5px] font-medium">{step.label}</span>
                 {step.verified && (
-                  <span className="shrink-0 text-[10.5px] uppercase tracking-wide text-success">{t("chat.verify.verifiedTag")}</span>
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-success">{t("chat.verify.verifiedTag")}</span>
                 )}
-                <code className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-secondary" title={step.command}>
+                <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-secondary" title={step.command}>
                   {step.command}
                 </code>
               </li>
             ))}
           </ol>
           {staged ? (
-            <div className="border-t border-hairline/25 px-3 py-2 text-[12px] text-ink-secondary">{t("chat.verify.staged")}</div>
+            <div className="border-t border-hairline px-3 py-2 font-mono text-[11.5px] text-ink-secondary">{t("chat.verify.staged")}</div>
           ) : canSave && (
-            <div className="flex flex-col items-end gap-1 border-t border-hairline/25 px-3 py-2">
+            <div className="flex flex-col items-end gap-1 border-t border-hairline px-3 py-2">
               <button
                 type="button"
                 onClick={onSave}
-                className="flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-ink-secondary outline-none hover:bg-raised-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent/60"
+                className="flex h-7 shrink-0 items-center gap-1.5 border border-hairline bg-inset px-2.5 font-mono text-[11px] uppercase tracking-[0.06em] text-ink hover:border-ink hover:bg-raised-hover"
               >
-                <BookmarkPlus size={13} aria-hidden="true" />
+                <BookmarkPlus size={12} aria-hidden="true" />
                 {t("chat.verify.save")}
               </button>
               <span className="text-[12px] text-ink-secondary">{t("chat.verify.saveHint")}</span>

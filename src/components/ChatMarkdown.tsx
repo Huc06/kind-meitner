@@ -272,14 +272,14 @@ export function CodeBlock({ code, lang, streaming }: CodeBlockProps) {
   // Code reads left-to-right whatever language surrounds it, so the block pins
   // its own direction rather than inheriting the message's.
   return (
-    <div dir="ltr" className="my-2 overflow-hidden rounded-lg border border-hairline/40 bg-inset">
-      <div className="flex items-center justify-between gap-2 border-b border-hairline/30 bg-raised/30 px-3 py-1.5 text-xs">
+    <div dir="ltr" className="my-2 border border-hairline bg-inset">
+      <div className="flex items-center justify-between gap-2 border-b border-hairline bg-panel px-3 py-1 font-mono text-xs">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span title={displayLanguage} className="min-w-0 truncate rounded border border-hairline/40 bg-raised px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-ink select-none">
+          <span title={displayLanguage} className="min-w-0 truncate border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-ink select-none">
             {displayLanguage}
           </span>
           {lineCount > 0 && (
-            <span className="shrink-0 whitespace-nowrap text-[11px] text-ink-secondary select-none">
+            <span className="shrink-0 whitespace-nowrap font-mono text-[10.5px] tabular-nums text-ink-secondary select-none">
               {formatLineCount(lineCount)}
             </span>
           )}
@@ -288,10 +288,10 @@ export function CodeBlock({ code, lang, streaming }: CodeBlockProps) {
           <button
             type="button"
             onClick={() => setWrapLines((w) => !w)}
-            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
+            className={`cursor-pointer inline-flex items-center gap-1 border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10.5px] transition-colors ${
               wrapLines
-                ? "bg-accent/15 text-accent font-medium"
-                : "text-ink-secondary hover:bg-raised hover:text-ink"
+                ? "border-accent bg-accent text-accent-ink font-medium"
+                : "text-ink-secondary hover:bg-raised-hover hover:text-ink"
             }`}
             title={wrapLines ? "Disable line wrapping" : "Wrap long lines"}
             aria-label={wrapLines ? "Disable line wrapping" : "Wrap long lines"}
@@ -303,7 +303,7 @@ export function CodeBlock({ code, lang, streaming }: CodeBlockProps) {
           <button
             type="button"
             onClick={download}
-            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+            className="cursor-pointer inline-flex items-center gap-1 border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10.5px] text-ink-secondary hover:bg-raised-hover hover:text-ink transition-colors"
             title="Download snippet as file"
             aria-label="Download snippet as file"
           >
@@ -313,7 +313,7 @@ export function CodeBlock({ code, lang, streaming }: CodeBlockProps) {
           <button
             type="button"
             onClick={copy}
-            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+            className="cursor-pointer inline-flex items-center gap-1 border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10.5px] text-ink-secondary hover:bg-raised-hover hover:text-ink transition-colors"
             title={copied ? "Copied to clipboard" : "Copy code"}
             aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}
           >
@@ -382,7 +382,7 @@ function LocalFileLink({ filePath, children, message }: { filePath: string; chil
         onClick={() => void save.save()}
         disabled={save.state === "saving"}
         title="Save a copy"
-        className="inline-flex items-center gap-1 break-words text-start text-accent underline decoration-accent/40 hover:decoration-accent disabled:cursor-wait"
+        className="cursor-pointer inline-flex items-center gap-1 break-words text-start text-ink underline decoration-hairline hover:decoration-ink disabled:cursor-wait"
       >
         {children}
         {save.state === "saving" ? (
@@ -439,7 +439,7 @@ function Spoiler({ children }: { children?: ReactNode }) {
   const [revealed, setRevealed] = useState(false);
   if (!revealed) {
     return (
-      <span className="relative mx-px inline-block rounded px-1 py-px">
+      <span className="relative mx-px inline-block border border-hairline px-1 py-px">
         <span
           aria-hidden="true"
           className="pointer-events-none select-none bg-raised text-transparent [&_*]:!text-transparent [&_a]:!no-underline"
@@ -451,13 +451,13 @@ function Spoiler({ children }: { children?: ReactNode }) {
           aria-label="Reveal spoiler"
           title="Reveal spoiler"
           onClick={() => setRevealed(true)}
-          className="absolute inset-0 rounded bg-raised/90"
+        className="cursor-pointer absolute inset-0 bg-raised/90"
         />
       </span>
     );
   }
   return (
-    <span className="mx-px inline rounded px-1 py-px text-[13px] leading-relaxed text-ink underline decoration-dotted decoration-hairline underline-offset-2">
+    <span className="mx-px inline border border-hairline px-1 py-px text-[13px] leading-relaxed text-ink underline decoration-dotted decoration-hairline underline-offset-2">
       {children}
       <button
         type="button"
@@ -532,7 +532,7 @@ function ChatMarkdownComponent({ text, streaming = false, message, mentionPeers 
             // but outside it — off the left edge in a right-to-left paragraph,
             // where the line ends.
             return (
-              <code dir="ltr" className="rounded bg-inset px-1 py-px text-[13px] break-words [unicode-bidi:isolate]">{children}</code>
+              <code dir="ltr" className="border border-hairline bg-inset px-1 py-px font-mono text-[12.5px] break-words [unicode-bidi:isolate]">{children}</code>
             );
           },
           // markdown never emits a span itself (no raw HTML); the only
@@ -554,7 +554,7 @@ function ChatMarkdownComponent({ text, streaming = false, message, mentionPeers 
                 target="_blank"
                 rel="noreferrer"
                 dir="auto"
-                className="break-words text-accent underline decoration-accent/40 hover:decoration-accent [unicode-bidi:isolate]"
+                className="break-words text-ink underline decoration-hairline hover:decoration-ink [unicode-bidi:isolate]"
               >
                 {children}
               </a>
@@ -562,18 +562,18 @@ function ChatMarkdownComponent({ text, streaming = false, message, mentionPeers 
           },
           table({ node, children }: BlockProps) {
             return (
-              <div className="overflow-x-auto">
-                <table dir={blockDirection(node)} className="w-full border-collapse text-[13.5px]">{children}</table>
+              <div className="overflow-x-auto my-2">
+                <table dir={blockDirection(node)} className="w-full border-collapse text-[13px]">{children}</table>
               </div>
             );
           },
           th({ children }: { children?: ReactNode }) {
             return (
-              <th className="border-b border-hairline/40 px-2 py-1.5 text-start font-semibold">{children}</th>
+              <th className="label-mono frame-rule-below px-2 py-1.5 text-start font-semibold text-ink-secondary">{children}</th>
             );
           },
           td({ children }: { children?: ReactNode }) {
-            return <td className="border-b border-hairline/20 px-2 py-1.5 align-top">{children}</td>;
+            return <td className="frame-rule-below px-2.5 py-1.5 align-top font-sans text-ink">{children}</td>;
           },
           p({ node, children }: BlockProps) {
             return <p dir={blockDirection(node)}>{children}</p>;
@@ -604,14 +604,14 @@ function ChatMarkdownComponent({ text, streaming = false, message, mentionPeers 
           },
           blockquote({ node, children }: BlockProps) {
             return (
-              <blockquote dir={blockDirection(node)} className="border-s-2 border-hairline ps-3 text-ink-secondary">{children}</blockquote>
+              <blockquote dir={blockDirection(node)} className="border-s-2 border-ink ps-3 text-ink-secondary">{children}</blockquote>
             );
           },
           del({ children }: { children?: ReactNode }) {
             return <Spoiler>{children}</Spoiler>;
           },
           hr() {
-            return <hr className="border-hairline/40" />;
+            return <div className="frame-rule my-3" />;
           },
         }}
       >

@@ -172,47 +172,47 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
         <span className="text-warning/80">Marketplace workflow simulation — not live settlement.</span>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-hairline/40 bg-panel px-6 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 frame-rule-below bg-panel px-6 py-2.5">
         <button
           type="button"
           aria-label="Previous step"
           disabled={step <= 1}
           onClick={() => { setPlaying(false); go(step - 1); }}
-          className="rounded-lg border border-hairline/60 p-2 text-ink-secondary hover:bg-control disabled:opacity-40"
+          className="border border-hairline bg-inset p-1.5 text-ink-secondary hover:border-ink hover:text-ink disabled:opacity-40"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={15} />
         </button>
         <button
           type="button"
           aria-label={playing ? "Pause demo" : "Play demo"}
           onClick={() => setPlaying((p) => !p)}
-          className="rounded-lg border border-hairline/60 p-2 text-ink-secondary hover:bg-control"
+          className="border border-hairline bg-inset p-1.5 text-ink-secondary hover:border-ink hover:text-ink"
         >
-          {playing ? <Pause size={16} /> : <Play size={16} />}
+          {playing ? <Pause size={15} /> : <Play size={15} />}
         </button>
         <button
           type="button"
           aria-label="Next step"
           disabled={step >= steps.length}
           onClick={() => { setPlaying(false); go(step + 1); }}
-          className="rounded-lg border border-hairline/60 p-2 text-ink-secondary hover:bg-control disabled:opacity-40"
+          className="border border-hairline bg-inset p-1.5 text-ink-secondary hover:border-ink hover:text-ink disabled:opacity-40"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={15} />
         </button>
         <button
           type="button"
           aria-label="Reset demo"
           onClick={() => { setPlaying(false); go(1); }}
-          className="rounded-lg border border-hairline/60 p-2 text-ink-secondary hover:bg-control"
+          className="border border-hairline bg-inset p-1.5 text-ink-secondary hover:border-ink hover:text-ink"
         >
-          <RotateCcw size={15} />
+          <RotateCcw size={14} />
         </button>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-semibold text-ink">
+          <p className="label-mono text-[11px] font-semibold text-ink">
             Step {step}/{steps.length}: {currentStep?.label}
           </p>
-          <p className="truncate text-[11.5px] text-ink-secondary">{currentStep?.detail}</p>
+          <p className="truncate text-[11px] text-ink-secondary">{currentStep?.detail}</p>
         </div>
 
         <div className="flex items-center gap-1" aria-label="Timeline progress">
@@ -233,43 +233,43 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-hairline/40 px-6 py-2 text-[11.5px]">
-        <span className="text-ink-secondary">Filters</span>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 frame-rule-below px-6 py-2 text-[11.5px]">
+        <span className="label-mono text-[10.5px] text-ink-secondary">Filters</span>
         <select
           aria-label="Filter by presence"
           value={presenceFilter}
           onChange={(e) => setPresenceFilter(e.target.value as AgentPresence | "all")}
-          className="rounded-md border border-hairline/50 bg-inset px-2 py-1 text-ink"
+          className="border border-hairline bg-inset px-2 py-1 font-mono text-[10.5px] text-ink focus:border-ink focus:outline-none [color-scheme:inherit]"
         >
           {PRESENCE_OPTIONS.map((p) => (
-            <option key={p} value={p}>{p === "all" ? "All presence" : p}</option>
+            <option key={p} value={p} className="bg-menu text-ink">{p === "all" ? "All presence" : p}</option>
           ))}
         </select>
         <select
           aria-label="Filter by task state"
           value={taskStateFilter}
           onChange={(e) => setTaskStateFilter(e.target.value as TaskState | "all")}
-          className="rounded-md border border-hairline/50 bg-inset px-2 py-1 text-ink"
+          className="border border-hairline bg-inset px-2 py-1 font-mono text-[10.5px] text-ink focus:border-ink focus:outline-none [color-scheme:inherit]"
         >
           {TASK_STATE_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s === "all" ? "All task states" : s}</option>
+            <option key={s} value={s} className="bg-menu text-ink">{s === "all" ? "All task states" : s}</option>
           ))}
         </select>
         <select
           aria-label="Filter by branch"
           value={branchFilter}
           onChange={(e) => setBranchFilter(e.target.value)}
-          className="rounded-md border border-hairline/50 bg-inset px-2 py-1 text-ink"
+          className="border border-hairline bg-inset px-2 py-1 font-mono text-[10.5px] text-ink focus:border-ink focus:outline-none [color-scheme:inherit]"
         >
-          <option value="all">All branches</option>
+          <option value="all" className="bg-menu text-ink">All branches</option>
           {branches.map((b) => (
-            <option key={b} value={b}>{b}</option>
+            <option key={b} value={b} className="bg-menu text-ink">{b}</option>
           ))}
         </select>
         {(presenceFilter !== "all" || taskStateFilter !== "all" || branchFilter !== "all" || agentFilter || taskFilter) && (
           <button
             type="button"
-            className="text-accent hover:underline"
+            className="font-mono text-[11px] text-ink underline hover:text-ink-secondary"
             onClick={() => {
               setPresenceFilter("all");
               setTaskStateFilter("all");
@@ -325,11 +325,10 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
                           type="button"
                           onClick={() => selectAgent(agent.id)}
                           className={cn(
-                            "flex w-full items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-left transition",
+                            "flex w-full items-center gap-3 border bg-card px-3 py-2.5 text-left transition-colors",
                             hot
-                              ? "border-accent/60 ring-1 ring-accent/20"
-                              : "border-hairline/40 hover:border-ink-secondary/40",
-                            !reducedMotion && hot && "motion-safe:shadow-md",
+                              ? "border-ink ring-1 ring-ink bg-raised"
+                              : "border-hairline hover:border-ink-secondary hover:bg-raised-hover",
                           )}
                         >
                           <TeamMapAgentAvatar
@@ -374,10 +373,10 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
                           type="button"
                           onClick={() => selectTask(task.id)}
                           className={cn(
-                            "flex w-full items-start gap-3 rounded-xl border bg-card px-3 py-2.5 text-left transition",
+                            "flex w-full items-start gap-3 border bg-card px-3 py-2.5 text-left transition-colors",
                             hot
-                              ? "border-accent/60 ring-1 ring-accent/20"
-                              : "border-hairline/40 hover:border-ink-secondary/40",
+                              ? "border-ink ring-1 ring-ink bg-raised"
+                              : "border-hairline hover:border-ink-secondary hover:bg-raised-hover",
                           )}
                         >
                           <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", taskDot(task.state))} />
@@ -388,14 +387,11 @@ export function TeamMapDemoPanel({ className }: { className?: string }) {
                               {task.branchId ? ` · ${task.branchId}` : ""}
                             </span>
                             <span
-                              className="mt-1.5 block h-1 overflow-hidden rounded-full bg-inset"
+                              className="mt-1.5 block h-1.5 overflow-hidden border border-hairline bg-inset"
                               aria-hidden
                             >
                               <span
-                                className={cn(
-                                  "block h-full rounded-full bg-accent",
-                                  !reducedMotion && "transition-[width] duration-300",
-                                )}
+                                className="block h-full bg-accent transition-[width] duration-300"
                                 style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
                               />
                             </span>

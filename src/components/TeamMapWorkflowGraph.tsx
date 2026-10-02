@@ -111,37 +111,32 @@ export function TeamMapWorkflowGraph({
   return (
     <div
       className={cn(
-        "relative min-h-[580px] w-full select-none overflow-x-auto rounded-2xl border border-hairline/50 bg-[#121417] p-6 text-ink shadow-inner",
+        "relative min-h-[580px] w-full select-none overflow-x-auto border border-hairline grid-dots bg-app p-6 text-ink",
         className,
       )}
-      style={{
-        backgroundImage:
-          "radial-gradient(circle, color-mix(in srgb, var(--color-ink-secondary) 15%, transparent) 1px, transparent 1px)",
-        backgroundSize: "24px 24px",
-      }}
     >
       {/* Header Legend */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-hairline/30 pb-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 frame-rule-below pb-3">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-accent" />
-          <h2 className="text-[13px] font-semibold text-ink">Autonomous Workflow DAG</h2>
-          <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10.5px] font-medium text-accent">
+          <Sparkles size={15} className="text-ink" />
+          <h2 className="label-mono text-[12px] font-semibold text-ink">Autonomous Workflow DAG</h2>
+          <span className="border border-hairline bg-raised px-2 py-0.5 font-mono text-[10.5px] text-ink">
             Live 2D Spatial Map
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink-secondary">
+        <div className="flex flex-wrap items-center gap-3 font-mono text-[10.5px] text-ink-secondary">
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-success" /> Running / Active
+            <span className="size-1.5 rounded-full bg-success" /> Running / Active
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-danger animate-pulse" /> Blocked
+            <span className="size-1.5 rounded-full bg-danger animate-pulse" /> Blocked
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-accent" /> In Review / Converging
+            <span className="size-1.5 rounded-full bg-accent" /> In Review / Converging
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-warning" /> Hand-off transferred
+            <span className="size-1.5 rounded-full bg-warning" /> Hand-off transferred
           </span>
         </div>
       </div>
@@ -163,7 +158,7 @@ export function TeamMapWorkflowGraph({
               markerHeight="6"
               orient="auto-start-reverse"
             >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="rgba(255,255,255,0.3)" />
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-hairline)" />
             </marker>
             <marker
               id="dag-arrow-active"
@@ -174,7 +169,7 @@ export function TeamMapWorkflowGraph({
               markerHeight="6"
               orient="auto-start-reverse"
             >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-accent, #6366f1)" />
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-accent)" />
             </marker>
             <marker
               id="dag-arrow-help"
@@ -185,7 +180,7 @@ export function TeamMapWorkflowGraph({
               markerHeight="6"
               orient="auto-start-reverse"
             >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-warning)" />
             </marker>
           </defs>
 
@@ -193,7 +188,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 230 220 C 310 220, 320 80, 390 80"
             fill="none"
-            stroke={discoverTask?.state === "active" || discoverTask?.state === "completed" ? "var(--color-accent, #6366f1)" : "rgba(255,255,255,0.15)"}
+            stroke={discoverTask?.state === "active" || discoverTask?.state === "completed" ? "var(--color-accent)" : "var(--color-hairline)"}
             strokeWidth={discoverTask?.state === "active" ? "2.5" : "1.5"}
             strokeDasharray={discoverTask?.state === "active" ? "4 3" : undefined}
             markerEnd={discoverTask?.state === "active" ? "url(#dag-arrow-active)" : "url(#dag-arrow)"}
@@ -203,7 +198,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 230 220 C 310 220, 320 200, 390 200"
             fill="none"
-            stroke={riskTask?.state === "active" || riskTask?.state === "completed" ? "var(--color-accent, #6366f1)" : "rgba(255,255,255,0.15)"}
+            stroke={riskTask?.state === "active" || riskTask?.state === "completed" ? "var(--color-accent)" : "var(--color-hairline)"}
             strokeWidth={riskTask?.state === "active" ? "2.5" : "1.5"}
             markerEnd={riskTask?.state === "active" ? "url(#dag-arrow-active)" : "url(#dag-arrow)"}
           />
@@ -212,7 +207,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 230 220 C 310 220, 320 330, 390 330"
             fill="none"
-            stroke={escrowTask?.state === "active" || escrowTask?.state === "completed" ? "var(--color-accent, #6366f1)" : "rgba(255,255,255,0.15)"}
+            stroke={escrowTask?.state === "active" || escrowTask?.state === "completed" ? "var(--color-accent)" : "var(--color-hairline)"}
             strokeWidth={escrowTask?.state === "active" ? "2.5" : "1.5"}
             markerEnd={escrowTask?.state === "active" ? "url(#dag-arrow-active)" : "url(#dag-arrow)"}
           />
@@ -223,13 +218,13 @@ export function TeamMapWorkflowGraph({
               <path
                 d="M 500 170 C 500 145, 500 135, 500 115"
                 fill="none"
-                stroke="#f59e0b"
-                strokeWidth="2.5"
+                stroke="var(--color-warning)"
+                strokeWidth="2"
                 strokeDasharray="4 3"
                 markerEnd="url(#dag-arrow-help)"
               />
-              <rect x="440" y="130" width="120" height="20" rx="4" fill="#1e180a" stroke="#f59e0b" strokeWidth="1" />
-              <text x="500" y="144" fill="#fbbf24" fontSize="10" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
+              <rect x="440" y="130" width="120" height="20" fill="var(--color-inset)" stroke="var(--color-warning)" strokeWidth="1" />
+              <text x="500" y="144" fill="var(--color-warning)" fontSize="10" fontWeight="600" textAnchor="middle" fontFamily="monospace">
                 asks for help ↗
               </text>
             </g>
@@ -239,7 +234,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 520 220 C 560 220, 560 450, 490 460"
             fill="none"
-            stroke={negotiateTask?.state === "blocked" ? "var(--color-danger, #ef4444)" : "rgba(255,255,255,0.15)"}
+            stroke={negotiateTask?.state === "blocked" ? "var(--color-danger)" : "var(--color-hairline)"}
             strokeWidth="1.5"
             strokeDasharray={negotiateTask?.state === "blocked" ? "3 3" : undefined}
           />
@@ -248,7 +243,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 640 80 C 700 80, 690 230, 730 240"
             fill="none"
-            stroke={reviewTask?.state === "active" || reviewTask?.state === "completed" ? "var(--color-accent, #6366f1)" : "rgba(255,255,255,0.18)"}
+            stroke={reviewTask?.state === "active" || reviewTask?.state === "completed" ? "var(--color-accent)" : "var(--color-hairline)"}
             strokeWidth={reviewTask?.state === "active" ? "2.5" : "1.5"}
             markerEnd={reviewTask?.state === "active" ? "url(#dag-arrow-active)" : "url(#dag-arrow)"}
           />
@@ -257,7 +252,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 640 200 C 685 200, 690 240, 730 240"
             fill="none"
-            stroke={reviewTask?.state === "active" || reviewTask?.state === "completed" ? "var(--color-accent, #6366f1)" : "rgba(255,255,255,0.18)"}
+            stroke={reviewTask?.state === "active" || reviewTask?.state === "completed" ? "var(--color-accent)" : "var(--color-hairline)"}
             strokeWidth={reviewTask?.state === "active" ? "2.5" : "1.5"}
             markerEnd={reviewTask?.state === "active" ? "url(#dag-arrow-active)" : "url(#dag-arrow)"}
           />
@@ -266,7 +261,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 640 460 C 700 460, 690 250, 730 250"
             fill="none"
-            stroke={reviewTask?.state === "active" || reviewTask?.state === "completed" ? "var(--color-accent, #6366f1)" : "rgba(255,255,255,0.18)"}
+            stroke={reviewTask?.state === "active" || reviewTask?.state === "completed" ? "var(--color-accent)" : "var(--color-hairline)"}
             strokeWidth={reviewTask?.state === "active" ? "2.5" : "1.5"}
             markerEnd={reviewTask?.state === "active" ? "url(#dag-arrow-active)" : "url(#dag-arrow)"}
           />
@@ -275,7 +270,7 @@ export function TeamMapWorkflowGraph({
           <path
             d="M 870 245 L 910 245"
             fill="none"
-            stroke={snapshot.tasks.every((t) => t.state === "completed") ? "var(--color-success, #22c55e)" : "rgba(255,255,255,0.18)"}
+            stroke={snapshot.tasks.every((t) => t.state === "completed") ? "var(--color-success)" : "var(--color-hairline)"}
             strokeWidth="2"
             markerEnd="url(#dag-arrow)"
           />
@@ -297,14 +292,14 @@ export function TeamMapWorkflowGraph({
                 if (coordinatorAgent) onSelectAgent(coordinatorAgent.id);
               }}
               className={cn(
-                "cursor-pointer rounded-2xl border bg-card/90 p-4 transition-all hover:border-accent/60",
-                selectedTaskId === "intake" ? "border-accent ring-2 ring-accent/25" : "border-hairline/60",
+                "cursor-pointer border bg-card p-4 transition-colors hover:border-ink hover:bg-raised-hover",
+                selectedTaskId === "intake" ? "border-ink ring-1 ring-ink bg-raised" : "border-hairline",
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold text-accent">Marketplace Objective</span>
+                <span className="label-mono text-[10.5px] font-semibold text-ink">Marketplace Objective</span>
                 {intakeTask && (
-                  <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", taskStateBadge(intakeTask.state).tone)}>
+                  <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", taskStateBadge(intakeTask.state).tone)}>
                     {taskStateBadge(intakeTask.state).label}
                   </span>
                 )}
@@ -328,7 +323,7 @@ export function TeamMapWorkflowGraph({
                     />
                     <span className="text-[12px] font-medium text-ink">{coordinatorAgent.name}</span>
                   </div>
-                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", presenceBadge(coordinatorAgent.presence).tone)}>
+                  <span className={cn("px-1.5 py-0.5 font-mono text-[10.5px]", presenceBadge(coordinatorAgent.presence).tone)}>
                     {presenceBadge(coordinatorAgent.presence).label}
                   </span>
                 </div>
@@ -338,9 +333,9 @@ export function TeamMapWorkflowGraph({
 
           {/* COLUMN 2: Parallel Work Branches */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-secondary">
+            <div className="flex items-center justify-between gap-2 label-mono text-[10.5px] text-ink-secondary">
               <span>Stage 2 · Parallel Agent Branches</span>
-              <span className="rounded bg-accent/10 px-2 py-0.5 text-[10px] lowercase tracking-normal text-accent">
+              <span className="border border-hairline bg-raised px-1.5 py-0.5 font-mono text-[10.5px] text-ink">
                 concurrent execution
               </span>
             </div>
@@ -354,13 +349,13 @@ export function TeamMapWorkflowGraph({
                     if (discoveryAgent) onSelectAgent(discoveryAgent.id);
                   }}
                   className={cn(
-                    "cursor-pointer rounded-2xl border bg-card/90 p-4 transition-all hover:border-accent/60",
-                    selectedTaskId === "discover" ? "border-accent ring-2 ring-accent/25" : "border-hairline/60",
+                    "cursor-pointer border bg-card p-4 transition-colors hover:border-ink hover:bg-raised-hover",
+                    selectedTaskId === "discover" ? "border-ink ring-1 ring-ink bg-raised" : "border-hairline",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-emerald-400">Branch 1 · Catalog Discovery</span>
-                    <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", taskStateBadge(discoverTask.state).tone)}>
+                    <span className="label-mono text-[10.5px] font-medium text-ink">Branch 1 · Catalog Discovery</span>
+                    <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", taskStateBadge(discoverTask.state).tone)}>
                       {taskStateBadge(discoverTask.state).label}
                     </span>
                   </div>
@@ -368,14 +363,14 @@ export function TeamMapWorkflowGraph({
 
                   {/* Progress bar */}
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
-                      <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${discoverTask.progress}%` }} />
+                    <div className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset">
+                      <div className="h-full bg-accent transition-all duration-300" style={{ width: `${discoverTask.progress}%` }} />
                     </div>
-                    <span className="text-[11px] tabular-nums text-ink-secondary">{discoverTask.progress}%</span>
+                    <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">{discoverTask.progress}%</span>
                   </div>
 
                   {discoveryAgent && (
-                    <div className="mt-3 flex items-center justify-between border-t border-hairline/30 pt-2.5">
+                    <div className="mt-3 flex items-center justify-between frame-rule-above pt-2.5">
                       <div className="flex items-center gap-2">
                         <TeamMapAgentAvatar
                           agentId={discoveryAgent.id}
@@ -385,7 +380,7 @@ export function TeamMapWorkflowGraph({
                         />
                         <span className="text-[12px] font-medium text-ink">{discoveryAgent.name}</span>
                       </div>
-                      <span className={cn("rounded px-1.5 py-0.5 text-[10px]", presenceBadge(discoveryAgent.presence).tone)}>
+                      <span className={cn("px-1.5 py-0.5 font-mono text-[10.5px]", presenceBadge(discoveryAgent.presence).tone)}>
                         {presenceBadge(discoveryAgent.presence).label}
                       </span>
                     </div>
@@ -401,14 +396,13 @@ export function TeamMapWorkflowGraph({
                     if (riskAgent) onSelectAgent(riskAgent.id);
                   }}
                   className={cn(
-                    "cursor-pointer rounded-2xl border bg-card/90 p-4 transition-all hover:border-accent/60",
-                    selectedTaskId === "risk-eval" ? "border-accent ring-2 ring-accent/25" : "border-hairline/60",
-                    riskAgent?.presence === "working" && "border-accent/40 shadow-[0_0_15px_rgba(99,102,241,0.15)]",
+                    "cursor-pointer border bg-card p-4 transition-colors hover:border-ink hover:bg-raised-hover",
+                    selectedTaskId === "risk-eval" ? "border-ink ring-1 ring-ink bg-raised" : "border-hairline",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-indigo-400">Branch 2 · Counterparty Risk</span>
-                    <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", taskStateBadge(riskTask.state).tone)}>
+                    <span className="label-mono text-[10.5px] font-medium text-ink">Branch 2 · Counterparty Risk</span>
+                    <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", taskStateBadge(riskTask.state).tone)}>
                       {taskStateBadge(riskTask.state).label}
                     </span>
                   </div>
@@ -416,14 +410,14 @@ export function TeamMapWorkflowGraph({
 
                   {/* Progress bar */}
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
-                      <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${riskTask.progress}%` }} />
+                    <div className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset">
+                      <div className="h-full bg-accent transition-all duration-300" style={{ width: `${riskTask.progress}%` }} />
                     </div>
-                    <span className="text-[11px] tabular-nums text-ink-secondary">{riskTask.progress}%</span>
+                    <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">{riskTask.progress}%</span>
                   </div>
 
                   {riskAgent && (
-                    <div className="mt-3 flex items-center justify-between border-t border-hairline/30 pt-2.5">
+                    <div className="mt-3 flex items-center justify-between frame-rule-above pt-2.5">
                       <div className="flex items-center gap-2">
                         <TeamMapAgentAvatar
                           agentId={riskAgent.id}
@@ -433,7 +427,7 @@ export function TeamMapWorkflowGraph({
                         />
                         <span className="text-[12px] font-medium text-ink">{riskAgent.name}</span>
                       </div>
-                      <span className={cn("rounded px-1.5 py-0.5 text-[10px]", presenceBadge(riskAgent.presence).tone)}>
+                      <span className={cn("px-1.5 py-0.5 font-mono text-[10.5px]", presenceBadge(riskAgent.presence).tone)}>
                         {presenceBadge(riskAgent.presence).label}
                       </span>
                     </div>
@@ -450,14 +444,14 @@ export function TeamMapWorkflowGraph({
                     if (owner) onSelectAgent(owner.id);
                   }}
                   className={cn(
-                    "cursor-pointer rounded-2xl border bg-card/90 p-4 transition-all hover:border-accent/60",
-                    selectedTaskId === "escrow-prep" ? "border-accent ring-2 ring-accent/25" : "border-hairline/60",
+                    "cursor-pointer border bg-card p-4 transition-colors hover:border-ink hover:bg-raised-hover",
+                    selectedTaskId === "escrow-prep" ? "border-ink ring-1 ring-ink bg-raised" : "border-hairline",
                     transfers.length > 0 && "ring-1 ring-warning/30",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-amber-400">Branch 3 · Payment Protection</span>
-                    <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", taskStateBadge(escrowTask.state).tone)}>
+                    <span className="label-mono text-[10.5px] font-medium text-warning">Branch 3 · Payment Protection</span>
+                    <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", taskStateBadge(escrowTask.state).tone)}>
                       {taskStateBadge(escrowTask.state).label}
                     </span>
                   </div>
@@ -465,15 +459,15 @@ export function TeamMapWorkflowGraph({
 
                   {/* Transfer Banner */}
                   {latestTransfer && (
-                    <div className="mt-2.5 rounded-lg border border-warning/30 bg-warning/10 p-2 text-[11px] text-warning">
+                    <div className="mt-2.5 border border-warning/40 bg-warning/10 p-2 text-[11px] text-warning">
                       <div className="flex items-center justify-between font-semibold">
                         <span>Handoff: Escrow → Negotiation</span>
-                        <span className="text-[10px]">Context preserved</span>
+                        <span className="font-mono text-[10.5px]">Context preserved</span>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-warning/90">
+                      <p className="mt-1 line-clamp-2 text-[10.5px] leading-relaxed text-warning/90">
                         {latestTransfer.reason}
                       </p>
-                      <div className="mt-1.5 flex items-center justify-between text-[9.5px] text-ink-secondary">
+                      <div className="mt-1.5 flex items-center justify-between font-mono text-[10.5px] text-ink-secondary">
                         <span>4 msgs, 2 artifacts transferred</span>
                         <span className="text-warning">Resumed at {escrowTask.progress}%</span>
                       </div>
@@ -482,13 +476,13 @@ export function TeamMapWorkflowGraph({
 
                   {/* Progress bar */}
                   <div className="mt-2.5 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
-                      <div className="h-full bg-amber-500 transition-all duration-300" style={{ width: `${escrowTask.progress}%` }} />
+                    <div className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset">
+                      <div className="h-full bg-accent transition-all duration-300" style={{ width: `${escrowTask.progress}%` }} />
                     </div>
-                    <span className="text-[11px] tabular-nums text-ink-secondary">{escrowTask.progress}%</span>
+                    <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">{escrowTask.progress}%</span>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-hairline/30 pt-2.5">
+                  <div className="mt-3 flex items-center justify-between frame-rule-above pt-2.5">
                     <div className="flex items-center gap-2">
                       <TeamMapAgentAvatar
                         agentId={escrowTask.ownerAgentId}
@@ -502,7 +496,7 @@ export function TeamMapWorkflowGraph({
                     </div>
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[10px]",
+                        "px-1.5 py-0.5 font-mono text-[10.5px]",
                         presenceBadge(agentsById.get(escrowTask.ownerAgentId)?.presence ?? "working").tone,
                       )}
                     >
@@ -520,21 +514,21 @@ export function TeamMapWorkflowGraph({
                     if (negotiationAgent) onSelectAgent(negotiationAgent.id);
                   }}
                   className={cn(
-                    "cursor-pointer rounded-2xl border bg-card/90 p-4 transition-all hover:border-accent/60",
-                    selectedTaskId === "negotiate" ? "border-accent ring-2 ring-accent/25" : "border-hairline/60",
-                    negotiateTask.state === "blocked" && "border-danger/60 bg-danger/5 shadow-[0_0_15px_rgba(239,68,68,0.15)]",
+                    "cursor-pointer border bg-card p-4 transition-colors hover:border-ink hover:bg-raised-hover",
+                    selectedTaskId === "negotiate" ? "border-ink ring-1 ring-ink bg-raised" : "border-hairline",
+                    negotiateTask.state === "blocked" && "border-danger bg-danger/5",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-rose-400">Commercial Terms</span>
-                    <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", taskStateBadge(negotiateTask.state).tone)}>
+                    <span className="label-mono text-[10.5px] font-medium text-ink">Commercial Terms</span>
+                    <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", taskStateBadge(negotiateTask.state).tone)}>
                       {taskStateBadge(negotiateTask.state).label}
                     </span>
                   </div>
                   <h4 className="mt-1 text-[13px] font-semibold text-ink">{negotiateTask.title}</h4>
 
                   {negotiateTask.state === "blocked" && (
-                    <div className="mt-2 flex items-center gap-1.5 rounded-md bg-danger/10 px-2 py-1 text-[11px] text-danger">
+                    <div className="mt-2 flex items-center gap-1.5 border border-danger/40 bg-danger/10 px-2 py-1 font-mono text-[10.5px] text-danger">
                       <AlertCircle size={13} className="shrink-0" />
                       <span>Blocked on risk evaluation & escrow</span>
                     </div>
@@ -542,14 +536,14 @@ export function TeamMapWorkflowGraph({
 
                   {/* Progress bar */}
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
-                      <div className="h-full bg-rose-500 transition-all duration-300" style={{ width: `${negotiateTask.progress}%` }} />
+                    <div className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset">
+                      <div className="h-full bg-danger transition-all duration-300" style={{ width: `${negotiateTask.progress}%` }} />
                     </div>
-                    <span className="text-[11px] tabular-nums text-ink-secondary">{negotiateTask.progress}%</span>
+                    <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">{negotiateTask.progress}%</span>
                   </div>
 
                   {negotiationAgent && (
-                    <div className="mt-3 flex items-center justify-between border-t border-hairline/30 pt-2.5">
+                    <div className="mt-3 flex items-center justify-between frame-rule-above pt-2.5">
                       <div className="flex items-center gap-2">
                         <TeamMapAgentAvatar
                           agentId={negotiationAgent.id}
@@ -559,7 +553,7 @@ export function TeamMapWorkflowGraph({
                         />
                         <span className="text-[12px] font-medium text-ink">{negotiationAgent.name}</span>
                       </div>
-                      <span className={cn("rounded px-1.5 py-0.5 text-[10px]", presenceBadge(negotiationAgent.presence).tone)}>
+                      <span className={cn("px-1.5 py-0.5 font-mono text-[10.5px]", presenceBadge(negotiationAgent.presence).tone)}>
                         {presenceBadge(negotiationAgent.presence).label}
                       </span>
                     </div>
@@ -571,7 +565,7 @@ export function TeamMapWorkflowGraph({
 
           {/* COLUMN 3: Convergence & Review */}
           <div className="space-y-4 pt-20">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-secondary">
+            <div className="flex items-center gap-1.5 label-mono text-[10.5px] text-ink-secondary">
               <span>Stage 3</span>
               <span>·</span>
               <span>Review Convergence</span>
@@ -584,14 +578,14 @@ export function TeamMapWorkflowGraph({
                   if (reviewerAgent) onSelectAgent(reviewerAgent.id);
                 }}
                 className={cn(
-                  "cursor-pointer rounded-2xl border bg-card/90 p-4 transition-all hover:border-accent/60",
-                  selectedTaskId === "review" ? "border-accent ring-2 ring-accent/25" : "border-hairline/60",
-                  reviewTask.state === "reviewing" && "border-accent ring-2 ring-accent/30 shadow-[0_0_20px_rgba(99,102,241,0.2)]",
+                  "cursor-pointer border bg-card p-4 transition-colors hover:border-ink hover:bg-raised-hover",
+                  selectedTaskId === "review" ? "border-ink ring-1 ring-ink bg-raised" : "border-hairline",
+                  reviewTask.state === "reviewing" && "border-warning ring-1 ring-warning/30",
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold text-accent">Jury Review</span>
-                  <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", taskStateBadge(reviewTask.state).tone)}>
+                  <span className="label-mono text-[10.5px] font-semibold text-ink">Jury Review</span>
+                  <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", taskStateBadge(reviewTask.state).tone)}>
                     {taskStateBadge(reviewTask.state).label}
                   </span>
                 </div>
@@ -603,14 +597,14 @@ export function TeamMapWorkflowGraph({
 
                 {/* Progress bar */}
                 <div className="mt-3 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
+                  <div className="h-1.5 flex-1 overflow-hidden border border-hairline bg-inset">
                     <div className="h-full bg-accent transition-all duration-300" style={{ width: `${reviewTask.progress}%` }} />
                   </div>
-                  <span className="text-[11px] tabular-nums text-ink-secondary">{reviewTask.progress}%</span>
+                  <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">{reviewTask.progress}%</span>
                 </div>
 
                 {reviewerAgent && (
-                  <div className="mt-4 flex items-center justify-between border-t border-hairline/30 pt-3">
+                  <div className="mt-4 flex items-center justify-between frame-rule-above pt-3">
                     <div className="flex items-center gap-2">
                       <TeamMapAgentAvatar
                         agentId={reviewerAgent.id}
@@ -620,7 +614,7 @@ export function TeamMapWorkflowGraph({
                       />
                       <span className="text-[12px] font-medium text-ink">{reviewerAgent.name}</span>
                     </div>
-                    <span className={cn("rounded px-1.5 py-0.5 text-[10px]", presenceBadge(reviewerAgent.presence).tone)}>
+                    <span className={cn("px-1.5 py-0.5 font-mono text-[10.5px]", presenceBadge(reviewerAgent.presence).tone)}>
                       {presenceBadge(reviewerAgent.presence).label}
                     </span>
                   </div>
@@ -631,7 +625,7 @@ export function TeamMapWorkflowGraph({
 
           {/* COLUMN 4: Completed Stage */}
           <div className="space-y-4 pt-28">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-secondary">
+            <div className="flex items-center gap-1.5 label-mono text-[10.5px] text-ink-secondary">
               <span>Stage 4</span>
               <span>·</span>
               <span>Close</span>
@@ -639,15 +633,15 @@ export function TeamMapWorkflowGraph({
 
             <div
               className={cn(
-                "rounded-2xl border p-4 text-center transition-all",
+                "border p-4 text-center transition-colors",
                 snapshot.tasks.every((t) => t.state === "completed")
-                  ? "border-success/50 bg-success/10 text-success"
-                  : "border-hairline/40 bg-card/60 text-ink-secondary opacity-60",
+                  ? "border-success bg-success/10 text-success"
+                  : "border-hairline bg-card text-ink-secondary opacity-60",
               )}
             >
               <CheckCircle2 size={24} className="mx-auto" />
-              <p className="mt-2 text-[12px] font-semibold">Deal Package Ready</p>
-              <p className="mt-1 text-[10.5px]">Audited event trail</p>
+              <p className="mt-2 label-mono text-[11.5px] font-semibold text-ink">Deal Package Ready</p>
+              <p className="mt-1 font-mono text-[10.5px] text-ink-secondary">Audited event trail</p>
             </div>
           </div>
         </div>

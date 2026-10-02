@@ -52,22 +52,22 @@ export function PermissionsSection({
     <div className="flex flex-col gap-4">
       <div
         className={cn(
-          "rounded-xl border p-4",
-          bot.chiefOfStaff ? "border-accent/40 bg-accent/10" : "border-hairline/40 bg-card",
+          "border p-4",
+          bot.chiefOfStaff ? "border-accent bg-raised" : "border-hairline bg-card",
         )}
       >
         <div className="flex items-center gap-3">
           <span
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-lg",
-              bot.chiefOfStaff ? "bg-accent text-white" : "bg-control text-ink-secondary",
+              "flex size-8 shrink-0 items-center justify-center border",
+              bot.chiefOfStaff ? "border-accent bg-accent text-accent-ink" : "border-hairline bg-control text-ink-secondary",
             )}
           >
-            <Crown size={17} />
+            <Crown size={16} />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-medium text-ink">Chief of Staff</div>
-            <div className="text-[11.5px] text-ink-secondary">One for {sectionName}</div>
+            <div className="text-[14px] font-medium text-ink">Chief of Staff</div>
+            <div className="font-mono text-[11px] text-ink-secondary">One for {sectionName}</div>
           </div>
           <Switch
             checked={Boolean(bot.chiefOfStaff)}
@@ -78,7 +78,7 @@ export function PermissionsSection({
             className="disabled:cursor-not-allowed"
           />
         </div>
-        <div className="mt-3 text-[13px] leading-relaxed text-ink-secondary">
+        <div className="mt-3 text-[12.5px] leading-relaxed text-ink-secondary">
           {bot.chiefOfStaff && !canCoordinate
             ? "This bot still holds the role, but its current provider cannot contact teammates. Choose a provider that supports bot coordination."
             : bot.chiefOfStaff
@@ -98,10 +98,10 @@ export function PermissionsSection({
         />}
       </div>
 
-      <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">
+      <div className="flex items-center justify-between gap-4 border border-hairline bg-card p-4">
         <div>
-          <div className="text-[15px] font-medium text-ink">Ask me before contacting other bots</div>
-          <div className="mt-0.5 text-[13px] text-ink-secondary">
+          <div className="text-[14px] font-medium text-ink">Ask me before contacting other bots</div>
+          <div className="mt-0.5 text-[12.5px] text-ink-secondary">
             {bot.approvePeerComms
               ? "This bot will stop and ask before it reaches out to another bot."
               : "Let this bot talk to teammates on its own, without a confirmation step."}
@@ -117,9 +117,9 @@ export function PermissionsSection({
         />
       </div>
 
-      <div className="rounded-xl bg-card p-4">
-        <div className="text-[15px] font-medium text-ink">Approval level</div>
-        <div className="mt-0.5 text-[13px] text-ink-secondary">
+      <div className="border border-hairline bg-card p-4">
+        <div className="text-[14px] font-medium text-ink">Approval level</div>
+        <div className="mt-0.5 text-[12.5px] text-ink-secondary">
           Default for new threads, routines and delegated work. Existing threads keep their own level;
           change it from that thread’s composer.
         </div>

@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, EllipsisVertical, Globe, Hand, Loader2, Maximize2, Plus, RotateCw, UserRound, X } from "lucide-react";
 import { browserUnavailableReason } from "@/lib/feature-flags";
 import { api, useStore, type Bot } from "@/state/store";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { Frame } from "@/components/ui/frame";
 import { BrowserProfilesManager } from "./BrowserProfilesManager";
 import { BrowserViewport, type BrowserFrame } from "./BrowserViewport";
 import { createBrowserInputQueue } from "@/lib/browser-input-queue";
 
 interface BrowserTab { tabId: string; title: string; url: string; active: boolean }
 type ViewerFrame = BrowserFrame & { viewerId: string; generation: number };
-const button = "rounded-md p-1.5 text-ink-secondary hover:bg-inset hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed";
-
 /** Closing a panel releases its lease. A new connection never silently
  * restores permission to type, and never replays old browser frames. */
 export function LiveBrowser({ bot }: { bot: Bot }) {
@@ -133,63 +134,193 @@ export function LiveBrowser({ bot }: { bot: Bot }) {
     }
   };
   const driving = control.controlling && connected && !pending;
-  return <div ref={panel} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-hairline/40 bg-card text-ink">
-    <div className="flex min-h-12 items-center gap-1 px-2 pt-1.5">
-      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-        {tabs.length ? tabs.map((tab) => <div key={tab.tabId} className={`flex max-w-52 shrink-0 items-center gap-1 rounded-xl px-1 text-[12px] ${tab.active ? "bg-inset text-ink" : "text-ink-secondary"}`}>
-          <Globe size={13} className="ml-1.5 shrink-0 opacity-60" />
-          <button className="truncate px-1 py-2 text-left disabled:cursor-default" disabled={!driving} onClick={() => void execute({ type: "tab-select", tabId: tab.tabId })} title={tab.title || tab.url}>{tab.title || "New tab"}</button>
-          <button className={button} aria-label={`Close ${tab.title || "tab"}`} disabled={!driving} onClick={() => void execute({ type: "tab-close", tabId: tab.tabId })}><X size={13} /></button>
-        </div>) : <div className="flex items-center gap-2 rounded-xl bg-inset px-3 py-2 text-[12px] text-ink-secondary"><Globe size={13} />New tab</div>}
-        <button className={`${button} shrink-0`} disabled={!driving} aria-label="New tab" title="New tab" onClick={() => void execute({ type: "tab-new" })}><Plus size={17} /></button>
-      </div>
-      <button className={button} title="Full screen" aria-label="Full screen" onClick={() => { void panel.current?.requestFullscreen().catch(() => setError("Full screen is unavailable in this browser.")); }}><Maximize2 size={16} /></button>
-      <button className={`${button} rounded-xl bg-inset p-2`} title={`Browser profile: ${profileName}`} aria-label="Browser profiles" aria-expanded={showProfiles} onClick={() => setShowProfiles(true)}><UserRound size={16} /></button>
-    </div>
-    <form className="flex h-12 items-center gap-1 border-b border-hairline/40 px-2" onSubmit={(e) => { e.preventDefault(); if (driving && address.trim()) void execute({ type: "navigate", url: /^https?:\/\//i.test(address.trim()) ? address.trim() : `https://${address.trim()}` }); }}>
-      <div className="flex shrink-0 items-center">
-        <button type="button" className={button} disabled={!driving} aria-label="Back" onClick={() => void execute({ type: "back" })}><ArrowLeft size={17} /></button>
-        <button type="button" className={button} disabled={!driving} aria-label="Forward" onClick={() => void execute({ type: "forward" })}><ArrowRight size={17} /></button>
-        <button type="button" className={button} disabled={!driving} aria-label="Reload page" onClick={() => void execute({ type: "reload" })}><RotateCw size={17} /></button>
-      </div>
-      <input ref={addressInput} aria-label="Browser address" readOnly={!driving} value={address} onChange={(e) => setAddress(e.target.value)} onFocus={(e) => { urlEditing.current = true; if (driving) e.target.select(); }} onBlur={() => { urlEditing.current = false; }} placeholder={connected ? "about:blank" : "Connecting…"} spellCheck={false} className="mx-1 min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1.5 text-center text-[12px] outline-none placeholder:text-ink-secondary focus:bg-inset focus:text-left" />
-      <button type="button" disabled={!connected || pending || (control.held && !control.owned)} onClick={() => void execute({ type: control.owned ? "release" : "take" })} title={control.owned ? "Return to bot — browser tools are paused while you control this profile" : control.held ? "This profile is controlled in another window" : "Take control to click, type, or sign in"} aria-label={control.owned ? "Return to bot" : "Take control"} aria-pressed={control.owned} className={`${button} flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] sm:text-[12px] ${control.owned ? "bg-accent/15 text-accent" : ""}`}>
-        {pending ? <Loader2 size={16} className="animate-spin" /> : <Hand size={16} className="hidden sm:block" />}
-        <span>{control.owned ? "Return to bot" : "Take control"}</span>
-      </button>
-      <details className="relative shrink-0">
-        <summary className={`${button} list-none cursor-pointer [&::-webkit-details-marker]:hidden`} aria-label="Browser menu" title="Browser menu"><EllipsisVertical size={17} /></summary>
-        <div className="absolute right-0 top-full z-20 mt-2 flex w-44 flex-col rounded-xl border border-hairline/50 bg-card p-1.5 text-[12px] shadow-xl">
-          <button type="button" className="rounded-md px-3 py-2 text-left hover:bg-inset disabled:opacity-40" disabled={!driving} onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); setShowTyping(true); }}>Type or paste text…</button>
-          <button type="button" className="rounded-md px-3 py-2 text-left hover:bg-inset" onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); reconnect(); }}>Reconnect view</button>
-          <button type="button" className="rounded-md px-3 py-2 text-left hover:bg-inset disabled:opacity-40" disabled={!connected || pending} onClick={(e) => {
-            e.currentTarget.closest("details")?.removeAttribute("open");
-            if (!window.confirm("Restart this profile’s browser? Open tabs will close. Saved logins are kept. Stop any bots using it first.")) return;
-            void execute({ type: "restart" });
-          }}>Restart browser…</button>
+  return (
+    <div ref={panel} className="flex min-h-0 flex-1 flex-col border border-hairline bg-panel text-ink">
+      <div className="flex min-h-10 items-center gap-1 frame-rule-below bg-app px-2 py-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          {tabs.length ? (
+            tabs.map((tab) => (
+              <div
+                key={tab.tabId}
+                data-active={tab.active ? "" : undefined}
+                className={cn(
+                  "nav-link flex max-w-52 shrink-0 items-center gap-1 px-2 py-1 font-mono text-[11px]",
+                  tab.active ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink",
+                )}
+              >
+                <Globe size={12} className="shrink-0 opacity-70" />
+                <button
+                  className="truncate text-left disabled:cursor-default"
+                  disabled={!driving}
+                  onClick={() => void execute({ type: "tab-select", tabId: tab.tabId })}
+                  title={tab.title || tab.url}
+                >
+                  {tab.title || "New tab"}
+                </button>
+                <button
+                  className="p-0.5 text-ink-secondary hover:bg-raised-hover hover:text-ink disabled:opacity-40"
+                  aria-label={`Close ${tab.title || "tab"}`}
+                  disabled={!driving}
+                  onClick={() => void execute({ type: "tab-close", tabId: tab.tabId })}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="nav-link flex items-center gap-1.5 px-2 py-1 font-mono text-[11px] text-ink-secondary" data-active="">
+              <Globe size={12} />New tab
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            icon
+            size="xs"
+            disabled={!driving}
+            aria-label="New tab"
+            title="New tab"
+            onClick={() => void execute({ type: "tab-new" })}
+          >
+            <Plus size={14} />
+          </Button>
         </div>
-      </details>
-    </form>
-    {error && <div role="alert" className="flex items-center justify-between gap-2 border-b border-hairline/30 px-3 py-2 text-[12px] text-danger"><span>{error}</span>{!connected && <button className="shrink-0 underline" onClick={reconnect}>Reconnect</button>}</div>}
-    <div className="min-h-0 flex-1 overflow-hidden bg-inset/40">
-      {frame ? <BrowserViewport frame={frame} {...viewport} driving={driving} input={input}
-        onReturnToToolbar={() => addressInput.current?.focus()}
-        acknowledge={(seq) => { if (generation.current === frame.generation && viewer.current === frame.viewerId) void action({ type: "ack", seq }, frame.viewerId).catch(() => {}); }}
-        onDecodeError={() => { if (generation.current === frame.generation && viewer.current === frame.viewerId) setError("A browser frame could not be decoded. Close and reopen the panel to reconnect."); }} />
-        : <div className="flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center text-[13px] text-ink-secondary">{connected && control.held ? <Hand size={24} /> : error ? <Globe size={24} /> : <Loader2 size={24} className="animate-spin" />}<span>{control.held ? "Live view paused for human control" : error ? "Browser disconnected" : "Opening the live browser…"}</span></div>}
+        <Button
+          variant="ghost"
+          icon
+          size="xs"
+          title="Full screen"
+          aria-label="Full screen"
+          onClick={() => { void panel.current?.requestFullscreen().catch(() => setError("Full screen is unavailable in this browser.")); }}
+        >
+          <Maximize2 size={13} />
+        </Button>
+        <Button
+          variant="ghost"
+          icon
+          size="xs"
+          title={`Browser profile: ${profileName}`}
+          aria-label="Browser profiles"
+          aria-expanded={showProfiles}
+          onClick={() => setShowProfiles(true)}
+        >
+          <UserRound size={13} />
+        </Button>
+      </div>
+      <form className="flex h-11 items-center gap-1.5 frame-rule-below bg-app px-2" onSubmit={(e) => { e.preventDefault(); if (driving && address.trim()) void execute({ type: "navigate", url: /^https?:\/\//i.test(address.trim()) ? address.trim() : `https://${address.trim()}` }); }}>
+        <div className="flex shrink-0 items-center">
+          <Button type="button" variant="ghost" icon size="xs" disabled={!driving} aria-label="Back" onClick={() => void execute({ type: "back" })}><ArrowLeft size={14} /></Button>
+          <Button type="button" variant="ghost" icon size="xs" disabled={!driving} aria-label="Forward" onClick={() => void execute({ type: "forward" })}><ArrowRight size={14} /></Button>
+          <Button type="button" variant="ghost" icon size="xs" disabled={!driving} aria-label="Reload page" onClick={() => void execute({ type: "reload" })}><RotateCw size={14} /></Button>
+        </div>
+        <input
+          ref={addressInput}
+          aria-label="Browser address"
+          readOnly={!driving}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          onFocus={(e) => { urlEditing.current = true; if (driving) e.target.select(); }}
+          onBlur={() => { urlEditing.current = false; }}
+          placeholder={connected ? "about:blank" : "Connecting…"}
+          spellCheck={false}
+          className="mx-1 h-7 min-w-0 flex-1 border border-hairline bg-inset px-2.5 font-mono text-[11px] text-ink outline-none placeholder:text-ink-secondary focus:border-ink"
+        />
+        <Button
+          type="button"
+          variant={control.owned ? "secondary" : "primary"}
+          size="sm"
+          disabled={!connected || pending || (control.held && !control.owned)}
+          onClick={() => void execute({ type: control.owned ? "release" : "take" })}
+          title={control.owned ? "Return to bot — browser tools are paused while you control this profile" : control.held ? "This profile is controlled in another window" : "Take control to click, type, or sign in"}
+          aria-label={control.owned ? "Return to bot" : "Take control"}
+          aria-pressed={control.owned}
+          className="shrink-0"
+        >
+          {pending ? <Loader2 size={13} className="animate-spin" /> : <Hand size={13} className="hidden sm:block" />}
+          <span>{control.owned ? "Return to bot" : "Take control"}</span>
+        </Button>
+        <details className="relative shrink-0">
+          <summary className="inline-flex size-7 cursor-pointer list-none items-center justify-center border border-transparent text-ink-secondary hover:bg-raised-hover hover:text-ink [&::-webkit-details-marker]:hidden" aria-label="Browser menu" title="Browser menu"><EllipsisVertical size={14} /></summary>
+          <div className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col border border-hairline bg-menu p-1 text-[12px] shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]">
+            <button type="button" className="h-8 px-2.5 text-left text-[13px] hover:bg-raised-hover disabled:opacity-40" disabled={!driving} onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); setShowTyping(true); }}>Type or paste text…</button>
+            <button type="button" className="h-8 px-2.5 text-left text-[13px] hover:bg-raised-hover" onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); reconnect(); }}>Reconnect view</button>
+            <button type="button" className="h-8 px-2.5 text-left text-[13px] hover:bg-raised-hover disabled:opacity-40" disabled={!connected || pending} onClick={(e) => {
+              e.currentTarget.closest("details")?.removeAttribute("open");
+              if (!window.confirm("Restart this profile’s browser? Open tabs will close. Saved logins are kept. Stop any bots using it first.")) return;
+              void execute({ type: "restart" });
+            }}>Restart browser…</button>
+          </div>
+        </details>
+      </form>
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-2 border-b border-danger/40 bg-card px-3 py-2 text-[12px] text-danger">
+          <div className="flex items-center gap-1.5">
+            <span>{error}</span>
+          </div>
+          {!connected && (
+            <Button variant="ghost" size="xs" onClick={reconnect}>
+              Reconnect
+            </Button>
+          )}
+        </div>
+      )}
+      <Frame surface="panel" corners className="min-h-0 flex-1 overflow-hidden bg-inset/40">
+        {frame ? (
+          <BrowserViewport
+            frame={frame}
+            {...viewport}
+            driving={driving}
+            input={input}
+            onReturnToToolbar={() => addressInput.current?.focus()}
+            acknowledge={(seq) => {
+              if (generation.current === frame.generation && viewer.current === frame.viewerId)
+                void action({ type: "ack", seq }, frame.viewerId).catch(() => {});
+            }}
+            onDecodeError={() => {
+              if (generation.current === frame.generation && viewer.current === frame.viewerId)
+                setError("A browser frame could not be decoded. Close and reopen the panel to reconnect.");
+            }}
+          />
+        ) : (
+          <div className="flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center text-ink-secondary">
+            {connected && control.held ? (
+              <Hand size={24} className="text-warning" />
+            ) : error ? (
+              <Globe size={24} className="text-ink-secondary" />
+            ) : (
+              <Loader2 size={24} className="animate-spin text-ink-secondary" />
+            )}
+            <span className="font-mono text-[12px] uppercase tracking-wider">
+              {control.held
+                ? "Live view paused for human control"
+                : error
+                  ? "Browser disconnected"
+                  : "Opening the live browser…"}
+            </span>
+          </div>
+        )}
+      </Frame>
+      <dialog ref={profilesDialog} onClose={() => setShowProfiles(false)} onClick={(e) => { if (e.target === e.currentTarget) setShowProfiles(false); }} className="m-auto max-h-[80vh] w-[min(420px,calc(100%-32px))] overflow-auto border border-hairline bg-card p-5 text-ink shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] backdrop:bg-black/50">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="label-mono uppercase text-ink">Browser profiles</h2>
+          <Button variant="ghost" icon size="xs" aria-label="Close browser profiles" onClick={() => setShowProfiles(false)}><X size={14} /></Button>
+        </div>
+        <BrowserProfilesManager bot={bot} disabled={pending || control.held} onProfileChanged={() => { setShowProfiles(false); reconnect(); }} />
+      </dialog>
+      <dialog ref={typingDialog} onClose={() => setShowTyping(false)} className="m-auto w-[min(420px,calc(100%-32px))] border border-hairline bg-card p-5 text-ink shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] backdrop:bg-black/50">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="label-mono uppercase text-ink">Type into the selected page field</h2>
+          <Button variant="ghost" icon size="xs" aria-label="Close typing" onClick={() => setShowTyping(false)}><X size={14} /></Button>
+        </div>
+        <form className="flex flex-col gap-3" onSubmit={(e) => {
+          e.preventDefault(); const field = e.currentTarget.elements.namedItem("pageText") as HTMLInputElement;
+          if (driving && field.value) { input({ type: "input_keyboard", eventType: "char", text: field.value }); field.value = ""; setShowTyping(false); }
+        }}>
+          <input name="pageText" aria-label="Text for the page" autoComplete="off" maxLength={4096} placeholder="Type or paste text" className="border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink outline-none focus:border-ink" />
+          <Button variant="primary" size="sm" disabled={!driving} className="self-end">Type</Button>
+        </form>
+      </dialog>
     </div>
-    <dialog ref={profilesDialog} onClose={() => setShowProfiles(false)} onClick={(e) => { if (e.target === e.currentTarget) setShowProfiles(false); }} className="m-auto w-[min(420px,calc(100%-32px))] max-h-[80vh] overflow-auto rounded-2xl border border-hairline/50 bg-card p-5 text-ink shadow-2xl backdrop:bg-black/40">
-      <div className="mb-4 flex items-center justify-between"><h2 className="text-[15px] font-medium">Browser profiles</h2><button className={button} aria-label="Close browser profiles" onClick={() => setShowProfiles(false)}><X size={16} /></button></div>
-      <BrowserProfilesManager bot={bot} disabled={pending || control.held} onProfileChanged={() => { setShowProfiles(false); reconnect(); }} />
-    </dialog>
-    <dialog ref={typingDialog} onClose={() => setShowTyping(false)} className="m-auto w-[min(420px,calc(100%-32px))] rounded-2xl border border-hairline/50 bg-card p-5 text-ink shadow-2xl backdrop:bg-black/40">
-      <div className="mb-3 flex items-center justify-between"><h2 className="text-[14px] font-medium">Type into the selected page field</h2><button className={button} aria-label="Close typing" onClick={() => setShowTyping(false)}><X size={16} /></button></div>
-      <form className="flex flex-col gap-3" onSubmit={(e) => {
-      e.preventDefault(); const field = e.currentTarget.elements.namedItem("pageText") as HTMLInputElement;
-      if (driving && field.value) { input({ type: "input_keyboard", eventType: "char", text: field.value }); field.value = ""; setShowTyping(false); }
-    }}><input name="pageText" aria-label="Text for the page" autoComplete="off" maxLength={4096} placeholder="Type or paste text" className="rounded-lg bg-inset px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-accent" /><button disabled={!driving} className="self-end rounded-lg bg-accent px-4 py-2 text-[12px] text-accent-ink disabled:opacity-40">Type</button></form>
-    </dialog>
-  </div>;
+  );
 }
 
 export function BrowserPanel({ bot }: { bot: Bot }) {
@@ -211,10 +342,16 @@ export function BrowserPanel({ bot }: { bot: Bot }) {
   if (engine?.kind === "engine" && !installing && !engine.installError) return admin === null
     ? <div className="p-5 text-[13px] text-ink-secondary">Loading browser…</div>
     : <LiveBrowser key={bot.id} bot={bot} />;
-  return <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-3 rounded-xl bg-card p-5">
-    <div className="text-[15px] font-medium text-ink">{engine?.kind === "engine" ? "Browser installation incomplete" : "Browser engine not installed"}</div>
-    <p className="text-[13px] leading-relaxed text-ink-secondary">{engine?.kind === "engine" ? "agent-browser is installed, but Chrome setup has not finished. Retry the browser installation." : browserUnavailableReason(state.config)}</p>
-    {engine?.installable || engine?.kind === "engine" ? <button type="button" onClick={() => void install()} disabled={installing || admin !== true} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-ink disabled:opacity-60">{installing ? "Installing… (a one-time download of about 160 MB)" : engine?.kind === "engine" ? "Retry browser installation" : "Install the browser engine"}</button> : null}
-    {(engine?.installError || error) && <p role="alert" className="text-[12px] text-danger">{error ?? engine?.installError}</p>}
-  </div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-3 border border-hairline bg-card p-5">
+      <div className="label-mono uppercase text-ink">{engine?.kind === "engine" ? "Browser installation incomplete" : "Browser engine not installed"}</div>
+      <p className="text-[13px] leading-relaxed text-ink-secondary">{engine?.kind === "engine" ? "agent-browser is installed, but Chrome setup has not finished. Retry the browser installation." : browserUnavailableReason(state.config)}</p>
+      {engine?.installable || engine?.kind === "engine" ? (
+        <Button type="button" variant="primary" size="md" onClick={() => void install()} disabled={installing || admin !== true}>
+          {installing ? "Installing… (a one-time download of about 160 MB)" : engine?.kind === "engine" ? "Retry browser installation" : "Install the browser engine"}
+        </Button>
+      ) : null}
+      {(engine?.installError || error) && <p role="alert" className="font-mono text-[12px] text-danger">{error ?? engine?.installError}</p>}
+    </div>
+  );
 }

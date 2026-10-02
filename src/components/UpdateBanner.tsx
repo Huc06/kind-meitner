@@ -7,13 +7,7 @@ import { ArrowDownToLine, Loader2, PackageOpen, RefreshCw, Sparkles, X } from "l
 import { useUpdaterState } from "@/lib/updater";
 import { cn } from "@/lib/cn";
 import { brand } from "../lib/brand";
-
-// The one action button in the card. Disabled drops the accent fill for the
-// flat raised grey — the "I heard you" the click needs while the main process
-// gets going.
-const primaryAction =
-  "flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-accent py-1.5 text-[13px] font-medium text-white transition-colors disabled:cursor-default disabled:bg-control disabled:text-ink-secondary";
-
+import { Button } from "@/components/ui/button";
 // electron-updater surfaces failures as a whole HTTP dump — status line,
 // every response header, stack trace. That is unreadable in a 300px popup,
 // so name the two cases that actually happen and clip anything else to its
@@ -96,39 +90,40 @@ export function UpdateBanner() {
                   : friendlyError(s.message);
 
   return (
-    <div className="animate-panel-in fixed bottom-4 left-4 z-50 w-[300px] rounded-xl border border-hairline/40 bg-panel p-3.5 shadow-2xl shadow-black/50">
+    <div className="animate-view-enter fixed bottom-4 left-4 z-50 w-[320px] border border-hairline bg-panel p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-          <Sparkles size={14} />
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center border border-hairline bg-card text-ink">
+          <Sparkles size={13} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-semibold text-ink">{title}</div>
-          <div className="mt-0.5 text-[12.5px] text-ink-secondary" title={subtitle}>
+          <div className="label-mono text-[12px] text-ink">{title}</div>
+          <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary" title={subtitle}>
             {subtitle}
           </div>
         </div>
         {!busy && (
           <button
+            type="button"
             onClick={() => setDismissed(key)}
-            className="shrink-0 rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink"
+            className="shrink-0 p-1 text-ink-secondary hover:bg-raised-hover hover:text-ink"
             title="Dismiss"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         )}
       </div>
 
       {s.status === "handed-off" && s.command && (
-        <code className="mt-2.5 block overflow-x-auto rounded-lg bg-control px-2 py-1.5 font-mono text-[11.5px] whitespace-pre text-ink-secondary">
+        <code className="mt-2.5 block overflow-x-auto border border-hairline bg-inset px-2 py-1.5 font-mono text-[11px] whitespace-pre text-ink-secondary">
           {s.command}
         </code>
       )}
 
       {s.status === "downloading" && (
-        <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-control">
+        <div className="mt-2.5 h-1.5 overflow-hidden border border-hairline bg-inset">
           <div
             className={cn(
-              "h-full rounded-full bg-accent transition-[width]",
+              "h-full bg-accent transition-[width]",
               // before the first progress report, a sliver that breathes beats
               // a zero-width bar that looks stalled
               s.percent == null && "w-1/4 animate-pulse",
@@ -140,25 +135,29 @@ export function UpdateBanner() {
 
       {(preparing || installing) && (
         <div className="mt-2.5 flex gap-2">
-          <button
+          <Button
             disabled
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-control py-1.5 text-[13px] font-medium text-ink-secondary"
+            variant="secondary"
+            size="sm"
+            className="flex-1 text-ink-secondary"
           >
             <Loader2 size={13} className="animate-spin" /> {preparing ? "Preparing…" : handoff ? "Opening…" : "Restarting…"}
-          </button>
+          </Button>
         </div>
       )}
 
       {!busy && (
         <div className="mt-2.5 flex gap-2">
           {s.status === "available" && (
-            <button
+            <Button
               onClick={() => {
                 setPending("download");
                 void updater.download();
               }}
               disabled={pending !== null}
-              className={primaryAction}
+              variant="primary"
+              size="sm"
+              className="flex-1"
             >
               {pending === "download" ? (
                 <>
@@ -169,16 +168,18 @@ export function UpdateBanner() {
                   <ArrowDownToLine size={13} /> Download
                 </>
               )}
-            </button>
+            </Button>
           )}
           {s.status === "downloaded" && (
-            <button
+            <Button
               onClick={() => {
                 setPending("install");
                 void updater.install();
               }}
               disabled={pending !== null}
-              className={primaryAction}
+              variant="primary"
+              size="sm"
+              className="flex-1"
             >
               {pending === "install" ? (
                 <>
@@ -193,16 +194,18 @@ export function UpdateBanner() {
                   <RefreshCw size={13} /> Restart to update
                 </>
               )}
-            </button>
+            </Button>
           )}
           {s.status === "error" && s.retryable !== false && (
-            <button
+            <Button
               onClick={() => {
                 setPending("check");
                 void updater.check();
               }}
               disabled={pending !== null}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-control py-1.5 text-[13px] text-ink hover:bg-raised-hover disabled:text-ink-secondary disabled:hover:bg-control"
+              variant="secondary"
+              size="sm"
+              className="flex-1"
             >
               {pending === "check" ? (
                 <>
@@ -211,16 +214,17 @@ export function UpdateBanner() {
               ) : (
                 "Try again"
               )}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={() => setDismissed(key)}
             disabled={pending !== null}
-            className="rounded-lg px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-50 disabled:hover:bg-transparent"
+            variant="ghost"
+            size="sm"
           >
             {/* after a hand-off there is nothing left to postpone */}
             {s.status === "handed-off" || s.retryable === false ? "Dismiss" : "Later"}
-          </button>
+          </Button>
         </div>
       )}
     </div>

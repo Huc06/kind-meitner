@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
-
+import { Button } from "@/components/ui/button";
 export const addressPreview = (value: string): string => {
   if (value.length <= 3) return "…";
   if (value.length < 10) return `${value.slice(0, 3)}…`;
@@ -34,26 +34,29 @@ export function ConnectionDetail({ label, value }: { label: string; value: strin
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-inset px-3 py-2">
+    <div className="flex items-center gap-3 border border-hairline bg-inset px-3 py-2">
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-ink-secondary">{label}</div>
+        <div className="label-mono text-ink-secondary">{label}</div>
         <div className="mt-0.5 truncate font-mono text-[11.5px] text-ink">
           {revealed ? value : addressPreview(value)}
         </div>
       </div>
-      <button
+      <Button
+        variant="ghost"
+        size="xs"
         onClick={() => setRevealed((current) => !current)}
-        className="shrink-0 rounded px-2 py-1 text-[11px] text-ink-secondary hover:bg-control hover:text-ink"
       >
         {revealed ? "Hide" : "Reveal"}
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="xs"
+        icon
         onClick={() => void copy()}
         aria-label={`Copy ${label}`}
-        className="shrink-0 rounded p-1.5 text-ink-secondary hover:bg-control hover:text-ink"
       >
-        {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-      </button>
+        {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+      </Button>
     </div>
   );
 }

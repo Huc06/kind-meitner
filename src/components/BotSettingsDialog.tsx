@@ -8,6 +8,9 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { api, useStore, type Bot } from "@/state/store";
 import type { BotOverview } from "@/lib/bot-overview-types";
 import { cn } from "@/lib/cn";
+import { BotAvatar } from "./Avatar";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { BOT_SECTIONS } from "./bot-settings/sections";
 import { useBotSettingsDerived } from "./bot-settings/useBotSettingsDerived";
@@ -223,7 +226,7 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
     switch (id) {
       case "overview":
         return overview === null && overviewError ? (
-          <div className="rounded-xl bg-card p-4 text-[13px] text-ink-secondary">Couldn’t load the overview.</div>
+          <div className="border border-hairline bg-card p-4 text-[13px] text-ink-secondary">Couldn’t load the overview.</div>
         ) : (
           // Data wins over a transient refetch failure: once an overview has
           // loaded once, a later failed refetch (routines/webhooks/bot-record
@@ -273,7 +276,7 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
         return <VoiceSection bot={bot} derived={derived} />;
       case "history":
         return historyRows === null && historyError ? (
-          <div className="rounded-xl bg-card p-4 text-[13px] text-ink-secondary">Couldn’t load history.</div>
+          <div className="border border-hairline bg-card p-4 text-[13px] text-ink-secondary">Couldn’t load history.</div>
         ) : (
           // Same precedence as the Overview: rows already on screen
           // survive a failed reload (after an undo, say) with a quiet
@@ -302,24 +305,39 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
         role="dialog"
         aria-labelledby="bot-settings-title"
         tabIndex={-1}
-        className="animate-panel-in absolute inset-0 z-40 flex h-full min-w-0 flex-col border-l border-hairline/40 bg-panel outline-none lg:static lg:z-auto lg:w-[min(420px,42vw)] lg:shrink-0"
+        className="animate-panel-in absolute inset-0 z-40 flex h-full min-w-0 flex-col border-l border-hairline bg-panel outline-none lg:static lg:z-auto lg:w-[min(440px,42vw)] lg:shrink-0"
       >
-        <div className="flex shrink-0 items-center justify-between px-4 py-3">
-          <span id="bot-settings-title" className="truncate text-[15px] font-semibold text-ink">
-            {bot.name}
-          </span>
-          <button
-            type="button"
+        <div className="flex shrink-0 items-center justify-between gap-3 frame-rule-below bg-panel px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <BotAvatar bot={bot} size={36} animated={false} />
+            <div className="min-w-0 flex-1">
+              <div id="bot-settings-title" className="truncate text-[14px] font-medium text-ink">
+                {bot.name}
+              </div>
+              <div className="label-mono flex items-center gap-1.5 truncate text-[11px] text-ink-secondary">
+                <span>{bot.id}</span>
+                {bot.modelSelection?.model && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">{bot.modelSelection.model}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            icon
+            size="sm"
             onClick={() => dispatch({ type: "toggleSettings", open: false })}
             aria-label="Close settings"
-            className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink"
           >
-            <X size={18} className="pointer-events-none" />
-          </button>
+            <X size={16} />
+          </Button>
         </div>
 
-        <div className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-lg bg-control/70 px-2.5 py-2">
-          <Search size={14} className="shrink-0 text-ink-secondary" />
+        <div className="mx-4 my-2.5 flex shrink-0 items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5">
+          <Search size={13} className="shrink-0 text-ink-secondary" />
           <input
             value={query}
             onChange={(e) => {
@@ -332,22 +350,22 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
               if (query) setQuery("");
               else dispatch({ type: "toggleSettings", open: false });
             }}
-            placeholder="Search"
+            placeholder="SEARCH SETTINGS…"
             aria-label="Search settings"
-            className="w-full bg-transparent text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            className="w-full bg-transparent font-mono text-[12px] text-ink placeholder:text-ink-secondary/70 focus:outline-none"
           />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {visibleSections.length === 0 && (
-            <div className="px-4 py-4 text-[12.5px] leading-relaxed text-ink-secondary">
+            <div className="px-4 py-6 font-mono text-[12px] text-ink-secondary">
               Nothing matches “{query.trim()}”
             </div>
           )}
           {/* Walk all sections so Memory keeps a stable mount (draft survival)
               even when search filters its row out of view. Other unmatched
               rows are omitted entirely. */}
-          {BOT_SECTIONS.map((entry) => {
+          {BOT_SECTIONS.map((entry, idx) => {
             const { id, label, icon: Icon } = entry;
             const matched = sectionMatches(entry, q);
             if (!matched && id !== "memory") return null;
@@ -356,7 +374,7 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
               <div
                 key={id}
                 data-bot-settings-section={id}
-                className="border-b border-hairline/30"
+                className="frame-rule-below"
                 hidden={!matched}
               >
                 <button
@@ -370,16 +388,18 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
                   }}
                   aria-expanded={open}
                   className={cn(
-                    "flex w-full shrink-0 items-center gap-2.5 px-4 py-2.5 text-left text-[14px]",
-                    open ? "bg-control/60 text-ink" : "text-ink-secondary hover:bg-control/40 hover:text-ink",
+                    "flex w-full shrink-0 items-center gap-2.5 px-4 py-2.5 text-left font-mono text-[12px] uppercase tracking-[0.06em] transition-colors",
+                    open
+                      ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+                      : "text-ink-secondary hover:bg-raised-hover hover:text-ink",
                   )}
                 >
-                  <Icon size={15} className="shrink-0" />
+                  <Icon size={14} className="shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{label}</span>
                   <ChevronDown
-                    size={16}
+                    size={14}
                     className={cn(
-                      "shrink-0 text-ink-secondary transition-transform",
+                      "shrink-0 text-ink-secondary transition-transform duration-150",
                       open && "rotate-180",
                     )}
                   />
@@ -387,11 +407,17 @@ export function BotSettingsDialog({ bot }: { bot: Bot }) {
                 {/* Memory stays mounted (hidden when collapsed) so drafts survive;
                     other sections only mount while expanded. */}
                 {id === "memory" ? (
-                  <div hidden={!open} className="px-4 pb-4 pt-1">
+                  <div hidden={!open} className="px-4 pb-4 pt-2">
+                    <Eyebrow index={idx + 1} className="mb-3">{label}</Eyebrow>
                     {renderSectionBody("memory")}
                   </div>
                 ) : (
-                  open && <div className="px-4 pb-4 pt-1">{renderSectionBody(id)}</div>
+                  open && (
+                    <div className="px-4 pb-4 pt-2">
+                      <Eyebrow index={idx + 1} className="mb-3">{label}</Eyebrow>
+                      {renderSectionBody(id)}
+                    </div>
+                  )
                 )}
               </div>
             );

@@ -1,7 +1,7 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
-import { ArrowUp, BookOpen, Clock, Mic, Paperclip, Square, Target, Users, X } from "lucide-react";
-import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type Message } from "@/state/store";
+import { ArrowUp, BookOpen, ChevronDown, Clock, Mic, Paperclip, SlidersHorizontal, Square, Target, Users, X } from "lucide-react";
+import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type GroupDefaultResponder, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { activeLocale, t } from "@/lib/i18n";
 import {
@@ -44,7 +44,7 @@ import {
   type PasteAttachment,
 } from "@/lib/composer-attachments";
 import { normalizeState } from "@/lib/mascot";
-import { goalCoordinatorForComposer, groupComposerHint, roomRespondersForComposer } from "@/lib/group-routing";
+import { effectiveDefaultResponder, goalCoordinatorForComposer, roomRespondersForComposer } from "@/lib/group-routing";
 import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { ReplyQuote } from "./ReplyQuote";
@@ -79,6 +79,55 @@ interface ComposerDraftSnapshot extends ComposerSendSnapshot {
   reply: Message | null;
 }
 
+export function DefaultResponderSelect({ group, members }: { group: Group; members: Bot[] }) {
+  const { dispatch } = useStore();
+  const responder = effectiveDefaultResponder(group, members);
+  const value = responder.kind === "member" ? `member:${responder.botId}` : responder.kind;
+  const lead = responder.kind === "member" ? members.find((member) => member.id === responder.botId) : undefined;
+  const title =
+    responder.kind === "everyone"
+      ? t("room.responder.everyone")
+      : responder.kind === "mentions"
+        ? t("room.responder.mentions")
+        : t("room.responder.lead", { name: lead?.name ?? t("room.responder.leadFallback") });
+
+  const change = (nextValue: string) => {
+    let next: GroupDefaultResponder;
+    if (nextValue === "everyone") next = { kind: "everyone" };
+    else if (nextValue === "mentions") next = { kind: "mentions" };
+    else next = { kind: "member", botId: nextValue.slice("member:".length) };
+    dispatch({ type: "patchGroup", groupId: group.id, patch: { defaultResponder: next } });
+  };
+
+  return (
+    <div className="relative shrink-0" title={title}>
+      <select
+        aria-label={t("room.responder.aria")}
+        value={value}
+        onChange={(event) => change(event.target.value)}
+        className="h-6 max-w-[190px] appearance-none truncate border border-hairline bg-raised py-0.5 pl-2 pr-5 font-mono text-[11px] text-ink outline-none hover:border-ink-secondary/60 focus:border-ink"
+      >
+        <optgroup label={t("room.responder.groupLead")}>
+          {members.map((member) => (
+            <option key={member.id} value={`member:${member.id}`}>
+              {t("room.responder.leadOption", { name: member.name })}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label={t("room.responder.groupBehavior")}>
+          <option value="everyone">{t("room.responder.everyoneOption")}</option>
+          <option value="mentions">{t("room.responder.mentionsOption")}</option>
+        </optgroup>
+      </select>
+      <ChevronDown
+        size={11}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-ink-secondary"
+      />
+    </div>
+  );
+}
+
 /** Renders the editable message composer and its pending attachments. */
 export function Composer({
   bot: profile,
@@ -106,7 +155,7 @@ export function Composer({
   const locked = setupLocked || Boolean(bot?.awaitingThreadSnapshot);
   const { state, dispatch } = useStore();
   const { capabilities } = useDesktopCapabilities();
-  const remoteClient = window.ogb?.remoteClient?.active === true;
+  const remoteClient = typeof window !== "undefined" && window.ogb?.remoteClient?.active === true;
   // Unified target: a 1:1 bot thread or a room. In a room the @ picker
   // offers members plus @everyone; explicit mentions override the room's
   // configured default responder.
@@ -206,6 +255,32 @@ export function Composer({
   const mentionListRef = useRef<HTMLDivElement>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
+
+  const responders = useMemo(() => (group ? roomRespondersForComposer(text, members ?? [], group) : []), [group, text, members]);
+  const hasMentions = useMemo(() => {
+    if (!group) return false;
+    if (/(?:^|\s)@everyone\b/i.test(text)) return true;
+    return Boolean(members && text.includes("@") && responders.length > 0);
+  }, [group, text, members, responders]);
+
+  const respondingText = useMemo(() => {
+    if (!group) return null;
+    if (hasMentions && responders.length > 1) {
+      return t("composer.responding.mentioned");
+    }
+    if (hasMentions && responders.length === 1) {
+      return t("composer.responding.agent", { name: responders[0].name });
+    }
+    const defaultResp = effectiveDefaultResponder(group, members ?? []);
+    if (defaultResp.kind === "member") {
+      const lead = members?.find((m) => m.id === defaultResp.botId);
+      return lead ? t("composer.responding.agent", { name: lead.name }) : t("composer.responding.mentioned");
+    }
+    if (defaultResp.kind === "everyone") {
+      return t("composer.responding.everyone");
+    }
+    return t("composer.responding.mentioned");
+  }, [group, members, hasMentions, responders]);
 
   // image paste is offered only when every bot that will actually answer
   // can open one. sendGroup routes to mentions, else the room default —
@@ -471,6 +546,27 @@ export function Composer({
     threadId: string;
   } | null>(null);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!optionsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) {
+        setOptionsOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOptionsOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [optionsOpen]);
+
   // Approval mode belongs to one bot; a room has several, each with its own.
   const modeBot = group ? undefined : bot;
   const approvalEngine = modeBot
@@ -730,9 +826,9 @@ export function Composer({
         {failedSends.map((failed) => (
           <div
             key={failed.id}
-            className="mb-2 flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger"
+            className="mb-2 flex items-center gap-2 border border-danger/60 bg-danger/10 px-3 py-2 text-[12px] text-danger"
           >
-            <span className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate font-mono">
               {t("composer.failed.notSent", {
                 text: failed.text.trim() || t("composer.failed.attachment"),
               })}
@@ -740,7 +836,7 @@ export function Composer({
             <button
               type="button"
               onClick={() => retryFailedSend(failed)}
-              className="shrink-0 rounded px-2 py-1 font-medium hover:bg-danger/10"
+              className="cursor-pointer shrink-0 border border-danger/40 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide hover:bg-danger/20"
             >
               {t("chat.retry")}
             </button>
@@ -749,9 +845,9 @@ export function Composer({
               onClick={() => forgetFailedComposerSend(draftId, failed.id)}
               aria-label={t("composer.failed.dismissAria")}
               title={t("composer.failed.dismiss")}
-              className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-danger/10"
+              className="cursor-pointer flex size-5 shrink-0 items-center justify-center border border-danger/40 hover:bg-danger/20"
             >
-              <X size={13} strokeWidth={2.5} />
+              <X size={12} strokeWidth={2.5} />
             </button>
           </div>
         ))}
@@ -759,9 +855,9 @@ export function Composer({
           <div
             role="listbox"
             aria-label={t("composer.commands.aria")}
-            className="absolute bottom-full left-2 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-hairline/40 bg-raised shadow-lg"
+            className="absolute bottom-full left-2 z-20 mb-2 w-80 overflow-hidden border border-hairline bg-menu shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
           >
-            <div className="border-b border-hairline/20 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+            <div className="label-mono frame-rule-below px-3 py-1.5 text-ink-secondary">
               {t("composer.commands.title")}
             </div>
             {commandCandidates.map((command, index) => (
@@ -774,20 +870,20 @@ export function Composer({
                 onClick={() => pickCommand(command)}
                 onMouseEnter={() => setHighlight(index)}
                 className={cn(
-                  "flex w-full items-center gap-3 px-3 py-2.5 text-left",
-                  index === highlight ? "bg-raised-hover" : "",
+                  "cursor-pointer flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-raised-hover",
+                  index === highlight ? "bg-raised" : "",
                 )}
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <span className="flex size-7 shrink-0 items-center justify-center border border-hairline bg-inset text-ink">
                   {command.id === "goal" ? (
-                    <Target size={15} aria-hidden="true" />
+                    <Target size={14} aria-hidden="true" />
                   ) : (
-                    <BookOpen size={15} aria-hidden="true" />
+                    <BookOpen size={14} aria-hidden="true" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-medium text-accent">{command.label}</span>
-                  <span className="block truncate text-xs text-ink-secondary">
+                  <span className="block text-[13px] font-medium text-ink">{command.label}</span>
+                  <span className="block truncate text-xs text-ink-secondary font-sans">
                     {command.description}
                   </span>
                 </span>
@@ -800,7 +896,7 @@ export function Composer({
             ref={mentionListRef}
             role="listbox"
             aria-label={t("composer.mention.aria")}
-            className="absolute bottom-full left-2 z-20 mb-2 max-h-72 w-72 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-hairline/40 bg-raised shadow-lg"
+            className="absolute bottom-full left-2 z-20 mb-2 max-h-72 w-72 overflow-x-hidden overflow-y-auto overscroll-contain border border-hairline bg-menu shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
           >
             {candidates.map((peer, i) => (
               <button
@@ -811,23 +907,23 @@ export function Composer({
                 onClick={() => pickMention(peer)}
                 onMouseEnter={() => setHighlight(i)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2 text-left",
-                  i === highlight ? "bg-raised-hover" : "",
+                  "cursor-pointer flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-raised-hover",
+                  i === highlight ? "bg-raised" : "",
                 )}
               >
                 {peer.bot ? (
                   <BotAvatar
                     bot={peer.bot}
                     state={normalizeState(peer.bot.mascotExpression) ?? "happy"}
-                    size={24}
+                    size={22}
                   />
                 ) : (
-                  <span className="flex size-6 items-center justify-center rounded-full bg-raised text-ink-secondary">
-                    <Users size={14} aria-hidden="true" />
+                  <span className="flex size-5 items-center justify-center border border-hairline bg-raised text-ink-secondary">
+                    <Users size={12} aria-hidden="true" />
                   </span>
                 )}
-                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{peer.name}</span>
-                <span className="shrink-0 text-xs text-ink-secondary">
+                <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-ink">{peer.name}</span>
+                <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-wide text-ink-secondary">
                   {peer.bot ? t("composer.mention.agent") : t("composer.mention.channel")}
                 </span>
               </button>
@@ -837,7 +933,7 @@ export function Composer({
         {/* An approval takes over the composer: you answer it before you
             can type again, so a waiting bot is impossible to miss. */}
         {approval && (
-          <div className="mb-2 overflow-hidden rounded-2xl border border-accent/40 bg-card">
+          <div className="mb-2 overflow-hidden border border-hairline bg-card">
             {/* locale: the panel is memoized and its other props do not
                 change with the language — see MessagesList in ChatView */}
             <PendingApprovalPanel
@@ -895,7 +991,7 @@ export function Composer({
             data-composer-backdrop
             className="pointer-events-none absolute -left-5 -right-5 -bottom-3 top-1/2 bg-app"
           />
-        <div data-tour="composer" className="relative z-[1] rounded-3xl bg-composer px-3 py-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_12px_24px_-4px_rgba(0,0,0,0.06)] ring-1 ring-composer-ring backdrop-blur transition-all focus-within:ring-accent/50">
+        <div data-tour="composer" className="relative z-[1] border border-composer-ring bg-composer px-3 py-2 transition-all">
         <div className="flex items-end gap-1.5">
           <input
             ref={fileInput}
@@ -915,14 +1011,14 @@ export function Composer({
                 onClick={() => fileInput.current?.click()}
                 aria-label={t("composer.attach")}
                 title={t("composer.attach")}
-                className="cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-all hover:bg-control hover:text-ink active:scale-95"
+                className="cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary transition-colors hover:border-hairline hover:bg-control hover:text-ink"
               >
-                <Paperclip size={17} />
+                <Paperclip size={16} />
               </button>
-              {group && !group.dm && (
+              {group && !group.dm && effectiveChannelMode === "goal" && (
                 <button
                   type="button"
-                  aria-pressed={effectiveChannelMode === "goal"}
+                  aria-pressed={true}
                   aria-label={t("composer.goal.aria")}
                   title={t("composer.goal.title")}
                   onClick={() => {
@@ -931,25 +1027,64 @@ export function Composer({
                       const nextCaret = Math.max(0, caret - (text.length - typedGoalText.length));
                       editText(typedGoalText);
                       setCaret(nextCaret);
-                      setChannelMode("chat");
-                      requestAnimationFrame(() => {
-                        inputRef.current?.focus();
-                        inputRef.current?.setSelectionRange(nextCaret, nextCaret);
-                      });
-                      return;
                     }
-                    setChannelMode((current) => current === "goal" ? "chat" : "goal");
+                    setChannelMode("chat");
                   }}
-                  className={cn(
-                    "cursor-pointer flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[12px] font-medium transition-all active:scale-95",
-                    effectiveChannelMode === "goal"
-                      ? "border-accent/40 bg-accent/15 text-accent"
-                      : "border-hairline/30 bg-raised/40 text-ink-secondary hover:bg-raised hover:text-ink",
-                  )}
+                  className="cursor-pointer flex h-7 items-center gap-1.5 whitespace-nowrap border border-accent bg-accent text-accent-ink px-2 font-mono text-[11px] uppercase tracking-wide transition-colors"
                 >
                   <Target size={14} aria-hidden="true" />
-                  {effectiveChannelMode === "goal" ? "/goal" : t("composer.goal.chip")}
+                  /goal
                 </button>
+              )}
+              {group && !group.dm && (
+                <div className="relative" ref={optionsRef}>
+                  <button
+                    type="button"
+                    aria-expanded={optionsOpen}
+                    aria-haspopup="menu"
+                    aria-label={t("composer.options.title")}
+                    title={t("composer.options.title")}
+                    onClick={() => setOptionsOpen((open) => !open)}
+                    className="cursor-pointer flex h-7 items-center gap-1 border border-hairline bg-raised px-2 font-mono text-[11px] text-ink-secondary hover:bg-raised-hover hover:text-ink transition-colors"
+                  >
+                    <SlidersHorizontal size={13} aria-hidden="true" />
+                    <span>{t("composer.options.button")}</span>
+                  </button>
+                  {optionsOpen && (
+                    <div
+                      role="menu"
+                      className="absolute left-0 bottom-full z-30 mb-1 min-w-[200px] border border-hairline bg-menu p-1.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] font-mono text-[12px]"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOptionsOpen(false);
+                          markDraftEdited(draftId);
+                          if (effectiveChannelMode === "goal") {
+                            if (typedGoalText !== null) {
+                              const nextCaret = Math.max(0, caret - (text.length - typedGoalText.length));
+                              editText(typedGoalText);
+                              setCaret(nextCaret);
+                            }
+                            setChannelMode("chat");
+                          } else {
+                            setChannelMode("goal");
+                          }
+                        }}
+                        className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Target size={13} />
+                          <span>{t("composer.options.goal")}</span>
+                        </span>
+                        {effectiveChannelMode === "goal" && (
+                          <span className="text-[10px] text-accent font-bold">ON</span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {modeBot && approvalEngine && !remoteClient && (
                 <ApprovalModeSelector
@@ -1051,15 +1186,10 @@ export function Composer({
                   ? t("composer.placeholder.queueGroup", { name: busyName })
                   : t("composer.placeholder.queue", { name: busyName })
                 : group
-                  ? channelMode === "goal"
-                    ? t("composer.placeholder.goal", { name: group.name })
-                    : t("composer.placeholder.group", {
-                        name: group.name,
-                        hint: groupComposerHint(group, members ?? []),
-                      })
+                  ? t("composer.placeholder.room")
                   : t("composer.placeholder.bot", { name: bot?.name ?? "" })
           }
-          aria-label={t("composer.placeholder.bot", { name: group ? group.name : (bot?.name ?? "") })}
+          aria-label={group ? t("composer.placeholder.room") : t("composer.placeholder.bot", { name: bot?.name ?? "" })}
             className="block max-h-[9rem] min-h-6 w-full resize-none overflow-y-auto bg-transparent px-1 py-1 text-[15px] leading-6 placeholder:text-ink-secondary focus:outline-none"
           />
           <div className="flex items-center gap-1">
@@ -1069,10 +1199,10 @@ export function Composer({
           <button
             onClick={interruptTurn}
             aria-label={t("chat.stopTurn")}
-            className="cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl bg-danger/15 text-danger transition-all hover:bg-danger/25 active:scale-95"
+            className="cursor-pointer flex size-7 shrink-0 items-center justify-center border border-danger bg-danger text-danger-ink transition-opacity hover:opacity-85"
             title={t("chat.stop")}
           >
-            <Square size={13} className="fill-current" />
+            <Square size={12} className="fill-current" />
           </button>
         )}
         {!locked && !busy && !hasContent && capabilities.dictation.available && (
@@ -1080,10 +1210,10 @@ export function Composer({
             onClick={toggleMic}
             aria-label={recording ? t("composer.dictation.stop") : t("composer.dictation.start")}
             className={cn(
-              "cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
+              "cursor-pointer flex size-7 shrink-0 items-center justify-center border transition-colors",
               recording
-                ? "animate-pulse bg-danger/20 text-danger"
-                : "text-ink-secondary hover:bg-raised hover:text-ink",
+                ? "border-danger bg-danger/20 text-danger animate-status-pulse"
+                : "border-transparent text-ink-secondary hover:border-hairline hover:bg-raised hover:text-ink",
             )}
             title={recording ? t("composer.dictation.stopHint") : t("composer.dictation.hint")}
           >
@@ -1109,17 +1239,34 @@ export function Composer({
                     : t("chat.send")
             }
             className={cn(
-              "cursor-pointer flex size-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
+              "cursor-pointer flex size-7 shrink-0 items-center justify-center border transition-all",
               busy && !canSteer
-                  ? "bg-raised text-ink-secondary hover:bg-raised-hover"
-                  : "bg-accent text-white shadow-sm hover:brightness-110",
+                  ? "border-hairline bg-raised text-ink-secondary hover:bg-raised-hover"
+                  : "border-accent bg-accent text-accent-ink hover:opacity-85",
             )}
           >
-            {busy && !canSteer ? <Clock size={14} /> : <ArrowUp size={16} strokeWidth={2.5} />}
+            {busy && !canSteer ? <Clock size={13} /> : <ArrowUp size={15} strokeWidth={2.5} />}
           </button>
         )}
           </div>
         </div>
+        {group && !group.dm ? (
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 border-t border-hairline/60 pt-1.5 font-mono text-[11px] text-ink-secondary">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-medium text-ink truncate">{respondingText}</span>
+              {!remoteClient && !locked && members && members.length > 0 && (
+                <DefaultResponderSelect group={group} members={members} />
+              )}
+            </div>
+            <div className="shrink-0 text-ink-secondary/70">
+              {t("composer.hint.keyboard")}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1.5 flex items-center justify-end border-t border-hairline/60 pt-1.5 font-mono text-[11px] text-ink-secondary/70">
+            {t("composer.hint.keyboard")}
+          </div>
+        )}
         </div>
         </div>
       </div>

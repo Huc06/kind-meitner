@@ -9,8 +9,8 @@ import { BOT_PROFILE_LIMITS } from "../../shared/bot-profile";
 import { cn } from "@/lib/cn";
 import { firstSentence, soulPatchFor, utf8Bytes } from "@/lib/soul";
 import { api, useStore, type Bot } from "@/state/store";
-import { inputCls } from "./bot-settings/field";
-
+import { Button } from "@/components/ui/button";
+import { fieldClass, FieldLabel } from "@/components/ui/field";
 type SoulRead = { soul: string; revision: string; bytes: number; limit: number; file: string; drift: boolean; fileText?: string };
 
 export function SoulField({
@@ -74,40 +74,45 @@ export function SoulField({
   return (
     <div className="block">
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <label htmlFor={`bot-soul-${bot.id}`} className="text-[13px] text-ink-secondary">
+        <FieldLabel htmlFor={`bot-soul-${bot.id}`} className="mb-0">
           Standing instructions (SOUL.md)
-        </label>
+        </FieldLabel>
         {canMigrate && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             disabled={resolving}
             onClick={() => onPatch({ soul: bot.description, description: firstSentence(bot.description) })}
-            className="rounded-md px-1.5 py-1 text-[11.5px] font-medium text-accent-text hover:bg-accent/10"
           >
             Move instructions into SOUL.md
-          </button>
+          </Button>
         )}
       </div>
       {info?.drift && (
-        <div className="mb-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[12px] text-ink">
+        <div className="mb-2 border border-warning bg-warning/10 p-3 text-[12px] text-ink">
           <div className="font-medium">SOUL.md on disk was edited outside the app.</div>
           <div className="mt-1 text-ink-secondary">
-            The bot keeps using the saved version until you choose. File: <span className="break-all">{info.file}</span>
+            The bot keeps using the saved version until you choose. File: <span className="break-all font-mono">{info.file}</span>
           </div>
-          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-control p-2 text-[11.5px]">{info.fileText}</pre>
-          <div className="mt-2 flex gap-2">
-            <button type="button" disabled={resolving} onClick={() => void resolve("apply-file")} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:brightness-110 disabled:opacity-50">
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap border border-hairline bg-inset p-2 font-mono text-[11px] leading-relaxed text-ink">{info.fileText}</pre>
+          <div className="mt-2.5 flex gap-2">
+            <Button variant="primary" size="xs" disabled={resolving} onClick={() => void resolve("apply-file")}>
               Use the file
-            </button>
-            <button type="button" disabled={resolving} onClick={() => void resolve("discard-file")} className="rounded-lg bg-control px-3 py-1.5 text-[12px] text-ink hover:bg-raised-hover disabled:opacity-50">
+            </Button>
+            <Button variant="secondary" size="xs" disabled={resolving} onClick={() => void resolve("discard-file")}>
               Keep the saved version
-            </button>
+            </Button>
           </div>
         </div>
       )}
       <textarea
         id={`bot-soul-${bot.id}`}
-        className={cn(inputCls, "min-h-[220px] resize-y font-mono leading-relaxed", over && "ring-2 ring-red-500/60")}
+        aria-label="Standing instructions (SOUL.md)"
+        className={cn(
+          fieldClass,
+          "min-h-[220px] resize-y font-mono text-[12px] leading-relaxed",
+          over && "border-danger text-danger focus:border-danger",
+        )}
         placeholder="Who this bot is and the rules it never breaks. Keep it short; put step-by-step procedure into a skill."
         aria-invalid={over || undefined}
         disabled={resolving}
@@ -116,9 +121,9 @@ export function SoulField({
       />
       <div className="mt-1.5 flex items-start justify-between gap-3 text-[11px] text-ink-secondary">
         <span>
-          In this bot’s context on every turn.{info ? <> Mirrored to <span className="break-all">{info.file}</span>.</> : null}
+          In this bot’s context on every turn.{info ? <> Mirrored to <span className="break-all font-mono">{info.file}</span>.</> : null}
         </span>
-        <span className={cn("shrink-0 tabular-nums", over && "font-medium text-red-500")}>
+        <span className={cn("shrink-0 font-mono tabular-nums text-[10.5px]", over && "font-medium text-danger")}>
           {bytes.toLocaleString()} / {limit.toLocaleString()} bytes{over ? " — not saved" : ""}
         </span>
       </div>

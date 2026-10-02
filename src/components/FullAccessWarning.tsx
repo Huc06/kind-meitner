@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ShieldAlert } from "lucide-react";
-
+import { Button } from "@/components/ui/button";
 export const FULL_ACCESS_WARNING =
   "This bot can read, edit, delete files, use the internet, and control its selected computer without asking—even for potentially destructive or sensitive actions. This also applies to scheduled work and tasks delegated by your Chief or other bots. It does not enable Full access on other bots. Some providers may still require approval. Questions and separate kind-meitner confirmations still wait for you. This does not grant operating-system permissions or access to accounts you have not connected.";
 
@@ -51,7 +51,7 @@ export function FullAccessWarning({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#05050a]/75 p-6 backdrop-blur-[2px] animate-view-enter"
       onMouseDown={(event) => event.target === event.currentTarget && onCancel()}
     >
       <div
@@ -60,7 +60,7 @@ export function FullAccessWarning({
         aria-modal="true"
         aria-labelledby="full-access-warning-title"
         aria-describedby="full-access-warning-body"
-        className="w-full max-w-[440px] rounded-2xl border border-danger/30 bg-panel p-5 shadow-2xl"
+        className="relative w-full max-w-[440px] border border-danger/60 bg-card p-5 shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)]"
       >
         <div className="flex items-start gap-3">
           <ShieldAlert size={19} className="mt-0.5 shrink-0 text-danger" />
@@ -76,21 +76,21 @@ export function FullAccessWarning({
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button
+          <Button
             ref={cancelRef}
-            type="button"
+            variant="secondary"
+            size="sm"
             onClick={onCancel}
-            className="rounded-xl px-4 py-2 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
             onClick={onConfirm}
-            className="rounded-xl bg-danger px-4 py-2 text-[13px] font-medium text-white hover:brightness-110"
           >
             Enable full access
-          </button>
+          </Button>
         </div>
       </div>
     </div>

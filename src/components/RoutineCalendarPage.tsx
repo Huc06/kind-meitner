@@ -38,6 +38,10 @@ import {
 } from "lucide-react";
 
 import { BotAvatar } from "@/components/Avatar";
+import { Button, buttonClass } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
+import { Tag } from "@/components/ui/tag";
+import { tileFor, TILE_FILL } from "@/components/ui/tile";
 import { ChatMarkdown } from "@/components/ChatMarkdown";
 import { pathForFile } from "@/components/ComposerAttachments";
 import { CalendarSidebar } from "@/components/routines/CalendarSidebar";
@@ -51,12 +55,14 @@ import { t } from "@/lib/i18n";
 import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
 import type { CalendarCall, CalendarCallAttachment, CalendarCallInput } from "@/lib/calendar-calls";
 import { cn } from "@/lib/cn";
+
+const inputStyle = { colorScheme: "var(--code-color-scheme)" } as const;
 import {
   imageAttachmentFromFile,
   intakeFiles,
   type Attachment,
 } from "@/lib/composer-attachments";
-import { MAUS_COLORS, type MausState } from "@/lib/mascot";
+import { type MausState } from "@/lib/mascot";
 import {
   addDays,
   atLocalTime,
@@ -256,10 +262,10 @@ function AttachmentChips({
   return (
     <div className="flex flex-wrap gap-2">
       {attachments.map((attachment) => (
-        <div key={attachment.id} className="flex max-w-[260px] items-center gap-2 rounded-lg border border-hairline/50 bg-inset px-2.5 py-2 text-[12px] text-ink">
-          <FileText size={14} className="shrink-0 text-accent" />
+        <div key={attachment.id} className="flex max-w-[260px] items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5 font-mono text-[11.5px] text-ink">
+          <FileText size={13} className="shrink-0 text-ink-secondary" />
           <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
-          {onRemove && <button type="button" onClick={() => onRemove(attachment.id)} className="rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink" aria-label={`Remove ${attachment.name}`}><X size={12} /></button>}
+          {onRemove && <button type="button" onClick={() => onRemove(attachment.id)} className="p-0.5 text-ink-secondary hover:bg-raised-hover hover:text-ink" aria-label={`Remove ${attachment.name}`}><X size={12} /></button>}
         </div>
       ))}
     </div>
@@ -282,11 +288,11 @@ function BotPicker({
   const [query, setQuery] = useState("");
   const filtered = bots.filter((bot) => `${bot.name} ${bot.title}`.toLowerCase().includes(query.toLowerCase()));
   return (
-    <div className="rounded-xl border border-hairline/50 bg-inset/60 p-2">
+    <div className="border border-hairline bg-inset p-2">
       {!locked && bots.length > 5 && (
-        <label className="mb-2 flex items-center gap-2 rounded-lg bg-panel px-2.5 py-2 text-ink-secondary">
-          <Search size={14} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a bot" className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-ink-secondary/60" />
+        <label className="relative mb-2 block">
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-secondary" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a bot" className={cn(fieldClass, "h-8 pl-8 text-[12px]")} />
         </label>
       )}
       <div className="grid max-h-48 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
@@ -298,11 +304,11 @@ function BotPicker({
               type="button"
               disabled={locked}
               onClick={() => onChange(multiple ? (active ? selected.filter((id) => id !== bot.id) : [...selected, bot.id]) : [bot.id])}
-              className={cn("flex min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left transition", active ? "bg-accent/12 ring-1 ring-accent/50" : "hover:bg-raised", locked && "cursor-default")}
+              className={cn("flex min-w-0 items-center gap-2 border px-2 py-1.5 text-left transition-colors", active ? "border-accent bg-raised text-ink" : "border-transparent hover:bg-raised-hover", locked && "cursor-default")}
             >
-              <BotAvatar bot={bot} state={active ? "happy" : "idle"} size={32} animated={false} />
-              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{bot.name}</span>
-              {active && <CheckCircle2 size={14} className="shrink-0 text-accent" />}
+              <BotAvatar bot={bot} state={active ? "happy" : "idle"} size={26} animated={false} />
+              <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">{bot.name}</span>
+              {active && <CheckCircle2 size={13} className="shrink-0 text-ink" />}
             </button>
           );
         })}
@@ -621,48 +627,46 @@ function EventEditor({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={existingRoutine || existingCall ? "Edit calendar event" : "Create calendar event"} tabIndex={-1} className="max-h-[94vh] w-full max-w-[760px] overflow-y-auto rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-hairline/40 bg-panel/95 px-5 py-3.5 backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={existingRoutine || existingCall ? "Edit calendar event" : "Create calendar event"} tabIndex={-1} className="max-h-[94vh] w-full max-w-[760px] overflow-y-auto border border-hairline bg-card shadow-2xl">
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-hairline bg-card px-5 py-3.5">
           <div className="text-[15px] font-semibold text-ink">{existingRoutine || existingCall ? "Edit event" : "New event"}</div>
-          <button onClick={onClose} className="rounded-full p-2 text-ink-secondary hover:bg-raised hover:text-ink" aria-label="Close"><X size={18} /></button>
+          <button onClick={onClose} className={buttonClass({ variant: "ghost", size: "sm", icon: true })} aria-label="Close"><X size={16} /></button>
         </div>
-
         <div className="space-y-5 px-5 py-5 sm:px-8">
           {canSwitchKind && (
-            <div className="ml-10 inline-flex rounded-lg bg-inset p-1">
-              <button type="button" onClick={() => { setKind("routine"); setBotIds((ids) => ids.slice(0, 1)); }} className={cn("rounded-md px-4 py-1.5 text-[12.5px] font-medium", kind === "routine" ? "bg-raised text-ink shadow" : "text-ink-secondary")}>Routine</button>
-              <button type="button" onClick={() => { setKind("call"); if (recurrence === "interval" || isCronChoice(recurrence)) setRecurrence("none"); }} className={cn("rounded-md px-4 py-1.5 text-[12.5px] font-medium", kind === "call" ? "bg-raised text-ink shadow" : "text-ink-secondary")}>Call</button>
+            <div className="ml-10 inline-flex border border-hairline bg-inset p-0.5">
+              <button type="button" onClick={() => { setKind("routine"); setBotIds((ids) => ids.slice(0, 1)); }} className={cn("px-4 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors", kind === "routine" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink hover:bg-raised-hover")}>Routine</button>
+              <button type="button" onClick={() => { setKind("call"); if (recurrence === "interval" || isCronChoice(recurrence)) setRecurrence("none"); }} className={cn("px-4 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors", kind === "call" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink hover:bg-raised-hover")}>Call</button>
             </div>
           )}
-
           {kind === "routine" && !lockedBotId && (
             <div className="ml-10">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-ink-secondary">Routine type</div>
+              <div className="label-mono mb-2 text-ink-secondary">Routine type</div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => selectRoutineTarget("bot")}
-                  className={cn("flex items-start gap-3 rounded-xl border p-3 text-left transition", routineTarget === "bot" ? "border-accent/60 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised")}
+                  className={cn("flex items-start gap-3 border p-3 text-left transition-colors", routineTarget === "bot" ? "border-accent bg-raised" : "border-hairline bg-inset hover:bg-raised-hover")}
                 >
-                  <UserRoundPlus size={17} className={cn("mt-0.5 shrink-0", routineTarget === "bot" ? "text-accent" : "text-ink-secondary")} />
-                  <span><span className="block text-[12.5px] font-medium text-ink">Bot task</span><span className="mt-1 block text-[11px] leading-relaxed text-ink-secondary">One bot owns and completes each run.</span></span>
+                  <UserRoundPlus size={17} className={cn("mt-0.5 shrink-0", routineTarget === "bot" ? "text-ink" : "text-ink-secondary")} />
+                  <span><span className="block text-[12.5px] font-medium text-ink">Bot task</span><span className="mt-1 block font-mono text-[10.5px] leading-relaxed text-ink-secondary">One bot owns and completes each run.</span></span>
                 </button>
                 <button
                   type="button"
                   onClick={() => selectRoutineTarget("room-goal")}
-                  className={cn("flex items-start gap-3 rounded-xl border p-3 text-left transition", routineTarget === "room-goal" ? "border-accent/60 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised")}
+                  className={cn("flex items-start gap-3 border p-3 text-left transition-colors", routineTarget === "room-goal" ? "border-accent bg-raised" : "border-hairline bg-inset hover:bg-raised-hover")}
                 >
-                  <Target size={17} className={cn("mt-0.5 shrink-0", routineTarget === "room-goal" ? "text-accent" : "text-ink-secondary")} />
-                  <span><span className="block text-[12.5px] font-medium text-ink">Team goal</span><span className="mt-1 block text-[11px] leading-relaxed text-ink-secondary">A lead coordinates the group until the goal settles.</span></span>
+                  <Target size={17} className={cn("mt-0.5 shrink-0", routineTarget === "room-goal" ? "text-ink" : "text-ink-secondary")} />
+                  <span><span className="block text-[12.5px] font-medium text-ink">Team goal</span><span className="mt-1 block font-mono text-[10.5px] leading-relaxed text-ink-secondary">A lead coordinates the group until the goal settles.</span></span>
                 </button>
               </div>
             </div>
           )}
 
           <div className="flex items-start gap-4">
-            <span className="mt-3 size-4 shrink-0 rounded bg-accent" />
-            <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={kind === "routine" ? "Add title" : "Add call title"} className="min-w-0 flex-1 border-b border-hairline/60 bg-transparent px-1 pb-2 text-[22px] font-medium text-ink outline-none placeholder:text-ink-secondary/55 focus:border-accent" />
+            <span className="mt-3 size-3 shrink-0 border border-hairline bg-accent" />
+            <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={kind === "routine" ? "Add title" : "Add call title"} className="min-w-0 flex-1 border-b border-hairline bg-transparent px-1 pb-2 text-[20px] font-medium text-ink outline-none placeholder:text-ink-secondary/55 hover:border-ink-secondary/60 focus:border-ink" />
           </div>
 
           <div className="flex items-start gap-4">
@@ -670,14 +674,14 @@ function EventEditor({
             <div className="min-w-0 flex-1 space-y-3">
               {recurrence !== "interval" && !isCronChoice(recurrence) && (
                 <div className="flex flex-wrap items-center gap-2">
-                  {kind === "routine" && recurrence === "none" && <span className="text-[12px] font-medium text-ink-secondary">Starts</span>}
-                  {kind === "routine" && recurrence === "weekly" && <span className="text-[12px] font-medium text-ink-secondary">On</span>}
-                  {(kind === "call" || recurrence === "none" || recurrence === "weekly") && <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[13px] text-ink outline-none focus:border-accent [color-scheme:dark]" />}
-                  <input type="time" step={CALENDAR_SLOT_MINUTES * 60} value={startTime} onChange={(event) => setStartTime(event.target.value)} className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[13px] text-ink outline-none focus:border-accent [color-scheme:dark]" />
+                  {kind === "routine" && recurrence === "none" && <span className="label-mono text-ink-secondary">Starts</span>}
+                  {kind === "routine" && recurrence === "weekly" && <span className="label-mono text-ink-secondary">On</span>}
+                  {(kind === "call" || recurrence === "none" || recurrence === "weekly") && <input type="date" value={date} onChange={(event) => setDate(event.target.value)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto font-mono text-[12px] cursor-pointer")} />}
+                  <input type="time" step={CALENDAR_SLOT_MINUTES * 60} value={startTime} onChange={(event) => setStartTime(event.target.value)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto font-mono text-[12px] cursor-pointer")} />
                   {kind === "call" && <>
-                    <span className="text-[12px] text-ink-secondary">to</span>
-                    <span className="rounded-lg border border-hairline/40 bg-inset/60 px-3 py-2 text-[13px] text-ink">{niceTime(endAt)}</span>
-                    <select aria-label="Call duration" value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12px] text-ink outline-none focus:border-accent">
+                    <span className="label-mono text-ink-secondary">to</span>
+                    <span className="border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink">{niceTime(endAt)}</span>
+                    <select aria-label="Call duration" value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} style={inputStyle} className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] cursor-pointer")}>
                       {EVENT_DURATION_OPTIONS.map((minutes) => <option key={minutes} value={minutes}>{durationLabel(minutes)}</option>)}
                     </select>
                   </>}
@@ -685,7 +689,7 @@ function EventEditor({
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <Repeat2 size={14} className="text-ink-secondary" />
-                <select aria-label="Repeat" value={recurrence} onChange={(event) => selectRecurrence(event.target.value as RecurrenceChoice)} className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent">
+                <select aria-label="Repeat" value={recurrence} onChange={(event) => selectRecurrence(event.target.value as RecurrenceChoice)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] cursor-pointer")}>
                   <option value="none">Does not repeat</option>
                   {kind === "routine" && <option value="interval">Every X minutes</option>}
                   <option value="daily">Daily</option>
@@ -698,7 +702,16 @@ function EventEditor({
               {isCronChoice(recurrence) && kind === "routine" && cron && <CronScheduleFields choice={recurrence} value={cronDraft} onChange={(draft) => { setCronDraft(draft); setCronChanged(true); }} runs={cron.runs} error={cron.error} />}
               {recurrence === "custom" && (
                 <div className="flex flex-wrap gap-1.5">
-                  {DAY_NAMES.map((label, day) => <button key={label} type="button" onClick={() => setWeekdays((current) => current.includes(day) ? (current.length === 1 ? current : current.filter((value) => value !== day)) : [...current, day].sort())} className={cn("size-8 rounded-full text-[10px] font-semibold", weekdays.includes(day) ? "bg-accent text-white" : "bg-inset text-ink-secondary hover:bg-raised hover:text-ink")}>{label[0]}</button>)}
+                  {DAY_NAMES.map((label, day) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setWeekdays((current) => current.includes(day) ? (current.length === 1 ? current : current.filter((value) => value !== day)) : [...current, day].sort())}
+                      className={cn("size-8 border font-mono text-[10.5px] font-semibold transition-colors", weekdays.includes(day) ? "border-accent bg-accent text-accent-ink" : "border-hairline bg-inset text-ink-secondary hover:bg-raised-hover hover:text-ink")}
+                    >
+                      {label[0]}
+                    </button>
+                  ))}
                 </div>
               )}
               {recurrence === "interval" && kind === "routine" && (
@@ -709,7 +722,8 @@ function EventEditor({
                       value={INTERVAL_PRESETS.includes(intervalMinutes) ? String(intervalMinutes) : "custom"}
                       onChange={(event) => setIntervalMinutes(event.target.value === "custom" ? 0 : Number(event.target.value))}
                       aria-label="How often this routine runs"
-                      className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] tabular-nums text-ink outline-none focus:border-accent"
+                      style={inputStyle}
+                      className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] tabular-nums cursor-pointer")}
                     >
                       {INTERVAL_PRESETS.map((minutes) => <option key={minutes} value={minutes}>{minutes}</option>)}
                       <option value="custom">Custom…</option>
@@ -726,22 +740,24 @@ function EventEditor({
                         aria-invalid={intervalInvalid}
                         aria-describedby={intervalInvalid ? "routine-interval-error" : "routine-interval-help"}
                         autoFocus
-                        className={cn("w-20 rounded-lg border bg-inset px-3 py-2 text-[12.5px] tabular-nums text-ink outline-none focus:border-accent", intervalInvalid ? "border-danger/70" : "border-hairline/50")}
+                        style={inputStyle}
+                        className={cn(fieldClass, "h-9 w-20 font-mono text-[12px] tabular-nums", intervalInvalid ? "border-danger" : "")}
                       />
                     )}
-                    <span>minutes</span>
+                    <span className="label-mono text-ink-secondary">minutes</span>
                   </div>
 
                   <div className="grid items-center gap-2 text-[12.5px] text-ink sm:flex sm:flex-wrap">
                     <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                      <span className="font-medium">On</span>
+                      <span className="label-mono text-ink-secondary">On</span>
                       <select
                         value={intervalDays}
                         onChange={(event) => selectIntervalDays(event.target.value as IntervalDayChoice)}
                         aria-label="Days this interval runs"
                         aria-invalid={intervalDaysInvalid}
                         aria-describedby={intervalDaysInvalid ? "routine-interval-days-error" : undefined}
-                        className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent"
+                        style={inputStyle}
+                        className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] cursor-pointer")}
                       >
                         <option value="every-day">Every day</option>
                         <option value="weekdays">Weekdays</option>
@@ -750,14 +766,15 @@ function EventEditor({
                     </span>
                     <span aria-hidden="true" className="hidden text-ink-secondary sm:inline">·</span>
                     <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                      <span className="font-medium">During</span>
+                      <span className="label-mono text-ink-secondary">During</span>
                       <select
                         value={intervalWindow}
                         onChange={(event) => setIntervalWindow(event.target.value as IntervalWindowChoice)}
                         aria-label="Hours this interval runs"
                         aria-invalid={intervalWindowInvalid}
                         aria-describedby={intervalWindowInvalid ? "routine-interval-window-error" : undefined}
-                        className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent"
+                        style={inputStyle}
+                        className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] cursor-pointer")}
                       >
                         <option value="all-day">All day</option>
                         <option value="custom">Custom hours…</option>
@@ -765,14 +782,15 @@ function EventEditor({
                     </span>
                     <span aria-hidden="true" className="hidden text-ink-secondary sm:inline">·</span>
                     <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                      <span className="font-medium">Ends</span>
+                      <span className="label-mono text-ink-secondary">Ends</span>
                       <select
                         value={intervalEnd}
                         onChange={(event) => setIntervalEnd(event.target.value as IntervalEndChoice)}
                         aria-label="When this interval ends"
                         aria-invalid={intervalEndInvalid}
                         aria-describedby={intervalEndInvalid ? "routine-interval-end-error" : undefined}
-                        className="rounded-lg border border-hairline/50 bg-inset px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent"
+                        style={inputStyle}
+                        className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] cursor-pointer")}
                       >
                         <option value="never">Never</option>
                         <option value="on-date">On a date…</option>
@@ -799,7 +817,7 @@ function EventEditor({
                               : [...current, day].sort())}
                             aria-label={`${label}, ${intervalWeekdays.includes(day) ? "selected" : "not selected"}`}
                             aria-pressed={intervalWeekdays.includes(day)}
-                            className={cn("size-8 rounded-full text-[10px] font-semibold", intervalWeekdays.includes(day) ? "bg-accent text-white" : "bg-inset text-ink-secondary hover:bg-raised hover:text-ink")}
+                            className={cn("size-8 border font-mono text-[10.5px] font-semibold transition-colors", intervalWeekdays.includes(day) ? "border-accent bg-accent text-accent-ink" : "border-hairline bg-inset text-ink-secondary hover:bg-raised-hover hover:text-ink")}
                           >
                             {DAY_CHIP_LABELS[day]}
                           </button>
@@ -811,16 +829,16 @@ function EventEditor({
                   {intervalWindow === "custom" && (
                     <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink">
                       <span className="font-medium text-ink-secondary">Run between</span>
-                      <input aria-label="Interval window start" aria-invalid={intervalWindowInvalid} aria-describedby={intervalWindowInvalid ? "routine-interval-window-error" : undefined} type="time" step={CALENDAR_SLOT_MINUTES * 60} value={intervalWindowStart} onChange={(event) => setIntervalWindowStart(event.target.value)} className={cn("rounded-lg border bg-inset px-3 py-2 text-[13px] text-ink outline-none focus:border-accent [color-scheme:dark]", intervalWindowInvalid ? "border-danger/70" : "border-hairline/50")} />
-                      <span className="text-ink-secondary">and</span>
-                      <input aria-label="Interval window end" aria-invalid={intervalWindowInvalid} aria-describedby={intervalWindowInvalid ? "routine-interval-window-error" : undefined} type="time" step={CALENDAR_SLOT_MINUTES * 60} value={intervalWindowEnd} onChange={(event) => setIntervalWindowEnd(event.target.value)} className={cn("rounded-lg border bg-inset px-3 py-2 text-[13px] text-ink outline-none focus:border-accent [color-scheme:dark]", intervalWindowInvalid ? "border-danger/70" : "border-hairline/50")} />
+                      <input aria-label="Interval window start" aria-invalid={intervalWindowInvalid} aria-describedby={intervalWindowInvalid ? "routine-interval-window-error" : undefined} type="time" step={CALENDAR_SLOT_MINUTES * 60} value={intervalWindowStart} onChange={(event) => setIntervalWindowStart(event.target.value)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto font-mono text-[12px]", intervalWindowInvalid ? "border-danger" : "")} />
+                      <span className="label-mono text-ink-secondary">and</span>
+                      <input aria-label="Interval window end" aria-invalid={intervalWindowInvalid} aria-describedby={intervalWindowInvalid ? "routine-interval-window-error" : undefined} type="time" step={CALENDAR_SLOT_MINUTES * 60} value={intervalWindowEnd} onChange={(event) => setIntervalWindowEnd(event.target.value)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto font-mono text-[12px]", intervalWindowInvalid ? "border-danger" : "")} />
                     </div>
                   )}
 
                   {intervalEnd === "on-date" && (
                     <label className="flex flex-wrap items-center gap-2 text-[12px] text-ink">
-                      <span className="font-medium text-ink-secondary">Stop scheduling after</span>
-                      <input aria-label="Interval end date" aria-invalid={intervalEndInvalid} aria-describedby={intervalEndInvalid ? "routine-interval-end-error" : undefined} type="date" min={toLocalDateInput(intervalEndMinimumAt)} value={intervalEndDate} onChange={(event) => setIntervalEndDate(event.target.value)} className={cn("rounded-lg border bg-inset px-3 py-2 text-[13px] text-ink outline-none focus:border-accent [color-scheme:dark]", intervalEndInvalid ? "border-danger/70" : "border-hairline/50")} />
+                      <span className="label-mono text-ink-secondary">Stop scheduling after</span>
+                      <input aria-label="Interval end date" aria-invalid={intervalEndInvalid} aria-describedby={intervalEndInvalid ? "routine-interval-end-error" : undefined} type="date" min={toLocalDateInput(intervalEndMinimumAt)} value={intervalEndDate} onChange={(event) => setIntervalEndDate(event.target.value)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto font-mono text-[12px]", intervalEndInvalid ? "border-danger" : "")} />
                     </label>
                   )}
 
@@ -840,19 +858,19 @@ function EventEditor({
                 </div>
               )}
               {kind === "routine" && (
-                <details className="rounded-xl border border-hairline/40 bg-inset/40 px-3 py-2.5">
+                <details className="border border-hairline bg-inset px-3 py-2.5">
                   <summary className="cursor-pointer select-none text-[11.5px] font-medium text-ink-secondary hover:text-ink">
                     Advanced · {timeoutMinutes == null ? "no run limit" : `${durationLabel(timeoutMinutes)} run limit`}
                   </summary>
-                  <div className="mt-3 border-t border-hairline/35 pt-3">
+                  <div className="mt-3 border-t border-hairline pt-3">
                     <label className="flex flex-wrap items-center gap-2 text-[12px] text-ink">
-                      <span>Stop if still running after</span>
-                      <select aria-label="Routine safety limit" value={timeoutMinutes ?? ""} onChange={(event) => setTimeoutMinutes(event.target.value ? Number(event.target.value) : null)} className="rounded-lg border border-hairline/50 bg-panel px-3 py-2 text-[12px] text-ink outline-none focus:border-accent">
+                      <span className="label-mono text-ink-secondary">Stop if still running after</span>
+                      <select aria-label="Routine safety limit" value={timeoutMinutes ?? ""} onChange={(event) => setTimeoutMinutes(event.target.value ? Number(event.target.value) : null)} style={inputStyle} className={cn(fieldClass, "h-9 w-auto pr-8 font-mono text-[12px] cursor-pointer")}>
                         <option value="">No limit</option>
                         {EVENT_DURATION_OPTIONS.map((minutes) => <option key={minutes} value={minutes}>{durationLabel(minutes)}</option>)}
                       </select>
                     </label>
-                    <div className="mt-1.5 text-[10.5px] leading-relaxed text-ink-secondary">Optional. The clock starts when work actually begins and does not control how often the routine starts.</div>
+                    <div className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-ink-secondary">Optional. The clock starts when work actually begins and does not control how often the routine starts.</div>
                   </div>
                 </details>
               )}
@@ -865,43 +883,43 @@ function EventEditor({
               {isRoomGoal ? (
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="routine-goal-room" className="mb-2 block text-[12.5px] font-medium text-ink">Choose a group</label>
+                    <label htmlFor="routine-goal-room" className="label-mono mb-2 block text-ink-secondary">Choose a group</label>
                     {rooms.length > 0 ? (
-                      <select id="routine-goal-room" value={groupId} onChange={(event) => selectRoom(event.target.value)} className="w-full rounded-lg border border-hairline/50 bg-inset px-3 py-2.5 text-[12.5px] text-ink outline-none focus:border-accent">
+                      <select id="routine-goal-room" value={groupId} onChange={(event) => selectRoom(event.target.value)} style={inputStyle} className={cn(fieldClass, "h-9 w-full pr-8 font-mono text-[12.5px] cursor-pointer")}>
                         <option value="">Select a group</option>
                         {rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
                       </select>
                     ) : (
-                      <div className="rounded-xl border border-dashed border-hairline/60 bg-inset px-3.5 py-3 text-[11.5px] leading-relaxed text-ink-secondary">Create a group from the sidebar first, then come back to schedule its goal.</div>
+                      <div className="border border-dashed border-hairline bg-inset px-3.5 py-3 font-mono text-[11.5px] leading-relaxed text-ink-secondary">Create a group from the sidebar first, then come back to schedule its goal.</div>
                     )}
                   </div>
                   {selectedRoom && (
                     <div>
-                      <div className="mb-2 text-[12.5px] font-medium text-ink">Choose the lead</div>
+                      <div className="label-mono mb-2 text-ink-secondary">Choose the lead</div>
                       {roomMembers.length > 0 ? (
                         <>
                           <BotPicker bots={roomMembers} selected={botIds} multiple={false} onChange={selectBots} />
-                          <div className="mt-2 text-[11.5px] text-ink-secondary">The lead coordinates {selectedRoom.name} and assigns work to its active members.</div>
+                          <div className="mt-2 font-mono text-[11px] text-ink-secondary">The lead coordinates {selectedRoom.name} and assigns work to its active members.</div>
                         </>
                       ) : (
-                        <div className="rounded-xl border border-warning/30 bg-warning/10 px-3.5 py-3 text-[11.5px] text-warning">This group has no active members. Add or restore a bot before scheduling the goal.</div>
+                        <div className="border border-warning/30 bg-warning/10 px-3.5 py-3 font-mono text-[11.5px] text-warning">This group has no active members. Add or restore a bot before scheduling the goal.</div>
                       )}
                     </div>
                   )}
                 </div>
               ) : (
                 <>
-                  <div className="mb-2 text-[12.5px] font-medium text-ink">{kind === "routine" ? "Assign a bot" : "Add guests"}</div>
+                  <div className="label-mono mb-2 text-ink-secondary">{kind === "routine" ? "Assign a bot" : "Add guests"}</div>
                   {bots.length > 0 ? (
-                <>
-                  <BotPicker bots={bots} selected={botIds} multiple={kind === "call"} locked={Boolean(lockedBotId)} onChange={selectBots} />
-                  <div className="mt-2 text-[11.5px] text-ink-secondary">{kind === "routine" ? "This bot owns each scheduled run." : `${selectedBots.length || "No"} bot${selectedBots.length === 1 ? "" : "s"} invited to the call.`}</div>
-                </>
-              ) : (
-                <button type="button" onClick={() => { dispatch({ type: "toggleNewBot", open: true }); onClose(); }} className="w-full rounded-xl border border-dashed border-accent/45 bg-accent/[0.06] px-4 py-4 text-left hover:bg-accent/10">
-                  <div className="text-[12.5px] font-medium text-accent">Create your first bot</div>
-                  <div className="mt-1 text-[11.5px] text-ink-secondary">A calendar event needs at least one bot.</div>
-                </button>
+                    <>
+                      <BotPicker bots={bots} selected={botIds} multiple={kind === "call"} locked={Boolean(lockedBotId)} onChange={selectBots} />
+                      <div className="mt-2 font-mono text-[11px] text-ink-secondary">{kind === "routine" ? "This bot owns each scheduled run." : `${selectedBots.length || "No"} bot${selectedBots.length === 1 ? "" : "s"} invited to the call.`}</div>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => { dispatch({ type: "toggleNewBot", open: true }); onClose(); }} className="w-full border border-dashed border-accent bg-accent/[0.04] px-4 py-4 text-left hover:bg-accent/10 transition-colors">
+                      <div className="text-[12.5px] font-medium text-ink">Create your first bot</div>
+                      <div className="mt-1 font-mono text-[11px] text-ink-secondary">A calendar event needs at least one bot.</div>
+                    </button>
                   )}
                 </>
               )}
@@ -913,28 +931,28 @@ function EventEditor({
           </div>}
           <div className="flex items-start gap-4">
             <FileText size={18} className="mt-2.5 shrink-0 text-ink-secondary" />
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} placeholder={isRoomGoal ? "What should the team accomplish?" : kind === "routine" ? "Add instructions for the bot" : "Add description or agenda"} className="min-w-0 flex-1 resize-y rounded-xl border border-hairline/50 bg-inset px-3.5 py-3 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-secondary/55 focus:border-accent" />
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} placeholder={isRoomGoal ? "What should the team accomplish?" : kind === "routine" ? "Add instructions for the bot" : "Add description or agenda"} className={cn(fieldClass, "min-h-24 w-full resize-y")} />
           </div>
 
           <div className="flex items-start gap-4">
             <Paperclip size={18} className="mt-2.5 shrink-0 text-ink-secondary" />
             {isRoomGoal ? (
-              <div className="min-w-0 flex-1 rounded-xl border border-hairline/50 bg-inset px-3.5 py-3">
+              <div className="min-w-0 flex-1 border border-hairline bg-inset px-3.5 py-3">
                 <div className="text-[12.5px] font-medium text-ink">Use the group’s shared context</div>
                 <div className="mt-1 text-[11px] leading-relaxed text-ink-secondary">Team goals cannot carry routine attachments. Put shared context in the goal instructions or the group instructions.</div>
               </div>
             ) : <div className="min-w-0 flex-1 space-y-2">
               <input ref={fileInput} type="file" multiple className="hidden" onChange={(event) => { void pickFiles(event.target.files); event.target.value = ""; }} />
-              <button type="button" onClick={() => fileInput.current?.click()} className="rounded-lg border border-hairline/50 px-3 py-2 text-[12.5px] font-medium text-ink hover:bg-raised">Add attachment</button>
+              <button type="button" onClick={() => fileInput.current?.click()} className={buttonClass({ variant: "secondary", size: "sm" })}>Add attachment</button>
               <AttachmentChips attachments={attachments} onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))} />
-              <div className="text-[11px] leading-relaxed text-ink-secondary">
+              <div className="font-mono text-[10.5px] leading-relaxed text-ink-secondary">
                 {kind === "routine"
                   ? "Attachments are passed to each local routine run and excluded from shared team files."
                   : selectedBots.length > 1
                     ? "References will be shared in the group when the event starts."
                     : "References stay with the event and are available when you join the group."}
               </div>
-              {attachmentNotice && <div className="text-[11.5px] text-warning">{attachmentNotice}</div>}
+              {attachmentNotice && <div className="font-mono text-[11px] text-warning">{attachmentNotice}</div>}
             </div>}
           </div>
 
@@ -943,24 +961,24 @@ function EventEditor({
               {isRoomGoal ? <Target size={18} className="mt-2.5 shrink-0 text-ink-secondary" /> : runOn === "cloud" ? <Cloud size={18} className="mt-2.5 shrink-0 text-ink-secondary" /> : <Laptop size={18} className="mt-2.5 shrink-0 text-ink-secondary" />}
               <div className="min-w-0 flex-1">
                 {isRoomGoal ? (
-                  <div className="rounded-xl border border-accent/35 bg-accent/[0.07] p-3">
+                  <div className="border border-hairline bg-inset p-3">
                     <div className="text-[12.5px] font-medium text-ink">Runs on this computer</div>
-                    <div className="mt-1 text-[11px] leading-relaxed text-ink-secondary">kind-meitner keeps the group and its member hand-offs together for the full goal.</div>
+                    <div className="mt-1 font-mono text-[11px] leading-relaxed text-ink-secondary">kind-meitner keeps the group and its member hand-offs together for the full goal.</div>
                   </div>
                 ) : <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setRunOn("maus")} className={cn("rounded-xl border p-3 text-left", runOn === "maus" ? "border-accent/60 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised")}><div className="text-[12.5px] font-medium text-ink">This computer</div><div className="mt-1 text-[11px] text-ink-secondary">Uses the bot’s current model and tools.</div></button>
-                  <button type="button" disabled={!cloudReady || attachments.length > 0} onClick={() => setRunOn("cloud")} className={cn("rounded-xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-45", runOn === "cloud" ? "border-accent/60 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised")}><div className="text-[12.5px] font-medium text-ink">Cloud VM</div><div className="mt-1 text-[11px] text-ink-secondary">Uses your connected cloud VM; kind-meitner must stay running to launch it.</div></button>
+                  <button type="button" onClick={() => setRunOn("maus")} className={cn("border p-3 text-left transition-colors", runOn === "maus" ? "border-accent bg-raised text-ink" : "border-hairline bg-inset hover:bg-raised-hover")}><div className="text-[12.5px] font-medium text-ink">This computer</div><div className="mt-1 font-mono text-[10.5px] text-ink-secondary">Uses the bot’s current model and tools.</div></button>
+                  <button type="button" disabled={!cloudReady || attachments.length > 0} onClick={() => setRunOn("cloud")} className={cn("border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45", runOn === "cloud" ? "border-accent bg-raised text-ink" : "border-hairline bg-inset hover:bg-raised-hover")}><div className="text-[12.5px] font-medium text-ink">Cloud VM</div><div className="mt-1 font-mono text-[10.5px] text-ink-secondary">Uses your connected cloud VM; kind-meitner must stay running to launch it.</div></button>
                 </div>}
               </div>
             </div>
           )}
 
-          {error && <div className="ml-10 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-[12.5px] text-danger"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
+          {error && <div className="ml-10 flex items-start gap-2 border border-danger/30 bg-danger/10 px-3 py-2.5 font-mono text-[12px] text-danger"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-hairline/40 bg-panel/95 px-5 py-3.5 backdrop-blur">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink">Cancel</button>
-          <button onClick={save} disabled={saving || attachmentPending || !valid} className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-40">{(saving || attachmentPending) && <Loader2 size={14} className="animate-spin" />}{attachmentPending ? "Attaching…" : existingRoutine || existingCall ? "Save" : kind === "call" ? "Schedule call" : isRoomGoal ? "Schedule team goal" : "Schedule routine"}</button>
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-hairline bg-card px-5 py-3.5">
+          <button onClick={onClose} className={buttonClass({ variant: "ghost", size: "sm" })}>Cancel</button>
+          <button onClick={save} disabled={saving || attachmentPending || !valid} className={buttonClass({ variant: "primary", size: "sm" })}>{(saving || attachmentPending) && <Loader2 size={13} className="animate-spin" />}{attachmentPending ? "Attaching…" : existingRoutine || existingCall ? "Save" : kind === "call" ? "Schedule call" : isRoomGoal ? "Schedule team goal" : "Schedule routine"}</button>
         </div>
       </div>
     </div>
@@ -1079,250 +1097,251 @@ function QuickComposer({
       aria-label="Quick create"
       style={dialogPosition ?? undefined}
       className={cn(
-        "fixed z-50 max-h-[calc(100vh-24px)] w-[min(460px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-hairline/70 bg-panel/95 p-1.5 shadow-2xl backdrop-blur-md",
+        "fixed z-50 max-h-[calc(100vh-24px)] w-[min(460px,calc(100vw-24px))] overflow-y-auto border border-hairline bg-card p-4 space-y-3.5 shadow-2xl",
         !dialogPosition && "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
       )}
     >
-      <div className="rounded-xl border border-hairline/50 bg-card p-4 space-y-3.5">
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-hairline/40 pb-3">
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-hairline pb-3">
+        <div>
+          <h3 className="text-[14px] font-semibold tracking-tight text-ink">
+            {kind === "routine" ? "New Scheduled Routine" : "New Scheduled Call"}
+          </h3>
+          <p className="mt-0.5 font-mono text-[10.5px] text-ink-secondary">
+            {kind === "routine" ? "Schedule an automated routine for your team agents." : "Bring team agents together at a scheduled time."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className={buttonClass({ variant: "ghost", size: "xs", icon: true })}
+          aria-label="Close"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {/* Task Name */}
+        <div>
+          <label htmlFor="quick-task-name" className="label-mono mb-1 block text-ink-secondary">
+            Title
+          </label>
+          <input
+            id="quick-task-name"
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. Daily Market Intelligence Report"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && valid) void save();
+            }}
+            className={cn(fieldClass, "h-9 w-full")}
+          />
+        </div>
+
+        {/* Type Toggle: Routine vs Call */}
+        {!routinesOnly && (
           <div>
-            <h3 className="text-[14px] font-semibold tracking-tight text-ink">
-              {kind === "routine" ? "New Scheduled Routine" : "New Scheduled Call"}
-            </h3>
-            <p className="mt-0.5 text-[11px] text-ink-secondary">
-              {kind === "routine" ? "Schedule an automated routine for your team agents." : "Bring team agents together at a scheduled time."}
-            </p>
+            <label className="label-mono mb-1 block text-ink-secondary">
+              Type
+            </label>
+            <div className="mt-1 flex items-center border border-hairline bg-inset p-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setKind("routine");
+                  setBotIds((ids) => ids.slice(0, 1));
+                }}
+                className={cn(
+                  "flex-1 py-1 font-mono text-[11px] uppercase tracking-wider text-center transition-colors",
+                  kind === "routine" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink hover:bg-raised-hover",
+                )}
+              >
+                Routine
+              </button>
+              <button
+                type="button"
+                onClick={() => setKind("call")}
+                className={cn(
+                  "flex-1 py-1 font-mono text-[11px] uppercase tracking-wider text-center transition-colors",
+                  kind === "call" ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink hover:bg-raised-hover",
+                )}
+              >
+                Call
+              </button>
+            </div>
           </div>
+        )}
+
+        {/* Assigned Agent */}
+        <div>
+          <label className="label-mono mb-1 block text-ink-secondary">
+            {kind === "routine" ? "Assigned Agent" : "Attendees"}
+          </label>
+          <div className="mt-1">
+            {bots.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  dispatch({ type: "toggleNewBot", open: true });
+                  onClose();
+                }}
+                className="flex w-full items-center justify-center border border-dashed border-accent bg-accent/[0.04] p-3 text-center hover:bg-accent/10 transition-colors"
+              >
+                <div className="font-mono text-[12px] text-ink">Create your first bot</div>
+              </button>
+            ) : kind === "routine" ? (
+              <div className="flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1">
+                {selectedBot && (
+                  <div className="shrink-0">
+                    <BotAvatar bot={selectedBot} size={20} />
+                  </div>
+                )}
+                <select
+                  value={botIds[0] ?? ""}
+                  onChange={(event) => selectBots([event.target.value])}
+                  style={inputStyle}
+                  className="min-w-0 flex-1 bg-transparent font-mono text-[12px] font-medium text-ink outline-none cursor-pointer"
+                >
+                  <option value="">Select an agent</option>
+                  {bots.map((bot) => (
+                    <option key={bot.id} value={bot.id}>
+                      {bot.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <BotPicker bots={bots} selected={botIds} multiple onChange={selectBots} />
+            )}
+          </div>
+        </div>
+
+        {/* Schedule Time & Duration Presets */}
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="label-mono text-ink-secondary">
+              Date & Time
+            </label>
+            <div className="flex items-center gap-1">
+              {DURATION_CHIPS.map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => setDurationMinutes(mins)}
+                  className={cn(
+                    "px-2 py-0.5 font-mono text-[10px] uppercase border transition-colors",
+                    durationMinutes === mins
+                      ? "border-accent bg-accent text-accent-ink"
+                      : "border-hairline bg-inset text-ink-secondary hover:bg-raised-hover hover:text-ink",
+                  )}
+                >
+                  {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <div className="relative flex items-center">
+              <CalendarDays size={13} className="pointer-events-none absolute left-2.5 text-ink-secondary shrink-0" />
+              <input
+                type="date"
+                aria-label="Event date"
+                value={dateInput}
+                onChange={(event) => {
+                  const nextDate = event.target.value;
+                  setDateInput(nextDate);
+                  if (nextDate && timeInput) {
+                    const ms = fromLocalDateAndTime(nextDate, timeInput);
+                    if (!Number.isNaN(ms)) setScheduledAt(ms);
+                  }
+                }}
+                style={inputStyle}
+                className={cn(fieldClass, "h-9 w-auto pl-8 pr-2 font-mono text-[12px] cursor-pointer")}
+              />
+            </div>
+            <div className="relative flex items-center">
+              <Clock3 size={13} className="pointer-events-none absolute left-2.5 text-ink-secondary shrink-0" />
+              <input
+                type="time"
+                aria-label="Event time"
+                value={timeInput}
+                onChange={(event) => {
+                  const nextTime = event.target.value;
+                  setTimeInput(nextTime);
+                  if (dateInput && nextTime) {
+                    const ms = fromLocalDateAndTime(dateInput, nextTime);
+                    if (!Number.isNaN(ms)) setScheduledAt(ms);
+                  }
+                }}
+                style={inputStyle}
+                className={cn(fieldClass, "h-9 w-auto pl-8 pr-2 font-mono text-[12px] cursor-pointer")}
+              />
+            </div>
+            <span className="font-mono text-[11px] text-ink-secondary">
+              ({durationMinutes} min)
+            </span>
+          </div>
+        </div>
+
+        {/* Instructions / Prompt */}
+        <div>
+          <label className="label-mono mb-1 block text-ink-secondary">
+            Instructions
+          </label>
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            rows={2}
+            placeholder={kind === "routine" ? "What should the agent do on this schedule?" : "Add meeting notes or call description..."}
+            className={cn(fieldClass, "min-h-16 w-full resize-none")}
+          />
+        </div>
+
+        {kind === "routine" && (
+          <ResultsDestination
+            bot={bots.find((bot) => bot.id === botIds[0])}
+            value={resultsThreadId}
+            onChange={(threadId) => setResultsThreadId(threadId ?? null)}
+          />
+        )}
+
+        {error && (
+          <div className="border border-danger/30 bg-danger/10 p-2.5 font-mono text-[11.5px] text-danger">
+            {error}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between border-t border-hairline pt-3">
+        <button
+          type="button"
+          onClick={() => onMore({ ...seed, at: scheduledAt, kind, botIds, name, description, durationMinutes, resultsThreadId })}
+          title="Configure repeating schedules and time zone"
+          className={buttonClass({ variant: "ghost", size: "sm" })}
+        >
+          More options
+        </button>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
-            aria-label="Close"
+            className={buttonClass({ variant: "secondary", size: "sm" })}
           >
-            <X size={15} />
+            Cancel
           </button>
-        </div>
-
-        <div className="space-y-3">
-          {/* Task Name */}
-          <div>
-            <label htmlFor="quick-task-name" className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
-              Title
-            </label>
-            <input
-              id="quick-task-name"
-              autoFocus
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Daily Market Intelligence Report"
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && valid) void save();
-              }}
-              className="mt-1 h-9 w-full rounded-lg border border-hairline/60 bg-inset px-3 text-[13px] font-medium text-ink outline-none placeholder:text-ink-secondary/40 focus:border-accent"
-            />
-          </div>
-
-          {/* Type Toggle: Routine vs Call */}
-          {!routinesOnly && (
-            <div>
-              <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
-                Type
-              </label>
-              <div className="mt-1 flex items-center rounded-lg border border-hairline/50 bg-inset p-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setKind("routine");
-                    setBotIds((ids) => ids.slice(0, 1));
-                  }}
-                  className={cn(
-                    "flex-1 rounded-md py-1.5 text-[12px] font-medium transition-all text-center",
-                    kind === "routine" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
-                  )}
-                >
-                  Routine
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setKind("call")}
-                  className={cn(
-                    "flex-1 rounded-md py-1.5 text-[12px] font-medium transition-all text-center",
-                    kind === "call" ? "bg-raised text-ink shadow-xs" : "text-ink-secondary hover:text-ink",
-                  )}
-                >
-                  Call
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Assigned Agent */}
-          <div>
-            <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
-              {kind === "routine" ? "Assigned Agent" : "Attendees"}
-            </label>
-            <div className="mt-1">
-              {bots.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    dispatch({ type: "toggleNewBot", open: true });
-                    onClose();
-                  }}
-                  className="flex w-full items-center justify-center rounded-lg border border-dashed border-accent/40 bg-accent/[0.04] p-3 text-center hover:bg-accent/10 transition-colors"
-                >
-                  <div className="text-[12px] font-medium text-accent">Create your first bot</div>
-                </button>
-              ) : kind === "routine" ? (
-                <div className="flex items-center gap-2 rounded-lg border border-hairline/60 bg-inset px-3 py-1.5">
-                  {selectedBot && (
-                    <div className="shrink-0">
-                      <BotAvatar bot={selectedBot} size={20} />
-                    </div>
-                  )}
-                  <select
-                    value={botIds[0] ?? ""}
-                    onChange={(event) => selectBots([event.target.value])}
-                    className="min-w-0 flex-1 bg-transparent text-[12.5px] font-medium text-ink outline-none cursor-pointer"
-                  >
-                    <option value="">Select an agent</option>
-                    {bots.map((bot) => (
-                      <option key={bot.id} value={bot.id}>
-                        {bot.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <BotPicker bots={bots} selected={botIds} multiple onChange={selectBots} />
-              )}
-            </div>
-          </div>
-
-          {/* Schedule Time & Duration Presets */}
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
-                Date & Time
-              </label>
-              <div className="flex items-center gap-1">
-                {DURATION_CHIPS.map((mins) => (
-                  <button
-                    key={mins}
-                    type="button"
-                    onClick={() => setDurationMinutes(mins)}
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
-                      durationMinutes === mins
-                        ? "bg-accent/20 text-accent font-semibold"
-                        : "text-ink-secondary hover:bg-raised hover:text-ink",
-                    )}
-                  >
-                    {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-inset px-2.5 py-1.5">
-                <CalendarDays size={13} className="text-ink-secondary shrink-0" />
-                <input
-                  type="date"
-                  aria-label="Event date"
-                  value={dateInput}
-                  onChange={(event) => {
-                    const nextDate = event.target.value;
-                    setDateInput(nextDate);
-                    if (nextDate && timeInput) {
-                      const ms = fromLocalDateAndTime(nextDate, timeInput);
-                      if (!Number.isNaN(ms)) setScheduledAt(ms);
-                    }
-                  }}
-                  className="bg-transparent text-[12px] font-medium text-ink outline-none cursor-pointer"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 rounded-lg border border-hairline/60 bg-inset px-2.5 py-1.5">
-                <Clock3 size={13} className="text-ink-secondary shrink-0" />
-                <input
-                  type="time"
-                  aria-label="Event time"
-                  value={timeInput}
-                  onChange={(event) => {
-                    const nextTime = event.target.value;
-                    setTimeInput(nextTime);
-                    if (dateInput && nextTime) {
-                      const ms = fromLocalDateAndTime(dateInput, nextTime);
-                      if (!Number.isNaN(ms)) setScheduledAt(ms);
-                    }
-                  }}
-                  className="bg-transparent text-[12px] font-medium font-mono text-ink outline-none cursor-pointer"
-                />
-              </div>
-              <span className="text-[11px] font-medium text-ink-secondary font-mono">
-                ({durationMinutes} min)
-              </span>
-            </div>
-          </div>
-
-          {/* Instructions / Prompt */}
-          <div>
-            <label className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
-              Instructions
-            </label>
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={2}
-              placeholder={kind === "routine" ? "What should the agent do on this schedule?" : "Add meeting notes or call description..."}
-              className="mt-1 w-full resize-none rounded-lg border border-hairline/60 bg-inset p-2.5 text-[12.5px] leading-relaxed text-ink outline-none placeholder:text-ink-secondary/40 focus:border-accent"
-            />
-          </div>
-
-          {kind === "routine" && (
-            <ResultsDestination
-              bot={bots.find((bot) => bot.id === botIds[0])}
-              value={resultsThreadId}
-              onChange={(threadId) => setResultsThreadId(threadId ?? null)}
-            />
-          )}
-
-          {error && (
-            <div className="rounded-lg bg-danger/10 p-2.5 text-[11.5px] text-danger border border-danger/20">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-hairline/40 pt-3">
           <button
             type="button"
-            onClick={() => onMore({ ...seed, at: scheduledAt, kind, botIds, name, description, durationMinutes, resultsThreadId })}
-            title="Configure repeating schedules and time zone"
-            className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-accent hover:bg-accent/10 transition-colors"
+            onClick={save}
+            disabled={!valid || working}
+            className={buttonClass({ variant: "primary", size: "sm" })}
           >
-            More options
+            {working && <Loader2 size={13} className="animate-spin" />}
+            Save schedule
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={!valid || working}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-white shadow-xs hover:brightness-110 active:scale-[0.98] disabled:opacity-40 transition"
-            >
-              {working && <Loader2 size={13} className="animate-spin" />}
-              Save schedule
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -1357,7 +1376,7 @@ function CalendarEventCard({
   const ownerBots = ownerIds.flatMap((id) => bots.find((bot) => bot.id === id) ?? []);
   const primary = ownerBots[0];
   const name = isCall ? item.call.name : run?.routineName ?? routine?.name ?? "Routine";
-  const color = isCall ? "#6d7cff" : primary ? MAUS_COLORS[primary.color] : "#666";
+  const tone = primary ? tileFor(primary.id) : isCall ? "violet" : "cyan";
   const [previewDuration, setPreviewDuration] = useState(item.durationMinutes);
   useEffect(() => setPreviewDuration(item.durationMinutes), [item.durationMinutes]);
   const status = run?.status;
@@ -1416,31 +1435,28 @@ function CalendarEventCard({
       }}
       onClick={(event) => { event.stopPropagation(); onOpen(); }}
       className={cn(
-        "group absolute z-10 overflow-hidden rounded-md border text-left transition hover:z-20 hover:brightness-105 focus:z-20 focus:outline-none focus:ring-1 focus:ring-accent",
+        "group absolute z-10 overflow-hidden border border-hairline text-left transition hover:z-20 hover:brightness-105 focus:z-20",
+        TILE_FILL[tone],
         previewDuration < 30 ? "px-1.5 py-0" : "px-2 py-1",
         status === "cancelled" && "opacity-55",
-        (status === "failed" || status === "missed") && "border-danger/60",
+        (status === "failed" || status === "missed") && "ring-1 ring-danger",
       )}
       style={{
         left: `calc(${(layout.column / layout.columns) * 100}% + 2px)`,
         width: `calc(${100 / layout.columns}% - 4px)`,
         top: `${((new Date(item.at).getHours() * 60 + new Date(item.at).getMinutes()) / 60) * HOUR_HEIGHT}px`,
         height: `${Math.max(previewDuration >= 30 ? 46 : 16, (previewDuration / 60) * HOUR_HEIGHT)}px`,
-        backgroundColor: "var(--color-card, #ffffff)",
-        borderColor: "var(--color-hairline, rgba(0,0,0,0.08))",
-        borderLeftWidth: "3.5px",
-        borderLeftColor: color,
       }}
     >
-      <div className="flex min-w-0 items-start gap-1.5 text-ink">
-        {previewDuration >= 30 && (isCall ? <Video size={compact ? 11 : 13} className="mt-0.5 shrink-0 text-ink-secondary" /> : primary ? <BotAvatar bot={primary} state={status ? statusState(status) : "idle"} size={compact ? 20 : 22} animated={status === "running" || status === "waiting"} /> : null)}
+      <div className="flex min-w-0 items-start gap-1.5">
+        {previewDuration >= 30 && (isCall ? <Video size={compact ? 11 : 13} className="mt-0.5 shrink-0 opacity-80" /> : primary ? <BotAvatar bot={primary} state={status ? statusState(status) : "idle"} size={compact ? 18 : 20} animated={status === "running" || status === "waiting"} /> : null)}
         <div className="min-w-0 flex-1">
-          <div className={cn("truncate text-[11px] font-medium text-ink", previewDuration < 30 ? "leading-none" : "leading-tight")}>{name}</div>
-          {previewDuration >= 30 && <div className="mt-0.5 truncate text-[9.5px] tabular-nums text-ink-secondary">{niceTime(item.at)}{statusLabel ? ` · ${statusLabel}` : recurrenceLabel ? ` · ${recurrenceLabel}` : isCall ? ` · ${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? ` · Team goal${room?.name ? ` · ${room.name}` : ""}` : ""}</div>}
+          <div className={cn("truncate font-mono text-[11px] font-semibold", previewDuration < 30 ? "leading-none" : "leading-tight")}>{name}</div>
+          {previewDuration >= 30 && <div className="mt-0.5 truncate font-mono text-[9.5px] tabular-nums opacity-85">{niceTime(item.at)}{statusLabel ? ` · ${statusLabel}` : recurrenceLabel ? ` · ${recurrenceLabel}` : isCall ? ` · ${ownerBots.length} bot${ownerBots.length === 1 ? "" : "s"}` : isRoomGoal ? ` · Team goal${room?.name ? ` · ${room.name}` : ""}` : ""}</div>}
         </div>
-        {previewDuration >= 30 && ownerBots.length > 1 && <span className="rounded bg-inset px-1 py-0.5 text-[8px] text-ink-secondary">+{ownerBots.length - 1}</span>}
+        {previewDuration >= 30 && ownerBots.length > 1 && <span className="border border-current/30 px-1 font-mono text-[8px]">+{ownerBots.length - 1}</span>}
       </div>
-      {isCall && <div onPointerDown={beginResize} className="absolute inset-x-1 bottom-0 h-1.5 cursor-ns-resize rounded-full opacity-0 transition group-hover:opacity-100" aria-label="Resize event"><div className="mx-auto mt-0.5 h-0.5 w-5 rounded-full bg-ink-secondary/40" /></div>}
+      {isCall && <div onPointerDown={beginResize} className="absolute inset-x-1 bottom-0 h-1.5 cursor-ns-resize opacity-0 transition group-hover:opacity-100" aria-label="Resize event"><div className="mx-auto mt-0.5 h-0.5 w-5 bg-current opacity-40" /></div>}
     </button>
   );
 }
@@ -1531,30 +1547,44 @@ function CalendarGrid({
   };
 
   return (
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto border-l border-t border-hairline/40 bg-app">
-      <div className="sticky top-0 z-30 grid bg-app/95 backdrop-blur" style={{ gridTemplateColumns, minWidth }}>
-        <div className="border-b border-r border-hairline/40 px-2 py-3 text-center text-[9px] uppercase tracking-wider text-ink-secondary">{formatGmtOffset(-new Date(anchor).getTimezoneOffset())}</div>
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto border-l border-t border-hairline bg-app">
+      <div className="sticky top-0 z-30 grid bg-app frame-rule-below" style={{ gridTemplateColumns, minWidth }}>
+        <div className="border-r border-hairline px-2 py-2.5 text-center font-mono text-[9px] uppercase tracking-wider text-ink-secondary">{formatGmtOffset(-new Date(anchor).getTimezoneOffset())}</div>
         {starts.map((start) => {
           const date = new Date(start);
           const isToday = start === today;
+          const dayName = DAY_NAMES[date.getDay()].slice(0, 3).toUpperCase();
           return (
-            <div key={start} role="columnheader" className={cn("border-b border-r border-hairline/40 px-2 py-2 text-center last:border-r-0", isToday && "bg-accent/[0.035]")}>
+            <div
+              key={start}
+              role="columnheader"
+              className={cn(
+                "border-r border-hairline px-2 py-2 text-center last:border-r-0 transition-colors",
+                isToday ? "border-t-2 border-t-ink bg-raised/35" : "bg-app",
+              )}
+            >
               <div className="flex items-center justify-center gap-1.5">
-                <span className={cn("text-[11px] font-medium uppercase tracking-[0.06em]", isToday ? "text-accent" : "text-ink-secondary")}>
-                  {DAY_NAMES[date.getDay()]}
+                <span className={cn("font-mono text-[11px] uppercase tracking-[0.06em]", isToday ? "font-semibold text-ink" : "text-ink-secondary")}>
+                  {dayName}
                 </span>
-                <span className={cn("flex size-6 items-center justify-center rounded-full text-[12px] tabular-nums", isToday ? "bg-accent font-medium text-white" : "text-ink")}>
-                  {date.getDate()}
-                </span>
+                {isToday ? (
+                  <span className="flex size-5 items-center justify-center font-mono text-[11px] font-semibold bg-accent text-accent-ink">
+                    {date.getDate()}
+                  </span>
+                ) : (
+                  <span className="font-mono text-[11px] tabular-nums text-ink">
+                    {date.getDate()}
+                  </span>
+                )}
               </div>
             </div>
           );
         })}
       </div>
       <div role="grid" aria-label="Routine and call calendar" onDragEnd={() => setDragPreview(null)} className="relative grid" style={{ height: HOUR_HEIGHT * 24, gridTemplateColumns, minWidth }}>
-        <div className="relative border-r border-hairline/40">
+        <div className="relative border-r border-hairline">
           {Array.from({ length: 24 }, (_, hour) => (
-            <div key={hour} className="absolute right-3 -translate-y-1/2 text-[11px] tabular-nums text-ink-secondary/70" style={{ top: hour * HOUR_HEIGHT }}>
+            <div key={hour} className="absolute right-2 -translate-y-1/2 font-mono text-[10.5px] tabular-nums text-ink-secondary/70" style={{ top: hour * HOUR_HEIGHT }}>
               {hour === 0 ? "12 am" : hour < 12 ? `${hour} am` : hour === 12 ? "12 pm" : `${hour - 12} pm`}
             </div>
           ))}
@@ -1567,11 +1597,11 @@ function CalendarGrid({
           const selected = selection?.day === start ? selection : null;
           const preview = dragPreview?.day === start ? dragPreview : null;
           return (
-            <div key={start} role="gridcell" aria-label={`${niceDate(start)} calendar`} onPointerDown={(event) => beginSelection(event, start)} onDragOver={(event) => previewDrop(event, start)} onDragLeave={(event) => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDragPreview(null); }} onDrop={(event) => drop(event, start)} className={cn("relative border-r border-hairline/40 last:border-r-0", start === today && "bg-accent/[0.025]")}>
-              {Array.from({ length: 48 }, (_, half) => <div key={half} className={cn("pointer-events-none absolute inset-x-0 border-t", half % 2 === 0 ? "border-hairline/30" : "border-hairline/10")} style={{ top: (half / 2) * HOUR_HEIGHT }} />)}
-              {start === today && <div className="pointer-events-none absolute inset-x-0 z-20 flex -translate-y-1/2 items-center" style={{ top: nowTop }}><span className="size-1.5 shrink-0 rounded-full bg-danger" /><span className="h-px flex-1 bg-danger/80" /></div>}
-              {selected && <div className="pointer-events-none absolute inset-x-1 z-10 rounded-md border border-accent/70 bg-accent/20" style={{ top: ((new Date(selected.start).getHours() * 60 + new Date(selected.start).getMinutes()) / 60) * HOUR_HEIGHT, height: Math.max(16, ((selected.end - selected.start) / 3_600_000) * HOUR_HEIGHT) }} />}
-              {preview && <div className="pointer-events-none absolute inset-x-1 z-20 rounded-md border border-accent/80 bg-accent/25 shadow-sm" style={{ top: ((new Date(preview.at).getHours() * 60 + new Date(preview.at).getMinutes()) / 60) * HOUR_HEIGHT, height: HOUR_HEIGHT / 2 }}><div className="px-2 py-1 text-[9.5px] font-medium text-accent">{niceTime(preview.at)}</div></div>}
+            <div key={start} role="gridcell" aria-label={`${niceDate(start)} calendar`} onPointerDown={(event) => beginSelection(event, start)} onDragOver={(event) => previewDrop(event, start)} onDragLeave={(event) => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDragPreview(null); }} onDrop={(event) => drop(event, start)} className={cn("relative border-r border-hairline last:border-r-0", start === today && "bg-raised/20")}>
+              {Array.from({ length: 48 }, (_, half) => <div key={half} className={cn("pointer-events-none absolute inset-x-0 border-t", half % 2 === 0 ? "border-hairline" : "border-hairline border-dashed")} style={{ top: (half / 2) * HOUR_HEIGHT }} />)}
+              {start === today && <div className="pointer-events-none absolute inset-x-0 z-20 flex -translate-y-1/2 items-center" style={{ top: nowTop }}><span className="size-1.5 shrink-0 rounded-full bg-danger" /><span className="h-px flex-1 bg-danger" /></div>}
+              {selected && <div className="pointer-events-none absolute inset-x-1 z-10 border border-ink bg-raised/70" style={{ top: ((new Date(selected.start).getHours() * 60 + new Date(selected.start).getMinutes()) / 60) * HOUR_HEIGHT, height: Math.max(16, ((selected.end - selected.start) / 3_600_000) * HOUR_HEIGHT) }} />}
+              {preview && <div className="pointer-events-none absolute inset-x-1 z-20 border border-ink bg-raised" style={{ top: ((new Date(preview.at).getHours() * 60 + new Date(preview.at).getMinutes()) / 60) * HOUR_HEIGHT, height: HOUR_HEIGHT / 2 }}><div className="px-2 py-1 font-mono text-[9.5px] font-medium text-ink">{niceTime(preview.at)}</div></div>}
               {dayItems.map((item) => <CalendarEventCard key={item.id} item={item} bots={bots} groups={groups} compact={days === 7} layout={collisionLayouts.get(item.id) ?? { column: 0, columns: 1 }} onOpen={() => onOpen(item)} onResize={(minutes) => onResize(item, minutes)} />)}
             </div>
           );
@@ -1691,30 +1721,34 @@ export function EventDetails({
     }
     onClose();
   };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-[2px]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Calendar event details" className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <div className="flex items-start gap-4 border-b border-hairline/40 px-5 py-4">
-          <span className={cn("mt-1 size-4 shrink-0 rounded", isCall ? "bg-[#6d7cff]" : "bg-accent")} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Calendar event details" className="w-full max-w-[520px] overflow-hidden border border-hairline bg-card shadow-2xl">
+        <div className="flex items-start gap-4 border-b border-hairline px-5 py-4">
+          <span className={cn("mt-1 size-3.5 shrink-0 border border-hairline", isCall ? "bg-tile-violet" : "bg-accent")} />
           <div className="min-w-0 flex-1">
-            <div className="text-[19px] font-semibold text-ink">{title}</div>
-            <div className="mt-1 text-[12.5px] text-ink-secondary">
+            <div className="text-[18px] font-semibold text-ink">{title}</div>
+            <div className="mt-1 font-mono text-[11.5px] text-ink-secondary">
               {niceDate(item.at)} · {niceTime(item.at)}{isCall ? ` – ${niceTime(item.at + item.durationMinutes * 60_000)}` : ""}
             </div>
-            {(routine || call) && <div className="mt-1 text-[11.5px] text-ink-secondary">{scheduleLabel((routine ?? call)!.schedule)}</div>}
+            {(routine || call) && <div className="mt-1 font-mono text-[11px] text-ink-secondary">{scheduleLabel((routine ?? call)!.schedule)}</div>}
             {routine?.schedule.type === "cron" && <div className="mt-3"><CronSchedulePreview schedule={routine.schedule} paused={!routine.enabled} /></div>}
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-ink-secondary hover:bg-raised hover:text-ink" aria-label="Close"><X size={17} /></button>
+          <button onClick={onClose} className={buttonClass({ variant: "ghost", size: "sm", icon: true })} aria-label="Close"><X size={16} /></button>
         </div>
 
         <div className="max-h-[58vh] space-y-4 overflow-y-auto px-5 py-4">
           <div className="flex items-start gap-3">
             {isRoomGoal ? <Target size={17} className="mt-1 shrink-0 text-ink-secondary" /> : <UserRoundPlus size={17} className="mt-1 shrink-0 text-ink-secondary" />}
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">{isCall ? "Bots invited" : isRoomGoal ? "Lead coordinator" : "Assigned bot"}</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {invited.map((bot) => <div key={bot.id} className="flex items-center gap-2 rounded-full border border-hairline/50 bg-inset py-1 pl-1 pr-2.5"><BotAvatar bot={bot} state="idle" size={26} animated={false} /><span className="text-[11.5px] text-ink">{bot.name}</span></div>)}
+              <div className="label-mono text-ink-secondary">{isCall ? "Bots invited" : isRoomGoal ? "Lead coordinator" : "Assigned bot"}</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {invited.map((bot) => (
+                  <Tag key={bot.id} tone="neutral" variant="soft" size="md" className="gap-1.5">
+                    <BotAvatar bot={bot} state="idle" size={16} animated={false} />
+                    <span>{bot.name}</span>
+                  </Tag>
+                ))}
               </div>
             </div>
           </div>
@@ -1722,8 +1756,8 @@ export function EventDetails({
             <div className="flex items-start gap-3">
               <UsersRound size={17} className="mt-1 shrink-0 text-ink-secondary" />
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">Team goal group</div>
-                <div className="mt-1 text-[12.5px] text-ink">{goalGroup?.name ?? "Group unavailable"}</div>
+                <div className="label-mono text-ink-secondary">Team goal group</div>
+                <div className="mt-1 text-[12.5px] font-medium text-ink">{goalGroup?.name ?? "Group unavailable"}</div>
               </div>
             </div>
           )}
@@ -1735,11 +1769,11 @@ export function EventDetails({
               </div>
             </div>
           )}
-          {attachments.length > 0 && <div className="flex items-start gap-3"><Paperclip size={17} className="mt-1 shrink-0 text-ink-secondary" /><div className="min-w-0 flex-1 space-y-2"><AttachmentChips attachments={attachments} />{call && <div className="text-[11px] leading-relaxed text-ink-secondary">{call.botIds.length > 1 ? "These references will be shared in the group when the event starts." : "These references stay with the event and are available when you join the group."}</div>}</div></div>}
-          {!isCall && <div className="flex items-start gap-3"><Clock3 size={17} className="mt-1 shrink-0 text-ink-secondary" /><div><div className="text-[11px] font-medium uppercase tracking-wider text-ink-secondary">Run limit</div><div className="mt-1 text-[12.5px] text-ink">{safetyLimit == null ? "No time limit" : `Stops if still running after ${durationLabel(safetyLimit)}`}</div></div></div>}
+          {attachments.length > 0 && <div className="flex items-start gap-3"><Paperclip size={17} className="mt-1 shrink-0 text-ink-secondary" /><div className="min-w-0 flex-1 space-y-2"><AttachmentChips attachments={attachments} />{call && <div className="font-mono text-[10.5px] leading-relaxed text-ink-secondary">{call.botIds.length > 1 ? "These references will be shared in the group when the event starts." : "These references stay with the event and are available when you join the group."}</div>}</div></div>}
+          {!isCall && <div className="flex items-start gap-3"><Clock3 size={17} className="mt-1 shrink-0 text-ink-secondary" /><div><div className="label-mono text-ink-secondary">Run limit</div><div className="mt-1 font-mono text-[11.5px] text-ink">{safetyLimit == null ? "No time limit" : `Stops if still running after ${durationLabel(safetyLimit)}`}</div></div></div>}
           {run && (
-            <div className="rounded-xl border border-hairline/40 bg-inset p-3.5 space-y-2">
-              <div className="flex items-center gap-2 text-[12px] font-medium text-ink">
+            <div className="border border-hairline bg-inset p-3.5 space-y-2">
+              <div className="flex items-center gap-2 font-mono text-[12px] font-medium text-ink">
                 {run.status === "running" && <Loader2 size={13} className="animate-spin text-accent" />}
                 {routineRunLabel(run)}
               </div>
@@ -1748,34 +1782,34 @@ export function EventDetails({
                   <ChatMarkdown text={run.output} />
                 </div>
               )}
-              {run.error && <div className="text-[11.5px] text-danger">{run.error}</div>}
+              {run.error && <div className="font-mono text-[11.5px] text-danger">{run.error}</div>}
             </div>
           )}
           {run?.attention && (
-            <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
+            <div className="flex items-start gap-2 border border-warning/30 bg-warning/10 px-3 py-2.5 font-mono text-warning">
               <CircleAlert size={15} className="mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1 text-[11.5px] leading-relaxed">
                 <ChatMarkdown text={run.attention} />
               </div>
             </div>
           )}
-          {run?.status === "waiting" && !run.attention && <div className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-[11.5px] text-warning">This run is waiting. Open its execution thread for more context.</div>}
-          {error && <div className="rounded-lg bg-danger/10 px-3 py-2 text-[11.5px] text-danger">{error}</div>}
+          {run?.status === "waiting" && !run.attention && <div className="border border-warning/30 bg-warning/10 px-3 py-2.5 font-mono text-[11.5px] text-warning">This run is waiting. Open its execution thread for more context.</div>}
+          {error && <div className="border border-danger/30 bg-danger/10 px-3 py-2 font-mono text-[11.5px] text-danger">{error}</div>}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-hairline/40 px-4 py-3">
-          {roomId && <button onClick={() => onOpenRoom(roomId)} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110"><ExternalLink size={13} />Join group</button>}
-          {call && call.botIds.length > 1 && <button onClick={joinRoom} disabled={working} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-50"><ExternalLink size={13} />Join group</button>}
-          {isRoomGoal && goalGroup && !executionThreadId && <button onClick={() => { onOpenRoom(goalGroup.id); onClose(); }} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110"><ExternalLink size={13} />Open group</button>}
-          {routine && <button onClick={runRoutineNow} disabled={working} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-50"><Play size={13} />Run now</button>}
-          {canOpenExecution && <button onClick={openRunTask} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"><ExternalLink size={13} />{isRoomGoal ? "Open group thread" : "Open thread"}</button>}
-          {canOpenResults && resultsThreadId && <button type="button" onClick={() => { openNotificationTarget(dispatch, { botId: botIds[0], threadId: resultsThreadId }, state); onClose(); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"><ExternalLink size={13} />{t("routines.results.open")}</button>}
-          {routine && <button type="button" onClick={() => { dispatch({ type: "showRoutines", section: "logs", routineId: routine.id, botId: routine.botId }); onClose(); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"><FileText size={13} />{t("routines.logs")}</button>}
-          {run && ["queued", "running", "waiting"].includes(run.status) && <button onClick={() => void invoke(`/api/routine-runs/${run.id}/cancel`)} disabled={working} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"><X size={13} />Cancel run</button>}
+        <div className="flex flex-wrap items-center gap-2 border-t border-hairline bg-card px-4 py-3">
+          {roomId && <button onClick={() => onOpenRoom(roomId)} className={buttonClass({ variant: "primary", size: "sm" })}><ExternalLink size={13} />Join group</button>}
+          {call && call.botIds.length > 1 && <button onClick={joinRoom} disabled={working} className={buttonClass({ variant: "primary", size: "sm" })}><ExternalLink size={13} />Join group</button>}
+          {isRoomGoal && goalGroup && !executionThreadId && <button onClick={() => { onOpenRoom(goalGroup.id); onClose(); }} className={buttonClass({ variant: "primary", size: "sm" })}><ExternalLink size={13} />Open group</button>}
+          {routine && <button onClick={runRoutineNow} disabled={working} className={buttonClass({ variant: "primary", size: "sm" })}><Play size={13} />Run now</button>}
+          {canOpenExecution && <button onClick={openRunTask} className={buttonClass({ variant: "secondary", size: "sm" })}><ExternalLink size={13} />{isRoomGoal ? "Open group thread" : "Open thread"}</button>}
+          {canOpenResults && resultsThreadId && <button type="button" onClick={() => { openNotificationTarget(dispatch, { botId: botIds[0], threadId: resultsThreadId }, state); onClose(); }} className={buttonClass({ variant: "secondary", size: "sm" })}><ExternalLink size={13} />{t("routines.results.open")}</button>}
+          {routine && <button type="button" onClick={() => { dispatch({ type: "showRoutines", section: "logs", routineId: routine.id, botId: routine.botId }); onClose(); }} className={buttonClass({ variant: "secondary", size: "sm" })}><FileText size={13} />{t("routines.logs")}</button>}
+          {run && ["queued", "running", "waiting"].includes(run.status) && <button onClick={() => void invoke(`/api/routine-runs/${run.id}/cancel`)} disabled={working} className={buttonClass({ variant: "secondary", size: "sm" })}><X size={13} />Cancel run</button>}
           <div className="ml-auto flex items-center gap-1">
-            {(routine || call) && <button onClick={onEdit} className="rounded-lg px-3 py-2 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink">Edit</button>}
-            {routine && <button disabled={working} onClick={() => void invoke(`/api/routines/${routine.id}`, "PATCH", { enabled: !routine.enabled })} className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40" title={routine.enabled ? "Pause routine" : "Resume routine"}>{routine.enabled ? <Pause size={15} /> : <Play size={15} />}</button>}
-            {(routine || call) && <button onClick={() => void deleteEvent()} className="rounded-lg p-2 text-ink-secondary hover:bg-danger/10 hover:text-danger" title="Delete"><Trash2 size={15} /></button>}
+            {(routine || call) && <button onClick={onEdit} className={buttonClass({ variant: "secondary", size: "sm" })}>Edit</button>}
+            {routine && <button disabled={working} onClick={() => void invoke(`/api/routines/${routine.id}`, "PATCH", { enabled: !routine.enabled })} className={buttonClass({ variant: "ghost", size: "sm", icon: true })} title={routine.enabled ? "Pause routine" : "Resume routine"}>{routine.enabled ? <Pause size={14} /> : <Play size={14} />}</button>}
+            {(routine || call) && <button onClick={() => void deleteEvent()} className={buttonClass({ variant: "ghost", size: "sm", icon: true, className: "text-danger hover:bg-danger/10 hover:text-danger" })} title="Delete"><Trash2 size={14} /></button>}
           </div>
         </div>
       </div>
@@ -1800,31 +1834,37 @@ function PausedList({
 }) {
   const { dispatch } = useStore();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Paused routines" className="w-full max-w-[520px] rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
-        <div className="flex items-center justify-between border-b border-hairline/40 px-5 py-4"><div><div className="text-[16px] font-semibold text-ink">Paused routines</div><div className="mt-0.5 text-[11.5px] text-ink-secondary">History is kept; no new tasks will run.</div></div><button onClick={onClose} className="rounded-full p-2 text-ink-secondary hover:bg-raised"><X size={17} /></button></div>
-        <div className="max-h-[55vh] space-y-1 overflow-y-auto p-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Paused routines" className="w-full max-w-[520px] border border-hairline bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
+          <div>
+            <div className="text-[15px] font-semibold text-ink">Paused routines</div>
+            <div className="mt-0.5 font-mono text-[10.5px] text-ink-secondary">History is kept; no new tasks will run.</div>
+          </div>
+          <button onClick={onClose} className={buttonClass({ variant: "ghost", size: "sm", icon: true })}><X size={16} /></button>
+        </div>
+        <div className="max-h-[55vh] overflow-y-auto p-2">
           {routines.map((routine) => {
             const bot = bots.find((candidate) => candidate.id === routine.botId);
             const room = routine.target === "room-goal"
               ? groups.find((candidate) => candidate.id === routine.groupId)
               : undefined;
             return (
-              <div key={routine.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-raised/60">
-                {room ? <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent"><UsersRound size={17} /></span> : bot && <BotAvatar bot={bot} state="sleeping" size={36} animated={false} />}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-medium text-ink">{routine.name}</div>
-                  <div className="mt-0.5 truncate text-[10.5px] text-ink-secondary">{room ? `Team goal · ${room.name} · ` : ""}{scheduleLabel(routine.schedule)}</div>
-                </div>
-                {room && <button onClick={() => { onOpenRoom(room.id); onClose(); }} className="rounded-lg px-2 py-1.5 text-[11px] text-ink-secondary hover:bg-inset">Group</button>}
-                <button onClick={() => dispatch({ type: "updateRoutine", routineId: routine.id, patch: { enabled: true } })} className="rounded-lg bg-accent/15 px-2.5 py-1.5 text-[11px] font-medium text-accent">Resume</button>
-                <button onClick={() => onEdit(routine)} className="rounded-lg px-2 py-1.5 text-[11px] text-ink-secondary hover:bg-inset">Edit</button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+              <div key={routine.id} className="flex items-center gap-3 frame-rule-below px-3 py-2.5 transition-colors hover:bg-raised-hover">
+                {room ? <span className="flex size-8 shrink-0 items-center justify-center border border-hairline bg-raised text-ink"><UsersRound size={16} /></span> : bot && <BotAvatar bot={bot} state="sleeping" size={28} animated={false} />}
+                 <div className="min-w-0 flex-1">
+                   <div className="truncate text-[12px] font-medium text-ink">{routine.name}</div>
+                   <div className="mt-0.5 truncate font-mono text-[10px] text-ink-secondary">{room ? `Team goal · ${room.name} · ` : ""}{scheduleLabel(routine.schedule)}</div>
+                 </div>
+                 {room && <button onClick={() => { onOpenRoom(room.id); onClose(); }} className={buttonClass({ variant: "ghost", size: "xs" })}>Group</button>}
+                 <button onClick={() => dispatch({ type: "updateRoutine", routineId: routine.id, patch: { enabled: true } })} className={buttonClass({ variant: "secondary", size: "xs" })}>Resume</button>
+                 <button onClick={() => onEdit(routine)} className={buttonClass({ variant: "ghost", size: "xs" })}>Edit</button>
+               </div>
+             );
+           })}
+         </div>
+       </div>
+     </div>
   );
 }
 
@@ -2005,73 +2045,132 @@ export function RoutinesPage({ onBack, onOpenRoom }: { onBack: () => void; onOpe
   return (
     <main className="flex h-full min-w-0 flex-1 flex-col bg-app animate-workspace-in">
       <header
-        className={cn("shrink-0 border-b border-hairline/35 bg-app py-3 pr-4", macInset ? "pl-[86px]" : "pl-4")}
+        className={cn("shrink-0 frame-rule-below bg-app py-2.5 pr-4", macInset ? "pl-[86px]" : "pl-4")}
         style={windowDragStyle}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="ghost"
+            icon
+            size="sm"
             ref={backButtonRef}
             onClick={onBack}
             aria-label="Back"
             title="Back"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-raised hover:text-ink"
             style={windowNoDragStyle}
           >
-            <ArrowLeft size={18} />
-          </button>
-          <div data-tour="automations-page" className="mr-2 flex items-center gap-2"><CalendarDays size={21} className="text-accent" /><h1 className="text-[18px] font-semibold tracking-tight text-ink">Automations</h1></div>
-          <div className="flex items-center rounded-lg bg-neutral-100 p-0.5 dark:bg-neutral-800" style={windowNoDragStyle} aria-label="Automation type">
+            <ArrowLeft size={16} />
+          </Button>
+          <div data-tour="automations-page" className="flex items-center gap-2">
+            <CalendarDays size={18} className="text-ink" />
+            <h1 className="font-mono text-[13.5px] font-medium tracking-[0.06em] text-ink uppercase">
+              Routines
+            </h1>
+          </div>
+          <div className="flex items-center gap-4 ml-2" style={windowNoDragStyle} aria-label="Automation type">
             <button
               type="button"
               aria-pressed={section === "calendar"}
+              aria-selected={section === "calendar"}
+              data-active={section === "calendar" ? "" : undefined}
               onClick={() => setSection("calendar")}
-              className={cn("rounded-md px-3 py-1 text-[12px] transition-colors", section === "calendar" ? "bg-white font-medium text-neutral-900 shadow-xs dark:bg-neutral-950 dark:text-neutral-100" : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100")}
+              className={cn("nav-link pb-1 text-[12px] font-mono uppercase tracking-[0.06em] text-ink-secondary hover:text-ink transition-colors", section === "calendar" && "text-ink")}
             >
               Schedule
             </button>
             <button
               type="button"
               aria-pressed={section === "logs"}
-              onClick={() => { setSection("logs"); setRoutineFilter(undefined); }}
-              className={cn("flex items-center gap-1.5 rounded-md px-3 py-1 text-[12px] transition-colors", section === "logs" ? "bg-white font-medium text-neutral-900 shadow-xs dark:bg-neutral-950 dark:text-neutral-100" : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100")}
+              aria-selected={section === "logs"}
+              data-active={section === "logs" ? "" : undefined}
+              className={cn("nav-link flex items-center gap-1.5 pb-1 text-[12px] font-mono uppercase tracking-[0.06em] text-ink-secondary hover:text-ink transition-colors", section === "logs" && "text-ink")}
             >
               <FileText size={12} />
               {t("routines.logs")}
-              {unseenFailures > 0 && <span className="rounded-full bg-danger/10 px-1.5 text-[9px] text-danger">{unseenFailures}</span>}
+              {unseenFailures > 0 && <span className="bg-danger px-1 font-mono text-[9.5px] leading-4 tabular-nums">{unseenFailures}</span>}
             </button>
           </div>
-          <button
-            type="button"
-            style={windowNoDragStyle}
-            aria-label="Create a scheduled task"
-            onClick={() => { setSection("calendar"); openCreate({ kind: "routine" }); }}
-            className="ml-auto flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-medium text-white shadow-xs hover:brightness-110 active:scale-[0.98] transition cursor-pointer"
-          >
-            <Plus size={14} aria-hidden="true" />New
-          </button>
+          <div className="ml-auto flex items-center gap-2" style={windowNoDragStyle}>
+            <Button
+              variant="primary"
+              size="sm"
+              aria-label="Create a scheduled task"
+              onClick={() => { setSection("calendar"); openCreate({ kind: "routine" }); }}
+            >
+              <Plus size={14} aria-hidden="true" />New
+            </Button>
+          </div>
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-2" style={windowNoDragStyle}>
-          {section === "calendar" && <div className="flex items-center rounded-lg bg-neutral-100 p-0.5 dark:bg-neutral-800" aria-label="Schedule view">
-            <button type="button" aria-pressed={scheduleView === "list"} onClick={() => setScheduleView("list")} className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] transition-colors", scheduleView === "list" ? "bg-white font-medium text-neutral-900 shadow-xs dark:bg-neutral-950 dark:text-neutral-100" : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100")}><List size={13} />List</button>
-            <button type="button" aria-pressed={scheduleView === "calendar"} onClick={() => setScheduleView("calendar")} className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] transition-colors", scheduleView === "calendar" ? "bg-white font-medium text-neutral-900 shadow-xs dark:bg-neutral-950 dark:text-neutral-100" : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100")}><CalendarDays size={13} />Calendar</button>
-          </div>}
-          {section === "calendar" && scheduleView === "calendar" && <><div className="flex items-center gap-0.5">
-            <button onClick={() => setAnchor((current) => addDays(current, -viewDays))} className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100" aria-label="Previous dates"><ChevronLeft size={15} /></button>
-            <button onClick={goToday} className="h-7 rounded-md bg-neutral-100 px-2.5 text-[12px] font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">Today</button>
-            <button onClick={() => setAnchor((current) => addDays(current, viewDays))} className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100" aria-label="Next dates"><ChevronRight size={15} /></button>
-          </div>
-          <div className="min-w-[180px] px-2 text-[13px] font-medium tabular-nums text-neutral-900 dark:text-neutral-100">{calendarRangeLabel(rangeStart, viewDays)}</div></>}
+          {section === "calendar" && (
+            <div className="flex items-center border border-hairline bg-inset p-0.5" aria-label="Schedule view">
+              <button
+                type="button"
+                aria-pressed={scheduleView === "list"}
+                onClick={() => setScheduleView("list")}
+                className={cn("flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors", scheduleView === "list" ? "bg-raised text-ink" : "text-ink-secondary hover:bg-raised-hover hover:text-ink")}
+              >
+                <List size={13} />List
+              </button>
+              <button
+                type="button"
+                aria-pressed={scheduleView === "calendar"}
+                onClick={() => setScheduleView("calendar")}
+                className={cn("flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors", scheduleView === "calendar" ? "bg-raised text-ink" : "text-ink-secondary hover:bg-raised-hover hover:text-ink")}
+              >
+                <CalendarDays size={13} />Calendar
+              </button>
+            </div>
+          )}
+          {section === "calendar" && scheduleView === "calendar" && (
+            <>
+              <div className="flex items-center gap-1">
+                <Button variant="secondary" size="xs" icon onClick={() => setAnchor((current) => addDays(current, -viewDays))} aria-label="Previous dates">
+                  <ChevronLeft size={14} />
+                </Button>
+                <Button variant="secondary" size="xs" onClick={goToday}>
+                  Today
+                </Button>
+                <Button variant="secondary" size="xs" icon onClick={() => setAnchor((current) => addDays(current, viewDays))} aria-label="Next dates">
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
+              <div className="min-w-[180px] px-2 font-mono text-[12px] tabular-nums text-ink">
+                {calendarRangeLabel(rangeStart, viewDays)}
+              </div>
+            </>
+          )}
           <div className="ml-auto flex items-center gap-2">
-            {running > 0 && <span className="hidden items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 text-[10.5px] text-accent sm:flex"><Loader2 size={11} className="animate-spin" />{running} active</span>}
-            {unseenFailures > 0 && <button type="button" onClick={() => dispatch({ type: "showRoutines", section: "logs" })} className="hidden items-center gap-1.5 rounded-full bg-danger/10 px-2 py-1 text-[10.5px] text-danger sm:flex" title="Open failed run logs" aria-label="Open failed run logs"><CircleAlert size={11} />{unseenFailures}</button>}
-            {paused.length > 0 && <button onClick={() => setPausedOpen(true)} aria-label="View paused routines" className="hidden items-center gap-1.5 rounded-full border border-neutral-200 px-2.5 py-1 text-[10.5px] text-neutral-500 hover:bg-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800 sm:flex"><Pause size={11} />{paused.length}</button>}
-            <select aria-label="Filter schedule by bot" value={botFilter} onChange={(event) => { setBotFilter(event.target.value); setRoutineFilter(undefined); }} className="max-w-[180px] rounded-md border border-neutral-200 bg-white px-2 py-1 text-[11.5px] text-neutral-900 outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 focus:border-accent"><option value="all">All bots</option>{visibleBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}</select>
-            {section === "calendar" && scheduleView === "calendar" && <select aria-label="Schedule range" value={viewDays} onChange={(event) => setView(Number(event.target.value) as 1 | 3 | 7)} className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-[11.5px] text-neutral-900 outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 focus:border-accent"><option value={1}>Day</option><option value={3}>3 days</option><option value={7}>Week</option></select>}
+            {running > 0 && <span className="hidden items-center gap-1.5 border border-hairline bg-raised px-2 py-0.5 font-mono text-[10px] text-ink sm:flex"><Loader2 size={11} className="animate-spin text-ink-secondary" />{running} active</span>}
+            {unseenFailures > 0 && <button type="button" onClick={() => dispatch({ type: "showRoutines", section: "logs" })} className="hidden items-center gap-1.5 border border-danger/30 bg-danger/10 px-2 py-0.5 font-mono text-[10px] text-danger sm:flex" title="Open failed run logs" aria-label="Open failed run logs"><CircleAlert size={11} />{unseenFailures}</button>}
+            {paused.length > 0 && <button onClick={() => setPausedOpen(true)} aria-label="View paused routines" className="hidden items-center gap-1.5 border border-hairline bg-card px-2 py-0.5 font-mono text-[10px] text-ink-secondary hover:bg-raised sm:flex"><Pause size={11} />{paused.length}</button>}
+            <select
+              aria-label="Filter schedule by bot"
+              value={botFilter}
+              onChange={(event) => { setBotFilter(event.target.value); setRoutineFilter(undefined); }}
+              style={inputStyle}
+              className={cn(fieldClass, "h-7 w-auto pr-8 py-0 font-mono text-[11px] cursor-pointer")}
+            >
+              <option value="all">All bots</option>
+              {visibleBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}
+            </select>
+            {section === "calendar" && scheduleView === "calendar" && (
+              <select
+                aria-label="Schedule range"
+                value={viewDays}
+                onChange={(event) => setView(Number(event.target.value) as 1 | 3 | 7)}
+                style={inputStyle}
+                className={cn(fieldClass, "h-7 w-auto pr-8 py-0 font-mono text-[11px] cursor-pointer")}
+              >
+                <option value={1}>Day</option>
+                <option value={3}>3 days</option>
+                <option value={7}>Week</option>
+              </select>
+            )}
           </div>
-          {error && <button onClick={() => setError("")} className="flex items-center gap-1.5 rounded-lg bg-danger/10 px-2.5 py-1.5 text-[10.5px] text-danger"><CircleAlert size={11} />{error}<X size={11} /></button>}
-          {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "error" && <p role="alert" className="w-full text-[11.5px] text-danger">{t("routines.loadError")}</p>}
-          {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "loading" && state.routines.length === 0 && <p role="status" className="w-full text-[11.5px] text-ink-secondary">{t("routines.loading")}</p>}
+          {error && <button onClick={() => setError("")} className="flex items-center gap-1.5 border border-danger/30 bg-danger/10 px-2.5 py-1 font-mono text-[11px] text-danger"><CircleAlert size={11} />{error}<X size={11} /></button>}
+          {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "error" && <p role="alert" className="w-full font-mono text-[11.5px] text-danger">{t("routines.loadError")}</p>}
+          {section === "calendar" && scheduleView === "calendar" && state.routinesLoadState === "loading" && state.routines.length === 0 && <p role="status" className="w-full font-mono text-[11.5px] text-ink-secondary">{t("routines.loading")}</p>}
         </div>
       </header>
 

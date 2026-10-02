@@ -42,9 +42,9 @@ it("seeds and repairs #dev-day-gate idempotently in an isolated fixture", async 
       message.kind === "activity" && message.tool?.system === true,
     )).toHaveLength(3);
     expect(first.body.room.messages.map((message: { tool?: { name?: string } }) => message.tool?.name)).toEqual(expect.arrayContaining([
-      "Markets joined #dev-day-gate from OKX.ai.",
-      "Listing Coach joined #dev-day-gate from OKX.ai.",
-      "Spend Scout joined #dev-day-gate from OKX.ai.",
+      "Markets joined #dev-day-gate from the local OKX.AI catalog.",
+      "Listing Coach joined #dev-day-gate from the local OKX.AI catalog.",
+      "Spend Scout joined #dev-day-gate from the local OKX.AI catalog.",
     ]));
 
     const repeat = await api(fixture.info.url, "/api/okx/dev-day-gate", "POST", {});

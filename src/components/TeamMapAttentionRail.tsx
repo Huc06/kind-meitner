@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { AttentionKind, TruthfulAction } from "@/lib/team-map-attention";
+import { Tag, type TagTone } from "@/components/ui/tag";
+import { buttonClass, type ButtonVariant } from "@/components/ui/button";
 
 export type AttentionPriority = AttentionKind;
 
@@ -32,43 +34,49 @@ const PRIORITY_STYLES: Record<
   {
     border: string;
     bg: string;
-    badgeTone: string;
+    tagTone: TagTone;
+    buttonVariant: ButtonVariant;
     icon: typeof AlertCircle;
     label: string;
   }
 > = {
   blocked: {
-    border: "border-danger/50 hover:border-danger/80",
+    border: "border-danger/60 hover:border-danger",
     bg: "bg-danger/10",
-    badgeTone: "bg-danger/20 text-danger border-danger/30 font-bold",
+    tagTone: "danger",
+    buttonVariant: "danger",
     icon: AlertCircle,
     label: "Blocked",
   },
   failed: {
-    border: "border-danger/50 hover:border-danger/80",
+    border: "border-danger/60 hover:border-danger",
     bg: "bg-danger/10",
-    badgeTone: "bg-danger/20 text-danger border-danger/30 font-bold",
+    tagTone: "danger",
+    buttonVariant: "danger",
     icon: AlertCircle,
     label: "Failed",
   },
   input_needed: {
-    border: "border-warning/50 hover:border-warning/80",
+    border: "border-warning/60 hover:border-warning",
     bg: "bg-warning/10",
-    badgeTone: "bg-warning/20 text-warning border-warning/30 font-semibold",
+    tagTone: "warning",
+    buttonVariant: "primary",
     icon: AlertTriangle,
     label: "Input needed",
   },
   review: {
-    border: "border-accent/50 hover:border-accent/80",
-    bg: "bg-accent/10",
-    badgeTone: "bg-accent/20 text-accent border-accent/30 font-semibold",
+    border: "border-warning/60 hover:border-warning",
+    bg: "bg-warning/10",
+    tagTone: "warning",
+    buttonVariant: "primary",
     icon: UserCheck,
     label: "Review required",
   },
   warning: {
-    border: "border-hairline/60 hover:border-hairline",
-    bg: "bg-inset/40",
-    badgeTone: "bg-control text-ink-secondary border-hairline/40",
+    border: "border-hairline hover:border-ink-secondary",
+    bg: "bg-inset",
+    tagTone: "neutral",
+    buttonVariant: "secondary",
     icon: Clock,
     label: "Degraded",
   },
@@ -105,18 +113,18 @@ export function TeamMapAttentionRail({
         role="status"
         aria-label="Workspace health"
         className={cn(
-          "flex w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#15171A] px-4 text-[12px] text-white/70",
+          "flex w-full items-center justify-between border border-hairline bg-card px-4 text-[12px] text-ink-secondary",
           compact ? "h-8 py-0.5 text-[11px]" : "h-9",
           className,
         )}
       >
         <div className="flex items-center gap-2">
-          <CheckCircle2 size={13} className="text-white/40" aria-hidden="true" />
-          <span className="font-medium text-white/80">No attention items required</span>
-          <span className="text-white/30">·</span>
-          <span className="text-white/50">All systems quiet</span>
+          <CheckCircle2 size={13} className="text-success" aria-hidden="true" />
+          <span className="font-medium text-ink">No attention items required</span>
+          <span className="text-ink-secondary/40">·</span>
+          <span className="text-ink-secondary">All systems quiet</span>
         </div>
-        <span className="text-[11px] text-white/40 hidden sm:inline">Select an agent to inspect</span>
+        <span className="text-[11px] text-ink-secondary hidden sm:inline">Select an agent to inspect</span>
       </div>
     );
   }
@@ -132,22 +140,22 @@ export function TeamMapAttentionRail({
         role="region"
         aria-label="Urgent attention summary"
         className={cn(
-          "flex h-8 w-full items-center justify-between gap-3 rounded-md border border-danger/30 bg-danger/10 px-3 text-[11.5px]",
+          "flex h-8 w-full items-center justify-between gap-3 border border-danger/40 bg-danger/10 px-3 text-[11.5px]",
           className,
         )}
       >
         <div className="flex items-center gap-2 truncate min-w-0">
           <Icon size={13} className="shrink-0 text-danger" aria-hidden="true" />
           <span className="font-semibold text-danger">{sortedItems.length} needs attention:</span>
-          <span className="truncate text-white/90 font-medium">{topItem.agentName}</span>
-          <span className="text-white/30">·</span>
-          <span className="truncate text-white/60">{topItem.summary}</span>
+          <span className="truncate text-ink font-medium">{topItem.agentName}</span>
+          <span className="text-ink-secondary/40">·</span>
+          <span className="truncate text-ink-secondary">{topItem.summary}</span>
         </div>
 
         <button
           type="button"
           onClick={() => onSelectItem(topItem)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-md bg-white/[0.08] px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-white/[0.15]"
+          className={cn(buttonClass({ variant: config.buttonVariant, size: "xs" }), "shrink-0 gap-1 normal-case")}
         >
           <span>{topItem.actionLabel ?? topItem.recommendedAction}</span>
           <ArrowRight size={11} aria-hidden="true" />
@@ -159,20 +167,22 @@ export function TeamMapAttentionRail({
   return (
     <section
       aria-label="Actionable attention items"
-      className={cn("space-y-1.5 rounded-lg border border-white/[0.08] bg-[#16191E] p-2.5", className)}
+      className={cn("space-y-1.5 border border-hairline bg-panel p-2.5", className)}
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <ShieldAlert size={14} className="text-danger" aria-hidden="true" />
-          <h3 className="text-[12.5px] font-semibold text-white/95">Needs attention</h3>
-          <span
-            className="flex h-4 min-w-4 items-center justify-center rounded-[6px] bg-danger/20 px-1.5 font-mono text-[10.5px] font-bold text-danger"
+          <h3 className="label-mono text-[12px] font-semibold text-ink">Needs attention</h3>
+          <Tag
+            tone="danger"
+            variant="solid"
+            size="sm"
             aria-label={`${sortedItems.length} urgent items`}
           >
             {sortedItems.length}
-          </span>
+          </Tag>
         </div>
-        <span className="text-[11px] text-white/45">Click item to intervene immediately</span>
+        <span className="label-mono text-[10.5px] text-ink-secondary">Click item to intervene immediately</span>
       </div>
 
       <div className="space-y-1.5">
@@ -188,40 +198,34 @@ export function TeamMapAttentionRail({
               aria-selected={isSelected}
               onClick={() => onSelectItem(item)}
               className={cn(
-                "group flex w-full flex-col justify-between gap-2 rounded-md border p-2 text-left outline-none transition-all cursor-pointer sm:flex-row sm:items-center",
+                "group flex w-full flex-col justify-between gap-2 border p-2 text-left outline-none transition-colors cursor-pointer sm:flex-row sm:items-center",
                 config.bg,
                 config.border,
                 isSelected ? "ring-2 ring-accent" : "",
-                "focus-visible:ring-2 focus-visible:ring-accent",
               )}
             >
               {/* Left: Badge + Agent + Problem Summary */}
               <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
-                <span
-                  className={cn(
-                    "flex shrink-0 items-center gap-1 rounded-[6px] border px-2 py-0.5 text-[10.5px] uppercase tracking-wide",
-                    config.badgeTone,
-                  )}
-                >
+                <Tag tone={config.tagTone} variant="solid" size="sm" className="shrink-0">
                   <Icon size={11} aria-hidden="true" />
                   <span>{config.label}</span>
-                </span>
+                </Tag>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 truncate">
-                    <span className="truncate text-[13px] font-semibold text-white/90">
+                    <span className="truncate text-[13px] font-semibold text-ink">
                       {item.agentName}
                     </span>
                     {item.taskTitle && (
                       <>
-                        <span className="text-white/30">·</span>
-                        <span className="truncate text-[12px] text-white/70">
+                        <span className="text-ink-secondary/40">·</span>
+                        <span className="truncate text-[12px] text-ink-secondary">
                           {item.taskTitle}
                         </span>
                       </>
                     )}
                   </div>
-                  <p className="mt-0.5 truncate text-[11.5px] text-white/60">
+                  <p className="mt-0.5 truncate text-[11.5px] text-ink-secondary">
                     {item.summary}
                   </p>
                 </div>
@@ -230,11 +234,11 @@ export function TeamMapAttentionRail({
               {/* Right: Quick Action Button & Age */}
               <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
                 {item.ageStr && (
-                  <span className="font-mono text-[11px] text-white/45">
+                  <span className="font-mono text-[11px] tabular-nums text-ink-secondary">
                     {item.ageStr}
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-white group-hover:bg-white/[0.15]">
+                <span className={cn(buttonClass({ variant: config.buttonVariant, size: "xs" }), "gap-1 normal-case")}>
                   <span>{item.actionLabel ?? item.recommendedAction}</span>
                   <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>

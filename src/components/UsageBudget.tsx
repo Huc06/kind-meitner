@@ -9,6 +9,8 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { formatUsd } from "@/lib/usage";
 import { Card } from "./SettingsPrimitives";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 
 export interface BudgetState {
   month: string;
@@ -77,27 +79,27 @@ export function BudgetCard({ budget }: { budget: BudgetState | null }) {
             <span className={cn(tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : "text-ink")}>
               {budget.exceeded ? t("usage.budget.reached") : budget.warn ? t("usage.budget.nearing") : t("usage.budget.within")}
             </span>
-            <span className="tabular-nums text-ink-secondary">{t("usage.budget.spent", { spent: formatUsd(budget.spentUsd), cap: formatUsd(budget.monthlyUsd), percent: String(budget.percent) })}</span>
+            <span className="font-mono text-[12px] tabular-nums text-ink-secondary">{t("usage.budget.spent", { spent: formatUsd(budget.spentUsd), cap: formatUsd(budget.monthlyUsd), percent: String(budget.percent) })}</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-inset" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, budget.percent)}>
-            <div className={cn("h-full rounded-full", tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : "bg-accent")} style={{ width: `${Math.min(100, budget.percent)}%` }} />
+          <div className="h-1.5 w-full overflow-hidden bg-inset" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, budget.percent)}>
+            <div className={cn("h-full", tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : "bg-accent")} style={{ width: `${Math.min(100, budget.percent)}%` }} />
           </div>
         </div>
       ) : (
-        <p className="mb-4 text-[13px] text-ink-secondary">{t("usage.budget.none")}</p>
+        <p className="mb-4 font-mono text-[12px] text-ink-secondary">{t("usage.budget.none")}</p>
       )}
       <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <label className="flex flex-col gap-1 text-[12px] text-ink-secondary">
           {t("usage.budget.monthly")}
-          <input value={monthly} onChange={(e) => setMonthly(e.target.value)} inputMode="decimal" placeholder="0" aria-label={t("usage.budget.monthly")} disabled={saving} className="w-32 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] tabular-nums text-ink focus:border-hairline focus:outline-none disabled:opacity-50" />
+          <Input value={monthly} onChange={(e) => setMonthly(e.target.value)} inputMode="decimal" placeholder="0" aria-label={t("usage.budget.monthly")} disabled={saving} className="w-32 font-mono tabular-nums" />
         </label>
         <label className="flex flex-col gap-1 text-[12px] text-ink-secondary">
           {t("usage.budget.warnAt")}
-          <input value={warnAt} onChange={(e) => setWarnAt(e.target.value)} inputMode="numeric" aria-label={t("usage.budget.warnAt")} disabled={saving} className="w-20 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] tabular-nums text-ink focus:border-hairline focus:outline-none disabled:opacity-50" />
+          <Input value={warnAt} onChange={(e) => setWarnAt(e.target.value)} inputMode="numeric" aria-label={t("usage.budget.warnAt")} disabled={saving} className="w-20 font-mono tabular-nums" />
         </label>
-        <button type="submit" disabled={saving} className="flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-[12.5px] text-ink hover:bg-raised-hover disabled:opacity-50">
+        <Button type="submit" variant="secondary" size="sm" disabled={saving}>
           {saving && <Loader2 size={13} className="animate-spin" />}{t("common.save")}
-        </button>
+        </Button>
       </form>
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-secondary">{t("usage.budget.hint")}</p>
       {error && <p role="alert" className="mt-2 text-[12px] text-danger">{error}</p>}
@@ -160,16 +162,16 @@ export function PricesCard() {
     }
   };
 
-  const cell = "w-full rounded-lg border border-hairline/40 bg-inset px-2 py-1.5 text-[12.5px] tabular-nums text-ink focus:border-hairline focus:outline-none disabled:opacity-50";
+  const cell = "font-mono text-[12px] tabular-nums h-8";
   return (
     <Card title={t("usage.prices.title")} subtitle={t("usage.prices.subtitle")}>
       <div className="mb-3 flex items-center gap-2 text-[12px] text-ink-secondary">
         <label className="flex items-center gap-2">
           {t("usage.prices.currency")}
-          <input value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={3} aria-label={t("usage.prices.currency")} disabled={saving} className="w-16 rounded-lg border border-hairline/40 bg-inset px-2 py-1.5 text-[12.5px] uppercase text-ink focus:border-hairline focus:outline-none disabled:opacity-50" />
+          <Input value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={3} aria-label={t("usage.prices.currency")} disabled={saving} className="w-16 font-mono text-[12px] uppercase h-8" />
         </label>
       </div>
-      <div className="grid grid-cols-[1fr_5rem_5rem_5rem_auto] items-center gap-x-2 gap-y-1.5 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">
+      <div className="grid grid-cols-[1fr_5rem_5rem_5rem_auto] items-center gap-x-2 gap-y-1.5 label-mono text-ink-secondary">
         <span>{t("usage.prices.colModel")}</span>
         <span>{t("usage.prices.colInput")}</span>
         <span>{t("usage.prices.colOutput")}</span>
@@ -177,19 +179,19 @@ export function PricesCard() {
         <span />
         {rows.map((row, index) => (
           <div key={index} className="contents">
-            <input value={row.key} onChange={(e) => update(index, { key: e.target.value })} placeholder={t("usage.prices.modelPlaceholder")} aria-label={t("usage.prices.colModel")} disabled={saving} className={cn(cell, "font-mono normal-case tracking-normal")} />
-            <input value={row.input} onChange={(e) => update(index, { input: e.target.value })} inputMode="decimal" aria-label={t("usage.prices.colInput")} disabled={saving} className={cell} />
-            <input value={row.output} onChange={(e) => update(index, { output: e.target.value })} inputMode="decimal" aria-label={t("usage.prices.colOutput")} disabled={saving} className={cell} />
-            <input value={row.cached} onChange={(e) => update(index, { cached: e.target.value })} inputMode="decimal" placeholder="—" aria-label={t("usage.prices.colCached")} disabled={saving} className={cell} />
-            <button type="button" onClick={() => setRows((current) => current.filter((_, i) => i !== index))} aria-label={t("usage.prices.remove")} disabled={saving} className="rounded-md p-1.5 text-ink-secondary hover:bg-control hover:text-danger disabled:opacity-50"><Trash2 size={13} /></button>
+            <Input value={row.key} onChange={(e) => update(index, { key: e.target.value })} placeholder={t("usage.prices.modelPlaceholder")} aria-label={t("usage.prices.colModel")} disabled={saving} className={cn(cell, "normal-case tracking-normal")} />
+            <Input value={row.input} onChange={(e) => update(index, { input: e.target.value })} inputMode="decimal" aria-label={t("usage.prices.colInput")} disabled={saving} className={cell} />
+            <Input value={row.output} onChange={(e) => update(index, { output: e.target.value })} inputMode="decimal" aria-label={t("usage.prices.colOutput")} disabled={saving} className={cell} />
+            <Input value={row.cached} onChange={(e) => update(index, { cached: e.target.value })} inputMode="decimal" placeholder="—" aria-label={t("usage.prices.colCached")} disabled={saving} className={cell} />
+            <Button variant="ghost" size="xs" icon type="button" onClick={() => setRows((current) => current.filter((_, i) => i !== index))} aria-label={t("usage.prices.remove")} disabled={saving} className="text-danger hover:text-danger"><Trash2 size={13} /></Button>
           </div>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => setRows((current) => [...current, { key: "", input: "", output: "", cached: "" }])} disabled={saving} className="flex items-center gap-1.5 rounded-lg border border-hairline/40 px-3 py-1.5 text-[12px] text-ink-secondary hover:bg-raised/50 hover:text-ink disabled:opacity-50"><Plus size={13} />{t("usage.prices.add")}</button>
-        <button type="button" onClick={() => void save()} disabled={saving} className="ml-auto flex items-center gap-1.5 rounded-lg bg-raised px-3 py-1.5 text-[12.5px] text-ink hover:bg-raised-hover disabled:opacity-50">
+        <Button variant="secondary" size="xs" type="button" onClick={() => setRows((current) => [...current, { key: "", input: "", output: "", cached: "" }])} disabled={saving}><Plus size={13} />{t("usage.prices.add")}</Button>
+        <Button variant="secondary" size="sm" type="button" onClick={() => void save()} disabled={saving} className="ml-auto">
           {saving && <Loader2 size={13} className="animate-spin" />}{t("common.save")}
-        </button>
+        </Button>
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-secondary">{t("usage.prices.hint")}</p>
       {error && <p role="alert" className="mt-2 text-[12px] text-danger">{error}</p>}

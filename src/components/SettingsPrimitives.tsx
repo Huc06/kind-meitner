@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { Frame } from "@/components/ui/frame";
 
 export function Switch({
   checked,
@@ -14,15 +16,15 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition-colors enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none",
-        checked ? "bg-accent" : "bg-control",
+        "relative h-5 w-9 shrink-0 border border-hairline transition-colors enabled:hover:border-ink-secondary/60 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none",
+        checked ? "border-accent bg-accent" : "bg-inset",
         className,
       )}
     >
       <span
         className={cn(
-          "absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white transition-[left] motion-reduce:transition-none",
-          checked ? "left-[21px]" : "left-[3px]",
+          "absolute top-[2px] h-3.5 w-3.5 transition-[left] motion-reduce:transition-none",
+          checked ? "left-[18px] bg-[var(--color-app)]" : "left-[2px] bg-ink-secondary",
         )}
       />
     </button>
@@ -33,17 +35,27 @@ export function Card({
   title,
   subtitle,
   children,
+  className,
 }: {
   title?: string;
   subtitle?: string;
   children?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="rounded-xl bg-card p-4">
-      {title && <div className="text-[15px] font-medium text-ink">{title}</div>}
-      {subtitle && <div className={title ? "mt-0.5 text-[13px] leading-relaxed text-ink-secondary" : "text-[13px] leading-relaxed text-ink-secondary"}>{subtitle}</div>}
-      {children && <div className={title || subtitle ? "mt-4" : undefined}>{children}</div>}
-    </div>
+    <Frame
+      title={title}
+      surface="panel"
+      solid
+      className={cn("bg-card p-4", className)}
+    >
+      {subtitle && (
+        <div className={cn("text-[12px] leading-relaxed text-ink-secondary", title && "mb-3")}>
+          {subtitle}
+        </div>
+      )}
+      {children}
+    </Frame>
   );
 }
 
@@ -61,13 +73,13 @@ export function SettingRow({
 }) {
   const titleId = useId();
   return (
-    <div role="group" aria-labelledby={titleId} className="setting-row border-t border-hairline/40 py-4 first:border-t-0">
+    <div role="group" aria-labelledby={titleId} className="setting-row frame-rule-below py-3.5 last:after:hidden">
       <div className="grid min-w-0 grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6">
         <div className="min-w-0">
-          <div id={titleId} className="text-[14px] font-medium text-ink">{title}</div>
-          {subtitle && <div className="mt-1 text-[12px] leading-relaxed text-ink-secondary">{subtitle}</div>}
+          <div id={titleId} className="text-[13px] font-medium text-ink">{title}</div>
+          {subtitle && <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">{subtitle}</div>}
         </div>
-        <div className="min-w-0 sm:max-w-[240px]">{children}</div>
+        <div className="min-w-0 sm:max-w-[280px]">{children}</div>
       </div>
       {message && <div className="mt-2 text-[12px]">{message}</div>}
     </div>
@@ -98,18 +110,20 @@ export function CommandLine({ command, copyLabel = "Copy command" }: { command: 
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-inset px-3 py-2">
-      <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap font-mono text-[12px] text-ink">
+    <div className="flex items-center gap-2 border border-hairline bg-inset px-3 py-1.5 font-mono text-[12px]">
+      <span aria-hidden="true" className="select-none text-ink-secondary">$</span>
+      <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap text-ink">
         {command}
       </code>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="xs"
+        icon
         onClick={() => void copy()}
         aria-label={copyLabel}
-        className="ui-icon-button shrink-0"
       >
-        {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-      </button>
+        {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+      </Button>
     </div>
   );
 }

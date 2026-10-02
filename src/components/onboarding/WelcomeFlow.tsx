@@ -9,7 +9,8 @@
 // whole tour, and completion is written to the workspace config. A failed
 // write still dismisses this visit, but may require retrying on the next launch.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { MausAvatar } from "@/components/Avatar";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
+import { useModalA11y } from "@/components/ui/dialog";
 import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
 import { setEmailGateDone, track } from "@/lib/analytics";
 import { brand } from "@/lib/brand";
@@ -34,7 +35,9 @@ import { QuietButton } from "./beats/shared";
 import { withViewTransition } from "./view-transition";
 import { ProgressDots } from "./ProgressDots";
 import { FeatureReel } from "./reel/FeatureReel";
-
+import { REEL } from "./reel/scenes";
+import { formatIndex } from "@/components/ui/frame";
+import { WordTiles } from "@/components/ui/word-tiles";
 /** The guide's resting face per beat; beats may override it as they learn
  * more (the engines beat looks proud or curious once the harness answers). */
 const MASCOT_FOR_BEAT: Record<BeatId, MausState> = {
@@ -45,7 +48,22 @@ const MASCOT_FOR_BEAT: Record<BeatId, MausState> = {
   phone: "sending",
   bot: "celebrate",
 };
-
+function beatTag(b: BeatId): string {
+  switch (b) {
+    case "hello":
+      return "WELCOME";
+    case "reel":
+      return "OVERVIEW";
+    case "engines":
+      return "ENGINES";
+    case "permissions":
+      return "PERMISSIONS";
+    case "phone":
+      return "COMPANION";
+    case "bot":
+      return "ASSISTANT";
+  }
+}
 function beatTitle(beat: BeatId): string | null {
   switch (beat) {
     case "hello":
@@ -95,12 +113,15 @@ export function WelcomeFlow({
   const { capabilities } = useDesktopCapabilities();
   const beats = beatsFor({ dictation: dictation ?? capabilities.dictation.available, reel });
   const [beat, setBeat] = useState<BeatId>(() => (initialBeat && beats.includes(initialBeat) ? initialBeat : "hello"));
-  const [mascot, setMascot] = useState<MausState>(MASCOT_FOR_BEAT[beat]);
-  const [motion, setMotion] = useState<{ kind: Motion; key: number }>({ kind: "blink", key: 0 });
+  const [, setMascot] = useState<MausState>(MASCOT_FOR_BEAT[beat]);
+  const [, setMotion] = useState<{ kind: Motion; key: number }>({ kind: "blink", key: 0 });
+  const [reelSceneIndex, setReelSceneIndex] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
   const finishing = useRef(false);
 
   const bump = useCallback((kind: Motion) => setMotion((m) => ({ kind, key: m.key + 1 })), []);
+  useModalA11y(!embedded, () => void finish("skipped"));
+
 
   // The entrance waits one frame. A spin issued in the same commit that
   // mounts the avatar lands before its engine has drawn, and the face never
@@ -115,6 +136,12 @@ export function WelcomeFlow({
   useEffect(() => {
     track("onboarding_step", { step: beat, replay });
   }, [beat, replay]);
+  useEffect(() => {
+    if (cardRef.current) {
+      cardRef.current.scrollTop = 0;
+    }
+  }, [beat]);
+
 
   /** Move to another beat. The View Transitions API snapshots the old card,
    * applies the state change synchronously, then animates named elements to
@@ -205,7 +232,7 @@ export function WelcomeFlow({
   return (
     <div
       className={cn(
-        "flex items-center justify-center bg-app p-3 sm:p-8",
+        "flex items-center justify-center bg-app p-4",
         embedded ? "relative h-full w-full" : "fixed inset-0 z-50",
       )}
     >
@@ -216,39 +243,53 @@ export function WelcomeFlow({
         aria-label={t("onboarding.dialog")}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="welcome-card relative flex max-h-full w-full flex-col overflow-y-auto rounded-2xl border border-hairline/40 bg-panel p-5 sm:p-8 shadow-[0_30px_80px_-28px_rgba(0,0,0,0.45),0_8px_24px_-12px_rgba(0,0,0,0.25)] outline-none"
-        style={{ maxWidth: beatWidth(beat) }}
+        className="welcome-card relative flex max-h-[calc(100dvh-32px)] w-full flex-col overflow-y-auto border border-hairline bg-panel p-5 sm:p-8 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] outline-none"
+        style={{ maxWidth: beatWidth(beat), maxHeight: "calc(100dvh - 32px)" }}
       >
-        <QuietButton onClick={() => void finish("skipped")} className="absolute right-4 top-4">
-          {t("onboarding.skipTour")}
-        </QuietButton>
+        <span aria-hidden className="frame-corner" data-corner="tl" />
+        <span aria-hidden className="frame-corner" data-corner="tr" />
+        <span aria-hidden className="frame-corner" data-corner="bl" />
+        <span aria-hidden className="frame-corner" data-corner="br" />
+
+        <div className="mb-4 flex items-center justify-between">
+          <span className="label-mono text-ink-secondary">
+            {beat === "reel"
+              ? `[ ${formatIndex(reelSceneIndex + 1)} / ${formatIndex(REEL.length)} · ${beatTag(beat)} ]`
+              : `[ ${formatIndex(current)} / ${formatIndex(beats.length)} · ${beatTag(beat)} ]`}
+          </span>
+          <QuietButton onClick={() => void finish("skipped")}>
+          </QuietButton>
+        </div>
 
         <div className={cn("flex shrink-0", hello ? "flex-col items-center" : "items-center gap-3")}>
           <div className="welcome-maus flex shrink-0">
             {logo ? (
               <img src={logo} alt="" width={72} height={72} className="h-[72px] w-[72px] object-contain" />
             ) : (
-              <MausAvatar
-                color="green"
-                state={mascot}
-                motion={motion.kind}
-                motionKey={motion.key}
+              <AgentMark
+                bot={bot ?? { id: "kind-meitner", name: brand().name }}
                 size={hello ? 72 : 40}
                 label={brand().name}
               />
             )}
           </div>
           {title && (
-            <h1 className={cn("welcome-title font-semibold text-ink", hello ? "mt-4 text-[20px]" : "text-[18px]")}>
-              {title}
-            </h1>
+            hello ? (
+              <h1 className="welcome-title mt-4 flex justify-center text-center">
+                <WordTiles sentence={title} className="text-[20px] sm:text-[24px] flex-wrap justify-center" />
+              </h1>
+            ) : (
+              <h1 className="welcome-title text-[18px] font-semibold text-ink">
+                {title}
+              </h1>
+            )
           )}
         </div>
 
         {/* keyed so a beat's rise-in plays once per visit, never on re-render */}
         <div key={beat} className="flex shrink-0 flex-col">
           {beat === "hello" && <HelloBeat {...beatProps} />}
-          {beat === "reel" && <FeatureReel {...beatProps} />}
+          {beat === "reel" && <FeatureReel {...beatProps} onSceneChange={setReelSceneIndex} />}
           {beat === "engines" && <EnginesBeat {...beatProps} />}
           {beat === "permissions" && <PermissionsBeat {...beatProps} />}
           {beat === "phone" && <PhoneBeat {...beatProps} />}
@@ -269,7 +310,7 @@ export function WelcomeFlow({
             <span />
           )}
           <ProgressDots items={beats.map((id) => ({ id }))} index={current - 1} />
-          <span className="text-[11px] text-ink-secondary" aria-live="polite">
+          <span className="font-mono text-[11px] tabular-nums text-ink-secondary" aria-live="polite">
             {t("onboarding.progress", { current, total: beats.length })}
           </span>
         </div>

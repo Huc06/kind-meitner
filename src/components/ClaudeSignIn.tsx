@@ -3,6 +3,8 @@ import { ExternalLink, Loader2, LogIn } from "lucide-react";
 import { api } from "@/state/store";
 import { useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 import { deviceFlowUnavailable, type DeviceSignInStatus } from "./CodexDeviceSignIn";
 
 const SIGN_IN_HOSTS = ["claude.com", "claude.ai", "console.anthropic.com", "platform.claude.com"];
@@ -129,55 +131,59 @@ export function ClaudeSignIn({ instanceId }: { instanceId: string }) {
   return (
     <div className="mt-3 space-y-2" data-claude-sign-in>
       {outcome ? (
-        <p role="status" className={auth?.phase === "succeeded" ? "text-[12px] text-success" : "text-[12px] text-ink-secondary"}>{outcome}</p>
+        <p role="status" className={auth?.phase === "succeeded" ? "font-mono text-[12px] text-success" : "text-[12px] text-ink-secondary"}>{outcome}</p>
       ) : null}
       {auth?.phase === "waiting" ? (
         link ? (
-          <div className="space-y-2 rounded-lg border border-hairline/50 bg-app p-3">
-            <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110">
+          <div className="space-y-2.5 border border-hairline bg-inset p-3">
+            <a href={link} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: "primary", size: "sm", className: "w-full" })}>
               {t("engineSetup.claude.open")} <ExternalLink size={13} />
             </a>
             <label className="block text-[12px] text-ink-secondary" htmlFor={`claude-code-${instanceId}`}>
               {t("engineSetup.claude.codeLabel")}
             </label>
-            <input
+            <Input
               id={`claude-code-${instanceId}`}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-[13px] text-ink outline-none focus:border-accent-border"
+              className="font-mono text-[13px]"
             />
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
               disabled={busy !== null || code.trim().length < 8}
               onClick={() => void finish()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-50"
+              className="w-full"
             >
               {busy === "finish" ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
               {busy === "finish" ? t("engineSetup.claude.finishing") : t("engineSetup.claude.finish")}
-            </button>
+            </Button>
             {auth.expiresAt && Number.isFinite(Date.parse(auth.expiresAt)) ? (
-              <p className="text-[11px] text-ink-secondary">{t("engineSetup.device.expires", { time: new Date(auth.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p>
+              <p className="font-mono text-[11px] text-ink-secondary">{t("engineSetup.device.expires", { time: new Date(auth.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p>
             ) : null}
             <p className="text-[11px] leading-relaxed text-ink-secondary">{t("engineSetup.claude.security")}</p>
-            <button type="button" disabled={busy !== null} onClick={() => void cancel()} className="w-full rounded-lg bg-control px-3 py-2 text-[12px] font-medium text-ink disabled:opacity-50">
+            <Button variant="secondary" size="sm" type="button" disabled={busy !== null} onClick={() => void cancel()} className="w-full">
               {busy === "cancel" ? t("engineSetup.device.cancelling") : t("engineSetup.device.cancel")}
-            </button>
+            </Button>
           </div>
         ) : (
           <p role="alert" className="text-[12px] text-danger">{t("engineSetup.claude.invalidChallenge")}</p>
         )
       ) : auth?.phase !== "succeeded" ? (
-        <button
+        <Button
+          variant="primary"
+          size="sm"
           type="button"
           disabled={busy !== null}
           onClick={() => void start()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-50"
+          className="w-full"
         >
           {busy === "start" ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
           {busy === "start" ? t("engineSetup.claude.starting") : t("engineSetup.claude.start")}
-        </button>
+        </Button>
       ) : null}
       {error ? <p role="alert" className="text-[12px] text-danger">{error}</p> : null}
     </div>

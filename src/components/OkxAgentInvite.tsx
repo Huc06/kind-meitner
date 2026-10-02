@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { api, ApiError, type Group } from "@/state/store";
+import { importHubAgent } from "@/lib/agent-hub";
 import { ChartAvatar } from "./Avatar";
-
+import { Tag } from "@/components/ui/tag";
+import { Button } from "@/components/ui/button";
+import { t } from "@/lib/i18n";
 export interface OkxCatalogAgent {
   id: string;
   name: string;
@@ -50,20 +53,17 @@ export function canInviteOkxAgent(group: Pick<Group, "dm">, remoteClient: boolea
   return !remoteClient && !group.dm;
 }
 
-function importRequestId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `okx-import-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
 
 export function OkxCatalogInviteDetails({ agent }: { agent: OkxCatalogAgent }) {
   return (
     <div className="flex min-w-0 items-start gap-2.5">
       <ChartAvatar color="cyan" size={28} label={`${agent.name}, OKX.AI catalog agent`} />
       <div className="min-w-0">
-        <h2 className="text-[13px] font-semibold text-ink">{agent.name}</h2>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">{agent.description}</p>
+        <h2 className="text-[13px] font-medium text-ink">{agent.name}</h2>
+        <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">{agent.description}</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-secondary">
-          <span className="rounded-full bg-inset px-2 py-0.5 font-medium text-ink">Free · read-only</span>
-          <span>OKX.AI catalog</span>
+          <Tag tone="neutral" variant="soft" size="sm">Free · read-only</Tag>
+          <span className="label-mono">OKX.AI CATALOG</span>
         </div>
       </div>
     </div>
@@ -73,9 +73,11 @@ export function OkxCatalogInviteDetails({ agent }: { agent: OkxCatalogAgent }) {
 export function OkxAgentInvite({
   roomId,
   importedExternalAgentIds = new Set<string>(),
+  label = "Invite agent",
 }: {
   roomId: string;
   importedExternalAgentIds?: ReadonlySet<string>;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<OkxCatalogAgent[] | null>(null);
@@ -127,15 +129,16 @@ export function OkxAgentInvite({
     setImportingId(agent.id);
     setError(null);
     try {
-      await api("/api/okx/agents/import", {
-        method: "POST",
-        body: JSON.stringify({ agentId: agent.id, roomId, requestId: importRequestId() }),
-      });
-      // Do not patch the room or bot list here. The normal group/bot stream
-      // owns membership and activity updates, including an idempotent import.
-      setRequestedId(agent.id);
+      const result = await importHubAgent(agent.id, roomId);
+      if (result.kind === "added" || result.kind === "already") {
+        // Do not patch the room or bot list here. The normal group/bot stream
+        // owns membership and activity updates, including an idempotent import.
+        setRequestedId(agent.id);
+      } else {
+        setError(result.message ?? `Could not invite ${agent.name}.`);
+      }
     } catch (reason) {
-      setError(reason instanceof ApiError || reason instanceof Error ? reason.message : `Could not invite ${agent.name}.`);
+      setError(reason instanceof Error ? reason.message : `Could not invite ${agent.name}.`);
     } finally {
       setImportingId(null);
     }
@@ -143,54 +146,64 @@ export function OkxAgentInvite({
 
   return (
     <div className="relative" data-testid="okx-agent-invite" ref={containerRef}>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={toggleOpen}
         aria-expanded={open}
         aria-controls="okx-agent-invite-panel"
-        className="rounded-md border border-hairline/50 px-2.5 py-1.5 text-[12px] font-medium text-ink-secondary hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
-        Invite OKX agent
-      </button>
+        {label}
+      </Button>
       {open ? (
         <section
           id="okx-agent-invite-panel"
-          aria-label="Invite an OKX agent"
-          className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-hairline/60 bg-card p-3 shadow-xl"
+          aria-label={t("okxAgentInvite.panelAria")}
+          className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] border border-hairline bg-menu p-3 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
         >
-          <p className="text-[12px] leading-relaxed text-ink-secondary">Invite an OKX.ai intelligence agent to this room.</p>
+          <p className="text-[12px] leading-relaxed text-ink-secondary">{t("okxAgentInvite.description")}</p>
           {loadingCatalog ? (
-            <p role="status" aria-live="polite" className="mt-3 flex items-center gap-2 text-[12px] text-ink-secondary">
-              <Loader2 size={14} className="animate-spin" /> Loading OKX agents…
+            <p role="status" aria-live="polite" className="mt-3 flex items-center gap-2 font-mono text-[11.5px] text-ink-secondary">
+              <Loader2 size={13} className="animate-spin" /> {t("okxAgentInvite.loading")}
             </p>
           ) : null}
-          {error ? <p role="alert" className="mt-3 text-[12px] text-danger">{error}</p> : null}
+          {error ? <p role="alert" className="mt-3 font-mono text-[11.5px] text-danger">{error}</p> : null}
           {catalog?.map((agent) => {
             const inRoom = importedExternalAgentIds.has(agent.id);
             const requested = requestedId === agent.id;
             const importing = importingId === agent.id;
             return (
-              <article key={agent.id} className="mt-3 rounded-lg border border-hairline/40 bg-panel p-3">
+              <article key={agent.id} className="mt-2.5 border border-hairline bg-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <OkxCatalogInviteDetails agent={agent} />
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  {inRoom ? <span role="status" className="flex items-center gap-1 text-[12px] text-success"><Check size={13} /> In this room</span> : requested ? <span role="status" aria-live="polite" className="text-[12px] text-ink-secondary">Waiting for room update…</span> : <span />}
-                  <button
-                    type="button"
+                  {inRoom ? (
+                    <span role="status" className="flex items-center gap-1 font-mono text-[11px] text-success">
+                      <Check size={12} /> {t("agent.type.inRoom")}
+                    </span>
+                  ) : requested ? (
+                    <span role="status" aria-live="polite" className="font-mono text-[11px] text-ink-secondary">
+                      {t("okxAgentInvite.waiting")}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  <Button
+                    variant="primary"
+                    size="xs"
                     onClick={() => void importAgent(agent)}
                     disabled={inRoom || requested || importing || agent.status !== "available"}
-                    className="flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-[12px] font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {importing ? <Loader2 size={13} className="animate-spin" /> : null}
-                    {importing ? "Inviting…" : inRoom ? "Added" : requested ? "Invited" : "Invite"}
-                  </button>
+                    {importing ? <Loader2 size={11} className="animate-spin" /> : null}
+                    {importing ? t("okxAgentInvite.inviting") : inRoom ? t("okxAgentInvite.added") : requested ? t("okxAgentInvite.invited") : t("okxAgentInvite.invite")}
+                  </Button>
                 </div>
               </article>
             );
           })}
-          {catalog && catalog.length === 0 ? <p role="status" className="mt-3 text-[12px] text-ink-secondary">No OKX agents are available.</p> : null}
-          {error && catalog === null ? <button type="button" onClick={() => void loadCatalog()} className="mt-3 text-[12px] font-medium text-accent hover:underline">Try again</button> : null}
+          {catalog && catalog.length === 0 ? <p role="status" className="mt-3 font-mono text-[11.5px] text-ink-secondary">{t("okxAgentInvite.noAgents")}</p> : null}
+          {error && catalog === null ? <button type="button" onClick={() => void loadCatalog()} className="mt-3 font-mono text-[11.5px] text-ink underline hover:text-ink-secondary">{t("okxAgentInvite.tryAgain")}</button> : null}
         </section>
       ) : null}
     </div>

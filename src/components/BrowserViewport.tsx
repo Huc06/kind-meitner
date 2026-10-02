@@ -101,7 +101,7 @@ export function BrowserViewport({ frame, width, height, driving, input: sendInpu
       title={driving ? "Shift+Escape returns to the browser address bar." : undefined}
       aria-description={driving ? "Keyboard input goes to the remote page. Press Shift+Escape to return to the browser address bar." : undefined}
       aria-keyshortcuts={driving ? "Shift+Escape" : undefined}
-      className={`block h-full w-full object-contain select-none outline-none focus:ring-2 focus:ring-inset focus:ring-accent ${driving ? "cursor-default touch-none" : "cursor-not-allowed"}`}
+      className={`block h-full w-full object-contain select-none outline-none ${driving ? "cursor-default touch-none" : "cursor-not-allowed"}`}
       onLoad={rendered} onError={onDecodeError}
       onBlur={pressed.release}
       onContextMenu={(e) => { if (driving) e.preventDefault(); }}

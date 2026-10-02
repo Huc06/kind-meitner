@@ -224,7 +224,7 @@ function ConversationTaskPicker({
         title={switchTitle}
         aria-label={t("task.switch")}
         className={cn(
-          "flex max-w-[220px] items-center gap-1.5 rounded-full border border-hairline/40 px-2.5 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink",
+          "cursor-pointer flex max-w-[220px] items-center gap-1.5 border border-hairline px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink",
           COMPACT_BUBBLE,
         )}
       >
@@ -235,9 +235,9 @@ function ConversationTaskPicker({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-1 w-[300px] overflow-hidden rounded-xl border border-hairline/50 bg-card py-1 shadow-2xl shadow-black/50">
+        <div className="absolute right-0 top-full z-40 mt-1 w-[300px] overflow-hidden border border-hairline bg-menu py-1 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]">
           <div className="px-2 pb-1 pt-1.5">
-            <div className="flex items-center gap-2 rounded-lg border border-hairline/40 bg-inset px-2.5 py-1.5 focus-within:border-accent/60">
+            <div className="flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5 focus-within:border-ink">
               <Search size={13} className="shrink-0 text-ink-secondary" />
               <input
                 autoFocus
@@ -280,9 +280,9 @@ function ConversationTaskPicker({
                 <Fragment key={task.threadId}>
                 {bot?.projects?.length && heading ? <div className={cn("flex items-center gap-1.5 px-3 pb-1 pt-2 text-[11px] font-medium text-ink-secondary", index > 0 && "border-t border-hairline/30")}>{heading.id && <FolderIcon emoji={heading.emoji} size={12} />}{heading.name}</div> : null}
                 <div
-                  className={cn("group flex items-center gap-2 px-2.5 py-2", active ? "bg-raised/60" : "hover:bg-raised/40")}
+                  className={cn("group flex items-center gap-2 px-2.5 py-1.5", active ? "bg-raised" : "hover:bg-raised-hover")}
                 >
-                  <Check size={13} className={cn("shrink-0", active ? "text-accent" : "opacity-0")} />
+                  <Check size={13} className={cn("shrink-0", active ? "text-ink" : "opacity-0")} />
                   {renaming === task.threadId ? (
                     <input
                       autoFocus
@@ -306,7 +306,7 @@ function ConversationTaskPicker({
                           commitRename(task.threadId, false);
                         }
                       }}
-                      className="min-w-0 flex-1 rounded bg-inset px-1.5 py-0.5 text-[13px] text-ink focus:outline-none"
+                      className="min-w-0 flex-1 border border-hairline bg-inset px-1.5 py-0.5 text-[13px] text-ink focus:outline-none"
                     />
                   ) : (
                     <button
@@ -344,12 +344,12 @@ function ConversationTaskPicker({
                       onClick={() => startRename(task)}
                       aria-label={t("task.renameNamed", { title: task.title })}
                       title={t("task.renameTitle")}
-                      className="rounded p-1 text-ink-secondary opacity-0 hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+                      className="cursor-pointer p-1 text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
                     >
                       <Pencil size={13} />
                     </button>
                   )}
-                  {bot && onMove && (bot.projects?.length ?? 0) > 0 && <label title={t("folder.move")} className="relative rounded p-1 text-ink-secondary opacity-0 hover:bg-raised hover:text-ink focus-within:opacity-100 group-hover:opacity-100">
+                  {bot && onMove && (bot.projects?.length ?? 0) > 0 && <label title={t("folder.move")} className="cursor-pointer relative p-1 text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink focus-within:opacity-100 group-hover:opacity-100">
                     <FolderInput size={13} />
                     <select aria-label={t("folder.moveNamed", { title: task.title })} value={bot.projects?.some((project) => project.id === task.projectId) ? task.projectId : ""}
                       onFocus={clearDismiss} onChange={(event) => { clearDismiss(); onMove(task.threadId, event.target.value || null); }}
@@ -364,7 +364,7 @@ function ConversationTaskPicker({
                     disabled={Boolean(task.busy) || busy && active}
                     aria-label={t("task.deleteAria")}
                     title={t("task.deleteTitle")}
-                    className="rounded p-1 text-ink-secondary opacity-0 hover:bg-raised hover:text-danger group-hover:opacity-100 disabled:opacity-20"
+                    className="cursor-pointer p-1 text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-danger group-hover:opacity-100 disabled:opacity-20"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -405,7 +405,7 @@ export function BotActivityPicker({ bot }: { bot: Bot }) {
         aria-label={t("task.otherActivity", { count: activity.length })}
         value=""
         onChange={(event) => dispatch({ type: "switchTask", botId: bot.id, threadId: event.target.value })}
-        className="max-w-[180px] shrink-0 truncate rounded-full border border-hairline/40 bg-panel px-2.5 py-1 text-[12.5px] text-ink-secondary"
+        className="max-w-[180px] shrink-0 truncate border border-hairline bg-panel px-2.5 py-1 font-mono text-[11px] text-ink-secondary cursor-pointer"
       >
         <option value="" disabled>{t("task.otherActivity", { count: activity.length })}</option>
         {activity.map((task) => <option key={task.threadId} value={task.threadId}>

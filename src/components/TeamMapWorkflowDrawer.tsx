@@ -20,7 +20,8 @@ import type {
 } from "@/lib/team-map-workflow";
 import type { Bot } from "@/state/store";
 import { TeamMapAgentAvatar } from "./TeamMapAgentAvatar";
-
+import { Button, buttonClass } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
 export type InterventionCommand =
   | { type: "inspect_blocker"; taskId: string }
   | { type: "open_conversation"; agentId: string }
@@ -32,19 +33,19 @@ export type InterventionCommand =
 function presenceBadge(presence?: string): { label: string; tone: string } {
   switch (presence) {
     case "working":
-      return { label: "Working", tone: "bg-success/20 text-success border-success/30" };
+      return { label: "Working", tone: "border-success/60 bg-success/15 text-success" };
     case "blocked":
-      return { label: "BLOCKED", tone: "bg-danger/20 text-danger border-danger/40 animate-pulse font-bold" };
+      return { label: "BLOCKED", tone: "border-danger bg-danger/20 text-danger animate-pulse font-bold" };
     case "waiting":
-      return { label: "Waiting", tone: "bg-warning/20 text-warning border-warning/30" };
+      return { label: "Waiting", tone: "border-warning/60 bg-warning/15 text-warning" };
     case "reviewing":
-      return { label: "Reviewing", tone: "bg-accent/20 text-accent border-accent/40 font-semibold" };
+      return { label: "Reviewing", tone: "border-accent bg-accent/15 text-accent font-semibold" };
     case "completed":
-      return { label: "Completed", tone: "bg-success/10 text-success/80 border-success/20" };
+      return { label: "Completed", tone: "border-success/40 bg-success/10 text-success" };
     case "offline":
-      return { label: "Offline", tone: "bg-control text-ink-secondary border-hairline/40" };
+      return { label: "Offline", tone: "border-hairline bg-control text-ink-secondary" };
     default:
-      return { label: "Ready", tone: "bg-inset text-ink-secondary border-hairline/40" };
+      return { label: "Ready", tone: "border-hairline bg-inset text-ink-secondary" };
   }
 }
 
@@ -147,37 +148,36 @@ export function TeamMapWorkflowDrawer({
       role="dialog"
       aria-modal="false"
       aria-label={`Workflow details for ${agentName}`}
-      className="flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#12151A]/85 backdrop-blur-xl shadow-2xl shadow-black/60 outline-none"
+      className="flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-panel text-ink shadow-2xl outline-none"
     >
       {/* Header */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+      <div className="flex h-11 shrink-0 items-center justify-between frame-rule-below bg-app px-4">
         <div className="flex items-center gap-2 truncate">
-          <SlidersHorizontal size={14} className="shrink-0 text-white/50" aria-hidden="true" />
-          <h3 className="truncate text-[13.5px] font-semibold text-white/95">Inspector</h3>
-          <span className="text-white/40">·</span>
-          <span className="truncate text-[12px] text-white/70">{agentName}</span>
+          <SlidersHorizontal size={13} className="shrink-0 text-ink-secondary" aria-hidden="true" />
+          <h3 className="label-mono truncate text-[12px] font-semibold text-ink">Inspector</h3>
+          <span className="text-ink-secondary/40">·</span>
+          <span className="truncate label-mono text-[11px] text-ink-secondary">{agentName}</span>
         </div>
         <button
           type="button"
           aria-label="Close inspector drawer"
           onClick={onClose}
-          className="inline-flex size-8 items-center justify-center rounded-md text-white/50 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
         >
-          <X size={15} />
+          <X size={14} />
         </button>
       </div>
 
       {/* Tabs for Progressive Disclosure */}
-      <div className="flex h-10 shrink-0 border-b border-white/[0.08] bg-black/20 px-4 text-[12px]">
+      <div className="flex h-10 shrink-0 frame-rule-below bg-app px-4 text-[12px]">
         <button
           type="button"
           onClick={() => setActiveTab("overview")}
           className={cn(
-            "flex items-center gap-1.5 border-b-2 px-3 font-medium transition-colors outline-none",
-            activeTab === "overview"
-              ? "border-accent text-white"
-              : "border-transparent text-white/50 hover:text-white/80",
+            "nav-link flex items-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors outline-none",
+            activeTab === "overview" && "text-ink font-semibold",
           )}
+          data-active={activeTab === "overview" ? true : undefined}
         >
           <span>Overview</span>
         </button>
@@ -185,15 +185,14 @@ export function TeamMapWorkflowDrawer({
           type="button"
           onClick={() => setActiveTab("history")}
           className={cn(
-            "flex items-center gap-1.5 border-b-2 px-3 font-medium transition-colors outline-none",
-            activeTab === "history"
-              ? "border-accent text-white"
-              : "border-transparent text-white/50 hover:text-white/80",
+            "nav-link flex items-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors outline-none",
+            activeTab === "history" && "text-ink font-semibold",
           )}
+          data-active={activeTab === "history" ? true : undefined}
         >
           <span>Collaboration</span>
           {messages.length > 0 && (
-            <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px] text-white/70">
+            <span className="border border-hairline bg-inset px-1 font-mono text-[10.5px] tabular-nums text-ink-secondary">
               {messages.length}
             </span>
           )}
@@ -202,32 +201,30 @@ export function TeamMapWorkflowDrawer({
           type="button"
           onClick={() => setActiveTab("artifacts")}
           className={cn(
-            "flex items-center gap-1.5 border-b-2 px-3 font-medium transition-colors outline-none",
-            activeTab === "artifacts"
-              ? "border-accent text-white"
-              : "border-transparent text-white/50 hover:text-white/80",
+            "nav-link flex items-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors outline-none",
+            activeTab === "artifacts" && "text-ink font-semibold",
           )}
+          data-active={activeTab === "artifacts" ? true : undefined}
         >
           <span>Artifacts</span>
           {artifacts.length > 0 && (
-            <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px] text-white/70">
+            <span className="border border-hairline bg-inset px-1 font-mono text-[10.5px] tabular-nums text-ink-secondary">
               {artifacts.length}
             </span>
           )}
         </button>
       </div>
-
       {/* Drawer Body */}
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-[12.5px] leading-relaxed">
         {activeTab === "overview" && (
           <>
             {/* 1. Agent Identity Card */}
-            <section className="space-y-3 rounded-xl border border-white/[0.08] bg-[#1C2025]/80 p-4">
+            <section className="space-y-3 border border-hairline bg-card p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/45">
+                <span className="label-mono text-[10.5px] text-ink-secondary">
                   Agent Identity
                 </span>
-                <span className={cn("rounded-[6px] border px-2 py-0.5 text-[10.5px] font-medium", presenceBadge(agentPresence).tone)}>
+                <span className={cn("border px-1.5 py-0.5 font-mono text-[10.5px]", presenceBadge(agentPresence).tone)}>
                   {presenceBadge(agentPresence).label}
                 </span>
               </div>
@@ -237,63 +234,63 @@ export function TeamMapWorkflowDrawer({
                   <TeamMapAgentAvatar
                     agentId={agentId}
                     name={agentName}
-                    presence={agentPresence as any}
-                    size={38}
+                    presence={agentPresence ?? "idle"}
+                    size={36}
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <h4 className="truncate text-[14px] font-semibold text-white/95">{agentName}</h4>
-                  <p className="truncate text-[11.5px] text-white/55">{agentRole}</p>
+                  <h4 className="truncate text-[13.5px] font-semibold text-ink">{agentName}</h4>
+                  <p className="truncate text-[11px] text-ink-secondary">{agentRole}</p>
                 </div>
               </div>
             </section>
 
             {/* 2. Current Task & Workload */}
-            <section className="space-y-3 rounded-xl border border-white/[0.08] bg-[#1C2025]/80 p-4">
+            <section className="space-y-3 border border-hairline bg-card p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/45">
+                <span className="label-mono text-[10.5px] text-ink-secondary">
                   Current Task
                 </span>
                 {taskState && (
-                  <span className="rounded-[6px] bg-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] font-medium uppercase text-white/70">
+                  <span className="border border-hairline bg-inset px-1.5 py-0.5 font-mono text-[10.5px] uppercase text-ink-secondary">
                     {taskState}
                   </span>
                 )}
               </div>
 
               <div>
-                <h4 className="text-[13.5px] font-semibold text-white/90">
+                <h4 className="text-[13px] font-semibold text-ink">
                   {taskTitle ?? "No active task assigned"}
                 </h4>
                 {snapshot.objective && (
-                  <p className="mt-1 text-[11.5px] text-white/50">
-                    <span className="font-medium text-white/70">Objective:</span> {snapshot.objective}
+                  <p className="mt-1 text-[11px] text-ink-secondary">
+                    <span className="font-medium text-ink">Objective:</span> {snapshot.objective}
                   </p>
                 )}
               </div>
 
               {taskProgress !== undefined && (
                 <div>
-                  <div className="flex items-center justify-between text-[11px] text-white/50">
+                  <div className="flex items-center justify-between text-[11px] text-ink-secondary">
                     <span>Progress</span>
-                    <span className="font-mono tabular-nums text-white/80">{taskProgress}%</span>
+                    <span className="font-mono tabular-nums text-ink">{taskProgress}%</span>
                   </div>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                  <div className="mt-1 h-1.5 w-full overflow-hidden border border-hairline bg-inset">
                     <div className="h-full bg-accent transition-all duration-300" style={{ width: `${taskProgress}%` }} />
                   </div>
                 </div>
               )}
 
               {snapshotTask?.dependsOnTaskIds && snapshotTask.dependsOnTaskIds.length > 0 && (
-                <div className="rounded-lg bg-black/30 p-2.5 text-[11.5px]">
-                  <span className="font-medium text-white/80">Depends on:</span>
-                  <ul className="mt-1 space-y-1 text-white/60">
+                <div className="border border-hairline bg-inset p-2.5 text-[11.5px]">
+                  <span className="font-medium text-ink">Depends on:</span>
+                  <ul className="mt-1 space-y-1 text-ink-secondary">
                     {snapshotTask.dependsOnTaskIds.map((depId) => (
                       <li key={depId}>
                         <button
                           type="button"
                           onClick={() => onSelectTask?.(depId)}
-                          className="text-accent hover:underline"
+                          className="text-ink underline hover:text-ink-secondary"
                         >
                           {snapshot.tasks.find((t) => t.id === depId)?.title || depId}
                         </button>
@@ -305,17 +302,17 @@ export function TeamMapWorkflowDrawer({
             </section>
 
             {/* 3. Truthful Operational Actions (Never fakes state mutation) */}
-            <section className="space-y-2 rounded-xl border border-white/[0.08] bg-[#1C2025]/80 p-3.5">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-white/80">
-                <span>Operational Action</span>
-                <span className="text-[10.5px] text-white/40">Verified command</span>
+            <section className="space-y-2 border border-hairline bg-card p-3.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-ink">
+                <span className="label-mono text-[10.5px] text-ink-secondary">Operational Action</span>
+                <span className="font-mono text-[10.5px] text-ink-secondary">Verified command</span>
               </div>
 
               {agentId && (
                 <button
                   type="button"
                   onClick={() => onIntervene?.({ type: "open_conversation", agentId })}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/15 px-3 py-2 text-[12px] font-semibold text-accent hover:bg-accent/25 focus-visible:ring-2 focus-visible:ring-accent"
+                  className="flex w-full items-center justify-center gap-1.5 border border-hairline bg-raised px-3 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-ink hover:border-ink hover:bg-raised-hover focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   <MessageSquare size={13} aria-hidden="true" />
                   <span>Open 1:1 Conversation with {agentName}</span>
@@ -323,7 +320,7 @@ export function TeamMapWorkflowDrawer({
               )}
 
               {taskState === "blocked" && (
-                <div className="rounded-lg bg-danger/10 p-2.5 text-[11px] text-danger">
+                <div className="border border-danger/40 bg-danger/10 p-2.5 text-[11px] text-danger">
                   <div className="flex items-center gap-1.5 font-semibold">
                     <AlertCircle size={13} aria-hidden="true" />
                     <span>Agent is blocked</span>
@@ -342,17 +339,17 @@ export function TeamMapWorkflowDrawer({
             {/* Ownership transfers */}
             {transfers.length > 0 && (
               <section className="space-y-2.5">
-                <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                <h5 className="label-mono text-[10.5px] text-ink-secondary">
                   Ownership Transfers
                 </h5>
                 <div className="space-y-2">
                   {transfers.map((xfer) => (
-                    <div key={xfer.id} className="rounded-xl border border-white/[0.08] bg-[#1C2025] p-3 text-[11.5px]">
-                      <div className="font-semibold text-white/90">
+                    <div key={xfer.id} className="border border-hairline bg-card p-3 text-[11.5px]">
+                      <div className="font-semibold text-ink">
                         {snapshot.agents.find((a) => a.id === xfer.fromAgentId)?.name ?? xfer.fromAgentId} →{" "}
                         {snapshot.agents.find((a) => a.id === xfer.toAgentId)?.name ?? xfer.toAgentId}
                       </div>
-                      <p className="mt-1 text-white/60">{xfer.reason}</p>
+                      <p className="mt-1 text-ink-secondary">{xfer.reason}</p>
                     </div>
                   ))}
                 </div>
@@ -361,22 +358,22 @@ export function TeamMapWorkflowDrawer({
 
             {/* Messages */}
             <section className="space-y-2.5">
-              <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+              <h5 className="label-mono text-[10.5px] text-ink-secondary">
                 Recent Communication
               </h5>
               {messages.length === 0 ? (
-                <p className="text-[12px] text-white/40">No messages recorded for this scope.</p>
+                <p className="text-[12px] text-ink-secondary">No messages recorded for this scope.</p>
               ) : (
                 <div className="space-y-2">
                   {messages.map((m) => (
-                    <div key={m.id} className="rounded-xl border border-white/[0.06] bg-[#1C2025] p-3 text-[11.5px]">
-                      <div className="flex items-center justify-between text-white/50">
-                        <span className="font-semibold text-white/80">
+                    <div key={m.id} className="border border-hairline bg-card p-3 text-[11.5px]">
+                      <div className="flex items-center justify-between text-ink-secondary">
+                        <span className="font-semibold text-ink">
                           {snapshot.agents.find((a) => a.id === m.fromAgentId)?.name ?? m.fromAgentId}
                         </span>
-                        <span className="font-mono text-[10px]">{new Date(m.at).toLocaleTimeString()}</span>
+                        <span className="font-mono text-[10.5px] tabular-nums">{new Date(m.at).toLocaleTimeString()}</span>
                       </div>
-                      <p className="mt-1 text-white/70">{m.text}</p>
+                      <p className="mt-1 text-ink">{m.text}</p>
                     </div>
                   ))}
                 </div>
@@ -388,21 +385,21 @@ export function TeamMapWorkflowDrawer({
         {activeTab === "artifacts" && (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h5 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+              <h5 className="label-mono text-[10.5px] text-ink-secondary">
                 Deliverables &amp; Artifacts ({artifacts.length})
               </h5>
-              <span className="text-[10.5px] text-white/40 font-mono">
+              <span className="font-mono text-[10.5px] text-ink-secondary">
                 {dataMode === "live" ? "Live deliverables" : "Sample workflow data — not live commerce"}
               </span>
             </div>
 
             {artifacts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-6 text-center">
-                <div className="mx-auto flex size-9 items-center justify-center rounded-md bg-white/[0.04] text-white/40">
-                  <FileText size={16} aria-hidden="true" />
+              <div className="frame-edge p-6 text-center">
+                <div className="mx-auto flex size-8 items-center justify-center border border-hairline bg-inset text-ink-secondary">
+                  <FileText size={15} aria-hidden="true" />
                 </div>
-                <p className="mt-2.5 text-[12.5px] font-medium text-white/80">No artifacts submitted yet</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-white/40 max-w-xs mx-auto">
+                <p className="mt-2.5 text-[12.5px] font-medium text-ink">No artifacts submitted yet</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-secondary max-w-xs mx-auto">
                   {agentName} has not published deliverables for this task cycle. Artifacts appear automatically when an agent commits code, reports, or contracts.
                 </p>
               </div>
@@ -418,31 +415,31 @@ export function TeamMapWorkflowDrawer({
                   return (
                     <div
                       key={art.id}
-                      className="flex flex-col gap-2 rounded-lg border border-white/[0.08] bg-[#16191E]/90 p-3 transition hover:border-white/[0.16]"
+                      className="flex flex-col gap-2 border border-hairline bg-card p-3 transition-colors hover:border-ink hover:bg-raised-hover"
                     >
                       {/* Title & Type Badge */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 truncate">
-                          <FileText size={14} className="shrink-0 text-accent" aria-hidden="true" />
-                          <span className="truncate font-semibold text-white/90 text-[12.5px]">{art.name}</span>
+                          <FileText size={14} className="shrink-0 text-ink" aria-hidden="true" />
+                          <span className="truncate font-semibold text-ink text-[12.5px]">{art.name}</span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
                           {effectiveApproved && (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                            <Tag tone="success" variant="solid" size="sm">
                               <CheckCircle2 size={10} /> Approved
-                            </span>
+                            </Tag>
                           )}
                           {isUnderReview && (
-                            <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                            <Tag tone="warning" variant="solid" size="sm">
                               Under Review
-                            </span>
+                            </Tag>
                           )}
                           {isSuperseded && (
-                            <span className="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/40">
+                            <Tag tone="neutral" size="sm">
                               Superseded
-                            </span>
+                            </Tag>
                           )}
-                          <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] uppercase text-white/50">
+                          <span className="border border-hairline bg-inset px-1.5 py-0.5 font-mono text-[10.5px] uppercase text-ink-secondary">
                             {art.type}
                           </span>
                         </div>
@@ -450,18 +447,18 @@ export function TeamMapWorkflowDrawer({
 
                       {/* Summary */}
                       {art.summary && (
-                        <p className="text-[11.5px] leading-relaxed text-white/70">{art.summary}</p>
+                        <p className="text-[11.5px] leading-relaxed text-ink-secondary">{art.summary}</p>
                       )}
 
                       {/* Content Preview Box if available */}
                       {art.contentPreview && (
-                        <pre className="max-h-20 overflow-x-auto rounded-md border border-white/[0.06] bg-[#0E1013] p-2 font-mono text-[10px] leading-tight text-white/60">
+                        <pre className="max-h-20 overflow-x-auto border border-hairline bg-inset p-2 font-mono text-[10.5px] leading-tight text-ink-secondary">
                           {art.contentPreview}
                         </pre>
                       )}
 
-                      {/* Role & Action Footer with BunUI button system */}
-                      <div className="mt-1 flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px] text-white/50">
+                      {/* Role & Action Footer */}
+                      <div className="mt-1 flex items-center justify-between frame-rule-above pt-2 text-[11px] text-ink-secondary">
                         <span className="truncate mr-2">
                           {isReviewer ? "Assigned for review" : isAuthor ? "Authored deliverable" : "Task artifact"}
                         </span>
@@ -474,7 +471,7 @@ export function TeamMapWorkflowDrawer({
                                 setApprovedArtifactIds((prev) => [...prev, art.id]);
                                 onIntervene?.({ type: "approve_artifact", artifactId: art.id, taskId: art.taskId });
                               }}
-                              className="inline-flex h-7 items-center gap-1 rounded-md bg-accent px-2.5 text-[11.5px] font-medium text-white shadow-sm transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+                              className={cn(buttonClass({ variant: "primary", size: "xs" }), "gap-1 font-mono normal-case")}
                             >
                               <Check size={11} aria-hidden="true" />
                               <span>Approve</span>
@@ -484,7 +481,7 @@ export function TeamMapWorkflowDrawer({
                             type="button"
                             aria-label={`Inspect ${art.name}`}
                             onClick={() => setInspectingArtifact(art)}
-                            className="inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-[11.5px] font-medium text-white/80 transition hover:bg-white/[0.08] hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 cursor-pointer"
+                            className={cn(buttonClass({ variant: "secondary", size: "xs" }), "gap-1 font-mono normal-case")}
                           >
                             <Eye size={11} aria-hidden="true" />
                             <span>Inspect</span>
@@ -505,13 +502,13 @@ export function TeamMapWorkflowDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={`Inspect ${inspectingArtifact.name}`}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           >
-            <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-white/[0.12] bg-[#14171C] shadow-2xl overflow-hidden">
-              <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+            <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col border border-hairline bg-panel shadow-2xl overflow-hidden">
+              <header className="flex h-11 shrink-0 items-center justify-between frame-rule-below bg-app px-4">
                 <div className="flex items-center gap-2 truncate">
-                  <FileText size={15} className="text-accent shrink-0" aria-hidden="true" />
-                  <h4 className="truncate text-[13px] font-semibold text-white/95">
+                  <FileText size={14} className="text-ink shrink-0" aria-hidden="true" />
+                  <h4 className="truncate text-[13px] font-semibold text-ink">
                     {inspectingArtifact.name}
                   </h4>
                 </div>
@@ -519,7 +516,7 @@ export function TeamMapWorkflowDrawer({
                   type="button"
                   aria-label="Close inspection"
                   onClick={() => setInspectingArtifact(null)}
-                  className="inline-flex size-7 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-white"
+                  className="inline-flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink"
                 >
                   <X size={14} />
                 </button>
@@ -527,39 +524,39 @@ export function TeamMapWorkflowDrawer({
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-[12px]">
                 {/* Metadata summary */}
-                <div className="grid grid-cols-2 gap-2 text-[11px] rounded-lg border border-white/[0.06] bg-black/30 p-2.5">
+                <div className="grid grid-cols-2 gap-2 text-[11px] border border-hairline bg-inset p-2.5">
                   <div>
-                    <span className="text-white/40 block">Type</span>
-                    <span className="font-mono text-white/80 uppercase">{inspectingArtifact.type}</span>
+                    <span className="label-mono text-[10.5px] text-ink-secondary block">Type</span>
+                    <span className="font-mono text-ink uppercase">{inspectingArtifact.type}</span>
                   </div>
                   <div>
-                    <span className="text-white/40 block">Size</span>
-                    <span className="font-mono text-white/80">
+                    <span className="label-mono text-[10.5px] text-ink-secondary block">Size</span>
+                    <span className="font-mono text-ink">
                       {inspectingArtifact.sizeBytes !== undefined
                         ? `${Math.round(inspectingArtifact.sizeBytes / 1000)} KB`
                         : "Unspecified"}
                     </span>
                   </div>
                   <div>
-                    <span className="text-white/40 block">Review state</span>
-                    <span className="capitalize text-white/80">
+                    <span className="label-mono text-[10.5px] text-ink-secondary block">Review state</span>
+                    <span className="capitalize text-ink">
                       {approvedArtifactIds.includes(inspectingArtifact.id)
                         ? "Approved"
                         : (inspectingArtifact.reviewState ?? "Pending review")}
                     </span>
                   </div>
                   <div>
-                    <span className="text-white/40 block">Task</span>
-                    <span className="font-mono text-white/80 truncate">{inspectingArtifact.taskId}</span>
+                    <span className="label-mono text-[10.5px] text-ink-secondary block">Task</span>
+                    <span className="font-mono text-ink truncate">{inspectingArtifact.taskId}</span>
                   </div>
                 </div>
 
                 {inspectingArtifact.summary && (
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40 block mb-1">
+                    <span className="label-mono text-[10.5px] text-ink-secondary block mb-1">
                       Executive Summary
                     </span>
-                    <p className="text-[12px] leading-relaxed text-white/80">
+                    <p className="text-[12px] leading-relaxed text-ink">
                       {inspectingArtifact.summary}
                     </p>
                   </div>
@@ -568,7 +565,7 @@ export function TeamMapWorkflowDrawer({
                 {/* Content preview with copy button */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                    <span className="label-mono text-[10.5px] text-ink-secondary">
                       Deliverable Payload
                     </span>
                     {inspectingArtifact.contentPreview && (
@@ -582,12 +579,12 @@ export function TeamMapWorkflowDrawer({
                             setTimeout(() => setCopiedId(null), 2000);
                           }
                         }}
-                        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10.5px] text-white/60 hover:bg-white/10 hover:text-white transition"
+                        className="inline-flex items-center gap-1 border border-hairline bg-inset px-2 py-0.5 font-mono text-[10.5px] text-ink hover:bg-raised-hover"
                       >
                         {copiedId === inspectingArtifact.id ? (
                           <>
-                            <Check size={11} className="text-emerald-400" />
-                            <span className="text-emerald-400 font-medium">Copied!</span>
+                            <Check size={11} className="text-success" />
+                            <span className="text-success font-medium">Copied!</span>
                           </>
                         ) : (
                           <>
@@ -598,37 +595,37 @@ export function TeamMapWorkflowDrawer({
                       </button>
                     )}
                   </div>
-                  <pre className="max-h-60 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#0A0C0E] p-3 font-mono text-[11px] leading-relaxed text-white/80">
+                  <pre className="max-h-60 overflow-y-auto border border-hairline bg-inset p-3 font-mono text-[11px] leading-relaxed text-ink">
                     {inspectingArtifact.contentPreview ?? "No raw preview content available for this deliverable."}
                   </pre>
                 </div>
               </div>
 
-              <footer className="flex items-center justify-between border-t border-white/[0.08] bg-black/30 px-4 py-2.5">
-                <span className="text-[10.5px] text-white/40 font-mono">
+              <footer className="flex items-center justify-between frame-rule-above bg-app px-4 py-2.5">
+                <span className="font-mono text-[10.5px] text-ink-secondary">
                   {dataMode === "live" ? "Live deliverable payload" : "Sample workflow data — not live commerce"}
                 </span>
                 <div className="flex items-center gap-2">
                   {inspectingArtifact.assignedReviewerId === agentId && inspectingArtifact.reviewState === "under_review" && !approvedArtifactIds.includes(inspectingArtifact.id) && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => {
                         setApprovedArtifactIds((prev) => [...prev, inspectingArtifact.id]);
                         onIntervene?.({ type: "approve_artifact", artifactId: inspectingArtifact.id, taskId: inspectingArtifact.taskId });
                       }}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-[12px] font-medium text-white shadow-sm transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
                     >
                       <Check size={12} aria-hidden="true" />
                       <span>Approve artifact</span>
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setInspectingArtifact(null)}
-                    className="inline-flex h-8 items-center rounded-md border border-white/10 bg-white/[0.04] px-3 text-[12px] font-medium text-white/80 hover:bg-white/[0.08] hover:border-white/20 transition cursor-pointer"
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
               </footer>
             </div>

@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Sparkles } from "lucide-react";
-
 import { api, useStore, type ConfigStatus } from "@/state/store";
+import { Button } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
+import { cn } from "@/lib/cn";
 import { normalizeImageGenerationUrl, type AvatarImageProvider } from "../../shared/image-generation";
-
 const PROVIDERS = {
   openai: { label: "OpenAI", keyLabel: "OpenAI image API key", credential: "openaiImageApiKey" },
   xai: { label: "Grok (xAI)", keyLabel: "Grok API key", credential: "xaiApiKey" },
   custom: { label: "Custom", keyLabel: "Custom image API key", credential: "customImageApiKey" },
 } as const;
 
-const INPUT_CLASS = "w-full min-w-0 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none disabled:opacity-50";
-const BUTTON_CLASS = "flex items-center justify-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[12.5px] text-ink hover:bg-raised-hover disabled:opacity-50";
-
+const INPUT_CLASS = cn(fieldClass, "h-8 font-mono text-[12px]");
+const TEXTAREA_CLASS = cn(fieldClass, "font-mono text-[12px]");
 export function AvatarImageGenerator({
   botLabel,
   disabled,
@@ -151,7 +151,7 @@ export function AvatarImageGenerator({
     <div className="space-y-2.5">
       {provider === "custom" && (
         <>
-          <label className="block text-[11.5px] text-ink-secondary">
+          <label className="label-mono block text-ink-secondary">
             Base URL
             <input
               type="url"
@@ -160,10 +160,10 @@ export function AvatarImageGenerator({
               onChange={(event) => setUrlDraft(event.target.value)}
               placeholder="http://127.0.0.1:4000/v1"
               autoComplete="off"
-              className={`${INPUT_CLASS} mt-1`}
+              className={cn(INPUT_CLASS, "mt-1")}
             />
           </label>
-          <label className="block text-[11.5px] text-ink-secondary">
+          <label className="label-mono block text-ink-secondary">
             Image model
             <input
               value={customModel}
@@ -171,7 +171,7 @@ export function AvatarImageGenerator({
               onChange={(event) => setModelDraft(event.target.value)}
               placeholder="Model ID from your image provider"
               autoComplete="off"
-              className={`${INPUT_CLASS} mt-1`}
+              className={cn(INPUT_CLASS, "mt-1")}
             />
           </label>
           <p className="text-[11px] leading-relaxed text-ink-secondary">
@@ -179,7 +179,7 @@ export function AvatarImageGenerator({
           </p>
         </>
       )}
-      <label className="block text-[11.5px] text-ink-secondary">
+      <label className="label-mono block text-ink-secondary">
         {providerInfo.keyLabel}{provider === "custom" ? " (optional)" : ""}
         <input
           type="password"
@@ -194,7 +194,7 @@ export function AvatarImageGenerator({
           }}
           placeholder={keyConfigured ? "Saved key · paste to replace" : provider === "custom" ? "Leave blank for a keyless connection" : "Paste API key"}
           autoComplete="off"
-          className={`${INPUT_CLASS} mt-1`}
+          className={cn(INPUT_CLASS, "mt-1")}
         />
       </label>
       {provider === "xai" && (
@@ -205,31 +205,31 @@ export function AvatarImageGenerator({
       )}
       <div className="flex items-center justify-end gap-2">
         {keyConfigured && (
-          <button type="button" onClick={() => void removeKey()} disabled={busy} className="mr-auto rounded-md py-1.5 text-[11.5px] text-ink-secondary hover:text-danger disabled:opacity-50">
+          <Button variant="ghost" size="xs" onClick={() => void removeKey()} disabled={busy} className="mr-auto text-ink-secondary hover:text-danger">
             Remove saved key
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => void saveConnection()}
           disabled={busy || (provider === "custom" ? !customUrl.trim() || !customModel.trim() || (!unsaved && configured) : !imageKey.trim())}
-          className={BUTTON_CLASS}
         >
           {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
           {provider === "custom" ? "Save connection" : "Save key"}
-        </button>
+        </Button>
       </div>
     </div>
   );
 
   return (
-    <div className="mt-5 border-t border-hairline/40 pt-4">
-      <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
-        <Sparkles size={14} className="text-accent" /> Generate with AI
+    <div className="mt-5 frame-rule-above pt-4">
+      <div className="flex items-center gap-2 text-[14px] font-medium text-ink">
+        <Sparkles size={14} className="text-ink-secondary" /> Generate with AI
       </div>
-      <label className="mt-3 block text-[11.5px] text-ink-secondary">
+      <label className="label-mono mt-3 block text-ink-secondary">
         Image provider
-        <select value={provider} onChange={(event) => void chooseProvider(event.target.value as AvatarImageProvider)} disabled={busy || !state.config} className={`${INPUT_CLASS} mt-1`}>
+        <select value={provider} onChange={(event) => void chooseProvider(event.target.value as AvatarImageProvider)} disabled={busy || !state.config} className={cn(INPUT_CLASS, "mt-1")}>
           {Object.entries(PROVIDERS).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}
         </select>
       </label>
@@ -241,11 +241,11 @@ export function AvatarImageGenerator({
       </p>
 
       {configured ? (
-        <details key={provider} className="mt-3 rounded-lg border border-hairline/40 px-3 py-2">
-          <summary className="cursor-pointer text-[11.5px] text-ink-secondary">Connection settings</summary>
+        <details key={provider} className="mt-3 border border-hairline bg-inset p-3">
+          <summary className="label-mono cursor-pointer text-ink-secondary">Connection settings</summary>
           <div className="mt-3">{connectionForm}</div>
         </details>
-      ) : <div className="mt-3">{connectionForm}</div>}
+      ) : <div className="mt-3 border border-hairline bg-inset p-3">{connectionForm}</div>}
 
       <textarea
         value={direction}
@@ -254,12 +254,13 @@ export function AvatarImageGenerator({
         maxLength={400}
         placeholder={`Optional direction, e.g. “a calm navigator inspired by ${botLabel}”`}
         aria-label="Avatar generation direction"
-        className={`${INPUT_CLASS} mt-3 min-h-[72px] resize-none`}
+        className={cn(TEXTAREA_CLASS, "mt-3 min-h-[72px] resize-none")}
       />
       <div className="mt-2 flex items-center justify-between gap-3">
-        <span className="text-[11px] tabular-nums text-ink-secondary">{direction.length}/400</span>
-        <button
-          type="button"
+        <span className="font-mono text-[11px] tabular-nums text-ink-secondary">{direction.length}/400</span>
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => {
             if (!busy && configured && !unsaved) {
               setError(null);
@@ -267,14 +268,13 @@ export function AvatarImageGenerator({
             }
           }}
           disabled={busy || !configured || unsaved}
-          className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:brightness-110 disabled:opacity-50"
         >
           {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
           {generating ? "Generating…" : "Generate avatar"}
-        </button>
+        </Button>
       </div>
-      {unsaved && <p role="status" className="mt-2 text-[11px] text-ink-secondary">Save your connection changes before generating.</p>}
-      {error && <div role="alert" className="mt-3 text-[12px] text-danger">{error}</div>}
+      {unsaved && <p role="status" className="mt-2 font-mono text-[11px] text-ink-secondary">Save your connection changes before generating.</p>}
+      {error && <div role="alert" className="mt-3 border border-danger/40 bg-danger/10 p-2 font-mono text-[12px] text-danger">{error}</div>}
     </div>
   );
 }

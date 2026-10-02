@@ -1,9 +1,10 @@
-import { ChevronRight, Activity } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { type Bot, type Message } from "@/state/store";
 import { BotAvatar } from "./Avatar";
 import { cn } from "@/lib/cn";
 import { normalizeState } from "@/lib/mascot";
+import { tileFor, TILE_FILL } from "@/components/ui/tile";
 
 export interface ActivityRailItem {
   id: string;
@@ -14,7 +15,7 @@ export interface ActivityRailItem {
   timestamp: number;
 }
 
-/** React Bits Pro (ai-chat-6) inspired Live Multi-Agent Activity Rail. */
+/** Cybernetic console Live Multi-Agent Activity Rail. */
 export function MultiAgentActivityRail({
   messages,
   bots,
@@ -60,82 +61,102 @@ export function MultiAgentActivityRail({
     <aside
       aria-label="Agent Activity Timeline"
       className={cn(
-        "hidden shrink-0 flex-col border-l border-hairline/50 bg-panel/70 p-3 transition-all duration-200 xl:flex backdrop-blur",
-        collapsed ? "w-12" : "w-72"
+        "hidden shrink-0 flex-col border-l border-hairline bg-panel p-3 transition-all duration-200 xl:flex",
+        collapsed ? "w-12" : "w-72",
       )}
     >
       <div className="mb-2 flex items-center justify-between px-1">
         {!collapsed && (
-          <div className="flex items-center gap-1.5">
-            <Activity size={14} className="text-accent" />
-            <span className="text-xs font-semibold tracking-tight text-ink">Agent Activity</span>
+          <div className="label-mono flex items-center gap-1.5 text-ink">
+            <span>ACTIVITY</span>
+            <span className="text-ink-secondary">[{activities.length}]</span>
           </div>
         )}
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="cursor-pointer ml-auto rounded p-1 text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
+          className="ml-auto flex size-6 items-center justify-center border border-hairline bg-raised text-ink-secondary hover:border-ink hover:text-ink transition-colors"
           title={collapsed ? "Expand Activity Rail" : "Collapse Activity Rail"}
+          aria-label={collapsed ? "Expand Activity Rail" : "Collapse Activity Rail"}
         >
           <ChevronRight
-            size={14}
+            size={12}
             className={cn("transition-transform duration-150", !collapsed && "rotate-180")}
           />
         </button>
       </div>
 
-      {!collapsed && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-hairline/40 bg-raised/30 p-2">
+      {!collapsed ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-hairline bg-inset p-2">
           <div className="h-full overflow-y-auto overscroll-contain pr-1">
-            <ol className="relative pl-3 space-y-3">
-              <div
-                aria-hidden="true"
-                className="absolute bottom-2 left-[5px] top-2 w-px bg-hairline/60"
-              />
+            <ol className="space-y-2">
               {activities.map((item) => {
-                const isLatestRunning = item.status === "running";
+                const isRunning = item.status === "running";
+                const tileTone = tileFor(item.bot?.id ?? item.agentName);
                 return (
-                  <li key={item.id} className="relative flex items-start gap-2.5">
-                    <span
-                      className={cn(
-                        "relative z-10 mt-1 size-2 shrink-0 rounded-full ring-2 ring-panel",
-                        isLatestRunning
-                          ? "bg-accent animate-pulse"
-                          : item.status === "failed"
-                            ? "bg-danger"
-                            : "bg-success"
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        {item.bot && (
-                          <BotAvatar
-                            bot={item.bot}
-                            state={normalizeState(item.bot.mascotExpression) ?? "happy"}
-                            size={14}
-                          />
+                  <li
+                    key={item.id}
+                    className="flex flex-col gap-1 border-b border-hairline/40 pb-2 last:border-b-0 last:pb-0"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        aria-hidden="true"
+                        className={cn("size-2 shrink-0", TILE_FILL[tileTone])}
+                      />
+                      <span
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          isRunning
+                            ? "bg-accent animate-pulse"
+                            : item.status === "failed"
+                              ? "bg-danger"
+                              : "bg-success",
                         )}
-                        <span className="truncate text-[11.5px] font-medium text-ink">
-                          {item.agentName}
-                        </span>
-                        <span
-                          className={cn(
-                            "ml-auto text-[10px] font-medium shrink-0",
-                            isLatestRunning ? "text-accent" : "text-ink-secondary/70"
-                          )}
-                        >
-                          {isLatestRunning ? "Running" : item.status === "failed" ? "Failed" : "Done"}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-[11px] leading-relaxed text-ink-secondary font-mono">
-                        {item.detail}
-                      </p>
+                      />
+                      {item.bot && (
+                        <BotAvatar
+                          bot={item.bot}
+                          state={normalizeState(item.bot.mascotExpression) ?? "happy"}
+                          size={14}
+                        />
+                      )}
+                      <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-medium text-ink">
+                        {item.agentName}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 font-mono text-[9.5px] uppercase tracking-wider",
+                          isRunning
+                            ? "text-accent"
+                            : item.status === "failed"
+                              ? "text-danger"
+                              : "text-ink-secondary",
+                        )}
+                      >
+                        {isRunning ? "Running" : item.status === "failed" ? "Failed" : "Done"}
+                      </span>
                     </div>
+                    <p className="truncate font-mono text-[10.5px] leading-relaxed text-ink-secondary">
+                      {item.detail}
+                    </p>
                   </li>
                 );
               })}
             </ol>
           </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          {activities.slice(-6).map((item) => {
+            const tileTone = tileFor(item.bot?.id ?? item.agentName);
+            return (
+              <span
+                key={item.id}
+                title={`${item.agentName}: ${item.detail}`}
+                className={cn("size-2.5", TILE_FILL[tileTone])}
+              />
+            );
+          })}
         </div>
       )}
     </aside>

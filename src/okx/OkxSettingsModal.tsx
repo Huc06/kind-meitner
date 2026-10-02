@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
 import {
-  Shield,
-  Wallet,
   Check,
   AlertCircle,
-  X,
   Server,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { okxApiBase, okxApiUrl, okxPairingToken, setOkxApiBase, setOkxPairingToken } from "./okx-api-base";
 import { fetchOkxSettings } from "./okx-settings-api";
+import {
+  DialogBackdrop,
+  DialogPanel,
+  DialogHeader,
+  DialogBody,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input, FieldLabel } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
 
 export interface OkxSettingsData {
   treasuryBalance: number;
@@ -152,177 +159,162 @@ export function OkxSettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div
-        className={cn(
-          "w-full max-w-lg rounded-2xl border border-hairline/50 bg-card p-6 shadow-2xl text-ink space-y-5 animate-in fade-in zoom-in-95 duration-150",
-          className,
-        )}
-      >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-hairline/40 pb-3">
-          <div className="flex items-center gap-2">
-            <Shield className="text-accent" size={20} />
-            <h2 className="text-base font-bold">OKX Onchain OS Gateway Settings</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-ink-secondary hover:bg-raised hover:text-ink transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
+    <DialogBackdrop onDismiss={onClose}>
+      <DialogPanel className={cn("max-w-lg", className)}>
+        <DialogHeader
+          title="OKX Onchain OS Gateway Settings"
+          onClose={onClose}
+        />
 
-        {error && (
-          <div className="rounded-lg bg-danger/10 border border-danger/20 p-3 text-xs text-danger flex items-center gap-2">
-            <AlertCircle size={14} className="shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          {/* Local OKX server — where credential-bearing OKX calls actually
-              go. Never Railway/hosted: this browser only stores the URL it
-              is told to call, never a credential. */}
-          <div className="space-y-2">
-            <div className="font-semibold uppercase text-[10px] tracking-wider text-ink-secondary flex items-center gap-1.5">
-              <Server size={12} />
-              Local OKX Server
-            </div>
-            <p className="text-[11px] leading-relaxed text-ink-secondary">
-              Run <code className="bg-raised px-1 py-0.5 rounded text-ink">pnpm okx-serve</code> on your own machine,
-              then point this browser at it. Your OKX credentials stay in that process's environment and are never
-              sent to this hosted UI.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                inputMode="url"
-                placeholder="http://127.0.0.1:8899 (leave blank to use this server)"
-                value={localServerUrl}
-                onChange={(e) => applyLocalServerUrl(e.target.value)}
-                className="flex-1 rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => void testLocalServerConnection()}
-                disabled={localServerCheck === "checking"}
-                className="shrink-0 rounded-md border border-hairline/50 px-3 py-1.5 font-medium text-ink-secondary hover:bg-raised transition-colors disabled:opacity-50"
-              >
-                {localServerCheck === "checking" ? "Checking…" : "Test connection"}
-              </button>
-            </div>
-            {localServerCheck === "ok" && (
-              <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
-                <Check size={12} /> Connected to the local OKX server.
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="space-y-4 text-xs">
+            {error && (
+              <div className="border border-danger/40 bg-danger/10 p-3 text-xs text-danger flex items-center gap-2">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{error}</span>
               </div>
             )}
-            {localServerCheck === "unreachable" && (
-              <div className="flex items-center gap-1.5 text-[11px] text-danger">
-                <AlertCircle size={12} /> Could not reach that address. Confirm the server is running and, if it is on
-                another origin, that its <code className="bg-raised px-1 py-0.5 rounded text-ink">KIND_MEITNER_OKX_ALLOWED_ORIGINS</code> includes this page's origin.
+
+            {/* Local OKX server */}
+            <div className="space-y-2">
+              <div className="label-mono text-ink-secondary flex items-center gap-1.5">
+                <Server size={12} />
+                Local OKX Server
               </div>
-            )}
-            <div className="space-y-1">
-              <label className="text-ink-secondary font-medium">Pairing token</label>
-              <input
-                type="password"
-                autoComplete="off"
-                placeholder="Paste the token printed in the okx-serve terminal"
-                value={pairingToken}
-                onChange={(e) => applyPairingToken(e.target.value)}
-                className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none"
-              />
-              <p className="text-[10.5px] text-ink-secondary">
-                Required to save settings, receive webhooks, or use the paid MCP/x402 routes. Not needed just to view
-                read-only data. Stored only in this browser.
+              <p className="text-[11px] leading-relaxed text-ink-secondary">
+                Run <code className="border border-hairline bg-raised px-1 py-0.5 text-ink">pnpm okx-serve</code> on your own machine,
+                then point this browser at it. Your OKX credentials stay in that process's environment and are never
+                sent to this hosted UI.
               </p>
-            </div>
-          </div>
-
-          {/* Server-only credential boundary */}
-          <div className="rounded-lg border border-hairline/40 bg-raised/40 p-3 text-[11px] leading-relaxed text-ink-secondary">
-            <div className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-ink-secondary">
-              Developer Portal Credentials
-            </div>
-            API keys, passphrases, webhook secrets, recipient addresses, and payment configuration are server-only.
-            Configure them in the local OKX server's own environment above; this browser never reads, stores, or submits them.
-          </div>
-
-          {/* Autonomous Treasury & Spend Caps */}
-          <div className="space-y-3 pt-2 border-t border-hairline/30">
-            <div className="font-semibold uppercase text-[10px] tracking-wider text-ink-secondary flex items-center gap-1.5">
-              <Wallet size={12} />
-              Autonomous Treasury & Budget Limits
-              {loadingCurrent && <span className="text-ink-secondary/70">(loading current values…)</span>}
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="text-ink-secondary font-medium">Wallet Balance ({token})</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={treasuryBalance}
-                  disabled={loadingCurrent}
-                  onChange={(e) => setTreasuryBalance(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none disabled:opacity-50"
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="url"
+                  placeholder="http://127.0.0.1:8899 (leave blank to use this server)"
+                  value={localServerUrl}
+                  onChange={(e) => applyLocalServerUrl(e.target.value)}
+                  className="h-8 font-mono text-xs flex-1"
                 />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void testLocalServerConnection()}
+                  disabled={localServerCheck === "checking"}
+                >
+                  {localServerCheck === "checking" ? "Checking…" : "Test connection"}
+                </Button>
               </div>
-
+              {localServerCheck === "ok" && (
+                <div className="flex items-center gap-1.5 text-[11px] text-success">
+                  <Check size={12} /> Connected to the local OKX server.
+                </div>
+              )}
+              {localServerCheck === "unreachable" && (
+                <div className="flex items-center gap-1.5 text-[11px] text-danger">
+                  <AlertCircle size={12} /> Could not reach that address. Confirm the server is running and, if it is on
+                  another origin, that its <code className="border border-hairline bg-raised px-1 py-0.5 text-ink">KIND_MEITNER_OKX_ALLOWED_ORIGINS</code> includes this page's origin.
+                </div>
+              )}
               <div className="space-y-1">
-                <label className="text-ink-secondary font-medium">Max Per-Run ({token})</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="any"
-                  value={maxPerRunSpend}
-                  disabled={loadingCurrent}
-                  onChange={(e) => setMaxPerRunSpend(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none disabled:opacity-50"
+                <FieldLabel>Pairing token</FieldLabel>
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Paste the token printed in the okx-serve terminal"
+                  value={pairingToken}
+                  onChange={(e) => applyPairingToken(e.target.value)}
+                  className="h-8 font-mono text-xs"
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-ink-secondary font-medium">Monthly Cap ({token})</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="any"
-                  value={monthlyBudgetCap}
-                  disabled={loadingCurrent}
-                  onChange={(e) => setMonthlyBudgetCap(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-md border border-hairline/50 bg-inset px-3 py-1.5 font-mono text-xs focus:border-accent focus:outline-none disabled:opacity-50"
-                />
+                <p className="text-[10.5px] text-ink-secondary">
+                  Required to save settings, receive webhooks, or use the paid MCP/x402 routes. Not needed just to view
+                  read-only data. Stored only in this browser.
+                </p>
               </div>
             </div>
 
-            <div className="rounded-lg bg-raised/40 p-2.5 text-[11px] text-ink-secondary leading-relaxed">
-              <strong>Autonomous Escrow Rule:</strong> Scheduled routines running with target{" "}
-              <code className="bg-raised px-1 py-0.5 rounded text-ink">okx-task</code> will draw directly from the
-              treasury. If a single run exceeds <strong>{maxPerRunSpend} {token}</strong> or pushes 30-day volume over{" "}
-              <strong>{monthlyBudgetCap} {token}</strong>, execution is automatically halted.
+            {/* Server-only credential boundary */}
+            <div className="border border-hairline bg-raised/40 p-3 text-[11px] leading-relaxed text-ink-secondary">
+              <div className="label-mono mb-1 text-ink-secondary">
+                Developer Portal Credentials
+              </div>
+              API keys, passphrases, webhook secrets, recipient addresses, and payment configuration are server-only.
+              Configure them in the local OKX server's own environment above; this browser never reads, stores, or submits them.
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-hairline/30">
-            <button
+            {/* Autonomous Treasury & Spend Caps */}
+            <div className="space-y-3 pt-2 frame-rule-above">
+              <div className="label-mono text-ink-secondary flex items-center gap-1.5">
+                <Wallet size={12} />
+                Autonomous Treasury & Budget Limits
+                {loadingCurrent && <span className="text-ink-secondary/70">(loading current values…)</span>}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <FieldLabel>Wallet Balance ({token})</FieldLabel>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={treasuryBalance}
+                    disabled={loadingCurrent}
+                    onChange={(e) => setTreasuryBalance(parseFloat(e.target.value) || 0)}
+                    className="h-8 font-mono text-xs tabular-nums"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Max Per-Run ({token})</FieldLabel>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={maxPerRunSpend}
+                    disabled={loadingCurrent}
+                    onChange={(e) => setMaxPerRunSpend(parseFloat(e.target.value) || 0)}
+                    className="h-8 font-mono text-xs tabular-nums"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Monthly Cap ({token})</FieldLabel>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={monthlyBudgetCap}
+                    disabled={loadingCurrent}
+                    onChange={(e) => setMonthlyBudgetCap(parseFloat(e.target.value) || 0)}
+                    className="h-8 font-mono text-xs tabular-nums"
+                  />
+                </div>
+              </div>
+
+              <div className="border border-hairline bg-raised/40 p-2.5 text-[11px] text-ink-secondary leading-relaxed">
+                <strong className="text-ink">Autonomous Escrow Rule:</strong> Scheduled routines running with target{" "}
+                <code className="border border-hairline bg-raised px-1 py-0.5 text-ink">okx-task</code> will draw directly from the
+                treasury. If a single run exceeds <strong className="text-ink">{maxPerRunSpend} {token}</strong> or pushes 30-day volume over{" "}
+                <strong className="text-ink">{monthlyBudgetCap} {token}</strong>, execution is automatically halted.
+              </div>
+            </div>
+          </DialogBody>
+
+          <DialogFooter>
+            <Button
               type="button"
+              variant="secondary"
+              size="md"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 font-medium text-ink-secondary hover:bg-raised transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant={savedSuccess ? "success" : "primary"}
+              size="md"
               disabled={saving}
-              className={cn(
-                "rounded-lg px-5 py-2 font-semibold text-ink transition-colors flex items-center gap-1.5",
-                savedSuccess ? "bg-emerald-600" : "bg-accent hover:opacity-90",
-              )}
+              className="gap-1.5"
             >
               {savedSuccess ? (
                 <>
@@ -333,10 +325,10 @@ export function OkxSettingsModal({
               ) : (
                 "Save Configuration"
               )}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogBackdrop>
   );
 }

@@ -1217,7 +1217,7 @@ function openDesktopViewer(owner, rawUrl, rawTitle, contextId) {
     show: false,
     title,
     icon: APP_ICON,
-    backgroundColor: "#070707",
+    backgroundColor: "#101018",
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -1653,7 +1653,7 @@ function createWindow() {
     // skin still flashes the Midnight-black block on every cold start.
     show: !waitsForSkinSync,
     icon: APP_ICON,
-    backgroundColor: "#070707",
+    backgroundColor: "#101018",
     autoHideMenuBar: process.platform !== "darwin",
     ...windowChromeOptions(process.platform),
     webPreferences: {

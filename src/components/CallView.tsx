@@ -31,6 +31,7 @@ import { isRoutineApproval, isSkillApproval, pendingApprovals, spokenApprovalPro
 import { cn } from "@/lib/cn";
 import { track } from "@/lib/analytics";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
+import { Button } from "@/components/ui/button";
 
 /** Spoken answers to a permission card. Anything else is read as a reply
  * to the bot, not as consent — an approval must never be granted by a
@@ -149,17 +150,17 @@ export function CallTargetButton({
         aria-label={label}
         title={label}
         className={cn(
-          "relative flex size-9 items-center justify-center rounded-full transition-colors",
+          "relative flex size-7 items-center justify-center border transition-colors",
           active
-            ? "bg-danger text-white hover:brightness-110"
+            ? "border-danger bg-danger text-white hover:opacity-85"
             : unavailable
-              ? "text-ink-secondary/50 hover:bg-raised hover:text-ink-secondary"
-              : "text-ink-secondary hover:bg-raised hover:text-ink",
+              ? "border-hairline text-ink-secondary/50 hover:border-ink hover:text-ink-secondary"
+              : "border-hairline text-ink-secondary hover:border-ink hover:text-ink",
         )}
       >
-        {active ? <PhoneOff size={17} /> : <Phone size={17} />}
+        {active ? <PhoneOff size={14} /> : <Phone size={14} />}
         {unavailable && (
-          <span className="absolute right-1 top-1 size-1.5 rounded-full bg-warning ring-2 ring-app" aria-hidden="true" />
+          <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-warning ring-1 ring-app" aria-hidden="true" />
         )}
       </button>
 
@@ -168,22 +169,23 @@ export function CallTargetButton({
           id={helpId}
           role="group"
           aria-label="Call unavailable"
-          className="animate-pop-in absolute right-0 z-30 mt-1.5 w-[280px] rounded-xl border border-hairline bg-panel p-3 text-left shadow-2xl"
+          className="animate-pop-in absolute right-0 z-30 mt-1.5 w-[280px] border border-hairline bg-menu p-3 text-left shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
         >
           <div className="text-[13px] font-medium text-ink">Call unavailable</div>
           <div className="mt-1 text-[12px] leading-[1.45] text-ink-secondary">{reason}</div>
           {voiceSetupRequired && (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
+              className="mt-2.5"
               onClick={() => {
                 setHelpOpen(false);
                 if (setupBotId && setupBotId !== targetId) dispatch({ type: "select", id: setupBotId });
                 dispatch({ type: "toggleSettings", open: true, section: "voice" });
               }}
-              className="mt-2.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:brightness-110"
             >
               Open agent settings
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -534,21 +536,24 @@ function Call({ bot }: { bot: Bot }) {
           : "Working";
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-app/95 backdrop-blur-sm">
-      <button
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-app/95">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon
         onClick={() => endCall(bot.id)}
         aria-label="Hang up"
-        className="absolute right-5 top-5 rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+        className="absolute right-4 top-4 text-ink-secondary hover:text-ink"
       >
-        <X size={18} />
-      </button>
+        <X size={16} />
+      </Button>
 
       <BotAvatar bot={bot} state={mascotState} size={220} animated interactive />
 
       <div className="flex flex-col items-center gap-1.5 text-center">
         <div className="text-[20px] font-medium text-ink">{bot.name}</div>
-        <div className="flex items-center gap-2 text-[13.5px] text-ink-secondary">
-          {(phase === "working" || phase === "sending") && <Loader2 size={13} className="animate-spin" />}
+        <div className="flex items-center gap-2 font-mono text-[12px] text-ink-secondary">
+          {(phase === "working" || phase === "sending") && <Loader2 size={12} className="animate-spin" />}
           {status}
         </div>
       </div>
@@ -569,38 +574,41 @@ function Call({ bot }: { bot: Bot }) {
       {note && (
         <div className="flex max-w-[460px] flex-col items-center gap-2 text-center text-[12.5px] text-warning">
           <span>{note}</span>
-          <button
+          <Button
+            variant="secondary"
+            size="xs"
             onClick={listen}
-            className="rounded-full border border-warning/40 px-3 py-1.5 text-[12px] hover:bg-warning/10"
           >
             Try microphone again
-          </button>
+          </Button>
         </div>
       )}
-      {speech.error && <div className="max-w-[420px] text-center text-[12.5px] text-danger">{speech.error}</div>}
+      {speech.error && <div className="max-w-[420px] text-center font-mono text-[12px] text-danger">{speech.error}</div>}
 
       <div className="flex items-center gap-3">
         {speaker.isSpeaking() && (
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => {
               sayGeneration.current += 1;
               speaker.stop();
               listen();
             }}
-            className="rounded-full border border-hairline/50 px-4 py-2 text-[13.5px] text-ink hover:bg-raised"
           >
             Interrupt
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="danger"
+          size="md"
           onClick={() => endCall(bot.id)}
-          className="flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-[14px] font-medium text-white hover:brightness-110"
         >
-          <PhoneOff size={16} /> Hang up
-        </button>
+          <PhoneOff size={15} /> Hang up
+        </Button>
       </div>
 
-      <div className="text-[11.5px] text-ink-secondary/70">
+      <div className="font-mono text-[11px] text-ink-secondary">
         Hold Control + Option to talk · Space interrupts · Esc hangs up
       </div>
     </div>

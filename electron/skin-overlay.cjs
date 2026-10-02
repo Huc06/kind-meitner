@@ -8,14 +8,14 @@
 "use strict";
 
 const SKIN_CHROME = Object.freeze({
-  midnight: Object.freeze({ color: "#070707", symbolColor: "#b5b5b5" }),
+  midnight: Object.freeze({ color: "#101018", symbolColor: "#a9aab9" }),
   atelier: Object.freeze({ color: "#f5f1eb", symbolColor: "#6b6559" }),
   foundry: Object.freeze({ color: "#100e0b", symbolColor: "#b0a696" }),
   lagoon: Object.freeze({ color: "#dfeceb", symbolColor: "#4d5c5b" }),
   graphite: Object.freeze({ color: "#111214", symbolColor: "#b3b8c2" }),
   linen: Object.freeze({ color: "#eceff3", symbolColor: "#59616c" }),
   dusk: Object.freeze({ color: "#121014", symbolColor: "#b9afbd" }),
-  daylight: Object.freeze({ color: "#fcfcfc", symbolColor: "#575757" }),
+  daylight: Object.freeze({ color: "#ebebf5", symbolColor: "#4a4b58" }),
 });
 
 const DEFAULT_SKIN = "midnight";

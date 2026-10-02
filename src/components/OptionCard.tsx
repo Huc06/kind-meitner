@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { useStore, visibleMessages, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { Frame } from "@/components/ui/frame";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
@@ -52,48 +53,45 @@ export function OptionCard({
   };
 
   return (
-    <div className="w-full max-w-[840px] rounded-2xl border border-hairline/50 bg-card p-4">
+    <Frame as="section" title="Options" surface="app" className="w-full max-w-[840px] bg-card p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[16px] font-semibold text-ink">{title}</div>
-          <div className="mt-0.5 text-[14px] text-ink-secondary">
+          <div className="text-[14px] font-medium text-ink">{title}</div>
+          <div className="mt-0.5 text-[12px] text-ink-secondary">
             {subtitle}
           </div>
         </div>
         <button
+          type="button"
           onClick={() =>
             dispatch({ type: "dismissCard", botId, threadId, messageId: message.id, groupId })
           }
-          className="rounded-md p-1 text-ink-secondary hover:bg-control hover:text-ink"
+          className="p-1 text-ink-secondary hover:text-ink transition-colors"
+          aria-label="Dismiss options"
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-hairline/40">
+      <div className="mt-3 border border-hairline bg-inset">
         {options.map((opt, i) => (
           <button
             key={opt}
+            type="button"
             disabled={!!card.answered}
             onClick={() => answer(opt)}
             className={cn(
-              "flex w-full items-center gap-3 px-3 py-3 text-left text-[15px] text-ink",
-              i > 0 && "border-t border-hairline/40",
-              // `raised` is the wrong fill here: the light skins define it as
-              // pure white, the same value as the card underneath, so a
-              // hovered or answered row used to be invisible. `raised-hover`
-              // is the one tone every skin guarantees stands off a surface.
+              "flex w-full items-center gap-3 px-3 py-2.5 text-left text-[13.5px] text-ink transition-colors",
+              i > 0 && "border-t border-hairline",
               (card.answeredText ?? card.answered) === opt
                 ? "bg-raised-hover"
                 : "hover:bg-raised-hover/60 disabled:hover:bg-transparent",
             )}
           >
-            {/* `control` is the chip tone every skin guarantees on a card; the
-                hairline keeps it a chip even on a row that is itself filled */}
-            <span className="flex size-6 items-center justify-center rounded-md border border-hairline/50 bg-control text-[12px] font-medium text-ink-secondary">
+            <span className="flex size-5 shrink-0 items-center justify-center border border-hairline bg-control font-mono text-[10.5px] font-medium text-ink-secondary">
               {LETTERS[i]}
             </span>
-            {opt}
+            <span>{opt}</span>
           </button>
         ))}
       </div>
@@ -106,9 +104,9 @@ export function OptionCard({
           onChange={(e) => setCustom(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && answer(custom)}
           placeholder={t("onboarding.card.custom")}
-          className="mt-3 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-secondary focus:outline-none focus:border-hairline"
+          className="mt-3 w-full border border-hairline bg-inset px-3 py-2 font-mono text-[12.5px] text-ink placeholder:text-ink-secondary/70 focus:outline-none focus:border-ink"
         />
       )}
-    </div>
+    </Frame>
   );
 }

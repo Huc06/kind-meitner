@@ -21,6 +21,10 @@ import { RoomTurnTimeoutSettings } from "./RoomTurnTimeoutSettings";
 import { ThreadConcurrencySettings } from "./ThreadConcurrencySettings";
 import { cn } from "@/lib/cn";
 import { setShowThreads, useShowThreads } from "@/lib/thread-preferences";
+import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input, Select } from "@/components/ui/field";
 
 // `labelKey`, not a label: t() reads the active pack when it is called, so a
 // label resolved here at module scope would freeze the language the app booted
@@ -64,19 +68,22 @@ function ProfileFields() {
       .catch(() => {});
   };
 
-  const inputClass =
-    "w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[14px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none";
   return (
     <div className="flex flex-col gap-3">
-      <input aria-label={t("settings.profile.name")} value={name} onChange={(e) => setName(e.target.value)} onBlur={save} placeholder={t("settings.profile.name")} className={inputClass} />
-      <input
+      <Input
+        aria-label={t("settings.profile.name")}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={save}
+        placeholder={t("settings.profile.name")}
+      />
+      <Input
         type="email"
         aria-label={t("phone.signIn.email")}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         onBlur={save}
         placeholder="you@example.com"
-        className={inputClass}
       />
     </div>
   );
@@ -113,7 +120,9 @@ function UpdatesRow() {
                     : t("settings.updates.latest");
   return (
     <SettingRow title={t("settings.updates.title")} subtitle={label}>
-      <button
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={() => {
           if (s?.status === "available") return void updater.download();
           if (s?.status === "downloaded") return void updater.install();
@@ -123,7 +132,6 @@ function UpdatesRow() {
           s?.status === "checking" || s?.status === "downloading" || s?.status === "preparing" ||
           s?.status === "installing" || s?.retryable === false
         }
-        className="ui-button"
       >
         {s?.retryable === false
           ? t("settings.updates.quitReopen")
@@ -140,7 +148,7 @@ function UpdatesRow() {
                     ? t("settings.updates.opening")
                     : t("settings.updates.restartingShort")
                   : t("settings.updates.check")}
-      </button>
+      </Button>
     </SettingRow>
   );
 }
@@ -173,7 +181,9 @@ function ReplayAppTourButton() {
   const [failed, setFailed] = useState(false);
   return (
     <div>
-      <button
+      <Button
+        variant="secondary"
+        size="sm"
         disabled={saving}
         onClick={() => {
           setSaving(true);
@@ -194,10 +204,9 @@ function ReplayAppTourButton() {
             .catch(() => setFailed(true))
             .finally(() => setSaving(false));
         }}
-        className="ui-button"
       >
         {t("settings.welcome.appTour")}
-      </button>
+      </Button>
       {failed && <p role="alert" className="mt-2 text-[13px] text-danger">{t("onboarding.tour.error")}</p>}
     </div>
   );
@@ -209,12 +218,13 @@ function ReplayTourRow() {
     <SettingRow title={t("settings.welcome.title")} subtitle={t("settings.welcome.subtitle")}>
       <div className="flex flex-wrap gap-2">
         <ReplayAppTourButton />
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => dispatch({ type: "toggleWelcome", open: true })}
-          className="ui-button"
         >
           {t("settings.welcome.replay")}
-        </button>
+        </Button>
       </div>
     </SettingRow>
   );
@@ -249,12 +259,12 @@ function LanguageRow() {
       subtitle={t("settings.language.subtitle")}
       message={error ? <p role="alert" className="text-danger">{error}</p> : null}
     >
-      <select
+      <Select
         value={current}
         disabled={saving}
         aria-label={t("settings.language.aria")}
         onChange={(event) => void save(event.target.value)}
-        className="min-h-8 w-full max-w-[240px] rounded-lg border border-hairline/40 bg-inset px-2.5 py-1.5 text-[13px] text-ink focus:border-focus disabled:cursor-wait disabled:opacity-50"
+        className="max-w-[240px]"
       >
         <option value="">{t("settings.language.system")}</option>
         {localeChoices.map(({ code, label }) => (
@@ -262,7 +272,7 @@ function LanguageRow() {
             {label}
           </option>
         ))}
-      </select>
+      </Select>
     </SettingRow>
   );
 }
@@ -351,14 +361,15 @@ function DiagnosticsRow() {
         </p>
       ) : null}
     >
-      <button
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={() => void exportDiagnostics()}
         disabled={exporting}
         aria-label={t("settings.diagnostics.aria")}
-        className="ui-button"
       >
         {exporting ? t("settings.diagnostics.exporting") : t("settings.diagnostics.export")}
-      </button>
+      </Button>
     </SettingRow>
   );
 }
@@ -428,26 +439,24 @@ export function SettingsModal() {
   }, [dispatch]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-6"
-      onMouseDown={(e) => e.target === e.currentTarget && dispatch({ type: "toggleAppSettings", open: false })}
-    >
-      <div
+    <DialogBackdrop onDismiss={() => dispatch({ type: "toggleAppSettings", open: false })}>
+      <DialogPanel
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="app-settings-title"
         tabIndex={-1}
-        className={cn("flex max-h-[calc(100dvh-24px)] w-full overflow-hidden rounded-2xl border border-hairline/50 bg-panel shadow-2xl outline-none", section === "engines" ? "h-[720px] max-w-[1040px]" : "h-[560px] max-w-[860px]")}
+        className={cn(
+          "flex-row max-h-[calc(100dvh-24px)] w-full overflow-hidden p-0 outline-none",
+          section === "engines" ? "h-[740px] max-w-[1080px]" : "h-[620px] max-w-[920px]",
+        )}
       >
         {/* section nav */}
         <span id="app-settings-title" className="sr-only">{t("settings.title")}</span>
-        <nav className="hidden min-h-0 w-[190px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-hairline/40 bg-app/30 p-3 sm:flex">
-          <div className="shrink-0 px-2 py-3 text-[15px] font-semibold text-ink">
+        <nav className="hidden min-h-0 w-[210px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-hairline bg-app p-3 sm:flex">
+          <div className="shrink-0 px-2.5 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-ink">
             {t("settings.title")}
           </div>
-          <div className="mb-2 mt-1 flex min-h-8 shrink-0 items-center gap-2 rounded-lg border border-transparent bg-control/70 px-2.5 py-2 focus-within:border-focus">
-            <Search size={14} className="shrink-0 text-ink-secondary" />
+          <div className="mb-2 mt-1 flex min-h-8 shrink-0 items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5 focus-within:border-ink">
+            <Search size={13} className="shrink-0 text-ink-secondary" />
             <input
               data-settings-search
               value={query}
@@ -460,32 +469,38 @@ export function SettingsModal() {
               }}
               placeholder={t("settings.search")}
               aria-label={t("settings.searchAria")}
-              className="w-full bg-transparent text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
+              className="w-full bg-transparent font-mono text-[11.5px] text-ink placeholder:text-ink-secondary/70 focus:outline-none"
             />
           </div>
           {visibleSections.length === 0 && (
-            <div className="px-2.5 py-4 text-[12.5px] leading-relaxed text-ink-secondary">
+            <div className="px-2.5 py-4 text-[12px] leading-relaxed text-ink-secondary">
               {t("settings.noMatch", { query: query.trim() })}
             </div>
           )}
-          {visibleSections.map(({ id, labelKey, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: id })}
-              aria-current={section === id ? "page" : undefined}
-              className={cn(
-                "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors motion-reduce:transition-none",
-                section === id ? "bg-control text-ink" : "text-ink-secondary hover:bg-control/50 hover:text-ink",
-              )}
-            >
-              <Icon size={15} className="shrink-0" />
-              {t(labelKey)}
-            </button>
-          ))}
+          {visibleSections.map(({ id, labelKey, icon: Icon }) => {
+            const isSelected = section === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: id })}
+                aria-current={isSelected ? "page" : undefined}
+                className={cn(
+                  "flex min-h-8 items-center gap-2.5 px-2.5 py-1.5 text-left font-mono text-[11.5px] font-medium uppercase tracking-[0.06em] transition-colors motion-reduce:transition-none",
+                  isSelected
+                    ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+                    : "text-ink-secondary hover:bg-raised-hover hover:text-ink",
+                )}
+              >
+                <Icon size={14} className="shrink-0" />
+                <span className="truncate">{t(labelKey)}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline/30 px-3 py-3 sm:px-5">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-4 py-3 sm:px-6">
             <select
               aria-label={t("settings.title")}
               value={section}
@@ -493,26 +508,30 @@ export function SettingsModal() {
                 setQuery("");
                 dispatch({ type: "toggleAppSettings", open: true, section: event.target.value as AppSettingsSection });
               }}
-              className="min-w-0 rounded-lg bg-control px-3 py-2 text-[14px] text-ink sm:hidden"
+              className="min-w-0 border border-hairline bg-inset px-2.5 py-1.5 font-mono text-[12px] uppercase text-ink sm:hidden"
             >
               {availableSections.map(({ id, labelKey }) => (
                 <option key={id} value={id}>{t(labelKey)}</option>
               ))}
             </select>
-            <span className="hidden text-[15px] font-semibold text-ink sm:block">
-              {sectionLabelKey ? t(sectionLabelKey) : null}
-            </span>
-            <button
+            <div className="hidden sm:block">
+              <Eyebrow index={availableSections.findIndex((s) => s.id === section) + 1}>
+                {sectionLabelKey ? t(sectionLabelKey) : null}
+              </Eyebrow>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon
               onClick={() => dispatch({ type: "toggleAppSettings", open: false })}
               aria-label={t("settings.close")}
               title={`${t("settings.close")} (${shortcutLabel("close-panel")})`}
-              className="ui-icon-button shrink-0"
             >
-              <X size={18} />
-            </button>
+              <X size={16} />
+            </Button>
           </div>
 
-          <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4 sm:px-5 sm:pb-5">
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-6">
             {section === "general" && (
               <>
                 <Card title={t("settings.profile.title")} subtitle={t("settings.profile.subtitle")}>
@@ -552,8 +571,8 @@ export function SettingsModal() {
                 subtitle={t("settings.connections.subtitle")}
               >
                 <div className="flex flex-col gap-4">
-                  <div className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("keys.providers.title")}</div>
-                  <p className="-mt-3 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
+                  <div className="label-mono text-ink-secondary">{t("keys.providers.title")}</div>
+                  <p className="-mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
                   <ApiKeyRow section="anthropic" testProvider="anthropic" />
                   <ApiKeyRow section="xai" testProvider="xai" />
                 </div>
@@ -565,7 +584,7 @@ export function SettingsModal() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogBackdrop>
   );
 }

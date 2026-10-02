@@ -10,6 +10,7 @@ import {
   Crown,
   MessageSquareReply,
   Monitor,
+  MoreHorizontal,
   Pencil,
   Pin,
   PinOff,
@@ -39,6 +40,7 @@ import {
 import { EngineSetup } from "./EngineSetup";
 import { isProviderSafetyBlock, PROVIDER_SAFETY_GUIDANCE, PROVIDER_SAFETY_HELP_URL } from "../../shared/provider-safety";
 import { BotAvatar } from "./Avatar";
+import { EngineModeBadge } from "./EngineModeBadge";
 import { TurnPresence } from "./TurnPresence";
 import { devDayGateCardsEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
 import { isOkxGateTool } from "@/lib/okx-action-cards";
@@ -111,8 +113,11 @@ function dayLabel(at: number): string {
 
 function DaySeparator({ at }: { at: number }) {
   return (
-    <div className="py-3 text-center text-[13px] text-ink-secondary">
-      {dayLabel(at)} {formatTime(at)}
+    <div className="relative my-4 flex items-center justify-center">
+      <div className="frame-rule absolute inset-x-0" />
+      <span className="label-mono relative bg-app px-2.5 text-ink-secondary">
+        {dayLabel(at)} · {formatTime(at)}
+      </span>
     </div>
   );
 }
@@ -130,7 +135,7 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
       aria-label={t("chat.copyMessage")}
       title={t("chat.copyMessage")}
       className={cn(
-        "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
+        "cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
         className,
       )}
     >
@@ -157,7 +162,7 @@ export function ErrorRow({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="w-fit max-w-[min(42rem,78%)] rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[13.5px] text-danger">
+      <div className="w-fit max-w-[min(42rem,78%)] border border-danger/60 bg-danger/10 px-3.5 py-2.5 font-mono text-[12.5px] text-danger">
         <div className="flex items-start gap-2">
           <AlertTriangle size={15} className="mt-0.5 shrink-0" />
           <span className="min-w-0 break-words">{message}</span>
@@ -174,7 +179,7 @@ export function ErrorRow({
           onRetry && (
             <button
               onClick={onRetry}
-              className="mt-1.5 flex items-center gap-1.5 rounded-full border border-danger/30 px-2.5 py-1 text-[12.5px] hover:bg-danger/15"
+              className="cursor-pointer mt-1.5 flex items-center gap-1.5 border border-danger/60 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide hover:bg-danger/20"
             >
               <RefreshCw size={12} /> {t("chat.retry")}
             </button>
@@ -195,7 +200,7 @@ class MessageBoundary extends Component<{ children: ReactNode; fallbackText: str
   render() {
     if (this.state.failed) {
       return (
-        <div className="chat-text w-fit max-w-[min(42rem,78%)] rounded-2xl bg-card px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-ink">
+        <div className="chat-text w-fit max-w-[min(42rem,78%)] bg-card px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-ink">
           {this.props.fallbackText}
         </div>
       );
@@ -227,7 +232,7 @@ function BubbleEditor({
     if (draft.trim()) onSubmit(draft.trim());
   };
   return (
-    <div className="w-full max-w-[min(42rem,78%)] rounded-2xl border border-hairline/40 bg-bubble-user px-4 py-3">
+    <div className="w-full max-w-[min(42rem,78%)] border border-hairline bg-bubble-user px-4 py-3">
       <textarea
         ref={ref}
         value={draft}
@@ -245,15 +250,17 @@ function BubbleEditor({
       />
       <div className="mt-2 flex items-center justify-end gap-2">
         <button
+          type="button"
           onClick={onCancel}
-          className="rounded-full px-3 py-1 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
+          className="cursor-pointer border border-hairline bg-transparent px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink"
         >
           {t("common.cancel")}
         </button>
         <button
+          type="button"
           onClick={submit}
           disabled={!draft.trim()}
-          className="rounded-full bg-accent px-3 py-1 text-[13px] font-medium text-white disabled:opacity-40"
+          className="cursor-pointer border border-accent bg-accent px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide text-accent-ink disabled:opacity-40"
         >
           {t("chat.send")}
         </button>
@@ -328,6 +335,22 @@ function Bubble({
   return (
     <div className={cn("group flex w-full flex-col", user ? "animate-msg-in items-end" : "items-start")}>
       {peer && <PeerLabel peer={peer} />}
+      {!user && !peer && (
+        <div className="mb-1 flex items-center gap-2">
+          <BotAvatar
+            bot={bot}
+            state={stateForBot({ ...bot, messages: [message] })}
+            size={18}
+          />
+          <span className="label-mono text-ink">
+            {bot.name}
+          </span>
+          <EngineModeBadge bot={bot} instances={state.instances} variant="status" />
+          <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">
+            · {formatTime(message.at)}
+          </span>
+        </div>
+      )}
       <div className={cn("flex w-full items-center gap-1.5", user ? "justify-end" : "justify-start")}>
         {/* editing rewinds the thread, so it waits for the turn to end —
             same rule as the version switcher below */}
@@ -335,7 +358,7 @@ function Bubble({
           <button
             onClick={onStartEdit}
             aria-label={t("chat.editMessage")}
-            className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+            className="cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
             title={t("chat.editMessage")}
           >
             <Pencil size={14} />
@@ -348,7 +371,7 @@ function Bubble({
               type="button"
               onClick={onReply}
               aria-label={t("chat.replyToMessage")}
-              className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+              className="cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
               title={t("chat.reply")}
             >
               <MessageSquareReply size={14} />
@@ -364,7 +387,7 @@ function Bubble({
               }
               aria-label={bot.pinnedMessageId === message.id ? t("chat.unpinMessage") : t("chat.pinMessage")}
               className={cn(
-                "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
+                "cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
                 remoteClient && "hidden",
               )}
               title={bot.pinnedMessageId === message.id ? t("chat.unpinHint") : t("chat.pinHint")}
@@ -375,13 +398,13 @@ function Bubble({
         )}
         <div
           className={cn(
-            "w-fit max-w-[min(42rem,78%)] rounded-2xl text-[15px] leading-relaxed",
+            "w-fit max-w-[min(48rem,90%)] text-[15px] font-sans leading-relaxed",
             emerging && "turn-answer",
             user && webhookView
-              ? "overflow-hidden border border-accent/25 bg-card text-ink shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
+              ? "overflow-hidden border border-accent/25 bg-card text-ink"
               : user
-                ? "bg-bubble-user px-4 py-2.5 whitespace-pre-wrap text-ink"
-                : "bg-card px-4 py-2.5 text-ink",
+                ? "bg-bubble-user border border-hairline/40 px-4 py-2.5 whitespace-pre-wrap text-ink"
+                : "text-ink px-1",
           )}
           title={new Date(message.at).toLocaleString()}
         >
@@ -407,7 +430,7 @@ function Bubble({
               {webhookView.payload && (
                 <details className="border-t border-hairline/30 bg-inset/25 px-4 py-2.5 text-[11.5px] text-ink-secondary">
                   <summary className="cursor-pointer select-none hover:text-ink">{t("chat.viewPayload")}</summary>
-                  <pre className="mt-2 max-h-48 overflow-auto rounded-lg border border-hairline/25 bg-black/25 p-3 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap text-ink-secondary">{webhookView.payload}</pre>
+                  <pre className="mt-2 max-h-48 overflow-auto border border-hairline/25 bg-inset p-3 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap text-ink-secondary">{webhookView.payload}</pre>
                 </details>
               )}
             </div>
@@ -445,6 +468,9 @@ function Bubble({
               ) : text ? (
                 <ChatMarkdown text={text} mentionPeers={mentionPeers} message={{ threadId: bot.threadId, messageId: message.id }} />
               ) : null}
+              <div className="mt-1 flex items-center gap-1.5">
+                <EngineModeBadge message={message} bot={bot} instances={state.instances} />
+              </div>
             </MessageBoundary>
           )}
         </div>
@@ -461,7 +487,7 @@ function Bubble({
                   onClick={onRegenerate}
                   aria-label={t("chat.regenerate")}
                   title={t("chat.regenerate")}
-                  className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                  className="cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                 >
                   <RefreshCw size={14} />
                 </button>
@@ -471,7 +497,7 @@ function Bubble({
               type="button"
               onClick={onReply}
               aria-label={t("chat.replyToMessage")}
-              className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+              className="cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
               title={t("chat.reply")}
             >
               <MessageSquareReply size={14} />
@@ -487,7 +513,7 @@ function Bubble({
               }
               aria-label={bot.pinnedMessageId === message.id ? t("chat.unpinMessage") : t("chat.pinMessage")}
               className={cn(
-                "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
+                "cursor-pointer p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
                 remoteClient && "hidden",
               )}
               title={bot.pinnedMessageId === message.id ? t("chat.unpinHint") : t("chat.pinHint")}
@@ -498,7 +524,7 @@ function Bubble({
         )}
         <span
           className={cn(
-            "self-end pb-1 text-[11px] tabular-nums text-ink-secondary/70 opacity-0 transition-opacity group-hover:opacity-100",
+            "self-end pb-1 font-mono text-[10.5px] tabular-nums text-ink-secondary/70 opacity-0 transition-opacity group-hover:opacity-100",
             user ? "order-first mr-1" : "ml-1",
           )}
         >
@@ -510,7 +536,7 @@ function Bubble({
           <button
             onClick={() => switchTo(versions[versionIndex - 1])}
             disabled={versionIndex <= 0 || bot.busy}
-            className="rounded p-0.5 hover:bg-raised hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            className="cursor-pointer p-0.5 font-mono hover:bg-raised-hover hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
             title={t("chat.previousVersion")}
           >
             <ChevronLeft size={14} />
@@ -521,7 +547,7 @@ function Bubble({
           <button
             onClick={() => switchTo(versions[versionIndex + 1])}
             disabled={versionIndex >= versions.length - 1 || bot.busy}
-            className="rounded p-0.5 hover:bg-raised hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            className="cursor-pointer p-0.5 font-mono hover:bg-raised-hover hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
             title={t("chat.nextVersion")}
           >
             <ChevronRight size={14} />
@@ -548,7 +574,7 @@ function PeerLabel({ peer }: { peer: PeerLine }) {
         : t("chat.peer.asked");
   return (
     <div className="mb-1.5 flex items-center gap-1.5 pl-0.5" data-testid="peer-label">
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-hairline/40 bg-raised/70 px-2 py-0.5 text-[11px] font-medium text-ink shadow-xs">
+      <span className="inline-flex items-center gap-1.5 border border-hairline bg-raised px-2 py-0.5 font-mono text-[10.5px] uppercase text-ink">
         <BotAvatar
           bot={author ?? { name: peer.name, color: "blue" }}
           state={normalizeState(author?.mascotExpression) ?? "happy"}
@@ -579,7 +605,7 @@ function ActivityChip({ message }: { message: Message }) {
         <button
           onClick={() => dispatch({ type: "select", id: comm.groupId })}
           title={t("chat.openConversationWith", { name: comm.withName })}
-          className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
+          className="cursor-pointer flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1 text-[11px] font-mono text-ink-secondary hover:bg-raised-hover hover:text-ink"
         >
           <BotAvatar bot={withBot ?? { name: comm.withName, color: comm.withColor }} state="happy" size={16} />
           <span className="max-w-[480px] truncate">{tool.name}</span>
@@ -597,7 +623,7 @@ function ScreenFrame({ png, mime }: { png: string; mime?: string }) {
       <img
         src={`data:${mime ?? "image/png"};base64,${png}`}
         alt={t("chat.botScreen")}
-        className="w-fit max-w-[min(42rem,78%)] rounded-2xl border border-hairline/40"
+        className="w-fit max-w-[min(42rem,78%)] border border-hairline"
       />
     </div>
   );
@@ -850,25 +876,27 @@ function PinnedBanner({
   const text = (pinnedPeer?.body ?? pinned.text ?? "").replace(/\s+/g, " ").trim();
   if (!text) return null;
   return (
-    <div className="w-full px-5">
-      <div className="mb-2 flex items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-1.5">
-        <Pin size={12} className="shrink-0 text-accent" />
+    <div className="w-full px-4">
+      <div className="mb-2 flex items-center gap-2 border border-hairline bg-inset px-3 py-1.5">
+        <Pin size={12} className="shrink-0 text-ink" />
         <button
           onClick={() => onJump(pinned.id)}
-          className="flex min-w-0 flex-1 items-baseline gap-2 text-left"
+          className="cursor-pointer flex min-w-0 flex-1 items-baseline gap-2 text-left"
           title={t("chat.pinnedJump")}
         >
-          <span className="shrink-0 text-[11.5px] font-medium text-accent">{sender}</span>
-          <span className="truncate text-[12.5px] text-ink-secondary">{text}</span>
+          <span className="label-mono shrink-0 text-ink">{sender}</span>
+          <span className="truncate font-sans text-[12px] text-ink-secondary">{text}</span>
         </button>
-        {onUnpin && <button
-          onClick={onUnpin}
-          aria-label={t("chat.unpinMessage")}
-          title={t("chat.unpin")}
-          className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
-        >
-          <X size={13} />
-        </button>}
+        {onUnpin && (
+          <button
+            onClick={onUnpin}
+            aria-label={t("chat.unpinMessage")}
+            title={t("chat.unpin")}
+            className="cursor-pointer shrink-0 p-0.5 text-ink-secondary hover:bg-raised-hover hover:text-ink"
+          >
+            <X size={13} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -898,6 +926,25 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
     `bot:${bot.id}:${bot.threadId}`,
     bot.messages,
   );
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!moreMenuRef.current?.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [moreOpen]);
   useEffect(() => setFindOpen(false), [bot.threadId]);
   useEffect(() => {
     const onFind = (event: KeyboardEvent) => {
@@ -1154,22 +1201,22 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         className={cn(
           // @container so the chips on the right can fold to icon bubbles
           // when the column is narrow (side panel open, small window)
-          "@container/chathead flex items-center justify-between border-b border-hairline/15 px-5 py-2.5",
-          // Room for the drawer button, which overlays this corner below md.
-          "pl-11 md:pl-5",
+          "@container/chathead flex h-11 shrink-0 items-center justify-between frame-rule-below bg-app px-4",
+          // Room for the drawer button, which overlays this corner on <= 768px.
+          "pl-12 min-[769px]:pl-4",
         )}
       >
-        <div className="flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1" style={headerNoDragStyle}>
+        <div className="flex min-w-0 items-center gap-2 px-1 py-1" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-raised/30"
+            className="cursor-pointer flex size-7 shrink-0 items-center justify-center hover:opacity-80"
             title={t("chat.openProfile")}
             aria-label={t("chat.openProfileAria", { name: bot.name })}
           >
             <BotAvatar
               bot={bot}
               state={stateForBot({ ...bot, messages })}
-              size={30}
+              size={24}
               motion={mascotMotion?.kind ?? "none"}
               motionKey={mascotMotion?.nonce ?? 0}
             />
@@ -1187,102 +1234,190 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             }}
             onActivate={() => dispatch({ type: "toggleSettings", open: true })}
             showEditButton
-            className="truncate text-[15px] font-semibold text-ink"
-            inputClassName="max-w-[220px] rounded bg-inset px-1.5 py-0.5 text-[15px] font-semibold"
+            className="truncate text-[14px] font-medium text-ink min-w-[30px]"
+            inputClassName="max-w-[220px] border border-hairline bg-inset px-1.5 py-0.5 text-[14px] font-medium"
           />
+          <div className="hidden min-[640px]:inline-flex shrink-0">
+            <EngineModeBadge bot={bot} instances={state.instances} variant="status" />
+          </div>
           {bot.chiefOfStaff && (
-            <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-medium text-accent">
+            <span className="hidden min-[640px]:flex items-center gap-1 border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10px] uppercase text-ink shrink-0">
               <Crown size={11} /> {t("chat.chiefOfStaff")}
             </span>
           )}
-          {bot.busy && <WorkingDots className="text-ink-secondary" />}
+          {bot.busy && <WorkingDots className="text-ink-secondary shrink-0" />}
         </div>
         <div
-          className="flex shrink-0 items-center gap-2"
+          className="flex shrink-0 items-center gap-1.5"
           // The caption buttons sit over the header's right end; drop this
           // icon row 16px (visual only — the header keeps its height) so the
           // buttons clear the 26px overlay while the rest of the layout stays.
           style={controlsShiftStyle}
         >
-          <button
-            onClick={() => setFindOpen((open) => !open)}
-            aria-label={t("chat.find")}
-            aria-pressed={findOpen}
-            className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
-              findOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
-            )}
-            title={t("chat.findShortcut")}
-          >
-            <Search size={18} />
-          </button>
-          <ExportTranscriptMenu
-            title={bot.name}
-            messages={messages}
-            botName={bot.name}
-          />
           {bot.busy && (
             <button
               onClick={() => dispatch({ type: "interrupt", botId: bot.id, threadId: bot.threadId })}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border border-hairline/40 bg-raised/60 px-2.5 py-1 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink",
+                "cursor-pointer flex items-center gap-1.5 border border-danger/60 bg-danger/10 px-2 py-1 font-mono text-[11px] uppercase tracking-wide text-danger hover:bg-danger/20",
                 COMPACT_BUBBLE,
               )}
               title={t("chat.stopTurn")}
             >
-              <Square size={12} className="fill-current" />
+              <Square size={11} className="fill-current" />
               <span className="@max-4xl/chathead:hidden">{t("chat.stop")}</span>
             </button>
           )}
-          <TaskPicker bot={bot} />
-          <UsageChip bot={bot} />
-          {!remoteClient && <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />}
-          <CallButton bot={bot} />
-          <button
-            data-tour="computer"
-            onClick={() => dispatch({ type: "toggleComputer" })}
-            className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
-              state.computerOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
+
+          <div className="hidden min-[769px]:flex items-center gap-1.5">
+            <button
+              onClick={() => setFindOpen((open) => !open)}
+              aria-label={t("chat.find")}
+              aria-pressed={findOpen}
+              className={cn(
+                "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
+                findOpen ? "border-ink text-ink bg-raised" : "",
+              )}
+              title={t("chat.findShortcut")}
+            >
+              <Search size={15} />
+            </button>
+            <ExportTranscriptMenu
+              title={bot.name}
+              messages={messages}
+              botName={bot.name}
+            />
+            <TaskPicker bot={bot} />
+            <UsageChip bot={bot} />
+            {!remoteClient && <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />}
+            <CallButton bot={bot} />
+            <button
+              data-tour="computer"
+              onClick={() => dispatch({ type: "toggleComputer" })}
+              className={cn(
+                "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
+                state.computerOpen ? "border-ink text-ink bg-raised" : "",
+              )}
+              title={t("chat.computer")}
+            >
+              <Monitor size={15} />
+            </button>
+            {!remoteClient && <button
+              onClick={() => dispatch({ type: "toggleInspector" })}
+              aria-label={t("chat.inspector")}
+              aria-pressed={state.inspectorOpen}
+              className={cn(
+                "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
+                state.inspectorOpen ? "border-ink text-ink bg-raised" : "",
+              )}
+              title={t("chat.inspectorHint")}
+            >
+              <Bug size={15} />
+            </button>}
+          </div>
+
+          <div className="relative min-[769px]:hidden" ref={moreMenuRef}>
+            <button
+              type="button"
+              onClick={() => setMoreOpen((open) => !open)}
+              aria-expanded={moreOpen}
+              aria-label={t("room.moreActions")}
+              title={t("room.moreActions")}
+              className="cursor-pointer flex size-7 shrink-0 items-center justify-center border border-hairline bg-panel text-ink-secondary hover:bg-raised-hover hover:text-ink"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {moreOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-40 mt-1 min-w-[220px] max-w-[calc(100vw-2rem)] border border-hairline bg-menu p-2 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] font-mono text-[12px] flex flex-col gap-1.5"
+              >
+                <div className="min-[640px]:hidden border-b border-hairline/60 pb-2 mb-1">
+                  <EngineModeBadge bot={bot} instances={state.instances} variant="status" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFindOpen((open) => !open);
+                    setMoreOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                >
+                  <Search size={14} className="shrink-0 text-ink-secondary" />
+                  <span>{t("chat.find")}</span>
+                </button>
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <ExportTranscriptMenu
+                    title={bot.name}
+                    messages={messages}
+                    botName={bot.name}
+                  />
+                  <span className="text-[12px] text-ink">Export conversation</span>
+                </div>
+                <div className="border-t border-hairline/60 pt-1.5 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <span className="text-[11px] text-ink-secondary">Threads</span>
+                    <TaskPicker bot={bot} />
+                  </div>
+                  {!remoteClient && (
+                    <div className="flex items-center justify-between px-2 py-1">
+                      <span className="text-[11px] text-ink-secondary">Model</span>
+                      <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <span className="text-[11px] text-ink-secondary">Call</span>
+                    <CallButton bot={bot} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: "toggleComputer" });
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                  >
+                    <Monitor size={14} className="shrink-0 text-ink-secondary" />
+                    <span>{t("chat.computer")}</span>
+                  </button>
+                  {!remoteClient && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dispatch({ type: "toggleInspector" });
+                        setMoreOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                    >
+                      <Bug size={14} className="shrink-0 text-ink-secondary" />
+                      <span>{t("chat.inspector")}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
-            title={t("chat.computer")}
-          >
-            <Monitor size={18} />
-          </button>
-          {!remoteClient && <button
-            onClick={() => dispatch({ type: "toggleInspector" })}
-            aria-label={t("chat.inspector")}
-            aria-pressed={state.inspectorOpen}
-            className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
-              state.inspectorOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
-            )}
-            title={t("chat.inspectorHint")}
-          >
-            <Bug size={18} />
-          </button>}
+          </div>
         </div>
       </div>
 
       <BotActivityPicker bot={bot} />
-      {routineExecution && <div className="mx-5 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[11.5px] text-ink-secondary">
+      {routineExecution && <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 border border-hairline bg-inset px-3 py-2 font-mono text-[11.5px] text-ink-secondary">
         <span className="min-w-0 flex-1 truncate">{t("routines.executionDetails", { name: routineExecution.routineName })}</span>
-        {canOpenResults && resultsThreadId && <button type="button" onClick={() => openNotificationTarget(dispatch, { botId: bot.id, threadId: resultsThreadId }, state)} className="rounded px-2 py-1 text-accent hover:bg-raised">{t("routines.results.back")}</button>}
-        <button type="button" onClick={() => dispatch({ type: "showRoutines", section: "logs", routineId: routineExecution.routineId, botId: bot.id })} className="rounded px-2 py-1 hover:bg-raised hover:text-ink">{t("routines.logs")}</button>
+        {canOpenResults && resultsThreadId && <button type="button" onClick={() => openNotificationTarget(dispatch, { botId: bot.id, threadId: resultsThreadId }, state)} className="cursor-pointer border border-hairline px-2 py-0.5 text-ink hover:bg-raised-hover">{t("routines.results.back")}</button>}
+        <button type="button" onClick={() => dispatch({ type: "showRoutines", section: "logs", routineId: routineExecution.routineId, botId: bot.id })} className="cursor-pointer border border-hairline px-2 py-0.5 hover:bg-raised-hover hover:text-ink">{t("routines.logs")}</button>
       </div>}
       {findOpen && <ChatFindBar threadId={bot.threadId} onClose={() => setFindOpen(false)} />}
 
       {/* Error banner */}
       {state.error && (
-        <div className="w-full px-5">
-          <div className="mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] text-danger">
+        <div className="w-full px-4">
+          <div className="mb-2 border border-danger/60 bg-danger/10 px-3 py-2 font-mono text-[12.5px] text-danger">
             {state.error}
           </div>
         </div>
       )}
       {state.notice && (
-        <div className="w-full px-5">
-          <div role="status" className="mb-2 rounded-lg border border-hairline/40 bg-panel px-3 py-2 text-[13px] text-ink-secondary">
+        <div className="w-full px-4">
+          <div role="status" className="mb-2 border border-hairline bg-panel px-3 py-2 font-mono text-[12px] text-ink-secondary">
             {state.notice.botName ? t("thread.goneShowing", { name: state.notice.botName }) : t("thread.gone")}
           </div>
         </div>
@@ -1306,11 +1441,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           instead of dying on a rectangular clip above a black dock. */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="relative flex min-h-0 flex-1 flex-col">
-          {/* ReactBits Pro Scroll Edge Gradient */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-6 bg-gradient-to-b from-panel/90 to-transparent transition-opacity duration-200"
-          />
+          {/* Scroll container */}
           <div
             ref={scrollRef}
             className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-5 [overflow-anchor:none]"
@@ -1356,7 +1487,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             <div className="flex justify-center pt-2">
               <button
                 onClick={showEarlier}
-                className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
+                className="cursor-pointer border border-hairline bg-panel px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink"
               >
                 {t("chat.showEarlier", { count: hiddenCount })}
               </button>
@@ -1382,7 +1513,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             <div className="flex justify-center">
               <button
                 onClick={showLater}
-                className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
+                className="cursor-pointer border border-hairline bg-panel px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink"
               >
                 {t("chat.showLater", { count: laterCount })}
               </button>
@@ -1390,7 +1521,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           )}
           {provisioning && (
             <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary">
+              <div className="flex items-center gap-2 border border-hairline bg-panel px-3 py-1.5 font-mono text-[11px] text-ink-secondary">
                 <WorkingDots size={3.5} />
                 {t("chat.provisioning")}
               </div>
@@ -1419,7 +1550,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         <button
           onClick={jumpToLatest}
           aria-label={t("chat.jumpToLatestAria")}
-          className="cursor-pointer animate-pop-in absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline/60 bg-raised/95 px-3.5 py-1.5 text-[12px] font-medium text-ink shadow-[0_4px_16px_-4px_rgba(0,0,0,0.18)] backdrop-blur transition-all hover:bg-raised-hover active:scale-95"
+          className="cursor-pointer absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 border border-hairline bg-raised px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-ink hover:bg-raised-hover"
           style={{ bottom: composerDock.height + 8 }}
         >
           <ArrowDown size={13} className="text-ink-secondary" />
@@ -1504,7 +1635,7 @@ function UsageChip({ bot }: { bot: Bot }) {
   return (
     <button
       onClick={() => dispatch({ type: "toggleSettings", open: true, section: "usage" })}
-      className="whitespace-nowrap rounded-full border border-hairline/40 bg-raised/60 px-2.5 py-1 text-[12px] tabular-nums text-ink-secondary hover:bg-raised hover:text-ink @max-4xl/chathead:px-2"
+      className="cursor-pointer whitespace-nowrap border border-hairline bg-raised/60 px-2 py-1 font-mono text-[11px] tabular-nums text-ink-secondary hover:bg-raised-hover hover:text-ink @max-4xl/chathead:px-1.5"
       title={detail}
     >
       <span className="@max-4xl/chathead:hidden">{text}</span>

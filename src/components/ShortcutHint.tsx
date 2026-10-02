@@ -9,5 +9,12 @@ export function shortcutLabel(id: string): string | undefined {
 export function ShortcutHint({ id }: { id: string }) {
   const label = shortcutLabel(id);
   if (!label) return null;
-  return <kbd aria-hidden="true" className="shrink-0 rounded border border-hairline/50 px-1.5 py-0.5 font-sans text-[11px] leading-none text-ink-secondary">{label}</kbd>;
+  return (
+    <kbd
+      aria-hidden="true"
+      className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center border border-hairline bg-inset px-1 font-mono text-[10px] font-medium text-ink-secondary"
+    >
+      {label}
+    </kbd>
+  );
 }

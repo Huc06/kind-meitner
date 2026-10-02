@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Circle, Loader2, RotateCcw, ShieldCheck, Smartphone, Usb } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Circle, Loader2, RotateCcw, ShieldCheck, Smartphone, Usb } from "lucide-react";
 import { usePageVisible } from "@/lib/page-visible";
 import { t } from "@/lib/i18n";
 import type { AndroidDeviceInput, AndroidDeviceStatus, AndroidUsbDevice } from "@/types/ogb";
+import { Button } from "@/components/ui/button";
+import { Frame } from "@/components/ui/frame";
+import { Tag } from "@/components/ui/tag";
+import { Select } from "@/components/ui/field";
 
 type UnitPoint = { x: number; y: number };
 
@@ -117,7 +121,7 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
   };
 
   const unitPoint = (
-    event: React.PointerEvent<HTMLDivElement>,
+    event: React.PointerEvent<HTMLElement>,
     clampToPhone = false,
   ): UnitPoint | null => {
     const image = imageRef.current;
@@ -136,7 +140,7 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
     return x >= 0 && x <= 1 && y >= 0 && y <= 1 ? { x, y } : null;
   };
 
-  const keyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const keyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const named: Record<string, string> = {
       ArrowDown: "down",
@@ -158,7 +162,7 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
     }
   };
 
-  const wheel = (event: React.WheelEvent<HTMLDivElement>) => {
+  const wheel = (event: React.WheelEvent<HTMLElement>) => {
     if (!dimensions.width || !dimensions.height) return;
     event.preventDefault();
     const gesture = wheelRef.current;
@@ -196,44 +200,49 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
 
   return (
     <div className="space-y-3 pb-5">
-      <div className="rounded-xl bg-card p-4">
+      <div className="border border-hairline bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-[15px] font-medium text-ink">
+            <div className="flex items-center gap-2 text-[14px] font-medium text-ink">
               <Smartphone size={16} className="text-success" /> {deviceLabel(selected)}
             </div>
             <div className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
               {t("computer.android.usbSubtitle")}
             </div>
           </div>
-          <span className="flex shrink-0 items-center gap-1 text-[11px] text-success">
+          <Tag tone="success" size="sm" className="gap-1">
             <ShieldCheck size={12} /> {t("computer.android.usb")}
-          </span>
+          </Tag>
         </div>
         {status.devices.length > 1 && (
-          <select
+          <Select
             value={selected.serial}
             onChange={(event) => setSerial(event.target.value)}
-            className="mt-3 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[12px] text-ink"
+            className="mt-3 text-[12px]"
           >
             {status.devices.map((device) => (
               <option key={device.serial} value={device.serial}>
                 {deviceLabel(device)} · {device.state}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 
       {!ready ? (
-        <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 text-[12px] leading-relaxed text-warning">
-          {selected.state === "unauthorized"
-            ? t("computer.android.unauthorized")
-            : t("computer.android.badState", { state: selected.state })}
+        <div className="flex items-start gap-2.5 border border-warning/40 bg-card p-4 text-[12px] leading-relaxed text-warning">
+          <AlertTriangle size={14} aria-hidden className="mt-0.5 shrink-0" />
+          <span>
+            {selected.state === "unauthorized"
+              ? t("computer.android.unauthorized")
+              : t("computer.android.badState", { state: selected.state })}
+          </span>
         </div>
       ) : (
         <>
-          <div
+          <Frame
+            surface="card"
+            corners
             role="application"
             aria-label={t("computer.android.screenAria", { name: deviceLabel(selected) })}
             tabIndex={0}
@@ -269,7 +278,7 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
             onPointerCancel={() => {
               pointerRef.current = null;
             }}
-            className="mx-auto flex h-[520px] w-full touch-none cursor-pointer items-center justify-center overflow-hidden overscroll-none rounded-[28px] bg-black outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-accent"
+            className="mx-auto flex h-[520px] w-full touch-none cursor-pointer items-center justify-center overflow-hidden overscroll-none bg-black outline-none"
           >
             {frame ? (
               <img
@@ -288,26 +297,32 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
             ) : (
               <Loader2 size={20} className="animate-spin text-ink-secondary" />
             )}
-          </div>
+          </Frame>
           <div className="grid grid-cols-3 gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
               onClick={() => send({ type: "key", key: "back" })}
-              className="flex items-center justify-center gap-1.5 rounded-lg bg-raised py-2 text-[12px] text-ink hover:bg-raised-hover"
             >
               <ArrowLeft size={13} /> {t("computer.android.back")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
               onClick={() => send({ type: "key", key: "home" })}
-              className="flex items-center justify-center gap-1.5 rounded-lg bg-raised py-2 text-[12px] text-ink hover:bg-raised-hover"
             >
               <Circle size={12} /> {t("computer.android.home")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
               onClick={() => send({ type: "key", key: "recent" })}
-              className="flex items-center justify-center gap-1.5 rounded-lg bg-raised py-2 text-[12px] text-ink hover:bg-raised-hover"
             >
               <RotateCcw size={13} /> {t("computer.android.recent")}
-            </button>
+            </Button>
           </div>
           <div className="text-center text-[11px] leading-relaxed text-ink-secondary">
             {t("computer.android.hint")}
@@ -316,12 +331,12 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
       )}
 
       {error && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">
+        <div className="border border-danger/40 bg-card p-3 font-mono text-[12px] text-danger">
           {error}
         </div>
       )}
 
-      <div className="rounded-xl bg-card p-4">
+      <div className="border border-hairline bg-card p-4">
         <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
           <Usb size={15} className="text-accent" /> {t("computer.android.setupTitle")}
         </div>
@@ -343,7 +358,7 @@ export function AndroidDevicePanel({ status }: { status: AndroidDeviceStatus }) 
         <div className="mt-2 text-[11px] leading-relaxed text-ink-secondary">
           {t("computer.android.agentNote")}
         </div>
-        <div className="mt-2 rounded-lg bg-inset px-3 py-2 text-[11px] leading-relaxed text-ink-secondary">
+        <div className="mt-2 border border-hairline bg-inset p-2.5 text-[11px] leading-relaxed text-ink-secondary">
           {t("computer.android.harnessNote")}
         </div>
       </div>

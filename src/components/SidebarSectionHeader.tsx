@@ -60,16 +60,16 @@ export function SidebarSectionHeader({
                 ? t("sidebar.section.expand", { name })
                 : t("sidebar.section.collapse", { name })
           }
-          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-raised/50"
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1 text-left transition-colors hover:bg-raised-hover outline-none focus-visible:ring-1 focus-visible:ring-focus"
         >
-          <span className="truncate text-[12px] font-semibold text-ink-secondary">
+          <span className="label-mono truncate text-ink-secondary">
             {name}
           </span>
-          <Chevron size={13} className="shrink-0 text-ink-secondary" aria-hidden="true" />
+          <Chevron size={12} className="shrink-0 text-ink-secondary" aria-hidden="true" />
           {attention && attention.waiting > 0 && (
             <span
               aria-hidden="true"
-              className="min-w-4 rounded-full bg-warning/15 px-1 text-center text-[9px] font-semibold leading-4 text-warning"
+              className="min-w-4 border border-warning px-1 text-center font-mono text-[9px] font-medium leading-3.5 text-warning"
             >
               {attention.waiting}
             </span>
@@ -77,7 +77,7 @@ export function SidebarSectionHeader({
           {attention && attention.unread > 0 && (
             <span
               aria-hidden="true"
-              className="min-w-4 rounded-full bg-accent/15 px-1 text-center text-[9px] font-semibold leading-4 text-accent"
+              className="min-w-4 border border-hairline bg-raised px-1 text-center font-mono text-[9px] font-medium leading-3.5 text-ink"
             >
               {attention.unread}
             </span>
@@ -93,8 +93,8 @@ export function SidebarSectionHeader({
           {attentionLabel && <span className="sr-only">{attentionLabel}</span>}
         </button>
       ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5">
-          <span className="truncate text-[12px] font-semibold text-ink-secondary">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1">
+          <span className="label-mono truncate text-ink-secondary">
             {name}
           </span>
           {attentionLabel && <span className="sr-only">{attentionLabel}</span>}
@@ -108,7 +108,7 @@ export function SidebarSectionHeader({
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           className={cn(
-            "flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-ink-secondary hover:bg-raised hover:text-ink",
+            "flex size-6 shrink-0 cursor-grab items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink",
             dragging && "opacity-40",
           )}
         >

@@ -9,6 +9,8 @@ import { Check, ChevronDown, RefreshCw } from "lucide-react";
 import { EngineSetup } from "@/components/EngineSetup";
 import { engineReady } from "@/components/EngineLibrary";
 import { ProviderMark } from "@/components/ProviderIcons";
+import { Button } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { api, useStore, type InstanceInfo } from "@/state/store";
@@ -20,24 +22,18 @@ function version(instance: InstanceInfo): string | null {
 
 function StatusPill({ ready }: { ready: boolean }) {
   return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium",
-        ready ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full", ready ? "bg-success" : "bg-warning")} aria-hidden="true" />
+    <Tag tone={ready ? "success" : "warning"} variant="soft" size="sm">
       {ready ? t("onboarding.engines.ready") : t("onboarding.engines.needsSetup")}
-    </span>
+    </Tag>
   );
 }
 
 function SkeletonRow({ index }: { index: number }) {
   return (
     <div className="animate-rise flex items-center gap-3 px-3.5 py-3" style={staggerIndex(index)} aria-hidden="true">
-      <span className="size-[18px] rounded-md bg-raised" />
-      <span className="h-3 w-32 rounded bg-raised" />
-      <span className="ml-auto h-4 w-14 rounded-full bg-raised" />
+      <span className="size-[18px] bg-raised" />
+      <span className="h-3 w-32 bg-raised" />
+      <span className="ml-auto h-4 w-14 bg-raised" />
     </div>
   );
 }
@@ -106,7 +102,7 @@ export function EnginesBeat({ onNext, setMascot, bump }: BeatProps) {
 
       {/* the whole story in one line, and the way back after a terminal trip */}
       <div className="animate-rise mt-4 flex items-center justify-between gap-3" style={staggerIndex(1)}>
-        <div className={cn("flex items-center gap-2 text-[12.5px]", allReady ? "text-success" : "text-ink-secondary")} aria-live="polite">
+        <div className={cn("flex items-center gap-2 font-mono text-[12px]", allReady ? "text-success" : "text-ink-secondary")} aria-live="polite">
           {instances === null ? (
             <span>{failed ? t("onboarding.engines.error") : t("common.checking")}</span>
           ) : allReady ? (
@@ -122,20 +118,20 @@ export function EnginesBeat({ onNext, setMascot, bump }: BeatProps) {
             </span>
           )}
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => void refresh()}
           disabled={checking}
-          className="flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-ink-secondary transition-colors hover:bg-raised hover:text-ink disabled:opacity-50"
         >
           <RefreshCw size={12} className={checking ? "animate-spin" : ""} />
           {checking ? t("common.checking") : t("common.checkAgain")}
-        </button>
+        </Button>
       </div>
-      {failed && instances !== null && <p role="alert" className="mt-2 text-[13px] text-danger">{t("onboarding.engines.error")}</p>}
+      {failed && instances !== null && <p role="alert" className="mt-2 font-mono text-[11px] text-danger">{t("onboarding.engines.error")}</p>}
 
       <div
-        className="animate-rise mt-2.5 min-h-0 divide-y divide-hairline/40 overflow-y-auto rounded-xl border border-hairline/40 bg-card [scrollbar-width:thin]"
+        className="animate-rise mt-2.5 min-h-0 divide-y divide-hairline overflow-y-auto border border-hairline bg-card [scrollbar-width:thin]"
         style={staggerIndex(2)}
       >
         {instances === null
@@ -161,7 +157,7 @@ export function EnginesBeat({ onNext, setMascot, bump }: BeatProps) {
                       type="button"
                       onClick={() => setOpen(expanded === instance.instanceId ? null : instance.instanceId)}
                       aria-expanded={expanded === instance.instanceId}
-                      className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-raised/40"
+                      className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-raised-hover"
                     >
                       <span className="flex size-[18px] shrink-0 items-center justify-center">
                         <ProviderMark driverKind={instance.driverKind} size={18} />

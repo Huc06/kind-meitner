@@ -68,6 +68,21 @@ describe("FirstConversationWelcome", () => {
     expect(fixture.dispatch).not.toHaveBeenCalled();
   });
 
+  it("renders OKX capability-specific starters for catalog agent Markets", () => {
+    const marketsBot: Bot = {
+      ...bot,
+      id: "markets",
+      name: "Markets",
+      okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1", provider: "OKX.ai", capabilities: ["chat", "market-intelligence"] },
+    };
+    const markup = render(createElement(FirstConversationWelcome, { bot: marketsBot, messageCount: 0 }));
+    expect(markup).toContain('data-tour="first-conversation-welcome"');
+    expect(markup).toContain("readiness scan");
+    expect(markup).toContain("Check trust before spend");
+    expect(markup).toContain("Discover trending ASPs");
+    expect(markup).not.toContain("Draft replies to what");
+  });
+
   it("hides the card when the thread already has messages or the bot is busy", () => {
     expect(render(createElement(FirstConversationWelcome, { bot, messageCount: 2 }))).not.toContain(
       'data-tour="first-conversation-welcome"',

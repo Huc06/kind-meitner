@@ -1,42 +1,59 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Network, Scale, Calendar, TrendingUp, Code, Terminal } from "lucide-react";
+import {
+  ArrowRight,
+  Network,
+  Scale,
+  Calendar,
+  TrendingUp,
+  Code,
+  Terminal,
+} from "lucide-react";
 import { useStore } from "@/state/store";
 import { ThemeToggle } from "./landing/theme-toggle";
 import { InviteSpec } from "./landing/invite-deep-dive";
 import { FolderCards, LANDING_PAGES } from "./landing/folder-cards";
-import { WordTiles } from "./landing/word-tiles";
-import { MausAvatar } from "@/components/Avatar";
+import { WordTiles } from "@/components/ui/word-tiles";
+import { Frame } from "@/components/ui/frame";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
+import { tileFor, TILE_FILL } from "@/components/ui/tile";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
+import { cn } from "@/lib/cn";
 
 const PILLARS = [
   {
     number: "01",
+    id: "evaluator",
     title: "Evaluator ASP",
     description: "3-agent jury for dispute resolution and autonomous arbitration.",
-    icon: <Scale className="size-5 text-accent" />,
+    icon: <Scale className="size-4" />,
     badge: "Dispute Arbitration",
     action: "showEvaluator" as const,
   },
   {
     number: "02",
+    id: "routines",
     title: "Recurring Scheduler",
     description: "Automated cron/interval routines with local treasury budget controls.",
-    icon: <Calendar className="size-5 text-emerald-500" />,
+    icon: <Calendar className="size-4" />,
     badge: "Automation",
     action: "showRoutines" as const,
   },
   {
     number: "03",
+    id: "bloomberg",
     title: "Bloomberg Intelligence",
     description: "Marketplace intelligence, ASP reputation scores, and trust cards.",
-    icon: <TrendingUp className="size-5 text-amber-500" />,
+    icon: <TrendingUp className="size-4" />,
     badge: "Market Analytics",
     action: "showBloomberg" as const,
   },
   {
     number: "04",
+    id: "team-map",
     title: "Meta-Agent Orchestration",
     description: "Multi-agent room handoffs and interactive spatial team workflows.",
-    icon: <Network className="size-5 text-violet-500" />,
+    icon: <Network className="size-4" />,
     badge: "Team Map 2.0",
     action: "showTeamMap" as const,
   },
@@ -44,11 +61,14 @@ const PILLARS = [
 
 export function LandingPage() {
   const { dispatch } = useStore();
-  const [open, setOpen] = useState(false);
+  const [deepDiveOpen, setDeepDiveOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("guide")) {
-      setOpen(true);
+    if (
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("guide")
+    ) {
+      setDeepDiveOpen(true);
     }
   }, []);
 
@@ -66,267 +86,434 @@ export function LandingPage() {
   };
 
   return (
-    <main className={open
-      ? "flex min-h-screen flex-1 flex-col overflow-y-auto bg-[#f7f4ef] text-[#3d3834] transition-colors duration-300"
-      : "flex min-h-screen flex-1 flex-col overflow-y-auto bg-zinc-100 text-zinc-950 transition-colors duration-300"}>
-      {/* Top Header - Nymspace minimalist style with Mascot Brand Logo */}
-      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b px-6 backdrop-blur-md transition-colors duration-300 sm:px-12"
-        style={{ borderColor: open ? "#e6e1d8" : "rgba(0,0,0,0.08)", background: open ? "rgba(247,244,239,0.94)" : "rgba(244,244,245,0.94)" }}>
-        
-        {/* Brand: Mascot Avatar Logo + Nymspace uppercase mono title */}
+    <main className="flex min-h-screen flex-1 flex-col overflow-y-auto bg-app text-ink">
+      {/* Top Header - Nymspace Console Header */}
+      <header className="sticky top-0 z-30 flex h-11 shrink-0 items-center justify-between border-b border-hairline bg-app px-4 sm:px-8">
+        {/* Brand: Mascot Avatar Logo + Nymspace mono brand + OKX.ai Tag */}
         <div className="flex items-center gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 shadow-sm overflow-hidden">
-            <MausAvatar
-              color="green"
-              bodyId="cursor"
-              size={30}
-              animated={true}
-              state="happy"
-              label="kind-meitner mascot"
+          <div className="flex size-7 shrink-0 items-center justify-center border border-hairline bg-raised overflow-hidden">
+            <AgentMark
+              bot={{ id: "kind-meitner", name: "kind meitner" }}
+              size={24}
             />
           </div>
-          <span className="font-mono text-xs uppercase tracking-[0.2em] font-semibold text-zinc-700">
+          <span className="font-mono text-xs uppercase tracking-[0.2em] font-semibold text-ink">
             kind meitner
           </span>
-          <span className="rounded-full bg-black/5 px-2 py-0.5 font-mono text-[10px] text-zinc-500">
+          <Tag tone="neutral" variant="outline" size="sm">
             OKX.ai
-          </span>
+          </Tag>
         </div>
 
-        {/* Right actions: Console link, ThemeToggle switch */}
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={handleOpenApp}
-            className="hidden text-xs font-mono font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-950 sm:inline-flex transition"
-          >
-            Console
-          </button>
+        {/* Right actions: nav items using nav-link + tactile ThemeToggle */}
+        <div className="flex items-center gap-4 sm:gap-6">
+          <nav className="flex items-center gap-3 sm:gap-5" aria-label="Main navigation">
+            <button
+              type="button"
+              onClick={handleOpenApp}
+              className="nav-link font-mono text-xs text-ink-secondary hover:text-ink cursor-pointer"
+            >
+              Console
+            </button>
 
-          <button
-            type="button"
-            onClick={handleOpenTeamMap}
-            className="hidden rounded-full border px-3.5 py-1 text-xs font-semibold sm:inline-flex transition hover:bg-black/5"
-            style={{ borderColor: open ? "#b9b2a6" : "#d4d4d8", color: open ? "#3d3834" : "#18181b" }}
-          >
-            Team map
-          </button>
+            <button
+              type="button"
+              onClick={handleOpenTeamMap}
+              className="nav-link font-mono text-xs text-ink-secondary hover:text-ink cursor-pointer"
+            >
+              Team map
+            </button>
 
-          {/* Physical 12-pin Tactile Switch */}
-          <div className="flex items-center gap-2">
-            <span className={open ? "text-xs font-medium text-[#8a837c]" : "text-xs font-medium text-zinc-600"}>
-              {open ? "Deep dive ON" : "Deep dive"}
-            </span>
-            <ThemeToggle checked={open} onChange={setOpen} />
-          </div>
+            <button
+              type="button"
+              onClick={() => setDeepDiveOpen((v) => !v)}
+              data-active={deepDiveOpen ? "true" : undefined}
+              className="nav-link font-mono text-xs text-ink-secondary hover:text-ink cursor-pointer"
+            >
+              Deep dive
+            </button>
+          </nav>
+
+          <div className="h-4 w-px bg-hairline" aria-hidden="true" />
+
+          {/* Physical 12-pin Tactile Switch rewired to flip skins */}
+          <ThemeToggle />
         </div>
       </header>
 
       {/* Hero Section with Mechanical WordTiles */}
-      <section className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pt-16 pb-12 text-center sm:pt-24">
-        <p className={open
-          ? "font-mono text-xs uppercase tracking-[0.25em] text-[#2f8f5b] font-semibold mb-6"
-          : "font-mono text-xs uppercase tracking-[0.25em] text-emerald-700 font-semibold mb-6"}>
-          OKX Onchain OS &amp; X Layer
-        </p>
+      <section className="mx-auto flex w-full max-w-5xl flex-col items-center px-4 pt-12 pb-8 text-center sm:pt-20">
+        <span className="label-mono text-ink-secondary mb-4 tracking-[0.25em]">
+          OKX ONCHAIN OS &amp; X LAYER
+        </span>
 
-        {/* Interactive Mechanical WordTiles */}
-        <div className="my-2">
+        {/* Interactive Mechanical WordTiles at display size (40-64px responsive), one-line positioning */}
+        <div className="my-2 flex max-w-full justify-center py-2">
           <WordTiles sentence="kind meitner is the autonomous agent suite" />
         </div>
 
-        <p className="mt-8 max-w-2xl text-base leading-relaxed text-zinc-600 sm:text-lg" style={{ color: open ? "#5c554e" : "#52525b" }}>
-          Autonomous Commerce Operating System &amp; 4-Pillar Multi-Agent Suite for OKX.ai. Pre-listing readiness gates, pre-spend trust audits, audit-to-hire routines, and spatial team orchestration.
+        {/* One-line positioning copy grounded in docs */}
+        <p className="mt-6 max-w-2xl text-sm sm:text-base leading-relaxed text-ink-secondary">
+          All-in-one multichat workbench for the &ldquo;Build a Company&rdquo; track: free pre-listing readiness and pre-spend trust gates, audit-to-hire workflows, and autonomous scheduled agent routines.
         </p>
 
-        {/* Nymspace style action buttons */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
-          <button
-            type="button"
-            onClick={handleOpenApp}
-            className="inline-flex items-center gap-2 rounded-full bg-[#2f8f5b] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#277a4e] cursor-pointer"
-          >
-            <Terminal size={15} />
-            <span>Launch Workspace</span>
-            <ArrowRight size={15} aria-hidden="true" />
-          </button>
+        {/* CTAs: primary Launch workspace, secondary Team map, ghost GitHub */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button variant="primary" size="lg" onClick={handleOpenApp}>
+            <Terminal className="size-4" aria-hidden="true" />
+            <span>Launch workspace</span>
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
 
-          <button
-            type="button"
-            onClick={handleOpenTeamMap}
-            className="inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-black/5 cursor-pointer"
-            style={{ color: open ? "#3d3834" : "#18181b", borderColor: open ? "#b9b2a6" : "#d4d4d8", background: "#fff" }}
-          >
-            <Network size={15} className="text-emerald-700" />
-            <span>Team Map 2.0</span>
-          </button>
+          <Button variant="secondary" size="lg" onClick={handleOpenTeamMap}>
+            <Network className="size-4" aria-hidden="true" />
+            <span>Team map</span>
+          </Button>
 
           <a
             href="https://github.com/Huc06/kind-meitner"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-medium transition hover:bg-black/5"
-            style={{ borderColor: open ? "#b9b2a6" : "#d4d4d8", color: open ? "#5c554e" : "#71717a" }}
+            className={buttonClass({ variant: "ghost", size: "lg" })}
           >
-            <Code size={15} />
+            <Code className="size-4" aria-hidden="true" />
             <span>GitHub</span>
           </a>
         </div>
       </section>
 
-      {/* Deep Dive Mode: Interactive Pastel FolderCards & Spec */}
-      {open && (
-        <section className="mx-auto w-full max-w-5xl px-6 pb-12 animate-in fade-in duration-300">
+      {/* [ 01 · THE LOOP ] Console Strip - Demo Story in 4 Steps */}
+      <section className="mx-auto w-full max-w-5xl px-4 py-8">
+        <Frame title="THE LOOP" index="01" surface="app" className="bg-card p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-3">
+            <div className="flex items-center gap-2">
+              <span className="label-mono text-ink font-semibold">DEMO LIFECYCLE</span>
+              <span className="text-xs text-ink-secondary">·</span>
+              <span className="text-xs text-ink-secondary">
+                Pre-Listing Audit to Autonomous Operations
+              </span>
+            </div>
+            <Tag tone="accent" variant="solid" size="sm">
+              2-LOOP WORKBENCH
+            </Tag>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Step 1: Gate before list (readiness FAIL -> PASS) */}
+            <div className="flex flex-col justify-between border border-hairline bg-inset p-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="label-mono text-ink-secondary">01 · READINESS</span>
+                  <div className="flex items-center gap-1 font-mono text-xs">
+                    <Tag tone="danger" variant="solid" size="sm">
+                      FAIL
+                    </Tag>
+                    <span className="text-ink-secondary">→</span>
+                    <Tag tone="success" variant="solid" size="sm">
+                      PASS
+                    </Tag>
+                  </div>
+                </div>
+                <h3 className="mt-3 font-sans text-sm font-semibold text-ink">
+                  Gate before list
+                </h3>
+                <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
+                  scan_free_mcp_readiness checks 7 endpoint criteria before listing. Catches host pitfalls (like Vercel endpoint shape) before review.
+                </p>
+              </div>
+              <div className="mt-3 pt-2.5 frame-rule-above font-mono text-[10.5px] text-ink-secondary">
+                Remediation → 7/7 PASS
+              </div>
+            </div>
+
+            {/* Step 2: Gate before spend (trust NO_GO -> GO) */}
+            <div className="flex flex-col justify-between border border-hairline bg-inset p-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="label-mono text-ink-secondary">02 · TRUST</span>
+                  <div className="flex items-center gap-1 font-mono text-xs">
+                    <Tag tone="danger" variant="solid" size="sm">
+                      NO_GO
+                    </Tag>
+                    <span className="text-ink-secondary">→</span>
+                    <Tag tone="success" variant="solid" size="sm">
+                      GO
+                    </Tag>
+                  </div>
+                </div>
+                <h3 className="mt-3 font-sans text-sm font-semibold text-ink">
+                  Gate before spend
+                </h3>
+                <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
+                  get_asp_trust_card audits reachability. Dead endpoints yield NO_GO with Block Spend; canonical ASP #13851 yields GO.
+                </p>
+              </div>
+              <div className="mt-3 pt-2.5 frame-rule-above font-mono text-[10.5px] text-ink-secondary">
+                Surfaces honest notChecked limits
+              </div>
+            </div>
+
+            {/* Step 3: Clone to team */}
+            <div className="flex flex-col justify-between border border-hairline bg-inset p-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="label-mono text-ink-secondary">03 · HIRE</span>
+                  <Tag tone="accent" variant="solid" size="sm">
+                    + CLONE
+                  </Tag>
+                </div>
+                <h3 className="mt-3 font-sans text-sm font-semibold text-ink">
+                  Clone to team
+                </h3>
+                <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
+                  Audit-to-Hire: 1-click recruitment from room Trust Cards. Mounts in-process MCP (ASP #13851) or provisions OKX Onchain OS dynamic proxies.
+                </p>
+              </div>
+              <div className="mt-3 pt-2.5 frame-rule-above font-mono text-[10.5px] text-ink-secondary">
+                Immediate team recruitment
+              </div>
+            </div>
+
+            {/* Step 4: Run as a routine */}
+            <div className="flex flex-col justify-between border border-hairline bg-inset p-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="label-mono text-ink-secondary">04 · OPERATE</span>
+                  <Tag tone="cyan" variant="solid" size="sm">
+                    ROUTINE
+                  </Tag>
+                </div>
+                <h3 className="mt-3 font-sans text-sm font-semibold text-ink">
+                  Run as a routine
+                </h3>
+                <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
+                  Interactive date/time scheduler in composer automates recurring operations with auto-approved permissions and treasury controls.
+                </p>
+              </div>
+              <div className="mt-3 pt-2.5 frame-rule-above font-mono text-[10.5px] text-ink-secondary">
+                Autonomous scheduled execution
+              </div>
+            </div>
+          </div>
+        </Frame>
+      </section>
+
+      {/* The Four Pillars - Indexed Frames with Tile Identity Marks */}
+      <section className="mx-auto w-full max-w-5xl px-4 py-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-3">
+          <div>
+            <span className="label-mono text-ink-secondary">CORE ARCHITECTURE</span>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink sm:text-xl">
+              The Four Pillars of Autonomous Commerce
+            </h2>
+          </div>
+          <Tag tone="neutral" variant="outline" size="sm">
+            BUILD A COMPANY TRACK
+          </Tag>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {PILLARS.map((p) => {
+            const tone = tileFor(p.id);
+            return (
+              <Frame
+                key={p.title}
+                title={p.title}
+                index={p.number}
+                surface="app"
+                className="bg-card p-4 flex flex-col justify-between hover:bg-raised transition-colors group"
+              >
+                <div>
+                  {/* Card Header: Tile mark, badge, icon */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn("size-2.5 shrink-0", TILE_FILL[tone])}
+                        aria-hidden="true"
+                      />
+                      <span className="label-mono text-ink-secondary">{p.badge}</span>
+                    </div>
+                    <div className="text-ink-secondary group-hover:text-ink transition-colors">
+                      {p.icon}
+                    </div>
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="mt-3 text-sm font-semibold tracking-tight text-ink">
+                    {p.title}
+                  </h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
+                    {p.description}
+                  </p>
+
+                  {/* Console Mini Telemetry Widget */}
+                  {p.number === "01" && (
+                    <div className="my-3 border border-hairline bg-inset p-2.5 font-mono text-[10.5px]">
+                      <div className="flex items-center justify-between text-ink-secondary">
+                        <span>3-Agent Jury Quorum</span>
+                        <span className="text-success font-semibold">100% Consensus</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-1 text-[9px]">
+                        <Tag tone="accent" variant="soft" size="sm">
+                          Jury A
+                        </Tag>
+                        <Tag tone="accent" variant="soft" size="sm">
+                          Jury B
+                        </Tag>
+                        <Tag tone="success" variant="solid" size="sm">
+                          PASS 3/3
+                        </Tag>
+                      </div>
+                    </div>
+                  )}
+
+                  {p.number === "02" && (
+                    <div className="my-3 border border-hairline bg-inset p-2.5 font-mono text-[10.5px]">
+                      <div className="flex items-center justify-between text-ink-secondary">
+                        <span>Next: 2h 14m</span>
+                        <span className="text-ink font-medium">0 */4 * * *</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[9.5px]">
+                        <span className="text-ink-secondary">Cap: 105k USDT</span>
+                        <Tag tone="success" variant="soft" size="sm">
+                          Auto-approved
+                        </Tag>
+                      </div>
+                    </div>
+                  )}
+
+                  {p.number === "03" && (
+                    <div className="my-3 border border-hairline bg-inset p-2.5 font-mono text-[10.5px]">
+                      <div className="flex items-center justify-between text-ink-secondary">
+                        <span>ASP #13851</span>
+                        <Tag tone="success" variant="solid" size="sm">
+                          GO · 7/7
+                        </Tag>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[9.5px] text-ink-secondary">
+                        <span>Reputation: 98.4%</span>
+                        <span className="text-ink font-medium">Free A2MCP</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {p.number === "04" && (
+                    <div className="my-3 border border-hairline bg-inset p-2.5 font-mono text-[10.5px]">
+                      <div className="flex items-center justify-between text-ink-secondary">
+                        <span>Spatial Graph</span>
+                        <span className="text-ink font-medium">1.80x Speedup</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[9.5px]">
+                        <span className="text-ink-secondary">Markets → Coach → Atlas</span>
+                        <Tag tone="cyan" variant="soft" size="sm">
+                          Live
+                        </Tag>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Launch Action Button */}
+                <div className="mt-3 pt-3 frame-rule-above">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-between"
+                    onClick={() => dispatch({ type: p.action })}
+                  >
+                    <span>Launch {p.badge}</span>
+                    <span className="transition-transform group-hover:translate-x-0.5" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </Button>
+                </div>
+              </Frame>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Deep Dive Mode: Dossier FolderCards & Spec */}
+      {deepDiveOpen && (
+        <section className="mx-auto w-full max-w-5xl px-4 py-8 animate-view-enter">
           <div className="mb-4 text-center">
-            <span className="font-mono text-xs uppercase tracking-wider text-[#2f8f5b] font-semibold">
-              Interactive Dossier
-            </span>
-            <p className="text-sm text-zinc-500">Hover and flip cards to inspect CRT telemetry.</p>
+            <span className="label-mono text-ink-secondary">INTERACTIVE DOSSIER</span>
+            <p className="mt-1 text-xs text-ink-secondary">
+              Architectural dossiers and task specifications for the OKX multichat workbench.
+            </p>
           </div>
           <FolderCards cards={LANDING_PAGES} />
-          <div className="mt-8">
+          <div className="mt-4">
             <InviteSpec />
           </div>
         </section>
       )}
 
-      {/* The Four Pillars - Interactive Visual Showcase Tiles */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-24 pt-6">
-        <div className="text-center mb-10">
-          <span className={open ? "font-mono text-xs uppercase tracking-wider text-[#2f8f5b] font-semibold" : "font-mono text-xs uppercase tracking-wider text-emerald-600 font-semibold"}>
-            Core Architecture
-          </span>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">The Four Pillars of Autonomous Commerce</h2>
-          <p className="mt-2 text-sm text-zinc-500 max-w-xl mx-auto">
-            Engineered specifically for the OKX Dev Day Build a Company track.
-          </p>
-        </div>
-
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {PILLARS.map((p) => (
-            <div
-              key={p.title}
-              className={open
-                ? "group relative flex flex-col justify-between rounded-2xl border border-[#e6e1d8] bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#2f8f5b] hover:shadow-xl"
-                : "group relative flex flex-col justify-between rounded-2xl border border-white/[0.1] bg-[#14171E] p-5 shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-[#181C25] hover:shadow-2xl text-white"}
-            >
-              <div>
-                {/* Card Header: Icon, Number, Badge */}
-                <div className="flex items-center justify-between">
-                  <div className="flex size-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
-                    {p.icon}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] font-bold text-zinc-400">{p.number}</span>
-                    <span className="rounded-full bg-black/5 px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider" style={{ color: open ? "#8a837c" : "#94a3b8" }}>
-                      {p.badge}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Title & Description */}
-                <h3 className="mt-4 text-base font-bold tracking-tight transition-colors group-hover:text-emerald-500">
-                  {p.title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed" style={{ color: open ? "#5c554e" : "#94a3b8" }}>
-                  {p.description}
-                </p>
-
-                {/* Visual Mini Interactive Telecom Widget per pillar */}
-                {p.number === "01" && (
-                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                      <span>3-Agent Jury Quorum</span>
-                      <span className="text-emerald-400 font-semibold">100% Consensus</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-1">
-                      <span className="rounded bg-accent/20 px-1.5 py-0.5 text-accent text-[9px]">Jury A</span>
-                      <span className="rounded bg-accent/20 px-1.5 py-0.5 text-accent text-[9px]">Jury B</span>
-                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-400 text-[9px] font-bold">PASS 3/3</span>
-                    </div>
-                  </div>
-                )}
-
-                {p.number === "02" && (
-                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                      <span>Next: 2h 14m</span>
-                      <span className="text-emerald-400">0 */4 * * *</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-300">
-                      <span>Cap: 105k USDT</span>
-                      <span className="rounded bg-emerald-500/10 text-emerald-400 px-1 text-[9px]">Auto-approved</span>
-                    </div>
-                  </div>
-                )}
-
-                {p.number === "03" && (
-                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                      <span>ASP #13851</span>
-                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-400 font-bold text-[9px]">GO · 7/7</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-300">
-                      <span>Reputation: 98.4%</span>
-                      <span className="text-zinc-500 text-[9px]">Free A2MCP</span>
-                    </div>
-                  </div>
-                )}
-
-                {p.number === "04" && (
-                  <div className="my-4 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[10.5px]">
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                      <span>Spatial Graph</span>
-                      <span className="text-violet-400 text-[9px]">1.80x Speedup</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-300">
-                      <span>Markets ➔ Coach ➔ Atlas</span>
-                      <span className="text-emerald-400 font-semibold text-[9px]">Live</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Interactive Launch Button */}
+      {/* Console Footer */}
+      <footer className="mt-auto border-t border-hairline py-8 bg-app">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4">
+          {/* Top row: Brand & navigation */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs uppercase tracking-wider font-semibold text-ink">
+                kind meitner
+              </span>
+              <span className="text-ink-secondary">·</span>
+              <span className="font-mono text-xs text-ink-secondary">
+                OKX DEV DAY 2026 BENCHMARK
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-mono">
               <button
                 type="button"
-                onClick={() => dispatch({ type: p.action })}
-                className={open
-                  ? "mt-2 flex w-full items-center justify-between rounded-xl border border-[#e6e1d8] bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-800 transition hover:border-[#2f8f5b] hover:bg-[#2f8f5b]/10 hover:text-[#2f8f5b] cursor-pointer"
-                  : "mt-2 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-white transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400 cursor-pointer"}
+                onClick={handleOpenApp}
+                className="text-ink-secondary hover:text-ink hover:underline cursor-pointer"
               >
-                <span>Launch {p.badge}</span>
-                <span className="transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
+                Console
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenTeamMap}
+                className="text-ink-secondary hover:text-ink hover:underline cursor-pointer"
+              >
+                Team map
               </button>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className={open ? "mt-auto border-t border-[#e6e1d8] py-8" : "mt-auto border-t border-zinc-300 py-8"}>
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-6 text-xs text-zinc-500">
-          <div className="flex items-center gap-2">
-            <span className="font-mono uppercase tracking-wider font-semibold">kind meitner</span>
-            <span>·</span>
-            <span>Built for OKX Onchain OS &amp; X Layer</span>
           </div>
-          <div className="flex items-center gap-4">
-            <button type="button" onClick={handleOpenApp} className="hover:underline cursor-pointer">
-              Console
-            </button>
-            <button type="button" onClick={handleOpenTeamMap} className="hover:underline cursor-pointer">
-              Team Map
-            </button>
+
+          {/* Middle row: Live endpoints as mono links */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-hairline py-3 font-mono text-[11px]">
+            <span className="label-mono text-ink-secondary">ENDPOINTS:</span>
+            <a
+              href="https://kind-meitner-production.up.railway.app/api/okx/free-mcp"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink hover:underline"
+            >
+              POST /api/okx/free-mcp
+            </a>
+            <a
+              href="https://www.okx.ai/agents/13851"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink hover:underline"
+            >
+              ASP #13851 (OKX.AI)
+            </a>
             <a
               href="https://github.com/Huc06/kind-meitner"
               target="_blank"
               rel="noopener noreferrer"
-              className={open ? "font-medium text-[#3d3834] hover:underline" : "font-medium text-zinc-950 hover:underline"}
+              className="text-ink hover:underline"
             >
-              GitHub
+              GitHub Repository
             </a>
           </div>
+
+          {/* Bottom row: Honest claim line */}
+          <p className="font-mono text-[11px] text-ink-secondary">
+            Free, read-only, paymentless — no wallet, custody, mainnet settlement or OKX endorsement.
+          </p>
         </div>
       </footer>
     </main>

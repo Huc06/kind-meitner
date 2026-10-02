@@ -171,7 +171,7 @@ function VideoAttachment({ file, message }: { file: GalleryFile; message: Messag
   };
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-hairline/40 bg-inset/40">
+    <div className="min-w-0 overflow-hidden border border-hairline bg-inset/40">
       <div className="relative flex aspect-[4/3] items-center justify-center bg-inset">
         {preview && !error ? (
           <video
@@ -200,7 +200,7 @@ function VideoAttachment({ file, message }: { file: GalleryFile; message: Messag
           </button>
         )}
         {(preview || loading || error) && (
-          <button type="button" aria-label={t("attach.closeVideo")} onClick={close} className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-panel/90 text-ink-secondary hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60">
+          <button type="button" aria-label={t("attach.closeVideo")} onClick={close} className="absolute right-2 top-2 flex size-6 items-center justify-center border border-hairline bg-panel text-ink-secondary hover:bg-raised-hover hover:text-ink cursor-pointer">
             <X size={14} />
           </button>
         )}
@@ -255,14 +255,14 @@ export function AttachmentGallery({ images = [], files = [], message, eager = fa
   const previews = items.flatMap((item) => item.kind === "image" ? [item.image] : []);
 
   return (
-    <section aria-label={items.length === 1 ? t("attach.gallerySingle") : t("attach.galleryCount", { count: items.length })} className={cn("mb-2 w-[min(34rem,70vw)] max-w-full overflow-hidden rounded-xl border border-hairline/40 bg-inset/25 text-left whitespace-normal", className)}>
-      <header className="flex items-center gap-2 px-3 py-2 text-[11px] font-medium text-ink-secondary">
+    <section aria-label={items.length === 1 ? t("attach.gallerySingle") : t("attach.galleryCount", { count: items.length })} className={cn("mb-2 w-[min(34rem,70vw)] max-w-full overflow-hidden border border-hairline bg-inset/25 text-left whitespace-normal", className)}>
+      <header className="flex items-center gap-2 border-b border-hairline px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-secondary">
         <span>{t("attach.gallery")}</span><span className="tabular-nums opacity-65">{items.length}</span>
       </header>
       {media.length > 0 && (
         <div className={cn("grid gap-2 px-2 pb-2", media.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
           {media.map((item) => item.kind === "image" ? (
-            <div key={item.key} className="min-w-0 overflow-hidden rounded-xl border border-hairline/30 bg-inset/40">
+            <div key={item.key} className="min-w-0 overflow-hidden border border-hairline bg-card">
               <AttachmentThumbnail key={item.image.src} image={item.image} eager={eager} onPreview={() => setSelected(item.image)} className="max-h-64 rounded-none border-0" />
               <div className="flex items-center gap-2 px-2.5 py-2 text-[11px]">
                 <span className="min-w-0 flex-1 truncate text-ink" title={item.image.name}>{item.image.name}</span>
@@ -276,11 +276,11 @@ export function AttachmentGallery({ images = [], files = [], message, eager = fa
       )}
       {documents.length > 0 && (
         <div className="space-y-1 px-2 pb-2">
-          {documents.map((item) => item.kind === "file" && <AttachedFileChip key={item.key} file={item.file} linked={item.file.linked} message={message} className="max-w-none rounded-lg border-hairline/25 bg-transparent" />)}
+          {documents.map((item) => item.kind === "file" && <AttachedFileChip key={item.key} file={item.file} linked={item.file.linked} message={message} className="max-w-none border-0 bg-transparent" />)}
         </div>
       )}
       {items.length > 4 && (
-        <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="flex min-h-8 w-full items-center justify-center gap-1 border-t border-hairline/30 px-3 py-1.5 text-[11px] text-ink-secondary transition-colors hover:bg-raised/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60">
+        <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="cursor-pointer flex min-h-8 w-full items-center justify-center gap-1 border-t border-hairline px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-secondary transition-colors hover:bg-raised-hover hover:text-ink">
           {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           {expanded ? t("attach.showLess") : t("attach.showMore", { count: items.length - 4 })}
         </button>

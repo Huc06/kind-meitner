@@ -30,7 +30,7 @@ export function ProgressDots({
     >
       {/* the pill: one element, moved on transform only */}
       <span
-        className="pointer-events-none absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-accent transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        className="pointer-events-none absolute left-0 top-1/2 h-1.5 -translate-y-1/2 bg-accent transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{ width: SLOT, transform: `translate(${index * (SLOT + GAP)}px, -50%)` }}
         aria-hidden="true"
       />
@@ -38,7 +38,7 @@ export function ProgressDots({
         const dot = (
           <span
             className={cn(
-              "size-1.5 rounded-full transition-[background-color,opacity] duration-300",
+              "size-1.5 transition-[background-color,opacity] duration-300",
               i === index ? "opacity-0" : i < index ? "bg-ink-secondary" : "bg-hairline",
             )}
           />
@@ -51,7 +51,7 @@ export function ProgressDots({
             aria-selected={i === index}
             aria-label={item.label ?? item.id}
             onClick={() => onSelect?.(i)}
-            className="flex h-3.5 items-center justify-center rounded-full"
+            className="flex h-3.5 items-center justify-center"
             style={{ width: SLOT }}
           >
             {dot}

@@ -17,6 +17,11 @@ function message(toolName: string, file: string) {
     tool: { name: toolName, ok: true, output: envelope(file) },
   };
 }
+/** The rendered Continue button's own opening tag, so a `disabled:` utility
+ * class elsewhere in the markup cannot pass for the attribute. */
+function continueButton(html: string) {
+  return html.match(/<button[^>]*aria-label="Continue free tools"[^>]*>/)?.[0] ?? "";
+}
 
 it("parses real production vercel FAIL envelope and exposes Apply host", () => {
   const msg = message("scan_free_mcp_readiness", "scan-vercel-envelope.json");
@@ -57,7 +62,7 @@ it("parses real production 99999 NO_GO with Block spend and Continue disabled", 
   }));
   expect(html).toContain("Block spend");
   expect(html).toContain("Continue free tools");
-  expect(html).toMatch(/disabled[^>]{0,120}aria-label="Continue free tools"|aria-label="Continue free tools"[^>]{0,80}disabled/);
+  expect(continueButton(html)).toMatch(/\sdisabled=""/);
 });
 
 it("parses real production GO envelope for live listing agent 11167 and enables Continue", () => {
@@ -79,7 +84,7 @@ it("parses real production GO envelope for live listing agent 11167 and enables 
   }));
   expect(html).toContain("Continue free tools");
   expect(html).not.toContain("Block spend");
-  expect(html).not.toMatch(/disabled[^>]{0,120}aria-label="Continue free tools"|aria-label="Continue free tools"[^>]{0,80}disabled/);
+  expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
 });
 
 it("parses real production 13837+endpoint as NO_GO due to listing_page HTTP 404", () => {
@@ -112,5 +117,51 @@ it("parses real production GO envelope for Kind Meitner Markets #13851", () => {
     fallback: createElement("div", null, "fallback"),
   }));
   expect(html).toContain("Continue free tools");
-  expect(html).not.toMatch(/disabled[^>]{0,120}aria-label="Continue free tools"|aria-label="Continue free tools"[^>]{0,80}disabled/);
+  expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
+});
+
+it("renders real production scan envelope with header, boundary, disclaimer, and counts", () => {
+  const msg = message("scan_free_mcp_readiness", "scan-self-envelope.json");
+  const html = renderToStaticMarkup(createElement(OkxGateToolResult, {
+    message: msg,
+    enabled: true,
+    composerDraftId: "group:test",
+    fallback: createElement("div", null, "fallback"),
+  }));
+  expect(html).toContain("Free MCP listing readiness");
+  expect(html).toContain("PASS");
+  expect(html).toContain("Access: Free");
+  expect(html).toContain("Payment required: No");
+  expect(html).toContain("Wallet required: No");
+  expect(html).toContain("Mainnet: No");
+  expect(html).toContain("Source: kind-meitner live HTTPS probes + public listing pitfalls");
+  expect(html).toContain("This is a local listing-readiness check, not an OKX review or endorsement.");
+  expect(html).toContain("6 passed · 0 warned · 0 failed");
+});
+
+it("renders real production trust envelope with header, boundary, disclaimer, counts, and spend status", () => {
+  const text = JSON.parse(envelope("trust-go-13851.json")).result.content[0].text;
+  const msg = {
+    id: "g13851",
+    role: "bot" as const,
+    kind: "activity" as const,
+    at: 1,
+    tool: { name: "get_asp_trust_card", ok: true, output: text },
+  };
+  const html = renderToStaticMarkup(createElement(OkxGateToolResult, {
+    message: msg,
+    enabled: true,
+    composerDraftId: "group:test",
+    fallback: createElement("div", null, "fallback"),
+  }));
+  expect(html).toContain("Pre-spend trust");
+  expect(html).toContain("GO");
+  expect(html).toContain("Spend not blocked");
+  expect(html).toContain("Access: Free");
+  expect(html).toContain("Payment required: No");
+  expect(html).toContain("Wallet required: No");
+  expect(html).toContain("Mainnet: No");
+  expect(html).toContain("Source: kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement");
+  expect(html).toContain("This result is a local pre-spend signal, not an OKX endorsement.");
+  expect(html).toContain("2 passed · 0 warned · 0 failed");
 });

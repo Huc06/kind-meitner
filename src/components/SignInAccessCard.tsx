@@ -5,7 +5,8 @@ import { api } from "@/state/store";
 import { readSessionState, type SessionState } from "../lib/session";
 import { canPairDevices } from "./ServerPairingCard";
 import { Card } from "./SettingsPrimitives";
-
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 export interface SignInLists {
   admins: string[];
   members: string[];
@@ -29,10 +30,6 @@ export function withEntry(lists: SignInLists, entry: string, role: "admin" | "me
 export function withoutEntry(lists: SignInLists, entry: string): SignInLists {
   return { admins: lists.admins.filter((item) => item !== entry), members: lists.members.filter((item) => item !== entry) };
 }
-
-const input = "w-full rounded-md border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-accent-border";
-const button = "rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-ink disabled:opacity-50";
-const quiet = "rounded-md border border-line px-2.5 py-1 text-[12px] text-ink hover:bg-surface";
 
 /** Settings → Remote access on a hosted server: who may sign in at /pair
  * with an emailed code. Admins only; saved through the config API and
@@ -95,7 +92,7 @@ export function SignInAccessCard() {
   return (
     <Card title={t("remote.signInAccess.title")} subtitle={t("remote.signInAccess.subtitle")}>
       {publicUrl ? (
-        <p className="mt-2 text-[12.5px] text-ink-secondary">
+        <p className="mt-2 font-mono text-[12px] text-ink-secondary">
           {t("remote.signInAccess.link")} <code className="select-all text-ink">{publicUrl}/pair</code>
         </p>
       ) : null}
@@ -106,13 +103,13 @@ export function SignInAccessCard() {
           void add();
         }}
       >
-        <input
+        <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("remote.signInAccess.placeholder")}
           autoComplete="off"
           spellCheck={false}
-          className={`${input} max-w-[320px] flex-1`}
+          className="max-w-[320px] flex-1"
           aria-label={t("remote.signInAccess.placeholder")}
         />
         <label className="flex items-center gap-1.5 text-[13px] text-ink">
@@ -123,29 +120,29 @@ export function SignInAccessCard() {
           <input type="radio" name="signin-role" checked={role === "member"} onChange={() => setRole("member")} />
           {t("remote.serverPairing.scope.client")}
         </label>
-        <button type="submit" disabled={busy || !draft.trim()} className={button}>
+        <Button variant="primary" size="sm" type="submit" disabled={busy || !draft.trim()}>
           {t("remote.signInAccess.add")}
-        </button>
+        </Button>
       </form>
       {rows.length === 0 ? (
-        <p className="mt-3 text-[12.5px] text-ink-secondary">{t("remote.signInAccess.empty")}</p>
+        <p className="mt-3 text-[12px] text-ink-secondary">{t("remote.signInAccess.empty")}</p>
       ) : (
-        <ul className="mt-3 divide-y divide-line">
+        <ul className="mt-3 divide-y divide-hairline">
           {rows.map(({ entry, role: entryRole }) => (
             <li key={entry} className="flex flex-wrap items-center justify-between gap-2 py-2 text-[13px]">
               <span className="text-ink">
-                {entry}
+                <span className="font-mono text-[12.5px]">{entry}</span>
                 <span className="text-ink-secondary"> · {entryRole === "admin" ? t("remote.serverPairing.scope.admin") : t("remote.serverPairing.scope.client")}</span>
               </span>
-              <button type="button" disabled={busy} onClick={() => void save(withoutEntry(lists, entry))} className={quiet}>
+              <Button variant="secondary" size="xs" type="button" disabled={busy} onClick={() => void save(withoutEntry(lists, entry))}>
                 {t("remote.signInAccess.remove")}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       )}
       <p className="mt-3 text-[11.5px] leading-relaxed text-ink-secondary">{t("remote.signInAccess.note")}</p>
-      {error ? <p className="mt-2 text-[13px] text-danger">{error}</p> : null}
+      {error ? <p role="alert" className="mt-2 text-[12px] text-danger">{error}</p> : null}
     </Card>
   );
 }

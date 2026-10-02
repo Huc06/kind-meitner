@@ -18,9 +18,10 @@ import { useDesktopCapabilities } from "../DesktopCapabilities";
 import { LocalComputerAutoWarning } from "../LocalComputerAutoWarning";
 import { Switch } from "../SettingsPrimitives";
 import { preloadConnectedApps, type ConnectorInventory } from "../PluginsPanel";
-import { inputCls } from "./field";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
+import { fieldClass } from "@/components/ui/field";
 import type { useBotSettingsDerived } from "./useBotSettingsDerived";
-
 /** Where a bot's shell tools run. Set per bot; each task pins its own copy
  * on its first turn (the server does the pinning — Claude keeps sessions
  * per project folder, so a folder must not move under a live task). The
@@ -55,21 +56,21 @@ function WorkingFolder({ bot }: { bot: Bot }) {
   };
 
   return (
-    <div className="rounded-xl bg-card p-4">
-      <div className="text-[15px] font-medium text-ink">Working folder</div>
-      <div className="mt-0.5 text-[13px] text-ink-secondary">Where this bot runs its shell and file tools.</div>
+    <div className="border border-hairline bg-card p-4">
+      <div className="text-[14px] font-medium text-ink">Working folder</div>
+      <div className="mt-0.5 text-[12.5px] text-ink-secondary">Where this bot runs its shell and file tools.</div>
       {canPick ? (
         <div className="mt-3 flex items-center gap-2">
-          <div className="min-w-0 flex-1 truncate rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12.5px] text-ink" title={bot.cwd}>
+          <div className="min-w-0 flex-1 truncate border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink" title={bot.cwd}>
             {bot.cwd ? shortPath(bot.cwd, home) : <span className="text-ink-secondary">Private bot workspace</span>}
           </div>
-          <button onClick={() => void pick()} disabled={saving} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
-            <FolderOpen size={14} /> Choose…
-          </button>
+          <Button variant="secondary" size="sm" onClick={() => void pick()} disabled={saving}>
+            <FolderOpen size={13} /> Choose…
+          </Button>
           {bot.cwd && (
-            <button onClick={() => void save(null)} disabled={saving} className="shrink-0 rounded-lg px-2 py-2 text-[13px] text-ink-secondary hover:text-ink disabled:opacity-50">
+            <Button variant="ghost" size="sm" onClick={() => void save(null)} disabled={saving}>
               Clear
-            </button>
+            </Button>
           )}
         </div>
       ) : (
@@ -82,17 +83,17 @@ function WorkingFolder({ bot }: { bot: Bot }) {
           }}
         >
           <input
-            className={cn(inputCls, "font-mono text-[12.5px]")}
+            className={cn(fieldClass, "h-8 font-mono text-[12px]")}
             placeholder="Private bot workspace — or an absolute path"
             value={draft ?? bot.cwd ?? ""}
             onChange={(e) => setDraft(e.target.value)}
           />
-          <button type="submit" disabled={saving || draft === null} className="shrink-0 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
+          <Button variant="secondary" size="sm" type="submit" disabled={saving || draft === null}>
             Save
-          </button>
+          </Button>
         </form>
       )}
-      {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
+      {error && <div className="mt-2 font-mono text-[12px] text-danger">{error}</div>}
       {pinnedElsewhere && (
         <div className="mt-2 text-[12px] text-ink-secondary">
           New tasks start here. This task is pinned to {pinned ? <span className="font-mono">{shortPath(pinned, home)}</span> : "the home folder"} — start a new task to use the new folder.
@@ -123,31 +124,31 @@ function McpServersCard({ bot, patch }: { bot: Bot; patch: (patch: { mcpServers:
   };
 
   return (
-    <div className="rounded-xl bg-card p-4">
+    <div className="border border-hairline bg-card p-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[15px] font-medium text-ink">{t("connectors.tab.mcp")}</div>
-          <div className="mt-0.5 text-[13px] text-ink-secondary">
+          <div className="text-[14px] font-medium text-ink">{t("connectors.tab.mcp")}</div>
+          <div className="mt-0.5 text-[12.5px] text-ink-secondary">
             {t("botAccess.mcpDescription")}
           </div>
         </div>
       </div>
       {error && (
-        <div role="alert" className="mt-3 text-[12px] text-danger">
+        <div role="alert" className="mt-3 font-mono text-[12px] text-danger">
           {t("botAccess.mcpRefreshError")} <button type="button" onClick={() => void refresh()} className="underline">{t("connectors.action.retry")}</button>
         </div>
       )}
       {servers === null ? !error && (
-        <div className="mt-3 text-[12px] text-ink-secondary">{t("mcp.loading")}</div>
+        <div className="mt-3 font-mono text-[12px] text-ink-secondary">{t("mcp.loading")}</div>
       ) : servers.length === 0 ? (
-        <div className="mt-3 rounded-lg bg-inset px-3 py-2 text-[12px] text-ink-secondary">{t("botAccess.mcpEmpty")}</div>
+        <div className="mt-3 border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink-secondary">{t("botAccess.mcpEmpty")}</div>
       ) : (
-        <div className="mt-3 divide-y divide-hairline/40 overflow-hidden rounded-lg border border-hairline/40">
+        <div className="mt-3 divide-y divide-hairline border border-hairline">
           {servers.map((server) => (
-            <div key={server.name} className="flex items-center justify-between gap-3 px-3 py-2">
+            <div key={server.name} className="flex items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-raised-hover">
               <div className="min-w-0 flex-1">
-                <div className="truncate font-mono text-[12.5px] text-ink">{server.name}</div>
-                {!server.enabled && <div className="text-[11.5px] text-ink-secondary">{t("botAccess.mcpDisabled")}</div>}
+                <div className="truncate font-mono text-[12px] text-ink">{server.name}</div>
+                {!server.enabled && <div className="font-mono text-[11px] text-ink-secondary">{t("botAccess.mcpDisabled")}</div>}
               </div>
               <Switch
                 checked={mounted.has(server.name)}
@@ -161,11 +162,11 @@ function McpServersCard({ bot, patch }: { bot: Bot; patch: (patch: { mcpServers:
         </div>
       )}
       <div className="mt-3 flex items-center gap-2">
-        <button type="button" onClick={openPlugins} className="flex items-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover">
-          <Plus size={14} /> {t("botAccess.mcpAdd")}
-        </button>
+        <Button variant="secondary" size="sm" onClick={openPlugins}>
+          <Plus size={13} /> {t("botAccess.mcpAdd")}
+        </Button>
         {!usesAll && servers && servers.length > 0 && (
-          <button type="button" disabled={!!bot.busy || error} onClick={() => { if (!bot.busy && !error) patch({ mcpServers: null }); }} className="rounded-lg px-2 py-2 text-[13px] text-ink-secondary hover:text-ink disabled:opacity-50">
+          <button type="button" disabled={!!bot.busy || error} onClick={() => { if (!bot.busy && !error) patch({ mcpServers: null }); }} className="font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:text-ink disabled:opacity-50">
             {t("botAccess.mcpUseAll")}
           </button>
         )}
@@ -223,12 +224,12 @@ export function AccessSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-card p-4">
-        <div className="text-[15px] font-medium text-ink">Works on</div>
-        <div className="mt-0.5 text-[13px] text-ink-secondary">
+      <div className="border border-hairline bg-card p-4">
+        <div className="text-[14px] font-medium text-ink">Works on</div>
+        <div className="mt-0.5 text-[12.5px] text-ink-secondary">
           Where this bot works{bot.computer ? "" : " (currently: auto)"}. Browser is the built-in browser tab only; no desktop.
         </div>
-        <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
+        <div className="mt-3 flex border border-hairline bg-inset">
           {([
             ["local", "This computer"],
             ["browser", "Browser"],
@@ -253,12 +254,12 @@ export function AccessSection({
                 else patch({ computer: mode });
               }}
               className={cn(
-                "flex-1 py-1.5 text-[13px] capitalize",
-                i > 0 && "border-l border-hairline/40",
+                "flex-1 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.06em] transition-colors",
+                i > 0 && "border-l border-hairline",
                 ((mode === "local" && !localSelectable) || (mode === "browser" && !browserSelectable)) && "cursor-not-allowed opacity-40",
                 (bot.computer === mode)
-                  ? "bg-control text-ink"
-                  : "text-ink-secondary hover:bg-control/60 hover:text-ink",
+                  ? "bg-raised text-ink shadow-[inset_0_-2px_0_var(--color-ink)]"
+                  : "text-ink-secondary hover:bg-raised-hover hover:text-ink",
               )}
             >
               {label}
@@ -266,14 +267,14 @@ export function AccessSection({
           ))}
         </div>
         {bot.computer === "off" && (
-          <div className="mt-3 rounded-lg bg-inset px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-secondary">
+          <div className="mt-3 border border-hairline bg-inset p-3 text-[12px] leading-relaxed text-ink-secondary">
             <span className="font-medium text-ink">Off means no screen.</span>{" "}
             This bot gets no computer and no built-in browser, so it cannot open a web page, click, or type
             anywhere. Its connected apps, MCP servers, files and chat all still work.
           </div>
         )}
         {bot.computer === "local" && (
-          <div className="mt-3 rounded-lg bg-inset px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-secondary">
+          <div className="mt-3 border border-hairline bg-inset p-3 text-[12px] leading-relaxed text-ink-secondary">
             This bot can use this computer. Actions still follow its approval level.
           </div>
         )}
@@ -281,11 +282,11 @@ export function AccessSection({
 
       <WorkingFolder bot={bot} />
 
-      <div className="rounded-xl bg-card p-4">
+      <div className="border border-hairline bg-card p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-[15px] font-medium text-ink">Connected apps</div>
-            <div className="mt-0.5 text-[13px] text-ink-secondary">
+            <div className="text-[14px] font-medium text-ink">Connected apps</div>
+            <div className="mt-0.5 text-[12.5px] text-ink-secondary">
               {!connectedAppsConfigured
                 ? "Connect apps in App Settings before giving this bot access."
                 : !canUseConnectedApps
@@ -315,12 +316,12 @@ export function AccessSection({
         {connectedAppsEnabled && inventory?.authoritative && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {connectedSlugs.length === 0 ? (
-              <span className="text-[11.5px] text-ink-secondary">No apps connected yet.</span>
+              <span className="font-mono text-[11px] text-ink-secondary">No apps connected yet.</span>
             ) : (
               connectedSlugs.map((slug) => (
-                <span key={slug} className="rounded-full bg-inset px-2 py-0.5 text-[11px] text-ink-secondary">
+                <Tag key={slug} size="sm" tone="neutral" variant="soft">
                   {slug}
-                </span>
+                </Tag>
               ))
             )}
           </div>
@@ -332,19 +333,19 @@ export function AccessSection({
               dispatch({ type: "toggleSettings", open: false });
               dispatch({ type: "togglePlugins", open: true, surface: "apps" });
             }}
-            className="mt-3 flex items-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover"
+            className={buttonClass({ variant: "secondary", size: "sm", className: "mt-3" })}
           >
-            <Plus size={14} /> {t("botAccess.connectApp")}
+            <Plus size={13} /> {t("botAccess.connectApp")}
           </button>
         )}
       </div>
 
       <McpServersCard bot={bot} patch={patch} />
 
-      <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">
+      <div className="flex items-center justify-between gap-4 border border-hairline bg-card p-4">
         <div>
-          <div className="text-[15px] font-medium text-ink">Browser</div>
-          <div className="mt-0.5 text-[13px] text-ink-secondary">
+          <div className="text-[14px] font-medium text-ink">Browser</div>
+          <div className="mt-0.5 text-[12.5px] text-ink-secondary">
             {!desktopBrowser
               ? browserBlockedOnWindows && !browserInstallable
                 ? "Not available on this Windows machine yet: install the browser engine with `kind-meitner browser install`."
@@ -373,25 +374,20 @@ export function AccessSection({
         />
       </div>
 
-      <div className="rounded-xl bg-card p-4">
-        <div className="text-[15px] font-medium text-ink">Webhooks</div>
-        <div className="mt-0.5 text-[13px] text-ink-secondary">Inbound triggers wired to this bot.</div>
+      <div className="border border-hairline bg-card p-4">
+        <div className="text-[14px] font-medium text-ink">Webhooks</div>
+        <div className="mt-0.5 text-[12.5px] text-ink-secondary">Inbound triggers wired to this bot.</div>
         {webhooks.length === 0 ? (
-          <div className="mt-3 rounded-lg bg-inset px-3 py-2 text-[12px] text-ink-secondary">No webhooks for this bot.</div>
+          <div className="mt-3 border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink-secondary">No webhooks for this bot.</div>
         ) : (
-          <div className="mt-3 divide-y divide-hairline/40 overflow-hidden rounded-lg border border-hairline/40">
+          <div className="mt-3 divide-y divide-hairline border border-hairline">
             {webhooks.map((webhook) => (
-              <div key={webhook.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{webhook.name}</span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                    webhook.enabled ? "bg-accent/15 text-accent-text" : "bg-control text-ink-secondary",
-                  )}
-                >
+              <div key={webhook.id} className="flex items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-raised-hover">
+                <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">{webhook.name}</span>
+                <Tag size="sm" tone={webhook.enabled ? "success" : "neutral"} variant={webhook.enabled ? "solid" : "soft"}>
                   {webhook.enabled ? "Active" : "Paused"}
-                </span>
-                <span className="shrink-0 text-[11.5px] tabular-nums text-ink-secondary">
+                </Tag>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-secondary">
                   {webhook.deliveryCount} deliveries
                 </span>
               </div>
@@ -400,24 +396,25 @@ export function AccessSection({
         )}
       </div>
 
-      <div className="rounded-xl bg-card p-4">
-        <div className="text-[15px] font-medium text-ink">Always allowed</div>
-        <div className="mt-0.5 text-[13px] text-ink-secondary">Tools this bot no longer asks about.</div>
+      <div className="border border-hairline bg-card p-4">
+        <div className="text-[14px] font-medium text-ink">Always allowed</div>
+        <div className="mt-0.5 text-[12.5px] text-ink-secondary">Tools this bot no longer asks about.</div>
         {alwaysAllow.length === 0 ? (
-          <div className="mt-3 rounded-lg bg-inset px-3 py-2 text-[12px] text-ink-secondary">Nothing standing yet.</div>
+          <div className="mt-3 border border-hairline bg-inset px-3 py-2 font-mono text-[12px] text-ink-secondary">Nothing standing yet.</div>
         ) : (
-          <div className="mt-3 divide-y divide-hairline/40 overflow-hidden rounded-lg border border-hairline/40">
+          <div className="mt-3 divide-y divide-hairline border border-hairline">
             {alwaysAllow.map((entry) => (
-              <div key={entry} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink">{entry}</span>
-                <button
-                  type="button"
+              <div key={entry} className="flex items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-raised-hover">
+                <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">{entry}</span>
+                <Button
+                  variant="ghost"
+                  size="xs"
                   aria-label={`Remove ${entry} from always allowed`}
                   onClick={() => patch({ alwaysAllow: alwaysAllow.filter((key) => key !== entry) })}
-                  className="shrink-0 rounded-md px-2 py-1 text-[12px] text-ink-secondary hover:bg-danger/10 hover:text-danger"
+                  className="text-ink-secondary hover:text-danger"
                 >
                   Remove
-                </button>
+                </Button>
               </div>
             ))}
           </div>

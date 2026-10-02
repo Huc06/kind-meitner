@@ -6,6 +6,8 @@ import { AlertTriangle, Check, Copy, Download, ExternalLink, Loader2, LogIn, Ter
 import { api, type EngineInstall, type InstanceInfo, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 import { CodexDeviceSignIn } from "./CodexDeviceSignIn";
 import { ClaudeSignIn } from "./ClaudeSignIn";
 
@@ -70,31 +72,31 @@ export function CommandRow({
 
   if (compact) {
     return (
-      <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg border border-hairline/50 bg-app px-2 py-1.5">
-        <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-secondary" title={command}>
+      <div className="mt-2 flex min-w-0 items-center gap-1.5 border border-hairline bg-inset px-2.5 py-1.5 font-mono text-[11px]">
+        <code className="min-w-0 flex-1 truncate text-ink-secondary" title={command}>
           {command}
         </code>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => void copy()}
           aria-label={t("engineSetup.copyCommand")}
           title={t("engineSetup.copyCommand")}
-          className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-ink-secondary hover:bg-control hover:text-ink"
         >
-          {status === "copied" ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+          {status === "copied" ? <Check size={11} className="text-success" /> : <Copy size={11} />}
           {status === "copied" ? t("engineSetup.copied") : t("engineSetup.copy")}
-        </button>
+        </Button>
         {canOpen && (
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="xs"
             onClick={() => void openTerminal()}
             aria-label={actionLabel}
             title={actionLabel}
-            className="flex shrink-0 items-center gap-1 rounded-md bg-accent px-2 py-1 text-[11px] font-semibold text-white hover:brightness-110"
           >
-            {status === "opened" ? <Check size={12} /> : <TerminalSquare size={12} />}
+            {status === "opened" ? <Check size={11} /> : <TerminalSquare size={11} />}
             {status === "opened" ? t("engineSetup.opened") : t("engineSetup.terminal")}
-          </button>
+          </Button>
         )}
         <span aria-live="polite" className="sr-only">
           {status === "opened" ? t("engineSetup.openedHint") : ""}
@@ -105,47 +107,49 @@ export function CommandRow({
 
   return (
     <div className="mt-3">
-      <div className="flex min-w-0 items-center gap-2 rounded-lg border border-hairline/50 bg-app px-2.5 py-2">
-        <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink-secondary" title={command}>
+      <div className="flex min-w-0 items-center gap-2 border border-hairline bg-inset px-2.5 py-2 font-mono text-[12px]">
+        <code className="min-w-0 flex-1 truncate text-ink-secondary" title={command}>
           {command}
         </code>
         {canOpen && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => void copy()}
             aria-label={t("engineSetup.copyCommand")}
             title={t("engineSetup.copyCommand")}
-            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11.5px] font-medium text-ink-secondary hover:bg-control hover:text-ink"
           >
             {status === "copied" ? <Check size={12} className="text-success" /> : <Copy size={12} />}
             {status === "copied" ? t("engineSetup.copied") : t("engineSetup.copy")}
-          </button>
+          </Button>
         )}
       </div>
 
       {canOpen ? (
         <>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => void openTerminal()}
-            className="mt-2 flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110"
+            className="mt-2 w-full"
           >
-            {status === "opened" ? <Check size={14} /> : <TerminalSquare size={14} />}
+            {status === "opened" ? <Check size={13} /> : <TerminalSquare size={13} />}
             {status === "opened" ? t("engineSetup.terminalOpened") : actionLabel}
-          </button>
+          </Button>
           <p aria-live="polite" className="mt-1.5 text-center text-[11px] text-ink-secondary/70">
             {status === "opened" ? t("engineSetup.pasteHint") : t("engineSetup.copyOnOpenHint")}
           </p>
         </>
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="md"
           onClick={() => void copy()}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-control px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-raised-hover"
+          className="mt-2 w-full"
         >
-          {status === "copied" ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+          {status === "copied" ? <Check size={13} className="text-success" /> : <Copy size={13} />}
           {status === "copied" ? t("engineSetup.commandCopied") : t("engineSetup.copyCommand")}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -180,22 +184,23 @@ function ServerEngineInstall({ instance, mode, command }: { instance: InstanceIn
 
   return (
     <div className="mt-3 space-y-2">
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="md"
         disabled={busy}
         onClick={() => void run()}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+        className="w-full"
       >
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
         {busy
           ? t("engineSetup.serverInstalling")
           : t(mode === "update" ? "engineSetup.serverUpdate" : "engineSetup.serverInstall", { name: instance.displayName })}
-      </button>
-      {done && !busy && <p role="status" className="text-center text-[11px] text-success">{t("engineSetup.serverInstalled")}</p>}
+      </Button>
+      {done && !busy && <p role="status" className="font-mono text-center text-[11px] text-success">{t("engineSetup.serverInstalled")}</p>}
       {error && <p role="alert" className="whitespace-pre-wrap text-[11.5px] leading-relaxed text-danger">{error}</p>}
       {command && (
-        <details className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-          <summary className="cursor-pointer select-none">{t("engineSetup.preferTerminal")}</summary>
+        <details className="border border-hairline bg-inset p-2.5 text-[11.5px] text-ink-secondary">
+          <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-wide select-none">{t("engineSetup.preferTerminal")}</summary>
           <CommandRow command={command} actionLabel={t(mode === "update" ? "engineSetup.openUpdate" : "engineSetup.openInstall")} compact />
         </details>
       )}
@@ -217,7 +222,7 @@ export function EngineUpdateNotice({
   return (
     <div
       data-engine-update-notice
-      className={cn("rounded-xl border border-warning/25 bg-warning/5 p-2.5", className)}
+      className={cn("border border-warning/40 bg-warning/10 p-3", className)}
     >
       <div className="flex items-start gap-2">
         <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
@@ -297,65 +302,68 @@ function ManagedEngineSetup({ instance, signInOnly }: { instance: InstanceInfo; 
   if (!signInOnly) {
     return (
       <div className="mt-3">
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
           disabled={busy !== null}
           onClick={() => void install()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+          className="w-full"
         >
-          {busy === "install" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          {busy === "install" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
           {busy === "install" ? t("engineSetup.installing") : managed.label}
-        </button>
+        </Button>
         <p className="mt-1.5 text-center text-[11px] text-ink-secondary/70">
           {t("engineSetup.downloadNote", { mb: Math.ceil(managed.downloadBytes / 1024 / 1024) })}
         </p>
-        {error && <p className="mt-2 text-[11.5px] text-danger">{error}</p>}
+        {error && <p role="alert" className="mt-2 text-[11.5px] text-danger">{error}</p>}
       </div>
     );
   }
 
   return (
     <div className="mt-3 space-y-2">
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="md"
         disabled={busy !== null}
         onClick={() => void signIn()}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+        className="w-full"
       >
-        {busy === "signin" ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
+        {busy === "signin" ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />}
         {busy === "signin"
           ? t("engineSetup.startingGoogle")
           : flow
             ? t("engineSetup.openGoogleAgain")
             : t("engineSetup.signInGoogle")}
-      </button>
+      </Button>
       {busy === "signin" && <p role="status" className="text-[11.5px] text-ink-secondary">{t("engineSetup.antigravitySlow")}</p>}
       {flow && (
         <>
-          <button type="button" onClick={() => void check()} className="w-full rounded-lg bg-control px-3 py-2 text-[12px] font-semibold text-ink hover:bg-raised-hover">
+          <Button variant="secondary" size="sm" onClick={() => void check()} className="w-full">
             {busy === "check" ? t("common.checking") : t("engineSetup.finishedSignIn")}
-          </button>
-          <details className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-            <summary className="cursor-pointer select-none">{t("engineSetup.otherComputer")}</summary>
+          </Button>
+          <details className="border border-hairline bg-inset p-2.5 text-[11.5px] text-ink-secondary">
+            <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-wide select-none">{t("engineSetup.otherComputer")}</summary>
             <p className="mt-2 leading-relaxed">{t("engineSetup.otherComputerHint")}</p>
-            <input
+            <Input
               value={callbackUrl}
               onChange={(event) => setCallbackUrl(event.target.value)}
               placeholder="http://127.0.0.1:…/?code=…"
-              className="mt-2 w-full rounded-md border border-hairline bg-inset px-2 py-1.5 text-[11px] text-ink outline-none focus:border-accent"
+              className="mt-2 font-mono text-[11px]"
             />
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={!callbackUrl.trim() || busy !== null}
               onClick={() => void complete()}
-              className="mt-2 w-full rounded-md bg-control px-2 py-1.5 font-medium text-ink disabled:opacity-50"
+              className="mt-2 w-full"
             >
               {busy === "complete" ? t("engineSetup.sending") : t("engineSetup.sendRedirect")}
-            </button>
+            </Button>
           </details>
         </>
       )}
-      {error && <p className="text-[11.5px] text-danger">{error}</p>}
+      {error && <p role="alert" className="text-[11.5px] text-danger">{error}</p>}
     </div>
   );
 }
@@ -405,7 +413,7 @@ export function EngineSetup({
   // token) and intentionally have no install descriptor.
   if (!install) {
     return (
-      <div className={cn(!unframed && "rounded-xl border border-hairline/40 bg-control/30 p-3", className)}>
+      <div className={cn(!unframed && "border border-hairline bg-card p-3", className)}>
         <div className="text-[13px] font-semibold text-ink">{t("engineSetup.notReady", { name: instance.displayName })}</div>
         <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
           {instance.snapshot.reason ?? t("engineSetup.noReason")}
@@ -415,10 +423,10 @@ export function EngineSetup({
   }
 
   return (
-    <div className={cn(!unframed && "rounded-xl border border-hairline/40 bg-control/30 p-3", className)}>
+    <div className={cn(!unframed && "border border-hairline bg-card p-3", className)}>
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-ink-secondary">
-          {signInOnly ? <LogIn size={14} /> : <Download size={14} />}
+        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center border border-hairline bg-inset text-ink-secondary">
+          {signInOnly ? <LogIn size={13} /> : <Download size={13} />}
         </span>
         <div className="min-w-0">
           <div className="text-[13px] font-semibold text-ink">{title}</div>
@@ -446,7 +454,7 @@ export function EngineSetup({
           actionLabel={signInOnly ? t("engineSetup.openSignIn") : t("engineSetup.openInstall")}
         />
       ) : (
-        <p className="mt-3 rounded-lg bg-inset px-2.5 py-2 text-[12px] leading-relaxed text-ink-secondary">
+        <p className="mt-3 border border-hairline bg-inset px-2.5 py-2 text-[12px] leading-relaxed text-ink-secondary">
           {t("engineSetup.noInstaller")}
         </p>
       )}
@@ -468,7 +476,7 @@ export function EngineSetup({
           href={install.docsUrl}
           target="_blank"
           rel="noreferrer"
-          className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-accent hover:underline"
+          className="mt-2.5 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase text-ink hover:underline"
         >
           <ExternalLink size={12} /> {t("engineSetup.viewGuide")}
         </a>

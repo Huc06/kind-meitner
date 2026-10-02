@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 
 import { cn } from "@/lib/cn";
+import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export type ConfirmTone = "danger" | "neutral";
 
@@ -65,12 +67,9 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   if (!open) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6"
-      onMouseDown={(event) => event.target === event.currentTarget && onCancel()}
-    >
+    <DialogBackdrop onDismiss={onCancel}>
       <ConfirmDialogCard ref={dialogRef} cancelRef={cancelRef} {...props} />
-    </div>,
+    </DialogBackdrop>,
     document.body,
   );
 }
@@ -93,50 +92,46 @@ export function ConfirmDialogCard({
 }) {
   const danger = tone === "danger";
   return (
-    <div
+    <DialogPanel
       ref={ref}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-body"
-      className={cn(
-        "w-full max-w-[420px] rounded-2xl border bg-panel p-5 shadow-2xl",
-        danger ? "border-danger/30" : "border-hairline/50",
-      )}
+      className={cn("w-full max-w-[440px] p-5", danger && "border-danger/40")}
     >
       <div className="flex items-start gap-3">
         <span className={cn("mt-0.5 shrink-0", danger ? "text-danger" : "text-warning")}>
           {icon ?? <AlertTriangle size={18} />}
         </span>
         <div className="min-w-0">
-          <h2 id="confirm-dialog-title" className="text-[15px] font-semibold text-ink">
+          <h2 id="confirm-dialog-title" className="label-mono text-[13px] text-ink">
             {title}
           </h2>
-          <p id="confirm-dialog-body" className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">
+          <p id="confirm-dialog-body" className="mt-2 text-[13px] leading-relaxed text-ink-secondary">
             {body}
           </p>
         </div>
       </div>
       <div className="mt-5 flex justify-end gap-2">
-        <button
+        <Button
           ref={cancelRef}
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={onCancel}
-          className="rounded-xl px-4 py-2 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant={danger ? "danger" : "primary"}
+          size="sm"
           onClick={onConfirm}
-          className={cn(
-            "rounded-xl px-4 py-2 text-[13px] font-medium",
-            danger ? "bg-danger text-white hover:brightness-110" : "bg-accent text-white hover:brightness-110",
-          )}
         >
           {confirmLabel}
-        </button>
+        </Button>
       </div>
-    </div>
+    </DialogPanel>
   );
 }

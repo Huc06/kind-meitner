@@ -3,6 +3,7 @@
 // ChartAvatar stays the OKX catalog mark. CursorAvatar is no longer rendered
 // here; one-shot motion beats still borrow a library state for a moment.
 import { forwardRef, memo, useEffect, useState } from "react";
+import { AgentMark } from "./agent-identity/AgentMark";
 import { BotAvatar as LibBotAvatar } from "bot-avatars";
 import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
 import { mascotBodyToType, mausColorToHex, mausStateToBotState } from "@/lib/bot-avatar-bridge";
@@ -154,7 +155,7 @@ export function ChartAvatar({
       role="img"
       aria-label={label}
       title={label}
-      className="inline-flex shrink-0 items-center justify-center rounded-full border border-app-bg/70 text-ink shadow-sm"
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-hairline text-ink shadow-sm"
       style={{ width: size, height: size, background: `linear-gradient(135deg, ${highlight}99, ${fill}66)` }}
     >
       {isSpend ? (
@@ -183,12 +184,20 @@ export function ChartAvatar({
 
 export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
   bot: {
+    id?: string;
     name?: string;
-    color: MausColor;
+    title?: string;
+    color?: MausColor;
     avatarUrl?: string | null;
     avatarCrop?: BotAvatarCrop;
     mascotBody?: MascotBodyId | null;
-    okxImport?: { kind?: string };
+    okxImport?: {
+      kind?: string;
+      externalAgentId?: string;
+      capabilities?: readonly string[] | string[];
+      avatar?: string;
+      catalogAvatar?: string;
+    };
   };
 };
 
@@ -276,7 +285,7 @@ export function defaultMascotBodyForBot(bot: {
 }
 
 export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
-  const effectiveBody = defaultMascotBodyForBot(bot);
+  void mascotProps;
   const profile = botAvatarProfile(bot);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -290,10 +299,8 @@ export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarPr
 
   if (outcome !== "flatImage") {
     return (
-      <MausAvatar
-        bodyId={effectiveBody}
-        {...mascotProps}
-        color={bot.color}
+      <AgentMark
+        bot={bot}
         size={size}
         label={label ?? bot.name}
       />

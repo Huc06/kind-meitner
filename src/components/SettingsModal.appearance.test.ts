@@ -57,7 +57,7 @@ describe("Settings → Appearance", () => {
   it("groups skins, thread visibility, and tool-call display with preservation copy", () => {
     const html = render();
     expect(html).toContain('<option value="appearance" selected="">Appearance</option>');
-    expect(html).toContain("Midnight");
+    expect(html).toContain("Nymspace Paper");
     expect(html).toContain('aria-label="Show threads"');
     expect(html).toContain('aria-label="Show tool calls in chat"');
     expect(html).toContain("on this device only");
@@ -88,7 +88,7 @@ describe("Settings → Appearance", () => {
     expect(html).toContain("Diagnostics");
     expect(html).not.toContain('aria-label="Show threads"');
     expect(html).not.toContain('aria-label="Show tool calls in chat"');
-    expect(html).not.toContain("Midnight");
+    expect(html).not.toContain("Nymspace Paper");
   });
 
   it("uses English fallback for new keys in untranslated languages", () => {

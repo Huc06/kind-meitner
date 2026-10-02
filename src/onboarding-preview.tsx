@@ -10,6 +10,7 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
+import { Button } from "@/components/ui/button";
 import { WelcomeFlow } from "@/components/onboarding/WelcomeFlow";
 import type { MausMotion } from "@/lib/mascot";
 import { type BeatId, beatsFor } from "@/lib/onboarding";
@@ -48,7 +49,7 @@ function Stage({ skin, beat, run, scale = 1, entrance }: { skin: SkinId; beat: B
   return (
     <div
       data-skin={skin}
-      className="relative overflow-hidden rounded-xl border border-hairline/40 bg-app"
+      className="relative overflow-hidden border border-hairline bg-app"
       style={{ width: width * scale, height: height * scale }}
     >
       <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: "top left" }}>
@@ -94,8 +95,7 @@ function Preview() {
   }, []);
 
   const control =
-    "rounded-lg border border-hairline/40 bg-inset px-2 py-1.5 text-[13px] text-ink focus:border-hairline focus:outline-none";
-
+    "border border-hairline bg-inset px-2 py-1 text-[12px] font-mono text-ink focus:border-ink focus:outline-none";
   return (
     <div data-skin="midnight" className="min-h-screen bg-app p-6 text-ink">
       <header className="mb-5 flex flex-wrap items-center gap-3">
@@ -126,12 +126,13 @@ function Preview() {
         <label className="flex items-center gap-1.5 text-[13px] text-ink-secondary">
           <input type="checkbox" checked={reduced} onChange={(e) => setReduced(e.target.checked)} /> Reduced motion
         </label>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => setRun((r) => r + 1)}
-          className="rounded-lg bg-raised px-3 py-1.5 text-[13px] text-ink hover:bg-raised-hover"
         >
           Replay entrance
-        </button>
+        </Button>
         <span className="ml-auto text-[12px] text-ink-secondary">
           Use Back / Continue inside the card to walk the real transitions.
         </span>

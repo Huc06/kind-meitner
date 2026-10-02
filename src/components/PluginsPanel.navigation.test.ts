@@ -2,10 +2,22 @@ import { Children, createElement, isValidElement, type ReactElement, type ReactN
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const fixture = vi.hoisted(() => ({ surface: "apps" as "apps" | "mcp", dispatch: vi.fn() }));
+const fixture = vi.hoisted(() => ({
+  surface: "hub" as "hub" | "apps" | "mcp",
+  hubTab: undefined as "agents" | "asps" | "mcp" | undefined,
+  dispatch: vi.fn(),
+}));
 vi.mock("@/state/store", () => ({
   api: vi.fn(),
-  useStore: () => ({ state: { pluginsSurface: fixture.surface }, dispatch: fixture.dispatch }),
+  useStore: () => ({
+    state: {
+      pluginsSurface: fixture.surface,
+      hubTab: fixture.hubTab,
+      bots: [],
+      groups: [],
+    },
+    dispatch: fixture.dispatch,
+  }),
 }));
 vi.mock("./McpServersPanel", () => ({ McpServersPanel: () => createElement("div", null, "MCP inventory") }));
 import { PluginsPanel } from "./PluginsPanel";
@@ -17,30 +29,40 @@ function nodes(value: ReactNode): Node[] {
   return [node, ...Children.toArray(node.props.children).flatMap(nodes)];
 }
 function render() {
-  let tree!: ReturnType<typeof PluginsPanel>;
-  function Capture() { tree = PluginsPanel(); return tree; }
+  let tree: ReactNode = null;
+  function Capture() {
+    tree = PluginsPanel();
+    return tree;
+  }
   const html = renderToStaticMarkup(createElement(Capture));
-  return { html, nodes: nodes(tree) };
+  return { html, tree, nodes: nodes(tree) };
 }
-beforeEach(() => { vi.stubGlobal("window", {}); fixture.surface = "apps"; fixture.dispatch.mockReset(); });
+beforeEach(() => {
+  vi.stubGlobal("window", {});
+  fixture.surface = "hub";
+  fixture.hubTab = undefined;
+  fixture.dispatch.mockReset();
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Plugins surface navigation", () => {
-  it("opens the requested surface and persists manual changes through the store", () => {
+  it("renders the default hub surface (AgentHubPanel) with OKX Agent Hub title", () => {
+    const initial = render();
+    expect(initial.html).toContain("OKX Agent Hub");
+    expect(initial.html).not.toContain("MCP inventory");
+  });
+
+  it("renders AgentHubPanel and keeps hub shell when surface is mcp", () => {
     fixture.surface = "mcp";
     const initial = render();
+    expect(initial.html).toContain("OKX Agent Hub");
     expect(initial.html).toContain("MCP inventory");
-    const apps = initial.nodes.find((node) => node.props.role === "tab" && node.props.children === "Connected apps")!;
-    expect(apps.props["aria-selected"]).toBe(false);
-    apps.props.onClick!();
-    expect(fixture.dispatch).toHaveBeenLastCalledWith({ type: "togglePlugins", open: true, surface: "apps" });
+  });
+
+  it("renders legacy apps panel only when surface is apps", () => {
     fixture.surface = "apps";
-    const reopened = render();
-    expect(reopened.html).not.toContain("MCP inventory");
-    const mcp = reopened.nodes.find((node) => node.props.role === "tab" && node.props.children === "MCP servers")!;
-    mcp.props.onClick!();
-    expect(fixture.dispatch).toHaveBeenLastCalledWith({ type: "togglePlugins", open: true, surface: "mcp" });
-    fixture.surface = "mcp";
-    expect(render().html).toContain("MCP inventory");
+    const legacyView = render();
+    expect(legacyView.html).not.toContain("OKX Agent Hub");
+    expect(legacyView.html).toContain("Connected apps");
   });
 });

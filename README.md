@@ -111,15 +111,17 @@ Real-time analytics and pricing transparency across the OKX agent marketplace.
 
 ## Visual Showcase
 
-| Interactive Landing Page (Nymspace WordTiles) | Four Pillars Cybernetic Telemetry |
+Every surface uses one design system: the Nymspace console register (dashed frames, corner marks, bracketed mono titles, square corners, Geist + Geist Mono, ink as the only chrome accent, colour reserved for verdicts and agent identity). The default skin is **Nymspace**; **Nymspace Paper** is its light twin.
+
+| Landing — WordTiles hero and the two-loop story | Four pillars |
 |---|---|
 | <img src="docs/screenshots/showcase/01-landing-nymspace-wordtiles.png" width="100%" /> | <img src="docs/screenshots/showcase/02-landing-four-pillars-cybernetic.png" width="100%" /> |
 
-| Team Map 2.0 Spatial Canvas | Spend Scout & Artifacts Review Drawer |
+| Team Map 2.0 canvas (sample data) | Workflow inspector — artifacts review |
 |---|---|
 | <img src="docs/screenshots/showcase/04-team-map-spatial-canvas.png" width="100%" /> | <img src="docs/screenshots/showcase/05-spend-scout-artifacts-drawer.png" width="100%" /> |
 
-| Room Chat `#dev-day-gate` & Animated Mascots | Routines Automated Schedule Calendar |
+| `#dev-day-gate` — trust NO_GO and readiness PASS cards | Automations — routine composer with date/time picker |
 |---|---|
 | <img src="docs/screenshots/showcase/06-dev-day-gate-chat-room.png" width="100%" /> | <img src="docs/screenshots/showcase/07-routines-schedule-calendar.png" width="100%" /> |
 
@@ -140,7 +142,10 @@ kind-meitner/
 │   └── room-handoffs.ts         # Multi-agent conversation handoffs
 ├── src/
 │   ├── components/
-│   │   ├── LandingPage.tsx      # Nymspace WordTiles & Cybernetic Pillars UI
+│   │   ├── ui/                  # Nymspace primitives: Frame, Button, Tag, fields, dialog, WordTiles
+│   │   ├── LandingPage.tsx      # Landing: WordTiles hero, two-loop strip, pillars
+│   │   ├── ReadinessRunCard.tsx # Verdict-first readiness card (PASS / WARN / FAIL)
+│   │   ├── TrustCard.tsx        # Verdict-first trust card (GO / CAUTION / NO_GO)
 │   │   ├── TeamMapWorkflowGraph.tsx # Team Map 2.0 Spatial Graph
 │   │   └── Avatar.tsx           # bot-avatars canvas integration
 │   └── okx/                     # OKX terminal views

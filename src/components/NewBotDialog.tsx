@@ -10,7 +10,9 @@ import { BOT_ROLES, type BotRole } from "@/lib/bot-roles";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/state/store";
-
+import { Tag } from "@/components/ui/tag";
+import { buttonClass } from "@/components/ui/button";
+import { tileFor, TILE_FILL } from "@/components/ui/tile";
 const APP_LABELS: Record<string, string> = {
   gmail: "Gmail",
   github: "GitHub",
@@ -81,7 +83,7 @@ export function NewBotDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={close}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={close}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -90,30 +92,45 @@ export function NewBotDialog() {
         aria-label={t("sidebar.newBot")}
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
-        className="flex max-h-full w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-card shadow-2xl shadow-black/60"
+        className="relative flex max-h-full w-full max-w-[720px] flex-col border border-hairline bg-card shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 px-5 pt-5">
+        <span aria-hidden className="frame-corner" data-corner="tl" />
+        <span aria-hidden className="frame-corner" data-corner="tr" />
+        <span aria-hidden className="frame-corner" data-corner="bl" />
+        <span aria-hidden className="frame-corner" data-corner="br" />
+
+        <div className="flex items-start justify-between gap-4 frame-rule-below bg-card px-5 py-4">
           <div>
-            <h2 className="text-[17px] font-semibold text-ink">{t("sidebar.newBot")}</h2>
-            <p className="mt-1 text-[13px] text-ink-secondary">{t("newBot.intro")}</p>
+            <h2 className="text-[15px] font-semibold text-ink">{t("sidebar.newBot")}</h2>
+            <p className="mt-0.5 text-[12.5px] text-ink-secondary">{t("newBot.intro")}</p>
           </div>
-          {creating && <Loader2 aria-hidden="true" size={18} className="mt-1.5 shrink-0 animate-spin text-ink-secondary" />}
-          <button type="button" onClick={close} aria-label={t("common.close")} className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink">
+          {creating && <Loader2 aria-hidden="true" size={16} className="mt-1 shrink-0 animate-spin text-ink-secondary" />}
+          <button
+            type="button"
+            onClick={close}
+            aria-label={t("common.close")}
+            className={buttonClass({ variant: "ghost", size: "sm", icon: true })}
+          >
             <X size={16} />
           </button>
         </div>
-        {error && <p role="alert" className="px-5 pt-3 text-[13px] text-danger">{error}</p>}
-        <div className="grid grid-cols-1 gap-2.5 overflow-y-auto p-5 sm:grid-cols-2">
+        {error && <p role="alert" className="border-b border-danger/40 bg-danger/10 px-5 py-2 font-mono text-[12px] text-danger">{error}</p>}
+        <div className="grid grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2">
           <button
             type="button"
             disabled={creating}
             onClick={() => create()}
-            className="flex min-h-[112px] flex-col items-start gap-1.5 rounded-xl border border-dashed border-hairline/60 bg-raised/40 p-4 text-left hover:border-accent/50 hover:bg-raised disabled:opacity-50"
+            className="relative flex min-h-[120px] flex-col items-start gap-1.5 frame-edge bg-card p-4 text-left transition-colors hover:border-ink hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
           >
+            <span aria-hidden className="frame-corner" data-corner="tl" />
+            <span aria-hidden className="frame-corner" data-corner="tr" />
+            <span aria-hidden className="frame-corner" data-corner="bl" />
+            <span aria-hidden className="frame-corner" data-corner="br" />
+
             <span className="flex items-center gap-2 text-[14px] font-medium text-ink">
-              <BotIcon size={16} className="text-ink-secondary" /> {t("newBot.blank")}
+              <BotIcon size={15} className="text-ink-secondary" /> {t("newBot.blank")}
             </span>
-            <span className="text-[12.5px] leading-relaxed text-ink-secondary">{t("newBot.blankDescription")}</span>
+            <span className="text-[12px] leading-relaxed text-ink-secondary">{t("newBot.blankDescription")}</span>
           </button>
           {BOT_ROLES.map((role) => (
             <button
@@ -121,19 +138,24 @@ export function NewBotDialog() {
               type="button"
               disabled={creating}
               onClick={() => create(role)}
-              className={cn(
-                "flex min-h-[112px] flex-col items-start gap-1.5 rounded-xl border border-hairline/50 bg-raised/40 p-4 text-left",
-                "hover:border-accent/50 hover:bg-raised disabled:opacity-50",
-              )}
+              className="relative flex min-h-[120px] flex-col items-start gap-1.5 border border-hairline bg-card p-4 text-left transition-colors hover:border-ink hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span className="text-[14px] font-medium text-ink">{role.title}</span>
-              <span className="text-[12.5px] leading-relaxed text-ink-secondary">{role.description}</span>
+              <span aria-hidden className="frame-corner" data-corner="tl" />
+              <span aria-hidden className="frame-corner" data-corner="tr" />
+              <span aria-hidden className="frame-corner" data-corner="bl" />
+              <span aria-hidden className="frame-corner" data-corner="br" />
+
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="text-[14px] font-medium text-ink">{role.title}</span>
+                <span className={cn("size-2 shrink-0", TILE_FILL[tileFor(role.id)])} aria-hidden="true" />
+              </div>
+              <span className="text-[12px] leading-relaxed text-ink-secondary">{role.description}</span>
               {role.apps.length > 0 && (
-                <span className="mt-auto flex flex-wrap gap-1 pt-1">
+                <span className="mt-auto flex flex-wrap gap-1 pt-1.5">
                   {role.apps.map((slug) => (
-                    <span key={slug} className="rounded-full bg-inset px-2 py-0.5 text-[11px] text-ink-secondary">
+                    <Tag key={slug} size="sm" tone="neutral" variant="soft">
                       {APP_LABELS[slug] ?? slug}
-                    </span>
+                    </Tag>
                   ))}
                 </span>
               )}

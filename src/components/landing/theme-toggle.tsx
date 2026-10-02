@@ -1,61 +1,95 @@
 "use client";
 
-import { type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { readSkin, applySkin, type SkinId } from "@/lib/skins";
 
+export interface ThemeToggleProps {
+  checked?: boolean;
+  onChange?: (checked: boolean) => void;
+  className?: string;
+}
+
+/**
+ * Tactile 12-pin console theme toggle.
+ * Flips the app skin between midnight (Nymspace) and daylight (Nymspace Paper)
+ * using readSkin / applySkin from @/lib/skins.
+ */
 export function ThemeToggle({
-  checked,
+  checked: controlledChecked,
   onChange,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
+  className = "",
+}: ThemeToggleProps) {
+  const [skin, setSkin] = useState<SkinId>(() =>
+    typeof window !== "undefined" ? readSkin() : "midnight"
+  );
+
+  useEffect(() => {
+    const sync = () => {
+      setSkin(readSkin());
+    };
+    sync();
+
+    const observer = new MutationObserver(() => {
+      sync();
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-skin"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  const isDaylight =
+    controlledChecked !== undefined ? controlledChecked : skin === "daylight";
+
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.checked);
+    const nextChecked = event.target.checked;
+    const nextSkin: SkinId = nextChecked ? "daylight" : "midnight";
+    applySkin(nextSkin);
+    setSkin(nextSkin);
+    onChange?.(nextChecked);
   };
 
-  const wrapperClassName = checked
-    ? "bg-transparent text-[#f8fafc]"
-    : "bg-transparent text-[#0f172a]";
-
-  const toggleWrapperClassName = checked
-    ? "bg-gradient-to-b from-[#111827] to-[#273244] shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_1px_1px_rgb(0_0_0/0.5)]"
-    : "bg-gradient-to-b from-[#d5d5d5] to-[#e8e8e8] shadow-[0_1px_1px_rgb(255_255_255/0.6)]";
-
-  const containerClassName = checked
-    ? "bg-[#1f2937] shadow-[inset_0_0_0.0625em_0.125em_rgb(255_255_255/0.05),inset_0_0.0625em_0.125em_rgb(0_0_0/0.75)] peer-checked:bg-[#1d4ed8] peer-checked:[&_[data-toggle-button]]:translate-x-[1.5em]"
-    : "bg-[#e8e8e8] shadow-[inset_0_0_0.0625em_0.125em_rgb(255_255_255/0.2),inset_0_0.0625em_0.125em_rgb(0_0_0/0.4)] peer-checked:bg-[#1d4ed8] peer-checked:[&_[data-toggle-button]]:translate-x-[1.5em]";
-
-  const buttonClassName = checked
-    ? "bg-[#c5cdd8] shadow-[inset_0_-0.0625em_0.0625em_0.125em_rgb(0_0_0/0.16),inset_0_-0.125em_0.0625em_rgb(0_0_0/0.22),inset_0_0.1875em_0.0625em_rgb(255_255_255/0.5),0_0.125em_0.125em_rgb(0_0_0/0.45)]"
-    : "bg-[#e8e8e8] shadow-[inset_0_-0.0625em_0.0625em_0.125em_rgb(0_0_0/0.1),inset_0_-0.125em_0.0625em_rgb(0_0_0/0.2),inset_0_0.1875em_0.0625em_rgb(255_255_255/0.3),0_0.125em_0.125em_rgb(0_0_0/0.5)]";
-
-  const circleClassName = checked
-    ? "bg-[radial-gradient(circle_at_50%_0,#eef2f7,#64748b)]"
-    : "bg-[radial-gradient(circle_at_50%_0,#f5f5f5,#c4c4c4)]";
-
   return (
-    <div className={`flex items-center justify-center rounded-[0.75em] p-[1em] ${wrapperClassName}`}>
-      <div className={`relative flex items-center justify-center rounded-[0.5em] p-[0.125em] text-[1.5em] ${toggleWrapperClassName}`}>
+    <div className={`inline-flex items-center gap-2 select-none ${className}`}>
+      <span className="label-mono text-ink-secondary hidden sm:inline-block">
+        {isDaylight ? "PAPER" : "NYMSPACE"}
+      </span>
+      <label className="relative inline-flex items-center cursor-pointer">
         <input
-          aria-label={checked ? "Hide the task guide" : "Show the task guide"}
-          checked={checked}
-          className="peer absolute inset-0 z-[1] h-full w-full cursor-pointer appearance-none rounded-[inherit] font-[inherit] opacity-0"
-          onChange={handleChange}
           type="checkbox"
+          aria-label={
+            isDaylight
+              ? "Switch to Midnight console dark skin"
+              : "Switch to Daylight console paper skin"
+          }
+          checked={isDaylight}
+          onChange={handleChange}
+          className="peer sr-only"
         />
-        <div className={`relative flex h-[1.5em] w-[3em] items-center rounded-[0.375em] transition-[background-color] duration-[400ms] ease-linear ${containerClassName}`}>
+        {/* Chassis: square, token border and inset ground */}
+        <div className="relative h-6 w-12 border border-hairline bg-inset transition-colors duration-150">
+          {/* Tactile button knob with 12 pins */}
           <div
-            className={`absolute left-[0.0625em] flex h-[1.375em] w-[1.375em] items-center justify-center rounded-[0.3125em] transition-transform duration-[220ms] ease-[cubic-bezier(0.32,0.72,0,1)] [will-change:transform] motion-reduce:duration-[120ms] ${buttonClassName}`}
+            className={`absolute top-[2px] left-[2px] flex h-[18px] w-[20px] items-center justify-center border border-hairline bg-raised text-ink transition-transform duration-200 ease-out [will-change:transform] motion-reduce:duration-100 ${
+              isDaylight ? "translate-x-6" : "translate-x-0"
+            }`}
             data-toggle-button
           >
-            <div className="absolute mx-auto grid grid-cols-[repeat(3,min-content)] gap-[0.125em]">
+            {/* 12-pin tactile contact grid (4 cols x 3 rows) */}
+            <div className="grid grid-cols-4 gap-[2px]">
               {Array.from({ length: 12 }).map((_, index) => (
-                <div key={index} className={`h-[0.125em] w-[0.125em] rounded-full ${circleClassName}`} />
+                <div
+                  key={index}
+                  className="size-[2px] rounded-full bg-ink-secondary/70"
+                />
               ))}
             </div>
           </div>
         </div>
-      </div>
+      </label>
     </div>
   );
 }
+
+export default ThemeToggle;

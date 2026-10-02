@@ -69,16 +69,13 @@
 /* Amber text needs darker contrast, but the highlight uses bright yellow (#ffb000)
    to avoid a muddy background. color-mix with transparent creates an even marker tint. */
 .ann-amber {
-  --ann-color: light-dark(#b8751a, #f0b45a);
-  --ann-mark: light-dark(
-    color-mix(in oklch, #ffb000 14%, transparent),
-    color-mix(in oklch, #ffb000 22%, transparent)
-  );
+  --ann-color: var(--color-warning);
+  --ann-mark: color-mix(in oklch, var(--color-warning) 15%, transparent);
 }
-.ann-blue { --ann-color: light-dark(#3b72c4, #78a9ef); }
-.ann-green { --ann-color: light-dark(#2f8f5b, #67c792); }
-.ann-red { --ann-color: light-dark(#c45a38, #ee8a6e); }
-.ann-purple { --ann-color: light-dark(#8657c8, #b998ef); }
+.ann-blue { --ann-color: var(--color-tile-cyan); }
+.ann-green { --ann-color: var(--color-success); }
+.ann-red { --ann-color: var(--color-danger); }
+.ann-purple { --ann-color: var(--color-tile-violet); }
 .ann-rainbow {
   --ann-color: oklch(0.65 0.28 var(--ann-rainbow-hue, 350deg));
 }

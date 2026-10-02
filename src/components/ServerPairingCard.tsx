@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import { api } from "@/state/store";
 import { readSessionState, type SessionState } from "../lib/session";
 import { Card } from "./SettingsPrimitives";
+import { Button } from "@/components/ui/button";
 
 /** What the server hands out for a new device (POST /api/auth/pairing). */
 export interface PairingOffer {
@@ -42,9 +43,6 @@ export function lastSeen(lastSeenAt: number, now = Date.now()): string {
   if (minutes < 1440) return t("remote.serverPairing.hoursAgo", { hours: Math.round(minutes / 60) });
   return t("remote.serverPairing.daysAgo", { days: Math.round(minutes / 1440) });
 }
-
-const button = "rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-ink disabled:opacity-50";
-const quiet = "rounded-md border border-line px-3 py-1.5 text-[13px] text-ink hover:bg-surface";
 
 /** Settings → Remote access on a hosted server: mint a one-time pairing
  * code with a QR for the phone app, and see or sign out the devices that
@@ -133,30 +131,30 @@ export function ServerPairingCard() {
           <input type="radio" name="server-pairing-scope" checked={scope === "client"} onChange={() => setScope("client")} />
           {t("remote.serverPairing.scope.client")}
         </label>
-        <button type="button" onClick={() => void create()} disabled={busy} className={button}>
+        <Button variant="primary" size="sm" type="button" onClick={() => void create()} disabled={busy}>
           {busy ? t("remote.serverPairing.creating") : t("remote.serverPairing.create")}
-        </button>
+        </Button>
       </div>
       {offer ? (
-        <div className="mt-4 rounded-lg border border-line bg-surface p-4">
+        <div className="mt-4 border border-hairline bg-inset p-4">
           {expired ? (
             <p className="text-[13px] text-ink-secondary">{t("remote.serverPairing.expired")}</p>
           ) : (
             <div className="flex flex-wrap items-start gap-5">
               {offer.url ? (
-                <div className="rounded-md bg-white p-2">
+                <div className="bg-white p-2">
                   <QRCodeSVG value={offer.url} size={160} level="M" bgColor="#ffffff" fgColor="#111111" />
                 </div>
               ) : null}
               <div className="min-w-[200px] flex-1">
-                <div className="font-mono text-[18px] tracking-[0.14em] text-ink">{offer.code}</div>
-                <div className="mt-1 text-[12.5px] text-ink-secondary">{t("remote.serverPairing.expires", { minutes: minutesLeft(offer.expiresAt, now) })}</div>
+                <div className="font-mono text-[18px] font-semibold tracking-[0.14em] text-ink">{offer.code}</div>
+                <div className="mt-1 font-mono text-[12px] text-ink-secondary">{t("remote.serverPairing.expires", { minutes: minutesLeft(offer.expiresAt, now) })}</div>
                 {offer.url ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <code className="break-all text-[12px] text-ink-secondary">{offer.url}</code>
-                    <button type="button" onClick={() => void copyLink()} className={quiet}>
+                    <code className="break-all font-mono text-[11.5px] text-ink-secondary">{offer.url}</code>
+                    <Button variant="secondary" size="xs" type="button" onClick={() => void copyLink()}>
                       {copied ? t("remote.serverPairing.copied") : t("remote.serverPairing.copyLink")}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <p className="mt-3 text-[12.5px] text-ink-secondary">{offer.hint ?? t("remote.serverPairing.noLink")}</p>
@@ -166,17 +164,17 @@ export function ServerPairingCard() {
           )}
         </div>
       ) : null}
-      <div className="mt-5 text-[13px] font-medium text-ink">{t("remote.serverPairing.devices")}</div>
+      <div className="label-mono mt-5 text-ink-secondary">{t("remote.serverPairing.devices")}</div>
       {devices.length === 0 ? (
-        <p className="mt-1 text-[12.5px] text-ink-secondary">{t("remote.serverPairing.noDevices")}</p>
+        <p className="mt-1 text-[12px] text-ink-secondary">{t("remote.serverPairing.noDevices")}</p>
       ) : (
-        <ul className="mt-1 divide-y divide-line">
+        <ul className="mt-2 divide-y divide-hairline">
           {devices.map((device) => (
-            <li key={device.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-[13px]">
+            <li key={device.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[13px]">
               <span className="text-ink">
-                {device.label}
+                <span className="font-medium">{device.label}</span>
                 {device.email ? <span className="text-ink-secondary"> · {device.email}</span> : null}
-                <span className="text-ink-secondary">
+                <span className="font-mono text-[11.5px] text-ink-secondary">
                   {" · "}
                   {device.scopes.includes("admin") ? t("remote.serverPairing.scope.admin") : t("remote.serverPairing.scope.client")}
                   {" · "}
@@ -185,15 +183,15 @@ export function ServerPairingCard() {
                 </span>
               </span>
               {device.id === current ? null : (
-                <button type="button" onClick={() => void signOut(device.id)} className={quiet}>
+                <Button variant="secondary" size="xs" type="button" onClick={() => void signOut(device.id)}>
                   {t("remote.serverPairing.signOut")}
-                </button>
+                </Button>
               )}
             </li>
           ))}
         </ul>
       )}
-      {error ? <p className="mt-3 text-[13px] text-danger">{error}</p> : null}
+      {error ? <p role="alert" className="mt-3 text-[12px] text-danger">{error}</p> : null}
     </Card>
   );
 }

@@ -1,7 +1,8 @@
 // "About kind-meitner" — the version you are running and where to go next.
 // Small on purpose: the interesting settings live in the settings panel, and
-// this exists so a bug report can quote a version number.
 import { useEffect, useRef } from "react";
+import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 import {
   APP_NAME,
@@ -13,7 +14,6 @@ import {
   openExternalLink,
   platformLabel,
 } from "@/lib/app-links";
-
 export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -35,43 +35,42 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
   const platform = platformLabel(window.ogb?.platform);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
+    <DialogBackdrop onDismiss={onClose}>
+      <DialogPanel
         aria-labelledby="about-dialog-title"
-        className="w-full max-w-[360px] rounded-2xl border border-hairline/50 bg-panel p-6 text-center shadow-2xl"
+        className="w-full max-w-[380px] p-6 text-center"
       >
         <img src="/app-icon.svg" alt="" width={56} height={56} className="mx-auto size-14" />
-        <h2 id="about-dialog-title" className="mt-3 text-[17px] font-semibold text-ink">
+        <h2 id="about-dialog-title" className="label-mono mt-3 text-[14px] text-ink">
+          <span className="text-ink-secondary">[ </span>
           {APP_NAME}
+          <span className="text-ink-secondary"> ]</span>
         </h2>
-        <p className="mt-1 text-[13px] text-ink-secondary">
+        <p className="mt-1 font-mono text-[11px] text-ink-secondary">
           Version {appVersion()}
           {platform ? ` · ${platform}` : ""}
         </p>
         <p className="mt-3 text-[13px] leading-relaxed text-ink-secondary">
           An open-source desktop home for your agents. Apache 2.0 licensed.
         </p>
-        <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[13px]">
+        <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5 font-mono text-[11px]">
           <AboutLink href={APP_REPOSITORY} label="GitHub" />
           <AboutLink href={DOCS_URL} label="Docs" />
           <AboutLink href={RELEASES_URL} label="Releases" />
           <AboutLink href={LICENSE_URL} label="License" />
         </div>
-        <button
+        <Button
           ref={closeRef}
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={onClose}
-          className="mt-5 w-full rounded-xl bg-raised px-4 py-2 text-[13px] font-medium text-ink hover:brightness-110"
+          className="mt-5 w-full"
         >
           Close
-        </button>
-      </div>
-    </div>
+        </Button>
+      </DialogPanel>
+    </DialogBackdrop>
   );
 }
 
@@ -80,7 +79,7 @@ function AboutLink({ href, label }: { href: string; label: string }) {
     <button
       type="button"
       onClick={() => void openExternalLink(href)}
-      className="text-accent hover:underline"
+      className="text-ink underline hover:text-ink-secondary"
     >
       {label}
     </button>

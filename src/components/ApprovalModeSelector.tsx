@@ -146,8 +146,8 @@ export function ApprovalModeSelector({
         title={disabled ? t("approvalMode.busy") : undefined}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-hairline/20 bg-transparent px-3 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink",
-          wide && "h-10 w-full justify-between rounded-lg border-hairline/40 bg-inset px-3.5 text-ink",
+          "cursor-pointer flex h-7 items-center gap-1.5 whitespace-nowrap border border-hairline bg-transparent px-2.5 font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:bg-raised-hover hover:text-ink",
+          wide && "h-9 w-full justify-between border-hairline bg-inset px-3 text-ink font-sans normal-case",
           disabled && "cursor-not-allowed opacity-45 hover:bg-transparent hover:text-ink-secondary",
         )}
       >
@@ -163,14 +163,14 @@ export function ApprovalModeSelector({
           role="menu"
           aria-label={t("approvalMode.menuAria", { provider: providerName })}
           className={cn(
-            "absolute z-40 w-[340px] overflow-hidden rounded-2xl border border-hairline/40 bg-raised shadow-2xl",
+            "absolute z-40 w-[340px] overflow-hidden border border-hairline bg-menu shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]",
             menuDirection === "up" ? "bottom-full mb-2" : "top-full mt-2",
             align === "right" ? "right-0" : "left-0",
             wide && "w-full min-w-[340px]",
           )}
         >
-          <div className="border-b border-hairline/20 px-4 py-3">
-            <div className="text-[14px] font-medium text-ink">
+          <div className="border-b border-hairline px-3.5 py-2.5 bg-card/40">
+            <div className="text-[13px] font-medium text-ink">
               {t("approvalMode.question", { provider: providerName })}
             </div>
             <button
@@ -200,7 +200,7 @@ export function ApprovalModeSelector({
                     setOpen(false);
                   }}
                   className={cn(
-                    "flex items-start gap-3 px-4 py-3 text-left hover:bg-raised-hover",
+                    "cursor-pointer flex items-start gap-2.5 px-3.5 py-2 text-left hover:bg-raised-hover",
                     requiresLocalDesktop && "cursor-not-allowed opacity-45 hover:bg-transparent",
                   )}
                 >
@@ -218,7 +218,7 @@ export function ApprovalModeSelector({
               );
             })}
             {!trustedModesAvailable && (trustedModesNotice || driverKind === "codex" || driverKind === "antigravityAgent" || requiresLocalDesktop) && (
-              <div className="border-t border-hairline/20 px-4 py-2.5 text-[11.5px] leading-snug text-ink-secondary">
+              <div className="border-t border-hairline px-3.5 py-2 font-mono text-[11px] leading-snug text-ink-secondary">
                 {trustedModesNotice ?? (requiresLocalDesktop
                   ? t("approvalMode.customLocalOnlyDot")
                   : driverKind === "antigravityAgent"

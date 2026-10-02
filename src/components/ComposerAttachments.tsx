@@ -108,20 +108,20 @@ export function ComposerAttachments({
   return (
     <>
       {dragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-10">
-          <div className="rounded-2xl border-2 border-dashed border-accent/70 bg-panel/90 px-8 py-6 text-[14px] font-medium text-ink shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05050a]/60 p-10 animate-view-enter">
+          <div className="border border-hairline bg-card p-6 font-mono text-[13px] text-ink shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] frame-edge">
             Drop to attach
           </div>
         </div>
       )}
 
       {notice && (
-        <div className="mb-2 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] text-warning">
+        <div className="mb-2 flex items-start gap-2 border border-warning/60 bg-warning/10 px-3 py-2 font-mono text-[12px] text-warning">
           <span className="min-w-0 flex-1">{notice}</span>
           <button
             onClick={() => onNotice(null)}
             aria-label="Dismiss"
-            className="shrink-0 rounded p-0.5"
+            className="cursor-pointer shrink-0 p-0.5 text-warning hover:bg-warning/20"
           >
             <X size={12} />
           </button>
@@ -142,13 +142,13 @@ export function ComposerAttachments({
                   <pre className="whitespace-pre-wrap break-words font-mono text-[10.5px] leading-[1.45] text-ink-secondary">
                     {a.text.slice(0, 400)}
                   </pre>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent to-raised" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 border-b border-hairline bg-raised" />
                 </div>
                 <div className="mt-1 text-[10.5px] text-ink-secondary/70">{pasteSummary(a)}</div>
                 <button
                   type="button"
                   onClick={() => onDisplayInChatBox(a)}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/25 bg-accent/5 px-2 py-1.5 text-[10.5px] font-medium text-accent-text transition-colors hover:border-accent/50 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/60"
+                  className="cursor-pointer mt-2 flex w-full items-center justify-center gap-1.5 border border-hairline bg-card px-2 py-1.5 font-mono text-[10.5px] uppercase tracking-wide text-ink transition-colors hover:bg-raised-hover"
                   aria-label="Display pasted text in chat box"
                   title="Display in chat box"
                 >
@@ -167,7 +167,7 @@ export function ComposerAttachments({
                   }}
                   disabled={!attachmentImageUrl(a.path) && !a.previewUrl}
                   aria-busy={a.uploading || undefined}
-                  className="relative flex h-[76px] w-full items-center justify-center overflow-hidden rounded-lg bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-default"
+                  className="relative flex h-[76px] w-full items-center justify-center overflow-hidden border border-hairline bg-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-default"
                   aria-label={`Preview ${a.name}`}
                 >
                   <img
@@ -178,8 +178,8 @@ export function ComposerAttachments({
                     className="max-h-[76px] max-w-full object-contain"
                   />
                   {a.uploading && (
-                    <span className="absolute bottom-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-black/65 text-white shadow-sm">
-                      <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />
+                    <span className="absolute bottom-1 right-1 flex size-5 items-center justify-center border border-hairline bg-card text-ink">
+                      <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />
                     </span>
                   )}
                 </button>
@@ -222,14 +222,14 @@ function Chip({
     <div
       title={title}
       className={cn(
-        "group relative w-[172px] rounded-xl border border-hairline/40 bg-raised px-2.5 py-2",
-        "transition-colors hover:border-hairline",
+        "group relative w-[172px] border border-hairline bg-card px-2.5 py-2",
+        "transition-colors hover:border-ink-secondary",
       )}
     >
       {children}
       <div className="mt-1 flex items-center gap-1">
         <Icon size={11} className="text-ink-secondary/70" />
-        <span className="rounded border border-hairline/60 px-1 py-px text-[9.5px] font-medium tracking-wide text-ink-secondary">
+        <span className="border border-hairline px-1 py-px font-mono text-[9.5px] uppercase tracking-wide text-ink-secondary">
           {label}
         </span>
       </div>
@@ -238,9 +238,9 @@ function Chip({
       <button
         onClick={onRemove}
         aria-label={`Remove ${label === "PASTED" ? "pasted text" : "file"}`}
-        className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border border-hairline/60 bg-panel text-ink-secondary opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+        className="cursor-pointer absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center border border-hairline bg-card text-ink-secondary opacity-0 transition-opacity hover:bg-raised-hover hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
       >
-        <X size={11} />
+        <X size={10} />
       </button>
     </div>
   );

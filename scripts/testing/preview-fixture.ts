@@ -66,8 +66,9 @@ export async function mountPreview(
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const pathname = (req.url ?? "").split("?")[0]!;
-          if (pathname === route) {
-            void server.transformIndexHtml(route, page)
+          const routePath = route.split("?")[0]!;
+          if (pathname === routePath) {
+            void server.transformIndexHtml(routePath, page)
               .then((html) => { res.setHeader("content-type", "text/html"); res.end(html); })
               .catch(next);
             return;

@@ -201,7 +201,7 @@ export function SidebarProfileMenu() {
     {
       key: "phone",
       label: phone.pairedCount ? t("sidebar.menu.yourPhone") : t("sidebar.menu.getIos"),
-      icon: <Smartphone size={18} />,
+      icon: <Smartphone size={15} />,
       trailing:
         phone.kind === "connected" ? (
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-success" />
@@ -211,19 +211,19 @@ export function SidebarProfileMenu() {
     {
       key: "settings",
       label: t("sidebar.menu.settings"),
-      icon: <SettingsIcon size={18} />,
+      icon: <SettingsIcon size={15} />,
       onSelect: () => dispatch({ type: "toggleAppSettings" }),
     },
     {
       key: "okx-treasury",
       label: "OKX Treasury & Budget",
-      icon: <Wallet size={18} />,
+      icon: <Wallet size={15} />,
       onSelect: () => dispatch({ type: "toggleOkxSettings", open: true }),
     },
     {
       key: "shortcuts",
       label: "Keyboard shortcuts",
-      icon: <Keyboard size={18} />,
+      icon: <Keyboard size={15} />,
       trailing: <ShortcutHint id="shortcuts-cheat-sheet" />,
       onSelect: () => {
         // The menu item unmounts; let the dialog restore the profile button.
@@ -235,14 +235,14 @@ export function SidebarProfileMenu() {
     {
       key: "about",
       label: t("sidebar.menu.about"),
-      icon: <Info size={18} />,
+      icon: <Info size={15} />,
       separatorBefore: true,
       onSelect: () => setAboutOpen(true),
     },
     {
       key: "help",
       label: t("sidebar.menu.help"),
-      icon: <HelpCircle size={18} />,
+      icon: <HelpCircle size={15} />,
       onSelect: () => void openExternalLink(HELP_CENTER_URL),
     },
   ];
@@ -256,12 +256,12 @@ export function SidebarProfileMenu() {
           <span
             ref={triggerRef}
             className={cn(
-              "flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors",
-              open ? "bg-raised" : "hover:bg-raised/50",
+              "flex h-9 w-full items-center gap-2.5 px-2.5 text-left transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+              open ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
             )}
           >
-            <InitialsAvatar initials={profileInitials(profile)} size={28} />
-            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{name}</span>
+            <InitialsAvatar initials={profileInitials(profile)} size={24} />
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{name}</span>
             {/* an update is the one thing worth interrupting the name for, so
               * it sits on the row rather than waiting to be found in the menu */}
             {update && updateNoteworthy(update.phase, update.pending) && (
@@ -269,11 +269,11 @@ export function SidebarProfileMenu() {
                 title={update.label}
                 aria-label={update.label}
                 className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full",
-                  update.phase === "error" ? "bg-danger/15 text-danger" : "bg-accent/15 text-accent",
+                  "flex size-5 shrink-0 items-center justify-center",
+                  update.phase === "error" ? "text-danger" : "text-ink",
                 )}
               >
-                <UpdateIcon phase={update.phase} pending={update.pending} size={14} />
+                <UpdateIcon phase={update.phase} pending={update.pending} size={13} />
               </span>
             )}
           </span>

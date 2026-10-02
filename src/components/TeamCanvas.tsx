@@ -7,7 +7,8 @@ import { teamMapStatus, type TeamMapEdge, type TeamMapSection } from "@/lib/team
 import { CARD_HEIGHT, CARD_WIDTH, COMPUTER_DRAG_TYPE, GAP, HEADER_HEIGHT, TEAM_PADDING, fitTeams, layoutTeams, orderBots, parseBotOrders, parsePositions, reorderBot, zoomAt, type Point, type View } from "@/lib/team-canvas";
 import { BotAvatar } from "./Avatar";
 import { ProviderMark } from "./ProviderIcons";
-
+import { Frame } from "@/components/ui/frame";
+import { tileFor, TILE_FILL, TILE_TONES } from "@/components/ui/tile";
 type Gesture = {
   id: number;
   start: Point;
@@ -16,9 +17,8 @@ type Gesture = {
   moved: boolean;
 } & ({ kind: "pan" } | { kind: "team"; key: string; origin: Point } | { kind: "bot"; bot: Bot });
 
-const iconButton = "flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-ink focus-visible:outline-2 focus-visible:outline-accent";
-const menuButton = "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[12px] text-ink-secondary hover:bg-control hover:text-ink";
-
+const iconButton = "flex size-7 shrink-0 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent";
+const menuButton = "flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-ink-secondary hover:bg-raised-hover hover:text-ink";
 export interface BotWorkflowInfo {
   taskTitle?: string;
   taskState?: "queued" | "active" | "waiting" | "blocked" | "reviewing" | "completed" | "failed";
@@ -60,20 +60,24 @@ function BotCard({
   const isWorking = workflow?.presence === "working" || status.tone === "success";
   const isBlocked = workflow?.presence === "blocked" || workflow?.taskState === "blocked";
   const isReviewing = workflow?.presence === "reviewing" || workflow?.taskState === "reviewing";
+  const tileTone = tileFor(bot.id);
+  const tileBg = TILE_FILL[tileTone].split(" ")[0];
 
-  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 rounded-lg border bg-[#16191E] shadow-sm transition-all",
+  return <article className={cn("relative min-h-[136px] w-[240px] shrink-0 border border-hairline bg-card shadow-sm transition-all",
     isBlocked
-      ? "border-danger/60 ring-1 ring-danger/30"
+      ? "border-danger ring-1 ring-danger/40"
       : isReviewing
-        ? "border-accent/60 ring-1 ring-accent/25"
+        ? "border-warning ring-1 ring-warning/30"
         : isWorking
-          ? "border-white/[0.14]"
+          ? "border-hairline hover:border-ink-secondary"
           : selected || highlighted
-            ? "border-accent ring-2 ring-accent/30"
+            ? "border-ink ring-1 ring-ink bg-raised"
             : connected
-              ? "border-accent/40"
-              : "border-white/[0.08] hover:border-white/[0.16] hover:bg-[#191D24]",
+              ? "border-ink-secondary"
+              : "border-hairline hover:border-ink-secondary hover:bg-raised-hover",
     moving && "opacity-35")}>
+    {/* 3px Tile bar for agent identity */}
+    <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", tileBg)} aria-hidden="true" />
     <button data-bot-id={bot.id} aria-label={t("canvas.editBot", { name: bot.name })}
       onClick={() => {
         if (onSelect) onSelect(bot.id);
@@ -85,16 +89,11 @@ function BotCard({
         event.preventDefault(); event.stopPropagation();
         onArrange(bot, event.key === "ArrowUp" ? -1 : 1);
       }}
-      className="flex min-h-[88px] w-full cursor-grab flex-col justify-start rounded-t-xl p-3 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent">
+      className="flex min-h-[88px] w-full cursor-grab flex-col justify-start p-3 pl-3.5 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent">
       <div className="flex w-full items-start gap-3">
         <BotAvatar
           bot={bot}
-          size={38}
-          motion="none"
-          motionKey={0}
-          interactive={false}
-          animated={isWorking}
-          state={isBlocked ? "sad" : isWorking ? "working" : "happy"}
+          size={36}
         />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
@@ -109,48 +108,48 @@ function BotCard({
 
       {/* Compact Workflow Task Chip */}
       {workflow?.taskTitle && (
-        <div className="mt-2 w-full rounded-md bg-inset/70 px-2 py-1 text-[10.5px]">
+        <div className="mt-2 w-full bg-inset px-2 py-1 text-[10.5px]">
           <div className="flex items-center justify-between gap-1">
             <span className="truncate font-medium text-ink">{workflow.taskTitle}</span>
             {workflow.progress !== undefined && (
-              <span className="shrink-0 tabular-nums text-ink-secondary">{workflow.progress}%</span>
+              <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-ink-secondary">{workflow.progress}%</span>
             )}
           </div>
           {workflow.progress !== undefined && workflow.progress > 0 && workflow.progress < 100 && (
-            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-hairline/40">
-              <div className="h-full bg-accent transition-all duration-300" style={{ width: `${workflow.progress}%` }} />
+            <div className="mt-1 h-1 w-full overflow-hidden bg-hairline/40">
+              <div className={cn("h-full transition-all duration-300", isBlocked ? "bg-danger" : "bg-accent")} style={{ width: `${workflow.progress}%` }} />
             </div>
           )}
           {workflow.waitingReason && (
-            <p className="mt-0.5 truncate text-[10px] text-danger">{workflow.waitingReason}</p>
+            <p className="mt-0.5 truncate font-mono text-[10.5px] text-danger">{workflow.waitingReason}</p>
           )}
         </div>
       )}
     </button>
-    <div className="flex h-9 items-center gap-1 border-t border-white/[0.06] bg-black/20 px-2">
-      <button className={cn(iconButton, "size-7 rounded-md text-white/60 hover:text-white hover:bg-white/10")} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
+    <div className="flex h-9 items-center gap-1 frame-rule-above bg-panel/50 px-2 pl-3">
+      <button className={iconButton} aria-label={t("canvas.openBotChat", { name: bot.name })} title={t("canvas.openChat")}
         onClick={() => dispatch({ type: "select", id: bot.id })}><MessageCircle size={13} /></button>
-      {onLogs && <button className={cn(iconButton, "size-7 rounded-md text-white/60 hover:text-white hover:bg-white/10")} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
-      <span className="flex items-center gap-1.5 text-[10px] text-white/60 ml-0.5" title={workflow?.presence ?? status.label}>
+      {onLogs && <button className={iconButton} aria-label={`Session log for ${bot.name}`} title="Session log" onClick={() => onLogs(bot)}><ScrollText size={13} /></button>}
+      <span className="flex items-center gap-1.5 font-mono text-[10.5px] text-ink-secondary ml-0.5" title={workflow?.presence ?? status.label}>
         <span className={cn("size-1.5 rounded-full shrink-0",
-          isBlocked ? "bg-danger" : isWorking ? "bg-emerald-400" : isReviewing ? "bg-accent" : "bg-white/30")} />
+          isBlocked ? "bg-danger animate-pulse" : isWorking ? "bg-success" : isReviewing ? "bg-warning" : "bg-ink-secondary/40")} />
         <span className="capitalize truncate max-w-[65px]">{workflow?.presence ?? status.label}</span>
       </span>
       {workflow?.hasIncomingHelp && (
-        <span className="rounded px-1.5 py-0.2 text-[9.5px] font-semibold text-warning border border-warning/30 bg-warning/10" title="Help requested">
+        <span className="border border-warning/40 bg-warning/15 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-warning" title="Help requested">
           Help
         </span>
       )}
       {workflow?.reviewRequested && (
-        <span className="rounded px-1.5 py-0.2 text-[9.5px] font-semibold text-accent border border-accent/30 bg-accent/10" title="Review pending">
+        <span className="border border-accent/40 bg-accent/15 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-accent" title="Review pending">
           Review
         </span>
       )}
-      {selected && onComputer && <button className={cn(iconButton, "size-7 rounded-md text-white/60 hover:text-white hover:bg-white/10")} aria-label={t("canvas.botComputer", { name: bot.name })} title={t("computer.tab.computer")}
+      {selected && onComputer && <button className={iconButton} aria-label={t("canvas.botComputer", { name: bot.name })} title={t("computer.tab.computer")}
         onClick={() => onComputer(bot)}><Monitor size={13} /></button>}
       <button aria-label={t("canvas.changeModel", { name: bot.name })} title={`${t("canvas.defaultModel")}: ${model}`}
         onClick={() => dispatch({ type: "toggleSettings", botId: bot.id, section: "model", open: true })}
-        className="ml-auto flex h-7 min-w-0 max-w-[110px] items-center gap-1.5 rounded-md px-1.5 text-[10px] text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-accent">
+        className="ml-auto flex h-7 min-w-0 max-w-[110px] items-center gap-1.5 px-1.5 font-mono text-[10.5px] text-ink-secondary hover:bg-raised-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent">
         <span className="flex size-3.5 shrink-0 items-center justify-center"><ProviderMark driverKind={instance?.driverKind ?? ""} size={12} /></span>
         <span className="truncate">{model || t("canvas.defaultModel")}</span>
       </button>
@@ -450,8 +449,8 @@ export function TeamCanvas({
   }
 
   return <div ref={viewport} role="region" aria-label={t("canvas.region")} tabIndex={0} data-team-canvas
-    className="relative min-h-0 flex-1 touch-none overflow-clip outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
-    style={{ backgroundImage: "radial-gradient(circle, color-mix(in srgb, var(--color-ink-secondary) 18%, transparent) 1px, transparent 1px)", backgroundSize: `${24 * view.scale}px ${24 * view.scale}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
+    className="relative min-h-0 flex-1 touch-none overflow-clip outline-none grid-dots bg-app focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
+    style={{ backgroundPosition: `${view.x}px ${view.y}px` }}
     onPointerDown={start} onPointerMove={move} onPointerUp={(event) => finish(event)} onPointerCancel={(event) => finish(event, true)}
     onDragOver={(event) => {
       if (!canManage || !onComputerDrop || !event.dataTransfer.types.includes(COMPUTER_DRAG_TYPE)) return;
@@ -506,14 +505,16 @@ export function TeamCanvas({
       <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={edgeExtent.width} height={edgeExtent.height} aria-hidden="true">
         <defs>
           <marker id="edge-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(255,255,255,0.4)" />
-          </marker>
-          <marker id="edge-arrow-running" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-accent)" />
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-hairline)" />
           </marker>
           <marker id="edge-arrow-blocked" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-danger)" />
           </marker>
+          {TILE_TONES.map((tone) => (
+            <marker key={tone} id={`edge-arrow-${tone}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill={`var(--color-tile-${tone})`} />
+            </marker>
+          ))}
         </defs>
         {edges.flatMap((edge) => {
           const from = centers[edge.sourceBotId];
@@ -521,13 +522,14 @@ export function TeamCanvas({
           if (!from || !to) return [];
           const isRunning = edge.state === "running";
           const isBlocked = edge.state === "queued";
+          const sourceTileTone = tileFor(edge.sourceBotId);
           const stroke = isRunning
-            ? "var(--color-accent)"
+            ? `var(--color-tile-${sourceTileTone})`
             : isBlocked
               ? "var(--color-danger)"
-              : "rgba(255,255,255,0.2)";
+              : "var(--color-hairline)";
           const marker = isRunning
-            ? "url(#edge-arrow-running)"
+            ? `url(#edge-arrow-${sourceTileTone})`
             : isBlocked
               ? "url(#edge-arrow-blocked)"
               : "url(#edge-arrow)";
@@ -574,7 +576,7 @@ export function TeamCanvas({
 
           return (
             <div key={bot.id} className={cn("relative transition-opacity", !matches && "opacity-25 pointer-events-none")}>
-              {insertion?.botId === bot.id && <div className={cn("pointer-events-none absolute inset-x-1 h-0.5 rounded bg-accent", insertion.after ? "-bottom-[9px]" : "-top-[9px]")} />}
+              {insertion?.botId === bot.id && <div className={cn("pointer-events-none absolute inset-x-1 h-0.5 bg-accent", insertion.after ? "-bottom-[9px]" : "-top-[9px]")} />}
               <BotCard
                 bot={bot}
                 selected={state.selectedId === bot.id && state.settingsOpen}
@@ -590,12 +592,14 @@ export function TeamCanvas({
             </div>
           );
         };
-        return <section key={section.key} data-team-key={section.key} aria-label={t("canvas.teamRegion", { name: section.name })}
-          className={cn("absolute rounded-2xl border bg-[#12151A]/40 backdrop-blur-md shadow-md has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-white/[0.06]")}
+        const count = section.chiefs.length + section.members.length;
+        return <Frame key={section.key} as="section" data-team-key={section.key} aria-label={t("canvas.teamRegion", { name: section.name })}
+          surface="app" title={`${section.name.toUpperCase()} · ${count}`}
+          className={cn("absolute bg-panel border border-hairline shadow-sm has-[details[open]]:z-20 data-[computer-dropping=true]:border-accent data-[computer-dropping=true]:ring-2 data-[computer-dropping=true]:ring-accent/25", dropping ? "border-accent ring-2 ring-accent/25" : "border-hairline")}
           style={{ left: tile.x, top: tile.y, width: tile.width, height: tile.height }}>
-          <header className="flex h-16 items-center gap-2 px-5">
+          <header className="flex h-12 items-center gap-2 px-4 pt-1">
             <button data-arrange-team={section.key} disabled={!layoutLoaded} aria-label={t("canvas.arrange", { name: section.name })}
-              title={t("canvas.arrangeHint")} className="min-w-0 flex-1 cursor-grab rounded-md py-2 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent"
+              title={t("canvas.arrangeHint")} className="min-w-0 flex-1 cursor-grab py-1 text-left active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent"
               onKeyDown={(event) => {
                 const delta = ({ ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] } as Record<string, number[]>)[event.key];
                 if (!delta) return;
@@ -603,14 +607,13 @@ export function TeamCanvas({
                 const step = event.shiftKey ? 40 : 10;
                 savePositions({ ...positions, [section.key]: { x: tile.x + delta[0] * step, y: tile.y + delta[1] * step } });
               }}>
-              <h2 className="truncate text-[13px] font-semibold tracking-tight">{section.name}</h2>
+              <h2 className="sr-only">{section.name}</h2>
             </button>
             {computer && <button aria-label={t("canvas.teamComputer", { team: section.name, name: computer.name })} title={`${computer.name}${computer.state ? ` · ${computer.state}` : ""}`}
               disabled={!onTeamComputer} onClick={() => onTeamComputer?.(section.key)}
-              className="flex min-w-0 max-w-[120px] shrink items-center gap-1.5 rounded-md px-1.5 py-2 text-[10px] text-ink-secondary hover:bg-control hover:text-ink focus-visible:outline-2 focus-visible:outline-accent disabled:pointer-events-none">
+              className="flex min-w-0 max-w-[120px] shrink items-center gap-1.5 border border-hairline bg-inset px-2 py-1 font-mono text-[10.5px] text-ink-secondary hover:text-ink focus-visible:outline-2 focus-visible:outline-accent disabled:pointer-events-none">
               <Monitor size={12} className="shrink-0" /><span className="truncate">{computer.name}</span>
             </button>}
-            <span className="text-[11px] tabular-nums text-ink-secondary">{section.chiefs.length + section.members.length}</span>
             {canManage && <details className="relative" onToggle={(event) => {
               if (event.currentTarget.open) {
                 const bounds = viewport.current?.getBoundingClientRect();
@@ -618,8 +621,8 @@ export function TeamCanvas({
                 viewport.current?.querySelectorAll("details[open]").forEach((element) => { if (element !== event.currentTarget) element.removeAttribute("open"); });
               }
             }}>
-              <summary aria-label={t("canvas.manageTeam", { name: section.name })} className={cn(iconButton, "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}><MoreHorizontal size={17} /></summary>
-              <div className={cn("absolute right-0 z-30 w-[220px] rounded-xl border border-hairline bg-panel p-1.5 shadow-xl", menuAbove === section.key ? "bottom-10" : "top-10")} onClick={(event) => {
+              <summary aria-label={t("canvas.manageTeam", { name: section.name })} className={cn(iconButton, "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}><MoreHorizontal size={15} /></summary>
+              <div className={cn("absolute right-0 z-30 w-[220px] border border-hairline bg-menu p-1 shadow-2xl", menuAbove === section.key ? "bottom-10" : "top-10")} onClick={(event) => {
                 const menu = event.currentTarget.closest("details");
                 menu?.querySelector("summary")?.focus();
                 menu?.removeAttribute("open");
@@ -633,22 +636,22 @@ export function TeamCanvas({
               </div>
             </details>}
           </header>
-          {dropping && <div className="pointer-events-none absolute -top-7 left-2 z-30 max-w-[calc(100%-16px)] truncate rounded-md bg-accent px-2 py-1 text-[10px] text-white shadow-sm">{dropHint}</div>}
-          <div className="flex items-center px-5 pb-5">
+          {dropping && <div className="pointer-events-none absolute -top-7 left-2 z-30 max-w-[calc(100%-16px)] truncate bg-accent px-2 py-1 font-mono text-[10.5px] text-accent-ink shadow-sm">{dropHint}</div>}
+          <div className="flex items-center px-4 pb-4">
             {section.chiefs.length > 0 && <div className="flex flex-col gap-4">{orderBots(section.chiefs, personalOrder(section.key)).map(renderBot)}</div>}
-            {hierarchy && <div className="flex w-10 shrink-0 justify-center text-ink-secondary/35" aria-hidden="true"><ArrowRight size={22} strokeWidth={1} /></div>}
+            {hierarchy && <div className="flex w-10 shrink-0 justify-center text-ink-secondary/40" aria-hidden="true"><ArrowRight size={20} strokeWidth={1.5} /></div>}
             {section.members.length > 0 && <div className="flex flex-col gap-4">{orderBots(section.members, personalOrder(section.key)).map(renderBot)}</div>}
-            {section.chiefs.length + section.members.length === 0 && <p className="flex h-[126px] w-[236px] items-center justify-center rounded-xl border border-dashed border-hairline/70 px-6 text-center text-[12px] leading-relaxed text-ink-secondary">{t("canvas.dropHere")}</p>}
+            {section.chiefs.length + section.members.length === 0 && <p className="flex h-[126px] w-[236px] items-center justify-center frame-edge px-6 text-center label-mono text-[11px] leading-relaxed text-ink-secondary">{t("canvas.dropHere")}</p>}
           </div>
-        </section>;
+        </Frame>;
       })}
     </div>
-    {dragged && <div className="pointer-events-none absolute z-40 rounded-xl border border-accent/40 bg-card px-4 py-3 text-[13px] shadow-lg" style={{ left: dragged.point.x + 16, top: dragged.point.y + 16 }}>
-      <span className="flex items-center gap-2"><BotAvatar bot={dragged.bot} size={24} animated={false} />{dragged.bot.name}</span>
-      {dropHint && <p className="mt-1 text-[10px] text-ink-secondary">{dropHint}</p>}
+    {dragged && <div className="pointer-events-none absolute z-40 border border-hairline bg-card p-3 text-[13px] shadow-2xl" style={{ left: dragged.point.x + 16, top: dragged.point.y + 16 }}>
+      <span className="flex items-center gap-2"><BotAvatar bot={dragged.bot} size={24} />{dragged.bot.name}</span>
+      {dropHint && <p className="mt-1 font-mono text-[10.5px] text-ink-secondary">{dropHint}</p>}
     </div>}
     <div className="pointer-events-none absolute inset-x-5 bottom-5 flex items-end justify-between gap-3">
-      <div className="min-w-0 rounded-lg bg-app/90 px-2 py-1.5 text-[11px] text-ink-secondary">
+      <div className="min-w-0 border border-hairline bg-app px-2 py-1.5 font-mono text-[10.5px] text-ink-secondary">
         <p className="max-sm:hidden">{t("canvas.hint")}</p>
         <p role="status" aria-live="polite" className="max-w-[440px]">{dropHint ?? announcement}</p>
       </div>

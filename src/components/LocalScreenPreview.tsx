@@ -5,7 +5,9 @@ import { requestScreenPreview, stopScreenPreview } from "@/lib/screen-preview";
 import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
-
+import { Button } from "@/components/ui/button";
+import { Frame } from "@/components/ui/frame";
+import { Tag } from "@/components/ui/tag";
 type PreviewPhase =
   | "idle"
   | "requesting"
@@ -121,22 +123,26 @@ export function LocalScreenPreview() {
     phase === "cancelled" || phase === "ended" || phase === "unavailable" || phase === "error";
 
   return (
-    <section className="mt-4 rounded-xl bg-card p-4" aria-labelledby="local-preview-title">
+    <section className="mt-4 border border-hairline bg-card p-4" aria-labelledby="local-preview-title">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div id="local-preview-title" className="text-[15px] font-medium text-ink">
+          <div id="local-preview-title" className="text-[14px] font-medium text-ink">
             {t("computer.screen.title")}
           </div>
           <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
             {t("computer.screen.subtitle")}
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-raised px-2 py-1 text-[10px] font-medium text-ink-secondary">
+        <Tag tone="neutral" size="sm">
           {t("computer.screen.badge")}
-        </span>
+        </Tag>
       </div>
 
-      <div className="relative mt-3 flex aspect-[16/10] items-center justify-center overflow-hidden rounded-lg bg-panel">
+      <Frame
+        surface="card"
+        corners
+        className="relative mt-3 flex aspect-[16/10] items-center justify-center overflow-hidden bg-inset"
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -148,9 +154,9 @@ export function LocalScreenPreview() {
         {phase !== "streaming" && (
           <div className="flex flex-col items-center gap-2 px-6 text-center text-ink-secondary">
             {phase === "requesting" ? (
-              <Loader2 size={18} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin text-ink-secondary" />
             ) : (
-              <Monitor size={22} />
+              <Monitor size={22} className="text-ink-secondary" />
             )}
             <span className="text-[12px]" aria-live="polite">
               {!ready
@@ -159,28 +165,30 @@ export function LocalScreenPreview() {
             </span>
           </div>
         )}
-      </div>
+      </Frame>
 
       {phase === "streaming" && (
         <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-secondary">
-          <span className="truncate" title={screenLabel}>
+          <span className="truncate font-mono" title={screenLabel}>
             {preview.interaction === "portal-picker" ? screenLabel : t("vm.dest.local")}
           </span>
           <span className="flex items-center gap-1.5 text-success">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" /> {t("computer.screen.sharing")}
+            <span className="size-1.5 rounded-full bg-success" /> {t("computer.screen.sharing")}
           </span>
         </div>
       )}
 
-      <button
+      <Button
         type="button"
+        variant={phase === "streaming" ? "secondary" : "primary"}
+        size="md"
         disabled={phase === "requesting" || (!preview.available && phase !== "streaming")}
         onClick={
           phase === "streaming"
             ? () => releaseStream("idle", phaseCopy.idle)
             : () => void start()
         }
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-3 w-full"
       >
         {phase === "requesting" ? (
           <Loader2 size={14} className="animate-spin" />
@@ -200,7 +208,7 @@ export function LocalScreenPreview() {
               : preview.interaction === "portal-picker"
                 ? t("computer.screen.choose")
                 : t("computer.screen.start")}
-      </button>
+      </Button>
     </section>
   );
 }

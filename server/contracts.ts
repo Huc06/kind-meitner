@@ -72,6 +72,8 @@ export interface InstanceConfig {
   environment?: Record<string, string>;
   enabled?: boolean;
   config?: unknown;
+  simulated?: boolean;
+  testEngine?: boolean;
 }
 
 export type InstanceConfigMap = Record<InstanceId, InstanceConfig>;
@@ -383,6 +385,8 @@ export interface ProviderSnapshot {
   /** How this instance is paid for, when the driver can tell: a reported
    * cost on a subscription is notional and the UI labels it as such. */
   billing?: "metered" | "subscription";
+  simulated?: boolean;
+  testEngine?: boolean;
 }
 
 // ── engine install descriptor ───────────────────────────────────────────
