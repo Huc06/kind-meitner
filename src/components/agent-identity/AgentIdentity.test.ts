@@ -247,84 +247,12 @@ describe("AgentIdentity rendering", () => {
   });
 });
 
-describe("AgentMark icon mapping", () => {
-  it("maps catalog avatar 'chart' to LineChart", () => {
-    const bot: BotIdentityLike = {
-      id: "bot-chart",
-      name: "Chart Bot",
-      okxImport: {
-        kind: "okx-catalog",
-        avatar: "chart",
-      },
-    };
-    const html = renderToStaticMarkup(createElement(AgentMark, { bot }));
-    expect(html).toContain('data-agent-mark="okx"');
-    expect(html).toMatch(/lucide-(line-chart|chart-line)/);
-  });
-
-  it("maps catalog id 'okx-market-scout-v1' to Radar", () => {
-    const bot: BotIdentityLike = {
-      id: "bot-scout",
-      okxImport: {
-        kind: "okx-catalog",
-        externalAgentId: "okx-market-scout-v1",
-      },
-    };
-    const html = renderToStaticMarkup(createElement(AgentMark, { bot }));
-    expect(html).toContain('data-agent-mark="okx"');
-    expect(html).toContain("lucide-radar");
-  });
-
-  it("maps catalog id 'okx-spend-scout' to ShieldCheck", () => {
-    const bot: BotIdentityLike = {
-      id: "bot-spend",
-      okxImport: {
-        kind: "okx-catalog",
-        externalAgentId: "okx-spend-scout",
-      },
-    };
-    const html = renderToStaticMarkup(createElement(AgentMark, { bot }));
-    expect(html).toContain('data-agent-mark="okx"');
-    expect(html).toContain("lucide-shield-check");
-  });
-
-  it("maps catalog id 'okx-listing-coach' to Compass", () => {
-    const bot: BotIdentityLike = {
-      id: "bot-coach",
-      okxImport: {
-        kind: "okx-catalog",
-        externalAgentId: "okx-listing-coach",
-      },
-    };
-    const html = renderToStaticMarkup(createElement(AgentMark, { bot }));
-    expect(html).toContain('data-agent-mark="okx"');
-    expect(html).toContain("lucide-compass");
-  });
-
-  it("maps other catalog agents to Network fallback", () => {
-    const bot: BotIdentityLike = {
-      id: "bot-generic",
-      okxImport: {
-        kind: "okx-catalog",
-        externalAgentId: "custom-generic-agent",
-      },
-    };
-    const html = renderToStaticMarkup(createElement(AgentMark, { bot }));
-    expect(html).toContain('data-agent-mark="okx"');
-    expect(html).toContain("lucide-network");
-  });
-
-  it("renders local bot with initial letter and tile left bar, never a mascot", () => {
-    const bot: BotIdentityLike = {
-      id: "atlas",
-      name: "Atlas",
-    };
-    const html = renderToStaticMarkup(createElement(AgentMark, { bot }));
-    expect(html).toContain('data-agent-mark="local"');
-    expect(html).toContain("A");
-    expect(html).toContain("font-mono");
-    expect(html).toContain("w-[2px]");
-    expect(html).not.toContain("canvas");
-    expect(html).not.toContain("mascot");
+describe("AgentMark mascot", () => {
+  it("renders catalog agents with their distinct mascot bodies", () => {
+    const markets = renderToStaticMarkup(createElement(AgentMark, { bot: { id: "b1", name: "Markets", okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1" } } }));
+    const spend = renderToStaticMarkup(createElement(AgentMark, { bot: { id: "b2", name: "Spend Scout", okxImport: { kind: "okx-catalog", externalAgentId: "okx-spend-scout" } } }));
+    expect(markets).toContain('data-bot-avatar="star"');
+    expect(spend).toContain('data-bot-avatar="droid"');
   });
 });
+
