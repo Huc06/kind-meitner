@@ -6731,8 +6731,13 @@ async function runGroupMemberTurn(
     !skillAuthoringClaim.claimed &&
     !cardContinuation &&
     instance.adapter.capabilities.agentsMcp === true;
-  if ((hop < MAX_COMMS_DEPTH || orchestration?.roomHandoffId) && instance.adapter.capabilities.agentsMcp === true) {
-    integrations.agents = agentsIntegration(bot.id, threadId, hop, skillAuthoring, internalGeneration, orchestration?.roomHandoffId, !orchestration || Boolean(orchestration.roomHandoffId));
+  // Peer comms stop at the depth cap so bot-to-bot mentions cannot loop, but
+  // the read-only OKX intelligence tools ride the same proxy: a teammate that
+  // was @mentioned to run a scan must still have the scan tool.
+  const commsAgents = Boolean(hop < MAX_COMMS_DEPTH || orchestration?.roomHandoffId);
+  if (instance.adapter.capabilities.agentsMcp === true) {
+    const agents = agentsIntegration(bot.id, threadId, hop, commsAgents && skillAuthoring, internalGeneration, orchestration?.roomHandoffId, !orchestration || Boolean(orchestration.roomHandoffId));
+    integrations.agents = commsAgents ? agents : { ...agents, env: { ...agents.env, KIND_MEITNER_TOOL_SCOPE: "okx-read-only" } };
   }
   const latestUser = [...store.activePath(threadId)].reverse().find(
     (message) => message.role === "user" && message.kind === "text" && message.text,
@@ -6920,7 +6925,7 @@ async function runGroupMemberTurn(
   // and a room turn had nothing — the only advice it gave ("mention them
   // like @Name") sends the model after a teammate who will never see it.
   // Same reachability rule as list_bots, minus the room's own members.
-  const outsideRoom = integrations.agents
+  const outsideRoom = commsAgents
     ? reachablePeers(store.bots, bot).filter((peer) => !readyGroup.memberIds.includes(peer.id))
     : [];
   const system = [
@@ -6931,10 +6936,10 @@ async function runGroupMemberTurn(
     readyGroup.bulletin.trim() && `Room bulletin (shared instructions for everyone):\n${readyGroup.bulletin.trim()}`,
     `Reply as yourself, briefly and conversationally. To bring a teammate in, mention them like @Name — they'll see the conversation and respond.`,
     outsideRoom.length > 0 && orchestration && !orchestration.roomHandoffId && roomPeerRosterSystemPrompt(outsideRoom),
-    integrations.agents && (CREDENTIAL_PROMPT + (orchestration && !orchestration.roomHandoffId ? THREADS_PROMPT : "")).trim(),
-    integrations.agents && (!orchestration || orchestration.roomHandoffId) && "For actual kind-meitner teamwork, discover IDs with list_room_targets and use coordinate_bots for advice or work in this or another room. Do not substitute native coding helpers for these named bots. Consult only when needed to make a decision; no discussion step is mandatory. Give concrete responsibilities, exact accessible paths and acceptance checks. End your turn after assigning; busy teammates queue and results automatically resume you. When they return, finish the requested verification and give the user one final answer. Native helper names are not evidence that a kind-meitner teammate participated. Plain @mentions are only for conversational replies in this room.",
-    integrations.agents && ROUTINE_PROMPT.trim(),
-    integrations.agents && PROFILE_PROMPT.trim(),
+    commsAgents && (CREDENTIAL_PROMPT + (orchestration && !orchestration.roomHandoffId ? THREADS_PROMPT : "")).trim(),
+    commsAgents && (!orchestration || orchestration.roomHandoffId) && "For actual kind-meitner teamwork, discover IDs with list_room_targets and use coordinate_bots for advice or work in this or another room. Do not substitute native coding helpers for these named bots. Consult only when needed to make a decision; no discussion step is mandatory. Give concrete responsibilities, exact accessible paths and acceptance checks. End your turn after assigning; busy teammates queue and results automatically resume you. When they return, finish the requested verification and give the user one final answer. Native helper names are not evidence that a kind-meitner teammate participated. Plain @mentions are only for conversational replies in this room.",
+    commsAgents && ROUTINE_PROMPT.trim(),
+    commsAgents && PROFILE_PROMPT.trim(),
     skillAuthoring && LEARN_PROMPT.trim(),
     orchestration?.systemInstructions,
   ]
@@ -6971,14 +6976,14 @@ async function runGroupMemberTurn(
     { id: "team-computer", label: "Team computer", text: "" },
     { id: "plan", label: "Surface", text: roomPlan.note },
     { id: "browser", label: "Browser", text: integrations.browser ? BUILT_IN_BROWSER_SYSTEM_PROMPT : "" },
-    { id: "recall", label: "Recall", text: integrations.agents ? SESSION_SEARCH_SYSTEM_PROMPT : "" },
+    { id: "recall", label: "Recall", text: commsAgents ? SESSION_SEARCH_SYSTEM_PROMPT : "" },
     { id: "section-context", label: "Section context", text: sectionContextSystemPrompt(bot.section) },
     // the room path has always put a newline before memory and trimmed
     // the block's leading space; keep that so existing prompts are
     // byte-identical. The write guidance follows the tools actually
     // mounted, exactly as the 1:1 path decides it: memory_update is on the
     // agents server, so a room turn with it must be told to use it too.
-    { id: "memory", label: "Memory", text: workspace ? `\n${memorySystemPrompt(bot.id, { managedWrites: Boolean(integrations.agents) }).trim()}` : "" },
+    { id: "memory", label: "Memory", text: workspace ? `\n${memorySystemPrompt(bot.id, { managedWrites: Boolean(commsAgents) }).trim()}` : "" },
     { id: "skills", label: "Skills index", text: workspace ? skillsSystemPrompt(bot.id) : "" },
     { id: "skill-instructions", label: "Skill instructions", text: renderSkillInstructions(selectedSkills, { includeRoot: Boolean(workspace) }) },
     { id: "playbooks", label: "Playbooks", text: installedPlaybookInstructions(text, bot.playbooks) },

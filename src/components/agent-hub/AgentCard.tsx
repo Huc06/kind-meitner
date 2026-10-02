@@ -56,6 +56,11 @@ export function AgentCard({
       (agent.rooms.some((r) => r.id === _currentRoomId) ||
         Boolean(bot?.id && state.groups?.find((g) => g.id === _currentRoomId)?.memberIds?.includes(bot.id))),
   );
+  const inSelectedRoom = Boolean(
+    selectedRoomId &&
+      (agent.rooms.some((r) => r.id === selectedRoomId) ||
+        Boolean(bot?.id && state.groups?.find((g) => g.id === selectedRoomId)?.memberIds?.includes(bot.id))),
+  );
   const isAgentImported = isOkx && Boolean(
     agent.importedBotId ||
       agent.rooms.length > 0 ||
@@ -263,27 +268,17 @@ export function AgentCard({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
+            {nonDmGroups.length > 1 && (
+              <div className="w-full min-w-0">
+                <ChannelPicker
+                  selectedRoomId={selectedRoomId}
+                  onSelectRoom={setSelectedRoomId}
+                  disabled={isPending || nonDmGroups.length === 0}
+                />
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
-              {nonDmGroups.length > 1 && (
-                <div className="min-w-0 flex-1 sm:max-w-[200px]">
-                  <ChannelPicker
-                    selectedRoomId={selectedRoomId}
-                    onSelectRoom={setSelectedRoomId}
-                    disabled={isPending || nonDmGroups.length === 0}
-                  />
-                </div>
-              )}
-              {isAgentInRoom ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled
-                  className="shrink-0"
-                >
-                  {t("agent.type.inRoom")}
-                </Button>
-              ) : nonDmGroups.length > 0 ? (
+              {!inSelectedRoom && nonDmGroups.length > 0 ? (
                 <Button
                   type="button"
                   variant="secondary"

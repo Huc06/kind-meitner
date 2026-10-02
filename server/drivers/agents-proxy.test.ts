@@ -1691,3 +1691,59 @@ describe("with computer sharing off (the default)", () => {
     }
   });
 });
+
+describe("past the comms depth cap (okx-read-only scope)", () => {
+  type ScopedReply = { id: number; result?: { tools: { name: string }[] }; error?: { message: string } };
+  let scoped: ChildProcess;
+  const scopedPending = new Map<number, (msg: ScopedReply) => void>();
+  let scopedId = 1;
+  // The server tsconfig targets a lib without Promise.withResolvers.
+  const scopedRpc = (method: string, params?: unknown): Promise<ScopedReply> =>
+    new Promise((resolve) => {
+      const id = scopedId++;
+      scopedPending.set(id, resolve);
+      scoped.stdin!.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
+    });
+
+  beforeAll(async () => {
+    scoped = spawn(process.execPath, [PROXY], {
+      env: {
+        ...process.env,
+        KIND_MEITNER_HARNESS_URL: `http://127.0.0.1:${stubPort}`,
+        KIND_MEITNER_BOT_ID: "bot-asker",
+        KIND_MEITNER_THREAD_ID: "thread-asker-room",
+        KIND_MEITNER_COMMS_TOKEN: TOKEN,
+        KIND_MEITNER_TURN_DEPTH: "1",
+        KIND_MEITNER_ROOM_TURN: "1",
+        KIND_MEITNER_TOOL_SCOPE: "okx-read-only",
+      },
+      stdio: ["pipe", "pipe", "inherit"],
+    });
+    let buf = "";
+    scoped.stdout!.on("data", (c) => {
+      buf += c;
+      let nl;
+      while ((nl = buf.indexOf("\n")) !== -1) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        if (!line.trim()) continue;
+        const msg = JSON.parse(line) as ScopedReply;
+        scopedPending.get(msg.id)?.(msg);
+        scopedPending.delete(msg.id);
+      }
+    });
+    await scopedRpc("initialize", { protocolVersion: "2024-11-05" });
+  });
+
+  afterAll(() => {
+    scoped?.kill();
+  });
+
+  it("keeps the read-only OKX tools for an @mentioned teammate but no peer comms", async () => {
+    const list = await scopedRpc("tools/list");
+    const names = (list.result?.tools ?? []).map((tool) => tool.name).sort();
+    expect(names).toEqual(["get_asp_trust_card", "get_market_intelligence_report", "query_market_benchmarks", "scan_free_mcp_readiness"]);
+    const refused = await scopedRpc("tools/call", { name: "coordinate_bots", arguments: {} });
+    expect(refused.error?.message).toMatch(/unknown tool/i);
+  });
+});

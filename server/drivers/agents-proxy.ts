@@ -894,7 +894,13 @@ const ROOM_ONLY_TOOLS = new Set(["list_room_targets", "coordinate_bots"]);
 const ROOM_REPLACED_TOOLS = new Set(["ask_bot", "delegate_bot", "check_delegation", "wait_delegation", "start_thread", "send_to_thread", "wait_thread"]);
 const COORDINATING = process.env.KIND_MEITNER_ROOM_TURN === "1";
 const OWN_THREAD_CREATION = process.env.KIND_MEITNER_OWN_THREAD_CREATION === "1";
-const AVAILABLE_TOOLS = COORDINATING
+// Past the comms depth cap the harness mounts only the read-only OKX
+// intelligence tools, so a teammate @mentioned to run a scan can still do it
+// without being able to message peers in turn.
+const OKX_READ_ONLY_TOOL_NAMES = new Set(["scan_free_mcp_readiness", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report"]);
+const OKX_READ_ONLY_SCOPE = process.env.KIND_MEITNER_TOOL_SCOPE === "okx-read-only";
+const SCOPED_TOOLS = OKX_READ_ONLY_SCOPE ? TOOLS.filter(tool => OKX_READ_ONLY_TOOL_NAMES.has(tool.name)) : null;
+const AVAILABLE_TOOLS = SCOPED_TOOLS ?? (COORDINATING
   ? SHAREABLE_TOOLS.filter(tool => !ROOM_REPLACED_TOOLS.has(tool.name) || (tool.name === "start_thread" && OWN_THREAD_CREATION))
     .map(tool => tool.name === "start_thread" ? {
       ...tool,
@@ -903,7 +909,7 @@ const AVAILABLE_TOOLS = COORDINATING
         bot_id: { type: "string", enum: [BOT_ID], description: "Leave out, or use your own bot ID. For teammates use coordinate_bots." },
       } },
     } : tool)
-  : SHAREABLE_TOOLS.filter(tool => !ROOM_ONLY_TOOLS.has(tool.name));
+  : SHAREABLE_TOOLS.filter(tool => !ROOM_ONLY_TOOLS.has(tool.name)));
 
 type Json = Record<string, unknown>;
 type RoutineAction = "update" | "pause" | "resume" | "run_now" | "delete";

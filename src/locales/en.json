@@ -1,5 +1,6 @@
 {
   "okxGate.readiness.title": "Free MCP listing readiness",
+  "okxGate.readiness.frameTitle": "Readiness scan",
   "okxGate.readiness.aria": "Readiness result: {verdict}",
   "okxGate.readiness.verdict": "Readiness verdict {verdict}",
   "okxGate.readiness.checks": "Readiness checks",
@@ -10,6 +11,7 @@
   "okxGate.readiness.rescan": "Re-scan",
   "okxGate.readiness.applyHost": "Apply host",
   "okxGate.trust.title": "Pre-spend trust",
+  "okxGate.trust.frameTitle": "Trust check",
   "okxGate.trust.aria": "Trust result: {decision}",
   "okxGate.trust.decision": "Trust decision {decision}",
   "okxGate.trust.agent": "Agent {agentId}",

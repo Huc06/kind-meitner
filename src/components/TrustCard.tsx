@@ -114,10 +114,10 @@ export function TrustCard({
     <Frame
       as="section"
       aria-label={t("okxGate.trust.aria", { decision: data.decision })}
-      title={t("okxGate.trust.title")}
+      title={t("okxGate.trust.frameTitle")}
       index="02"
       surface="app"
-      className="w-full max-w-[min(42rem,88%)] bg-card p-4 overflow-hidden"
+      className="w-full min-w-0 max-w-[min(42rem,100%)] bg-card p-4 break-words"
     >
       <div className="flex items-start gap-3">
         <Tag
@@ -347,7 +347,7 @@ export function TrustCard({
         </pre>
       )}
 
-      <details className="border border-hairline bg-inset p-2.5 font-mono text-[11px] space-y-2 mt-3">
+      <details className="mt-3 border border-hairline bg-inset px-2.5 py-2 font-mono text-[11px]">
         <summary className="cursor-pointer label-mono text-ink-secondary hover:text-ink select-none">
           {t("okxGate.details")}
         </summary>

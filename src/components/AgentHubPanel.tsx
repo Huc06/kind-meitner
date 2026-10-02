@@ -299,7 +299,7 @@ export function AgentHubPanel({
         aria-modal="true"
         aria-labelledby="agent-hub-title"
         tabIndex={-1}
-        className="mx-4 my-auto flex h-[min(820px,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-[1040px] flex-col overflow-hidden"
+        className="mx-4 my-auto flex h-[min(820px,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-[1040px] sm:max-w-[1040px] flex-col overflow-hidden @container/hub"
       >
         <DialogHeader
           title={t("okxHub.title")}
@@ -466,7 +466,7 @@ export function AgentHubPanel({
                     <div className="mb-2 label-mono text-ink">
                       [ Imported into this room ]
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 @[34rem]/hub:grid-cols-2 @[60rem]/hub:grid-cols-3 gap-3">
                       {matchingImportedInRoom.map((bot) => (
                         <AgentCard
                           key={bot.id}
@@ -510,7 +510,7 @@ export function AgentHubPanel({
                           {t("okxHub.provenance.localCatalog")}
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 @[34rem]/hub:grid-cols-2 @[60rem]/hub:grid-cols-3 gap-3">
                         {matchingCatalogAgents.map((agent) => (
                           <AgentCard
                             key={agent.id}
@@ -530,7 +530,7 @@ export function AgentHubPanel({
                     <div className="mb-2 label-mono text-ink">
                       [ Local workspace agents ]
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 @[34rem]/hub:grid-cols-2 @[60rem]/hub:grid-cols-3 gap-3">
                       {matchingLocalBots.map((bot) => (
                         <AgentCard
                           key={bot.id}

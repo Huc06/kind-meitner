@@ -112,10 +112,10 @@ export function ReadinessRunCard({
     <Frame
       as="section"
       aria-label={t("okxGate.readiness.aria", { verdict: data.verdict })}
-      title={t("okxGate.readiness.title")}
+      title={t("okxGate.readiness.frameTitle")}
       index="01"
       surface="app"
-      className="w-full max-w-[min(42rem,88%)] bg-card p-4 overflow-hidden"
+      className="w-full min-w-0 max-w-[min(42rem,100%)] bg-card p-4 break-words"
     >
       <div className="flex items-start gap-3">
         <Tag
@@ -171,7 +171,7 @@ export function ReadinessRunCard({
             {data.checks.filter((c) => c.status === "fail").map((check) => (
               <li
                 key={`${check.id}:${check.detail}`}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 text-[12px] leading-relaxed"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2 text-[12px] leading-relaxed"
               >
                 <span aria-hidden="true" className="w-3.5 shrink-0 font-bold text-danger">
                   ✕
@@ -195,7 +195,7 @@ export function ReadinessRunCard({
           {data.checks.filter((c) => c.status === "warn").map((check) => (
             <li
               key={`${check.id}:${check.detail}`}
-              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 text-[12px] leading-relaxed"
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2 text-[12px] leading-relaxed"
             >
               <span aria-hidden="true" className="w-3.5 shrink-0 font-bold text-warning">
                 !
@@ -309,7 +309,7 @@ export function ReadinessRunCard({
         </pre>
       )}
 
-      <details className="border border-hairline bg-inset p-2.5 font-mono text-[11px] space-y-2 mt-3">
+      <details className="mt-3 border border-hairline bg-inset px-2.5 py-2 font-mono text-[11px]">
         <summary className="cursor-pointer label-mono text-ink-secondary hover:text-ink select-none">
           {t("okxGate.details")}
         </summary>
@@ -324,7 +324,7 @@ export function ReadinessRunCard({
                   return (
                     <li
                       key={`${check.id}:${check.detail}`}
-                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 text-[12px] leading-relaxed"
+                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2 text-[12px] leading-relaxed"
                     >
                       <span aria-hidden="true" className={cn("w-3.5 shrink-0 font-bold", tone)}>
                         {glyph}
