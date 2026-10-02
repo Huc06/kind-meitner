@@ -14,6 +14,7 @@ import { McpServersPanel } from "./McpServersPanel";
 import { DialogBackdrop, DialogBody, DialogHeader, DialogPanel } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
+import { AgentHubPanel } from "./AgentHubPanel";
 export interface ToolkitCard {
   slug: string;
   label: string;
@@ -232,6 +233,14 @@ export function ServiceIcon({ card, className = "size-11" }: { card: Pick<Toolki
 }
 
 export function PluginsPanel() {
+  const { state } = useStore();
+  if (state.pluginsSurface === "apps") {
+    return <LegacyAppsPanel />;
+  }
+  return <AgentHubPanel />;
+}
+
+export function LegacyAppsPanel() {
   const { state, dispatch } = useStore();
   const remoteClient = window.ogb?.remoteClient?.active === true;
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -360,6 +369,7 @@ export function PluginsPanel() {
   }, [inventoryPhase, stale, status]);
 
   useEffect(() => {
+    if (surface !== "apps") return;
     let alive = true;
     void loadConnectionInventory();
     api("/api/connectors/catalog")
@@ -377,7 +387,7 @@ export function PluginsPanel() {
     return () => {
       alive = false;
     };
-  }, [loadConnectionInventory]);
+  }, [loadConnectionInventory, surface]);
 
   useEffect(() => {
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;

@@ -10,6 +10,7 @@ import {
   Crown,
   MessageSquareReply,
   Monitor,
+  MoreHorizontal,
   Pencil,
   Pin,
   PinOff,
@@ -39,6 +40,7 @@ import {
 import { EngineSetup } from "./EngineSetup";
 import { isProviderSafetyBlock, PROVIDER_SAFETY_GUIDANCE, PROVIDER_SAFETY_HELP_URL } from "../../shared/provider-safety";
 import { BotAvatar } from "./Avatar";
+import { EngineModeBadge } from "./EngineModeBadge";
 import { TurnPresence } from "./TurnPresence";
 import { devDayGateCardsEnabled, showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
 import { isOkxGateTool } from "@/lib/okx-action-cards";
@@ -343,6 +345,7 @@ function Bubble({
           <span className="label-mono text-ink">
             {bot.name}
           </span>
+          <EngineModeBadge bot={bot} instances={state.instances} variant="status" />
           <span className="font-mono text-[10.5px] tabular-nums text-ink-secondary">
             · {formatTime(message.at)}
           </span>
@@ -465,6 +468,9 @@ function Bubble({
               ) : text ? (
                 <ChatMarkdown text={text} mentionPeers={mentionPeers} message={{ threadId: bot.threadId, messageId: message.id }} />
               ) : null}
+              <div className="mt-1 flex items-center gap-1.5">
+                <EngineModeBadge message={message} bot={bot} instances={state.instances} />
+              </div>
             </MessageBoundary>
           )}
         </div>
@@ -920,6 +926,25 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
     `bot:${bot.id}:${bot.threadId}`,
     bot.messages,
   );
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!moreMenuRef.current?.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [moreOpen]);
   useEffect(() => setFindOpen(false), [bot.threadId]);
   useEffect(() => {
     const onFind = (event: KeyboardEvent) => {
@@ -1177,11 +1202,11 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           // @container so the chips on the right can fold to icon bubbles
           // when the column is narrow (side panel open, small window)
           "@container/chathead flex h-11 shrink-0 items-center justify-between frame-rule-below bg-app px-4",
-          // Room for the drawer button, which overlays this corner below md.
-          "pl-11 md:pl-4",
+          // Room for the drawer button, which overlays this corner on <= 768px.
+          "pl-12 min-[769px]:pl-4",
         )}
       >
-        <div className="flex min-w-0 items-center gap-2.5 px-1 py-1" style={headerNoDragStyle}>
+        <div className="flex min-w-0 items-center gap-2 px-1 py-1" style={headerNoDragStyle}>
           <button
             onClick={() => dispatch({ type: "toggleSettings", open: true })}
             className="cursor-pointer flex size-7 shrink-0 items-center justify-center hover:opacity-80"
@@ -1209,15 +1234,18 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             }}
             onActivate={() => dispatch({ type: "toggleSettings", open: true })}
             showEditButton
-            className="truncate text-[14px] font-medium text-ink"
+            className="truncate text-[14px] font-medium text-ink min-w-[30px]"
             inputClassName="max-w-[220px] border border-hairline bg-inset px-1.5 py-0.5 text-[14px] font-medium"
           />
+          <div className="hidden min-[640px]:inline-flex shrink-0">
+            <EngineModeBadge bot={bot} instances={state.instances} variant="status" />
+          </div>
           {bot.chiefOfStaff && (
-            <span className="flex items-center gap-1 border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10px] uppercase text-ink">
+            <span className="hidden min-[640px]:flex items-center gap-1 border border-hairline bg-card px-1.5 py-0.5 font-mono text-[10px] uppercase text-ink shrink-0">
               <Crown size={11} /> {t("chat.chiefOfStaff")}
             </span>
           )}
-          {bot.busy && <WorkingDots className="text-ink-secondary" />}
+          {bot.busy && <WorkingDots className="text-ink-secondary shrink-0" />}
         </div>
         <div
           className="flex shrink-0 items-center gap-1.5"
@@ -1226,23 +1254,6 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           // buttons clear the 26px overlay while the rest of the layout stays.
           style={controlsShiftStyle}
         >
-          <button
-            onClick={() => setFindOpen((open) => !open)}
-            aria-label={t("chat.find")}
-            aria-pressed={findOpen}
-            className={cn(
-              "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
-              findOpen ? "border-ink text-ink bg-raised" : "",
-            )}
-            title={t("chat.findShortcut")}
-          >
-            <Search size={15} />
-          </button>
-          <ExportTranscriptMenu
-            title={bot.name}
-            messages={messages}
-            botName={bot.name}
-          />
           {bot.busy && (
             <button
               onClick={() => dispatch({ type: "interrupt", botId: bot.id, threadId: bot.threadId })}
@@ -1256,33 +1267,135 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
               <span className="@max-4xl/chathead:hidden">{t("chat.stop")}</span>
             </button>
           )}
-          <TaskPicker bot={bot} />
-          <UsageChip bot={bot} />
-          {!remoteClient && <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />}
-          <CallButton bot={bot} />
-          <button
-            data-tour="computer"
-            onClick={() => dispatch({ type: "toggleComputer" })}
-            className={cn(
-              "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
-              state.computerOpen ? "border-ink text-ink bg-raised" : "",
+
+          <div className="hidden min-[769px]:flex items-center gap-1.5">
+            <button
+              onClick={() => setFindOpen((open) => !open)}
+              aria-label={t("chat.find")}
+              aria-pressed={findOpen}
+              className={cn(
+                "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
+                findOpen ? "border-ink text-ink bg-raised" : "",
+              )}
+              title={t("chat.findShortcut")}
+            >
+              <Search size={15} />
+            </button>
+            <ExportTranscriptMenu
+              title={bot.name}
+              messages={messages}
+              botName={bot.name}
+            />
+            <TaskPicker bot={bot} />
+            <UsageChip bot={bot} />
+            {!remoteClient && <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />}
+            <CallButton bot={bot} />
+            <button
+              data-tour="computer"
+              onClick={() => dispatch({ type: "toggleComputer" })}
+              className={cn(
+                "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
+                state.computerOpen ? "border-ink text-ink bg-raised" : "",
+              )}
+              title={t("chat.computer")}
+            >
+              <Monitor size={15} />
+            </button>
+            {!remoteClient && <button
+              onClick={() => dispatch({ type: "toggleInspector" })}
+              aria-label={t("chat.inspector")}
+              aria-pressed={state.inspectorOpen}
+              className={cn(
+                "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
+                state.inspectorOpen ? "border-ink text-ink bg-raised" : "",
+              )}
+              title={t("chat.inspectorHint")}
+            >
+              <Bug size={15} />
+            </button>}
+          </div>
+
+          <div className="relative min-[769px]:hidden" ref={moreMenuRef}>
+            <button
+              type="button"
+              onClick={() => setMoreOpen((open) => !open)}
+              aria-expanded={moreOpen}
+              aria-label={t("room.moreActions")}
+              title={t("room.moreActions")}
+              className="cursor-pointer flex size-7 shrink-0 items-center justify-center border border-hairline bg-panel text-ink-secondary hover:bg-raised-hover hover:text-ink"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {moreOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-40 mt-1 min-w-[220px] max-w-[calc(100vw-2rem)] border border-hairline bg-menu p-2 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] font-mono text-[12px] flex flex-col gap-1.5"
+              >
+                <div className="min-[640px]:hidden border-b border-hairline/60 pb-2 mb-1">
+                  <EngineModeBadge bot={bot} instances={state.instances} variant="status" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFindOpen((open) => !open);
+                    setMoreOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                >
+                  <Search size={14} className="shrink-0 text-ink-secondary" />
+                  <span>{t("chat.find")}</span>
+                </button>
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <ExportTranscriptMenu
+                    title={bot.name}
+                    messages={messages}
+                    botName={bot.name}
+                  />
+                  <span className="text-[12px] text-ink">Export conversation</span>
+                </div>
+                <div className="border-t border-hairline/60 pt-1.5 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <span className="text-[11px] text-ink-secondary">Threads</span>
+                    <TaskPicker bot={bot} />
+                  </div>
+                  {!remoteClient && (
+                    <div className="flex items-center justify-between px-2 py-1">
+                      <span className="text-[11px] text-ink-secondary">Model</span>
+                      <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <span className="text-[11px] text-ink-secondary">Call</span>
+                    <CallButton bot={bot} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: "toggleComputer" });
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                  >
+                    <Monitor size={14} className="shrink-0 text-ink-secondary" />
+                    <span>{t("chat.computer")}</span>
+                  </button>
+                  {!remoteClient && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dispatch({ type: "toggleInspector" });
+                        setMoreOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                    >
+                      <Bug size={14} className="shrink-0 text-ink-secondary" />
+                      <span>{t("chat.inspector")}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
-            title={t("chat.computer")}
-          >
-            <Monitor size={15} />
-          </button>
-          {!remoteClient && <button
-            onClick={() => dispatch({ type: "toggleInspector" })}
-            aria-label={t("chat.inspector")}
-            aria-pressed={state.inspectorOpen}
-            className={cn(
-              "cursor-pointer flex size-7 shrink-0 items-center justify-center border border-transparent text-ink-secondary hover:border-hairline hover:bg-raised-hover hover:text-ink",
-              state.inspectorOpen ? "border-ink text-ink bg-raised" : "",
-            )}
-            title={t("chat.inspectorHint")}
-          >
-            <Bug size={15} />
-          </button>}
+          </div>
         </div>
       </div>
 

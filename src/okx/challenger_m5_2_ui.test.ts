@@ -359,7 +359,7 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
 
       // Must be completely absent from DOM output
       expect(html).not.toContain('data-testid="disputes-badge"');
-      expect(html).toContain('aria-label="Evaluator Disputes"');
+      expect(html).toContain('aria-label="More"');
     });
 
     it("strictly suppresses dispute badge when activeDisputesCount is undefined", () => {
@@ -374,6 +374,37 @@ describe("Challenger M5-2: UI Routing & Dispute Badge Counters", () => {
       );
 
       expect(html).not.toContain('data-testid="disputes-badge"');
+    });
+
+    it("renders dispute badge with count on More trigger in expanded mode", () => {
+      fixture.density = "comfortable";
+      fixture.state = {
+        activeDisputesCount: 3,
+        activeView: "chat",
+      };
+
+      const html = renderToStaticMarkup(
+        createElement(Sidebar, { open: true, onClose: vi.fn() }),
+      );
+
+      expect(html).toContain('data-testid="disputes-badge"');
+      expect(html).toMatch(/<span[^>]*data-testid="disputes-badge"[^>]*>\s*3\s*<\/span>/);
+      expect(html).toContain('aria-label="Evaluator Disputes"');
+    });
+
+    it("suppresses dispute badge on More trigger in expanded mode when count is 0", () => {
+      fixture.density = "comfortable";
+      fixture.state = {
+        activeDisputesCount: 0,
+        activeView: "chat",
+      };
+
+      const html = renderToStaticMarkup(
+        createElement(Sidebar, { open: true, onClose: vi.fn() }),
+      );
+
+      expect(html).not.toContain('data-testid="disputes-badge"');
+      expect(html).toContain('aria-label="More"');
     });
 
     it("renders popover menu trailing badge when activeDisputesCount > 0 and suppresses when 0", () => {

@@ -5,8 +5,9 @@ export const APP_NAME = "kind-meitner";
 export const APP_REPOSITORY = "https://github.com/harrymove-ctrl/kind-meitner";
 /** The docs tree is the help centre, and it is where kind-meitner.com sends
  * people too — one destination, not two competing ones. */
-export const DOCS_URL = `${APP_REPOSITORY}/tree/main/docs`;
-export const HELP_CENTER_URL = DOCS_URL;
+export const DOCS_URL = `${APP_REPOSITORY}/blob/main/docs/kind-meitner.md`;
+export const HELP_URL = DOCS_URL;
+export const HELP_CENTER_URL = HELP_URL;
 export const APPROVAL_LEVELS_URL = `${APP_REPOSITORY}/blob/main/docs/approval-levels.md`;
 export const RELEASES_URL = `${APP_REPOSITORY}/releases`;
 export const LICENSE_URL = `${APP_REPOSITORY}/blob/main/LICENSE`;

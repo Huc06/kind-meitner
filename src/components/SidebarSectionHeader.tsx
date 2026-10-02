@@ -60,7 +60,7 @@ export function SidebarSectionHeader({
                 ? t("sidebar.section.expand", { name })
                 : t("sidebar.section.collapse", { name })
           }
-          className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1 text-left transition-colors hover:bg-raised-hover"
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1 text-left transition-colors hover:bg-raised-hover outline-none focus-visible:ring-1 focus-visible:ring-focus"
         >
           <span className="label-mono truncate text-ink-secondary">
             {name}

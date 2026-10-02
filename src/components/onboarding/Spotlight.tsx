@@ -11,19 +11,21 @@
 // and the card slide to the new control instead of dimming everything
 // again. Under reduced motion everything simply appears. With no anchor
 // the card sits centred over the dimmed window.
-import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { MausAvatar } from "@/components/Avatar";
+import { X } from "lucide-react";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
+import type { BotIdentityLike } from "@/lib/agent-identity";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { t } from "@/lib/i18n";
 import type { MausState } from "@/lib/mascot";
 import { reducedMotion } from "@/lib/onboarding";
+import { computePopoverPlacement, type Rect } from "@/lib/popover-placement";
 
 const PAD = 8;
 const CARD_W = 320;
-const GAP = 12;
-
-type Rect = { x: number; y: number; w: number; h: number };
+const CARD_ESTIMATED_H = 170;
 
 function measure(anchor: string): Rect | null {
   const all = Array.from(
@@ -40,6 +42,17 @@ function measure(anchor: string): Rect | null {
     w: r.width + PAD * 2,
     h: r.height + PAD * 2,
   };
+}
+
+function measureRaw(anchor: string): Rect | null {
+  const all = Array.from(
+    document.querySelectorAll<HTMLElement>(`[data-tour="${anchor}"]`),
+  ).filter((el) => el.getClientRects().length > 0);
+  const el = all[all.length - 1];
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return null;
+  return { x: r.left, y: r.top, w: r.width, h: r.height };
 }
 
 /** An even-odd polygon: the whole viewport minus the anchor's rectangle. */
@@ -60,16 +73,21 @@ interface Action {
 export function Spotlight({
   anchor,
   placement,
-  mascot = "curious",
+  mascot: _mascot = "curious",
+  bot,
+  title,
   children,
   progress,
   primary,
   secondary,
   onDone,
+  modal = true,
 }: {
   anchor: string | null;
   placement: "above" | "below" | "right";
   mascot?: MausState;
+  bot?: BotIdentityLike | null;
+  title?: ReactNode;
   children: ReactNode;
   /** "Step 2 of 6", shown small under the text. */
   progress?: string;
@@ -77,29 +95,52 @@ export function Spotlight({
   primary?: Action;
   /** The quiet button, usually Skip. */
   secondary?: Action;
-  /** Escape. */
+  /** Escape or close button. */
   onDone: () => void;
+  /** Whether this spotlight is a modal dialog. Nonmodal hints do not steal focus. */
+  modal?: boolean;
 }) {
   const [rect, setRect] = useState<Rect | null>(null);
+  const [composerRect, setComposerRect] = useState<Rect | null>(null);
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth : 1024,
+    h: typeof window !== "undefined" ? window.innerHeight : 768,
+  }));
   const [settled, setSettled] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardHeight, setCardHeight] = useState(CARD_ESTIMATED_H);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previousActiveElement.current = (document.activeElement as HTMLElement) ?? null;
+    return () => {
+      if (previousActiveElement.current && typeof previousActiveElement.current.focus === "function") {
+        try {
+          previousActiveElement.current.focus();
+        } catch {}
+      }
+    };
+  }, []);
+
 
   // Follow the anchor: layout, scroll, resize, and the anchor's own size.
-  // A new anchor that is not on screen yet (a menu still opening) keeps
-  // the previous rectangle, so the cutout waits in place and then slides.
   useLayoutEffect(() => {
-    if (!anchor) {
-      setRect(null);
-      return;
-    }
     let frame = 0;
     const update = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() =>
-        setRect((prev) => measure(anchor) ?? prev),
-      );
+      frame = requestAnimationFrame(() => {
+        if (anchor) setRect((prev) => measure(anchor) ?? prev);
+        else setRect(null);
+        setComposerRect(measureRaw("composer"));
+        setViewport({ w: window.innerWidth, h: window.innerHeight });
+        if (cardRef.current) {
+          const h = cardRef.current.getBoundingClientRect().height;
+          if (h > 0) setCardHeight(h);
+        }
+      });
     };
     update();
-    const el = document.querySelector<HTMLElement>(`[data-tour="${anchor}"]`);
+    const el = anchor ? document.querySelector<HTMLElement>(`[data-tour="${anchor}"]`) : null;
     const ro = el ? new ResizeObserver(update) : null;
     if (el) ro?.observe(el);
     const mo = new MutationObserver(update);
@@ -120,8 +161,7 @@ export function Spotlight({
     };
   }, [anchor]);
 
-  // first paint at the full window, next frame at the anchor: that is the
-  // transition the dim layer eases through
+  // first paint at the full window, next frame at the anchor
   useEffect(() => {
     if (reducedMotion()) {
       setSettled(true);
@@ -131,57 +171,87 @@ export function Spotlight({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // Keyboard navigation: Escape closes, Tab is trapped inside the card
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onDone();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onDone();
+        return;
+      }
+      if (e.key === "Tab") {
+        if (!modal) return;
+        const card = cardRef.current;
+        if (!card) return;
+        const focusable = card.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable.length) {
+          e.preventDefault();
+          card.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !card.contains(document.activeElement)) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last || !card.contains(document.activeElement)) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onDone]);
+  }, [modal, onDone]);
 
-  // an anchored step whose control is not on screen yet shows nothing; the
-  // observers above will find it when it appears
+  // Auto-focus primary action or close button on mount / anchor change
+  // Auto-focus primary action or close button on mount / anchor change (modal only)
+  useEffect(() => {
+    if (!modal) return;
+    const timer = setTimeout(() => {
+      const card = cardRef.current;
+      if (!card) return;
+      const target = card.querySelector<HTMLElement>("[data-primary-action]") ?? card.querySelector<HTMLElement>("button");
+      target?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [anchor, modal]);
+
+  // an anchored step whose control is not on screen yet shows nothing
   if (anchor && !rect) return null;
 
-  const viewportW = window.innerWidth;
-  const cardWidth = Math.min(CARD_W, viewportW - 24);
-  const viewportH = window.innerHeight;
-  // The card is positioned with a transform, never left/top, so a change of
-  // anchor slides it on the compositor. "bottom" placement is expressed as
-  // a translate of -100% so the card's own height need not be known.
-  let transform: string;
-  let below = true;
-  let beside = false;
-  if (
-    rect &&
-    placement === "right" &&
-    rect.x + rect.w + GAP + cardWidth <= viewportW - 12
-  ) {
-    // beside a sidebar control, centred on it, kept clear of the window edges
-    beside = true;
-    transform = `translate3d(${rect.x + rect.w + GAP}px, ${Math.max(12, Math.min(rect.y + rect.h / 2 - 70, viewportH - 180))}px, 0)`;
-  } else if (rect) {
-    const left = Math.max(12, Math.min(rect.x, viewportW - cardWidth - 12));
-    const roomBelow = viewportH - (rect.y + rect.h) - GAP;
-    const roomAbove = rect.y - GAP;
-    below =
-      placement === "below"
-        ? roomBelow >= 140 || roomAbove < roomBelow
-        : roomAbove < 140 && roomBelow > roomAbove;
-    if (roomBelow < 140 && roomAbove < 140) {
-      // the anchor fills the window (a panel, a page): sit inside it, top right
-      below = true;
-      transform = `translate3d(${Math.max(12, Math.min(rect.x + rect.w - cardWidth - GAP * 2, viewportW - cardWidth - 12))}px, ${Math.max(12, rect.y + GAP * 2)}px, 0)`;
-    } else {
-      transform = below
-        ? `translate3d(${left}px, ${rect.y + rect.h + GAP}px, 0)`
-        : `translate3d(${left}px, calc(${rect.y - GAP}px - 100%), 0)`;
-    }
-  } else {
-    transform = "translate3d(calc(50vw - 50%), calc(50vh - 50%), 0)";
-  }
+  const cardWidth = Math.min(CARD_W, viewport.w - 32);
+  const isComposerTarget = anchor === "composer";
 
-  return createPortal(
+  const placementResult = computePopoverPlacement({
+    anchorRect: rect,
+    popoverSize: { w: cardWidth, h: cardHeight },
+    viewport,
+    preferredPlacement: placement,
+    composerRect,
+    isComposerTarget,
+    margin: 16,
+    gap: 12,
+  });
+
+  const originClass =
+    placementResult.placement === "below"
+      ? "origin-top-left"
+      : placementResult.placement === "above"
+        ? "origin-bottom-left"
+        : placementResult.placement === "right"
+          ? "origin-left"
+          : placementResult.placement === "left"
+            ? "origin-right"
+            : "origin-center";
+
+  const content = (
     <div
       className="pointer-events-none fixed inset-0 z-[60]"
       aria-live="polite"
@@ -204,36 +274,33 @@ export function Spotlight({
           aria-hidden="true"
         />
       )}
-      {/* the outer layer only positions (a transition on transform); the
-          inner layer only enters (keyframes on transform and opacity), so
-          the two never fight over the same property */}
       <div
+        ref={cardRef}
         data-tour-card
-        className="pointer-events-auto absolute left-0 top-0 w-[320px] transition-transform duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-        style={{ transform, width: cardWidth }}
+        className="pointer-events-auto absolute left-0 top-0 transition-transform duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+        style={{
+          transform: placementResult.transform,
+          width: placementResult.width,
+          maxHeight: placementResult.height,
+        }}
       >
         <div
-          role="dialog"
+          role={modal ? "dialog" : "status"}
+          aria-modal={modal ? "true" : undefined}
           className={cn(
-            "relative flex items-start gap-3 border border-hairline bg-panel p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]",
-            rect
-              ? beside
-                ? "origin-left"
-                : below
-                  ? "origin-top-left"
-                  : "origin-bottom-left"
-              : "origin-center",
+            "relative flex items-start gap-3 border border-hairline bg-panel p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] overflow-y-auto",
+            originClass,
             settled ? "animate-spot-in motion-reduce:animate-none" : "opacity-0",
           )}
+          style={{ maxHeight: placementResult.height }}
         >
           <span aria-hidden className="frame-corner" data-corner="tl" />
           <span aria-hidden className="frame-corner" data-corner="tr" />
           <span aria-hidden className="frame-corner" data-corner="bl" />
           <span aria-hidden className="frame-corner" data-corner="br" />
           <div className="shrink-0">
-            <MausAvatar
-              color="green"
-              state={mascot}
+            <AgentMark
+              bot={bot ?? { id: "okx-guide", name: "OKX", okxImport: { kind: "okx-catalog", catalogAvatar: "chart" } }}
               size={38}
             />
           </div>
@@ -241,12 +308,31 @@ export function Spotlight({
             key={anchor ?? "centre"}
             className="min-w-0 flex-1 animate-rise motion-reduce:animate-none"
           >
-            <div className="text-[13px] leading-relaxed text-ink">
+            <div className="flex items-start justify-between gap-2">
+              {title ? (
+                <h2 className="font-semibold text-[13.5px] leading-tight text-ink mb-1">
+                  {title}
+                </h2>
+              ) : (
+                <div />
+              )}
+              <button
+                type="button"
+                onClick={onDone}
+                aria-label={t("onboarding.tour.close") || "Close"}
+                title={t("onboarding.tour.close") || "Close"}
+                className="cursor-pointer -mr-1 -mt-1 p-1 text-ink-secondary hover:bg-raised-hover hover:text-ink focus-visible:outline-none"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <div className="text-[13px] leading-relaxed text-ink-secondary">
               {children}
             </div>
             <div className="mt-3 flex items-center gap-3">
               {primary && (
                 <Button
+                  data-primary-action
                   variant="primary"
                   size="sm"
                   autoFocus
@@ -274,7 +360,12 @@ export function Spotlight({
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+
+  if (typeof document === "undefined") {
+    return content;
+  }
+
+  return createPortal(content, document.body);
 }

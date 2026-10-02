@@ -1578,3 +1578,47 @@ button:disabled.bg-danger {
     transition: none;
   }
 }
+
+/* Sidebar drawer at narrow viewports (<= 768px) */
+@media (max-width: 768px) {
+  .sidebar-drawer {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: 320px !important;
+    max-width: min(320px, 85vw);
+    transition: transform 200ms ease-in-out;
+  }
+  .sidebar-drawer[data-open="false"] {
+    transform: translateX(-100%) !important;
+    pointer-events: none;
+    visibility: hidden;
+  }
+  .sidebar-drawer[data-open="true"] {
+    transform: translateX(0) !important;
+    pointer-events: auto;
+    visibility: visible;
+  }
+}
+
+/* Room activity timeline: drawer at <= 1024px to prevent horizontal overflow */
+@media (max-width: 1024px) {
+  .room-activity-timeline-drawer {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 40;
+    width: 100% !important;
+    max-width: 320px !important;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+  }
+}
+
+@media (min-width: 1025px) {
+  .room-activity-backdrop {
+    display: none !important;
+  }
+}

@@ -119,3 +119,49 @@ it("parses real production GO envelope for Kind Meitner Markets #13851", () => {
   expect(html).toContain("Continue free tools");
   expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
 });
+
+it("renders real production scan envelope with header, boundary, disclaimer, and counts", () => {
+  const msg = message("scan_free_mcp_readiness", "scan-self-envelope.json");
+  const html = renderToStaticMarkup(createElement(OkxGateToolResult, {
+    message: msg,
+    enabled: true,
+    composerDraftId: "group:test",
+    fallback: createElement("div", null, "fallback"),
+  }));
+  expect(html).toContain("Free MCP listing readiness");
+  expect(html).toContain("PASS");
+  expect(html).toContain("Access: Free");
+  expect(html).toContain("Payment required: No");
+  expect(html).toContain("Wallet required: No");
+  expect(html).toContain("Mainnet: No");
+  expect(html).toContain("Source: kind-meitner live HTTPS probes + public listing pitfalls");
+  expect(html).toContain("This is a local listing-readiness check, not an OKX review or endorsement.");
+  expect(html).toContain("6 passed · 0 warned · 0 failed");
+});
+
+it("renders real production trust envelope with header, boundary, disclaimer, counts, and spend status", () => {
+  const text = JSON.parse(envelope("trust-go-13851.json")).result.content[0].text;
+  const msg = {
+    id: "g13851",
+    role: "bot" as const,
+    kind: "activity" as const,
+    at: 1,
+    tool: { name: "get_asp_trust_card", ok: true, output: text },
+  };
+  const html = renderToStaticMarkup(createElement(OkxGateToolResult, {
+    message: msg,
+    enabled: true,
+    composerDraftId: "group:test",
+    fallback: createElement("div", null, "fallback"),
+  }));
+  expect(html).toContain("Pre-spend trust");
+  expect(html).toContain("GO");
+  expect(html).toContain("Spend not blocked");
+  expect(html).toContain("Access: Free");
+  expect(html).toContain("Payment required: No");
+  expect(html).toContain("Wallet required: No");
+  expect(html).toContain("Mainnet: No");
+  expect(html).toContain("Source: kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement");
+  expect(html).toContain("This result is a local pre-spend signal, not an OKX endorsement.");
+  expect(html).toContain("2 passed · 0 warned · 0 failed");
+});

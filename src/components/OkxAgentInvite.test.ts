@@ -39,7 +39,7 @@ describe("OkxAgentInvite", () => {
 
   it("renders a compact closed control without fetching the catalog", () => {
     const markup = renderToStaticMarkup(createElement(OkxAgentInvite, { roomId: "room-1" }));
-    expect(markup).toContain("Invite OKX agent");
+    expect(markup).toContain("Invite agent");
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toContain("Markets");
   });

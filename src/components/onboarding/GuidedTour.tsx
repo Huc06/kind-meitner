@@ -6,28 +6,41 @@
 // written to the server's hint list first, so a reload lands on the same
 // step.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ANCHOR_EFFECTS, currentStep, stepNumber, TOUR_STEPS, withTourFinished, type TourEffect, type TourStep } from "@/lib/guided-tour";
+import { ANCHOR_EFFECTS, currentStep, isTourEligible, stepNumber, TOUR_STEPS, withTourFinished, type TourEffect, type TourStep } from "@/lib/guided-tour";
 import { t } from "@/lib/i18n";
 import type { MausState } from "@/lib/mascot";
 import { hintSeenPatch } from "@/lib/onboarding";
 import type { LocaleKey } from "@/locales";
 import { api, useStore } from "@/state/store";
 import { Spotlight } from "./Spotlight";
+import { loadHubCatalog } from "@/lib/agent-hub";
 
 const MASCOT: Record<TourStep["id"], MausState> = {
-  "tour.composer": "happy",
-  "tour.model": "curious",
-  "tour.computer": "working",
-  "tour.computer-browser": "curious",
-  "tour.tools": "curious",
-  "tour.apps": "happy",
-  "tour.apps-panel": "proud",
-  "tour.automations": "happy",
-  "tour.automations-page": "drowsy",
-  "tour.done": "celebrate",
+  "tour.room": "happy",
+  "tour.agents": "curious",
+  "tour.readiness": "working",
+  "tour.trust": "proud",
 };
 
-const copy = (id: TourStep["id"]) => t(`onboarding.tour.${id.slice(5)}` as LocaleKey);
+const stepContent = (id: TourStep["id"], agentName: string | null): { title?: string; body: string } => {
+  if (id === "tour.agents") {
+    const title = t("onboarding.tour.agents.title");
+    const body = agentName
+      ? t("onboarding.tour.agents.body", { agent: agentName })
+      : t("onboarding.tour.agents.fallback");
+    return { title, body };
+  }
+  const base = id.slice(5);
+  const titleKey = `onboarding.tour.${base}.title` as LocaleKey;
+  const bodyKey = `onboarding.tour.${base}.body` as LocaleKey;
+  const mainKey = `onboarding.tour.${base}` as LocaleKey;
+  const titleText = t(titleKey);
+  const bodyText = t(bodyKey);
+  if (titleText && titleText !== titleKey && bodyText && bodyText !== bodyKey) {
+    return { title: titleText, body: bodyText };
+  }
+  return { body: t(mainKey) };
+};
 
 function visible(anchor: string): HTMLElement | null {
   const all = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${anchor}"]`));
@@ -60,6 +73,18 @@ export function GuidedTour() {
   const entered = useRef<string | null>(null);
   const [fallback, setFallback] = useState<string | null>(null);
 
+  const [catalogAgentName, setCatalogAgentName] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadHubCatalog()
+      .then(({ agents }) => {
+        if (agents.length > 0 && agents[0]?.name) {
+          setCatalogAgentName(agents[0].name);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!state.tourOpen) return;
     closed.current = false;
@@ -83,7 +108,7 @@ export function GuidedTour() {
           return;
         }
         case "openApps":
-          if (!press("nav-apps")) dispatch({ type: "togglePlugins", open: true });
+          if (!press("nav-apps")) dispatch({ type: "togglePlugins", open: true, surface: "hub" });
           return;
         case "closeApps":
           dispatch({ type: "togglePlugins", open: false });
@@ -105,12 +130,17 @@ export function GuidedTour() {
     (finish: boolean, id?: TourStep["id"]) => {
       // A skip must follow an in-flight Next, not disappear behind its guard.
       const operation = pending.current.then(async () => {
-        const patch = finish
+        const rawPatch = finish
           ? { onboarding: { hintsSeen: withTourFinished(latestRecord.current) } }
           : id ? hintSeenPatch(latestRecord.current, id) : null;
-        if (!patch) return;
+        if (!rawPatch) return;
+        const patch = {
+          onboarding: {
+            ...rawPatch.onboarding,
+            hintsSeen: rawPatch.onboarding.hintsSeen?.slice(-100),
+          },
+        };
         const config = await api("/api/config", { method: "PUT", body: JSON.stringify(patch), signal: AbortSignal.timeout(10_000) });
-        latestRecord.current = config.onboarding;
         dispatch({ type: "configStatus", config });
       });
       pending.current = operation.catch(() => {});
@@ -145,7 +175,11 @@ export function GuidedTour() {
     dispatch({ type: "toggleTour", open: false });
   }, [state.computerOpen, state.pluginsOpen, run, save, dispatch]);
 
-  const active = !dismissed && Boolean(record?.completedAt) && !state.welcomeOpen && step !== null;
+  const remoteClient = window.ogb?.remoteClient?.active === true;
+  const active =
+    isTourEligible({ remoteClient, completedAt: record?.completedAt, welcomeOpen: state.welcomeOpen, hintsSeen: record?.hintsSeen }) &&
+    !dismissed &&
+    step !== null;
 
   // entering a step runs its effect once per step
   useEffect(() => {
@@ -179,7 +213,7 @@ export function GuidedTour() {
 
   // clicking the pointed-at control is as good as Next
   useEffect(() => {
-    if (!active || !step?.anchor || step.id === "tour.apps-panel" || step.id === "tour.automations-page" || step.id === "tour.done") return;
+    if (!active || !step?.anchor) return;
     const onClick = (event: MouseEvent) => {
       const target = event.target as Element | null;
       if (target?.closest(`[data-tour="${step.anchor}"]`)) advance(true);
@@ -189,22 +223,23 @@ export function GuidedTour() {
   }, [active, step, advance]);
 
   if (!active || !step) return null;
-  if (window.ogb?.remoteClient?.active === true) return null;
 
   const { current, total } = stepNumber(step);
-  const closing = step.id === "tour.done";
+  const isLast = step.id === TOUR_STEPS[TOUR_STEPS.length - 1]!.id;
   const anchor = fallback === step.id && step.fallbackAnchor ? step.fallbackAnchor : step.anchor;
+  const { title, body } = stepContent(step.id, catalogAgentName);
   return (
     <Spotlight
       anchor={anchor}
       placement={step.placement}
       mascot={MASCOT[step.id]}
-      progress={closing ? undefined : t("onboarding.tour.progress", { current, total })}
-      primary={{ label: closing ? t("onboarding.tour.finish") : t("onboarding.tour.next"), onClick: closing ? finish : () => advance() }}
-      secondary={closing ? undefined : { label: t("onboarding.tour.skip"), onClick: finish }}
+      title={title}
+      progress={t("onboarding.tour.progress", { current, total })}
+      primary={{ label: isLast ? t("onboarding.tour.finish") : t("onboarding.tour.next"), onClick: isLast ? finish : () => advance() }}
+      secondary={{ label: t("onboarding.tour.skip"), onClick: finish }}
       onDone={finish}
     >
-      {copy(step.id)}
+      {body}
       {failed && <p role="alert" className="mt-2 font-mono text-[11px] text-danger">{t("onboarding.tour.error")}</p>}
     </Spotlight>
   );

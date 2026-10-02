@@ -261,6 +261,9 @@ export interface Message {
   /** steer-queue entry this drained user line came from. The client pending
    * chip matches on this id, not on equal text. Absent on ordinary sends. */
   queueId?: string;
+  /** Engine provenance for the message: instance id and whether it was produced by a simulated / test engine */
+  engine?: { instanceId?: string; model?: string; simulated?: boolean };
+  simulated?: boolean;
 }
 
 export type GroupDefaultResponder =

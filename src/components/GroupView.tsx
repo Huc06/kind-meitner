@@ -4,7 +4,7 @@
 // default responder; @mentions override that routing.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { activeLocale, t } from "@/lib/i18n";
-import { ArrowDown, Check, ChevronDown, ChevronRight, Folder, FolderOpen, Loader2, MessageSquareReply, Pin, PinOff, Plus, Search, X } from "lucide-react";
+import { ArrowDown, Check, ChevronDown, ChevronRight, Clock, Folder, FolderOpen, Loader2, MessageSquareReply, Pin, PinOff, Search, Users, X } from "lucide-react";
 import {
   api,
   useStore,
@@ -14,6 +14,7 @@ import {
   type Bot,
   type Group,
   type GroupDefaultResponder,
+  type InstanceInfo,
   type Message,
 } from "@/state/store";
 import { BotAvatar } from "./Avatar";
@@ -27,7 +28,12 @@ import { roomActivityVisible } from "@/lib/room-activity";
 import { normalizeState } from "@/lib/mascot";
 import { effectiveDefaultResponder, groupResponseHint } from "@/lib/group-routing";
 import { ChatMarkdown } from "./ChatMarkdown";
-import { Composer } from "./Composer";
+import { Composer, DefaultResponderSelect } from "./Composer";
+import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
+import { EngineModeBadge } from "./EngineModeBadge";
+import { RoomActivityTimeline } from "./RoomActivityTimeline";
+import { ModelPicker } from "./ModelPicker";
+import { usageDetail } from "@/lib/usage";
 import { ChatFindBar } from "./ChatFindBar";
 import { GroupTaskPicker } from "./TaskPicker";
 import { ExportTranscriptMenu } from "./ExportTranscriptMenu";
@@ -131,7 +137,7 @@ export function RoomToolChip({ message, roomId }: { message: Message; roomId?: s
 
 /** 16px profile avatar + name, shown once per sender cluster — the same mono
  * header row the 1:1 transcript uses. */
-function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: string }) {
+function ClusterLabel({ bot, name, color, instances }: { bot?: Bot; name: string; color: string; instances?: readonly InstanceInfo[] }) {
   return (
     <div className="mt-2 flex items-center gap-1.5 pl-0.5">
       <BotAvatar
@@ -143,6 +149,7 @@ function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: st
         animated={false}
       />
       <span className="label-mono text-ink">{name}</span>
+      <EngineModeBadge bot={bot} instances={instances} variant="status" />
     </div>
   );
 }
@@ -241,7 +248,7 @@ const Transcript = memo(function Transcript({
             <div key={item.id} className="contents">
               {newDay && <DaySeparator at={first.at} />}
               {first.from && cluster && (
-                <ClusterLabel bot={memberOf(first.from.botId)} name={first.from.name} color={first.from.color} />
+                <ClusterLabel bot={memberOf(first.from.botId)} name={first.from.name} color={first.from.color} instances={state.instances} />
               )}
               <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId || isOkxGateTool(step.tool?.name))}>
                 {item.messages.map((step) => (
@@ -371,6 +378,9 @@ const Transcript = memo(function Transcript({
                     <>
                       <MessageAttachmentGallery text={m.text ?? ""} attachments={m.attachments} message={{ threadId: group.threadId, messageId: m.id }} className={m.text ? undefined : "mb-0"} eager={m.id === newestMessageId || m.id === newestUserMessageId} />
                       {m.text ? <ChatMarkdown text={m.text} mentionPeers={members} everyone={!group.dm} message={{ threadId: group.threadId, messageId: m.id }} /> : null}
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <EngineModeBadge message={m} bot={memberOf(m.from?.botId)} instances={state.instances} />
+                      </div>
                     </>
                   )}
                 </div>
@@ -399,7 +409,7 @@ const Transcript = memo(function Transcript({
           <div key={m.id} className="contents" data-mid={m.id}>
             {newDay && <DaySeparator at={m.at} />}
             {!user && m.from && newCluster && !(m.kind === "activity" && m.comm) && (
-              <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} />
+              <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} instances={state.instances} />
             )}
             {row}
           </div>
@@ -409,54 +419,6 @@ const Transcript = memo(function Transcript({
   );
 });
 
-function DefaultResponderSelect({ group, members }: { group: Group; members: Bot[] }) {
-  const { dispatch } = useStore();
-  const responder = effectiveDefaultResponder(group, members);
-  const value = responder.kind === "member" ? `member:${responder.botId}` : responder.kind;
-  const lead = responder.kind === "member" ? members.find((member) => member.id === responder.botId) : undefined;
-  const title =
-    responder.kind === "everyone"
-      ? t("room.responder.everyone")
-      : responder.kind === "mentions"
-        ? t("room.responder.mentions")
-        : t("room.responder.lead", { name: lead?.name ?? t("room.responder.leadFallback") });
-
-  const change = (nextValue: string) => {
-    let next: GroupDefaultResponder;
-    if (nextValue === "everyone") next = { kind: "everyone" };
-    else if (nextValue === "mentions") next = { kind: "mentions" };
-    else next = { kind: "member", botId: nextValue.slice("member:".length) };
-    dispatch({ type: "patchGroup", groupId: group.id, patch: { defaultResponder: next } });
-  };
-
-  return (
-    <div className="relative shrink-0" title={title}>
-      <select
-        aria-label={t("room.responder.aria")}
-        value={value}
-        onChange={(event) => change(event.target.value)}
-        className="h-7 max-w-[190px] appearance-none truncate border border-hairline bg-raised py-0.5 pl-2.5 pr-6 font-mono text-[11px] text-ink outline-none hover:border-ink-secondary/60 focus:border-ink"
-      >
-        <optgroup label={t("room.responder.groupLead")}>
-          {members.map((member) => (
-            <option key={member.id} value={`member:${member.id}`}>
-              {t("room.responder.leadOption", { name: member.name })}
-            </option>
-          ))}
-        </optgroup>
-        <optgroup label={t("room.responder.groupBehavior")}>
-          <option value="everyone">{t("room.responder.everyoneOption")}</option>
-          <option value="mentions">{t("room.responder.mentionsOption")}</option>
-        </optgroup>
-      </select>
-      <ChevronDown
-        size={11}
-        aria-hidden="true"
-        className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-secondary"
-      />
-    </div>
-  );
-}
 
 /** The room's shared desk: where every member's shell and file tools run,
  * overriding each bot's own folder for room turns. The room pins its own
@@ -948,6 +910,25 @@ export function GroupView({ group }: { group: Group }) {
   const [folderOpen, setFolderOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [moreOpen]);
   const { replyTo, selectReply, clearReply, consumeReply, restoreReply } = useReplyDraft(
     group.threadId,
     `group:${group.id}:${group.threadId}`,
@@ -971,6 +952,14 @@ export function GroupView({ group }: { group: Group }) {
     () => group.memberIds.map((id) => state.bots.find((b) => b.id === id)).filter((b): b is Bot => Boolean(b)),
     [group.memberIds, state.bots],
   );
+  const defaultResp = effectiveDefaultResponder(group, members);
+  const leadBot = defaultResp.kind === "member"
+    ? members.find((m) => m.id === defaultResp.botId) ?? members[0]
+    : members[0];
+  const purpose = group.bulletin?.trim().split("\n")[0]?.trim() || "No room purpose yet — add group instructions";
+  const participantCount = members.length + 1;
+  const agentCount = members.length;
+  const connectionLabel = state.connected ? "Connected" : "Offline";
   const speaker = members.find((b) => b.id === group.busyBotId);
   const importedOkxAgentIds = useMemo(
     () => new Set(members.flatMap((member) => member.okxImport ? [member.okxImport.externalAgentId] : [])),
@@ -1133,22 +1122,6 @@ export function GroupView({ group }: { group: Group }) {
     }
   };
 
-  // Static profile avatars: one per member, a ring + dot on whoever is working.
-  const memberMauses = members.map((b) => (
-    <span
-      key={b.id}
-      title={`${b.name}${group.busyBotId === b.id ? " — working…" : ""}`}
-      className={cn(
-        "relative inline-flex rounded-full",
-        group.busyBotId === b.id && "ring-2 ring-accent/50 ring-offset-1 ring-offset-app",
-      )}
-    >
-      <BotAvatar bot={b} state={normalizeState(b.mascotExpression) ?? "happy"} size={24} animated={false} />
-      {group.busyBotId === b.id && (
-        <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border border-app bg-accent" />
-      )}
-    </span>
-  ));
 
   return (
     <main className="relative flex h-full min-w-0 flex-1 flex-col bg-app">
@@ -1157,22 +1130,37 @@ export function GroupView({ group }: { group: Group }) {
         <ManageMembersPanel group={group} onClose={closeMembers} triggerRef={membersTriggerRef} />
       )}
       {/* Header: static member avatars; a ring + dot marks the working bot. */}
+      {/* Header: line 1 name, line 2 purpose, line 3 counts + connection state */}
       <div
         style={headerDragStyle}
         className={cn(
-          "h-11 shrink-0 frame-rule-below bg-app px-4 flex items-center justify-between gap-3",
+          "shrink-0 frame-rule-below bg-app px-4 py-2 flex items-center justify-between gap-3",
           // Room for the drawer button, which overlays this corner below md.
-          "pl-11 md:pl-4",
+          // Room for the drawer button, which overlays this corner on <= 768px.
+          "pl-12 min-[769px]:pl-4",
         )}
       >
-        <div className="flex min-w-0 items-center gap-2" style={headerNoDragStyle}>
-          <span className="truncate font-mono text-[14px] font-medium text-ink">{group.name}</span>
-          {!setupPending && !group.dm && <GroupTaskPicker group={group} />}
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5" style={headerNoDragStyle}>
+          {/* Line 1: room name */}
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-mono text-[14px] font-semibold text-ink">{group.name}</span>
+          </div>
+          {/* Line 2: purpose */}
+          <div className="truncate font-mono text-[11.5px] text-ink-secondary" title={purpose}>
+            {purpose}
+          </div>
+          {/* Line 3: counts + connection state */}
+          <div className="truncate font-mono text-[10.5px] text-ink-secondary">
+            <span>{participantCount} participants · {agentCount} agents · </span>
+            <span className="inline-flex items-center gap-1">
+              <span className={cn("size-1.5 rounded-full", state.connected ? "bg-success" : "bg-warning")} />
+              <span>{connectionLabel}</span>
+            </span>
+          </div>
         </div>
+
         <div
-          className="flex items-center gap-2"
-          // The caption buttons sit over the header's right end; drop this
-          // control row 16px (visual only) below the 26px overlay.
+          className="flex items-center gap-2 shrink-0"
           style={controlsShiftStyle}
         >
           <Button
@@ -1182,89 +1170,165 @@ export function GroupView({ group }: { group: Group }) {
             onClick={() => setFindOpen((open) => !open)}
             aria-label={t("chat.find")}
             aria-pressed={findOpen}
-            className={findOpen ? "text-ink bg-raised" : "text-ink-secondary"}
+            className={cn("hidden min-[769px]:inline-flex", findOpen ? "text-ink bg-raised" : "text-ink-secondary")}
             title={t("chat.findShortcut")}
           >
             <Search size={14} />
           </Button>
-          <ExportTranscriptMenu
-            title={group.name}
-            messages={group.messages}
-            isGroup
-          />
-          <GroupCallButton group={group} members={members} />
-          {canInviteOkxAgent(group, remoteClient) && <OkxAgentInvite roomId={group.id} importedExternalAgentIds={importedOkxAgentIds} />}
-          {!remoteClient && !setupPending && !group.dm && <RoomWorkingFolderChip group={group} onToggle={() => setFolderOpen((open) => !open)} />}
-          {!remoteClient && !setupPending && !group.dm && <DefaultResponderSelect group={group} members={members} />}
-          {group.dm || remoteClient ? (
-            <div className="flex -space-x-1.5 items-center">{memberMauses}</div>
-          ) : (
-            // The roster lives where you already look to see who is in the
-            // room; a dashed + says the row is editable without shouting.
-            <button
+
+          {canInviteOkxAgent(group, remoteClient) && (
+            <div className="hidden min-[1025px]:inline-flex">
+              <OkxAgentInvite
+                roomId={group.id}
+                importedExternalAgentIds={importedOkxAgentIds}
+                label={t("room.inviteAgent")}
+              />
+            </div>
+          )}
+
+          {!group.dm && (
+            <Button
               ref={membersTriggerRef}
-              type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setMembersOpen(true)}
               title={t("room.members.manage")}
-              aria-label={
-                members.length === 1
-                  ? t("room.members.ariaOne")
-                  : t("room.members.ariaMany", { count: members.length })
-              }
-              className="flex items-center gap-1 border border-hairline bg-raised px-1.5 py-1 hover:border-ink-secondary/60 hover:bg-raised-hover"
+              className="hidden min-[769px]:inline-flex"
             >
-              <div className="flex -space-x-1.5 items-center">{memberMauses}</div>
-              <span className="flex size-4 items-center justify-center text-ink-secondary">
-                <Plus size={10} />
-              </span>
-            </button>
+              {t("room.details")}
+            </Button>
           )}
+
+          <Button
+            variant={state.activityOpen ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => dispatch({ type: "toggleActivity" })}
+            aria-pressed={state.activityOpen}
+            title="Activity timeline"
+            className="hidden min-[769px]:inline-flex"
+          >
+            {t("activity.title")}
+          </Button>
+
+          <div className="relative" ref={moreMenuRef}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMoreOpen((open) => !open)}
+              aria-expanded={moreOpen}
+              title={t("room.moreActions")}
+            >
+              More
+              <ChevronDown size={11} className={cn("transition-transform", moreOpen && "rotate-180")} />
+            </Button>
+            {moreOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-30 mt-1 min-w-[220px] border border-hairline bg-menu p-2 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] font-mono text-[12px]"
+              >
+                {/* Collapsed actions at narrow widths */}
+                <div className="min-[769px]:hidden border-b border-hairline/60 pb-2 mb-2 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFindOpen((open) => !open);
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                  >
+                    <Search size={14} className="shrink-0 text-ink-secondary" />
+                    <span>{t("chat.find")}</span>
+                  </button>
+                  {!group.dm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMembersOpen(true);
+                        setMoreOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                    >
+                      <Users size={14} className="shrink-0 text-ink-secondary" />
+                      <span>{t("room.details")}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: "toggleActivity" });
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Clock size={14} className="shrink-0 text-ink-secondary" />
+                      <span>{t("activity.title")}</span>
+                    </span>
+                    {state.activityOpen && (
+                      <span className="text-[10px] text-accent font-bold">Active</span>
+                    )}
+                  </button>
+                </div>
+
+                {canInviteOkxAgent(group, remoteClient) && (
+                  <div className="min-[1025px]:hidden border-b border-hairline/60 pb-2 mb-2 py-1">
+                    <OkxAgentInvite
+                      roomId={group.id}
+                      importedExternalAgentIds={importedOkxAgentIds}
+                      label={t("room.inviteAgent")}
+                    />
+                  </div>
+                )}
+
+                {leadBot && !remoteClient && (
+                  <div className="border-b border-hairline/60 pb-2 mb-2">
+                    <div className="label-mono text-ink-secondary mb-1">{t("room.model")}</div>
+                    <ModelPicker bot={leadBot} threadId={group.threadId} />
+                  </div>
+                )}
+                <div className="border-b border-hairline/60 pb-2 mb-2">
+                  <div className="label-mono text-ink-secondary mb-1">{t("room.tokensAndCost")}</div>
+                  <div className="text-[11px] text-ink-secondary">
+                    {(() => {
+                      const usage = leadBot?.tasks?.find((t) => t.threadId === group.threadId)?.usage;
+                      return usage ? usageDetail(usage) : "No token usage recorded yet";
+                    })()}
+                  </div>
+                </div>
+                <div className="py-1">
+                  <GroupCallButton group={group} members={members} />
+                </div>
+                <div className="py-1">
+                  <ExportTranscriptMenu
+                    title={group.name}
+                    messages={group.messages}
+                    isGroup
+                  />
+                </div>
+                {!remoteClient && !setupPending && !group.dm && (
+                  <div className="py-1 border-t border-hairline/60 mt-1">
+                    <RoomWorkingFolderChip group={group} onToggle={() => { setFolderOpen((open) => !open); setMoreOpen(false); }} />
+                  </div>
+                )}
+                {!remoteClient && !setupPending && !group.dm && (
+                  <div className="pt-2 border-t border-hairline/60 mt-1">
+                    <div className="label-mono text-ink-secondary mb-1">{t("room.responderMode")}</div>
+                    <DefaultResponderSelect group={group} members={members} />
+                  </div>
+                )}
+                {!remoteClient && !setupPending && !group.dm && (
+                  <div className="pt-2 border-t border-hairline/60 mt-1">
+                    <div className="label-mono text-ink-secondary mb-1">{t("room.threads")}</div>
+                    <GroupTaskPicker group={group} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {findOpen && <ChatFindBar threadId={group.threadId} onClose={() => setFindOpen(false)} />}
-
-      {/* Bulletin: one pinned line; click to edit */}
-      {!setupPending && (
-        <div className="frame-rule-below w-full bg-app px-4 py-1.5">
-          {bulletinOpen ? (
-            <div className="border border-hairline bg-inset p-2">
-              <textarea
-                autoFocus
-                value={bulletinDraft}
-                onChange={(e) => setBulletinDraft(e.target.value)}
-                onBlur={saveBulletin}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveBulletin();
-                  if (e.key === "Escape") {
-                    setBulletinDraft(group.bulletin);
-                    setBulletinOpen(false);
-                  }
-                }}
-                placeholder={t("room.bulletin.placeholder")}
-                rows={3}
-                className="w-full resize-none bg-transparent font-mono text-[12px] leading-relaxed text-ink placeholder:text-ink-secondary/70 focus:outline-none"
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={remoteClient}
-              onClick={() => { if (!remoteClient) setBulletinOpen(true); }}
-              className={cn("flex w-full items-center gap-2 text-left transition-colors", !remoteClient && "hover:text-ink")}
-              title={t("room.bulletin.title")}
-            >
-              <span className="label-mono shrink-0 text-ink-secondary flex items-center gap-1.5">
-                <Pin size={10} className="shrink-0" />
-              </span>
-              <span className="h-3 w-px bg-hairline" />
-              <span className={cn("truncate font-mono text-[11.5px]", group.bulletin ? "text-ink" : "text-ink-secondary/70")}>
-                {group.bulletin.split("\n")[0] || (remoteClient ? t("room.bulletin.none") : t("room.bulletin.add"))}
-              </span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Working folder card — the chip in the header toggles it */}
       {!setupPending && folderOpen && !group.dm && (
@@ -1306,7 +1370,8 @@ export function GroupView({ group }: { group: Group }) {
         );
       })()}
 
-      <div className="relative min-h-0 flex-1">
+      <div className="flex h-full min-h-0 flex-1 overflow-hidden">
+        <div className="relative min-h-0 min-w-0 flex-1 flex flex-col">
       <div
         ref={scrollRef}
         className="h-full overflow-x-hidden overflow-y-auto px-5 [overflow-anchor:none]"
@@ -1335,7 +1400,11 @@ export function GroupView({ group }: { group: Group }) {
         }}
       >
         {setupPending ? (
-          <div className="flex min-h-full w-full items-center py-8">
+          <div
+            ref={transcriptRef}
+            className="mx-auto flex w-full max-w-[52rem] flex-col py-6"
+            style={{ paddingBottom: composerDock.pad }}
+          >
             <RoomSetup group={group} members={members} />
           </div>
         ) : (
@@ -1347,13 +1416,66 @@ export function GroupView({ group }: { group: Group }) {
           aria-live="polite"
           aria-label={t("room.aria", { name: group.name })}
         >
-          {devDayGate && hasDevDayConversation && (
-            <details className="self-center border border-hairline bg-panel px-3 py-2">
-              <summary className="cursor-pointer font-mono text-[11.5px] font-medium text-ink-secondary hover:text-ink">Starters</summary>
-              <div className="mt-2">
-                <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} compact />
+          {/* Compact purpose banner */}
+          {!setupPending && (
+            <div className="border border-hairline bg-panel p-2.5 flex flex-wrap items-center justify-between gap-2 min-w-0 w-full max-w-full">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="label-mono text-ink-secondary shrink-0 flex items-center gap-1">
+                  <Pin size={10} />
+                  <span>PURPOSE:</span>
+                </span>
+                {bulletinOpen ? (
+                  <div className="flex-1 min-w-0">
+                    <textarea
+                      autoFocus
+                      value={bulletinDraft}
+                      onChange={(e) => setBulletinDraft(e.target.value)}
+                      onBlur={saveBulletin}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveBulletin();
+                        if (e.key === "Escape") {
+                          setBulletinDraft(group.bulletin);
+                          setBulletinOpen(false);
+                        }
+                      }}
+                      placeholder={t("room.bulletin.placeholder")}
+                      rows={2}
+                      className="w-full resize-none border border-hairline bg-inset p-1.5 font-mono text-[12px] leading-relaxed text-ink placeholder:text-ink-secondary/70 focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <span className="break-words font-mono text-[12px] text-ink min-w-0">
+                    {purpose}
+                  </span>
+                )}
               </div>
-            </details>
+              {!remoteClient && !bulletinOpen && (
+                <button
+                  type="button"
+                  onClick={() => setBulletinOpen(true)}
+                  className="label-mono shrink-0 text-ink-secondary hover:text-ink"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Agent roster strip */}
+          {members.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border border-hairline bg-panel px-3 py-2 min-w-0">
+              <span className="label-mono text-ink-secondary mr-1 shrink-0">AGENTS:</span>
+              {members.map((member) => (
+                <div key={member.id} className="min-w-0 max-w-full">
+                  <AgentIdentity
+                    bot={member}
+                    variant="compact"
+                    state={{ instances: state.instances }}
+                    className="max-w-full flex-wrap"
+                  />
+                </div>
+              ))}
+            </div>
           )}
           {group.messages.length === 0 || (devDayGate && !hasDevDayConversation) ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-center">
@@ -1372,9 +1494,17 @@ export function GroupView({ group }: { group: Group }) {
               </div>
               <div className="font-mono text-[16px] font-medium tracking-tight text-ink">{group.name}</div>
               <div className="max-w-[420px] font-mono text-[12px] leading-relaxed text-ink-secondary">
-                {devDayGate ? "Markets, Listing Coach, and Spend Scout gate every listing and spend." : groupResponseHint(group, members)}
+                {devDayGate && members.length > 0
+                  ? `${members.map((m) => m.name).join(", ")} gate every listing and spend.`
+                  : devDayGate
+                    ? "Markets, Listing Coach, and Spend Scout gate every listing and spend."
+                    : groupResponseHint(group, members)}
               </div>
-              {devDayGate && <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} />}
+              <DevDayGateStarters
+                composerDraftId={`group:${group.id}:${group.threadId}`}
+                members={members}
+                agentCount={members.length}
+              />
             </div>
           ) : null}
           {hiddenCount > 0 && (
@@ -1456,6 +1586,15 @@ export function GroupView({ group }: { group: Group }) {
         onRestoreReply={restoreReply}
       />
       </div>
+        </div>
+        {state.activityOpen && (
+          <RoomActivityTimeline
+            group={group}
+            messages={group.messages}
+            bots={members}
+            onClose={() => dispatch({ type: "toggleActivity", open: false })}
+          />
+        )}
       </div>
     </main>
   );

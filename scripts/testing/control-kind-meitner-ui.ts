@@ -36,7 +36,7 @@ export const UI_TOOLS_DIR = join(ROOT, ".kind-meitner-scratch", "verify-tools");
 export const UI_MUTATING = new Set(["click", "type", "press", "flag", "eval"]);
 
 const ENTRIES = {
-  threads: { entry: "/scripts/testing/threads-preview.tsx", route: "/__threads.html", title: "Isolated KindMeitner Chat" },
+  threads: { entry: "/scripts/testing/threads-preview.tsx", route: "/__threads.html?app=1", title: "Isolated KindMeitner Chat" },
 } as const satisfies Record<string, Parameters<typeof mountPreview>[1]>;
 const FAKE_MODES = ["happy", "exit-early", "hang", "malformed", "stream", "not-logged-in", "slow", "background-result"];
 const SEEDED_BOT = "Pepper";
@@ -232,7 +232,13 @@ async function resolveTarget(handle: UiHandle, values: Record<string, unknown>, 
     return { target: ref.startsWith("@") ? ref : `@${ref}` };
   }
   const refs = (await snapshot(handle, false)).refs as Record<string, { name?: unknown; role?: unknown }> | undefined;
-  const matches = Object.entries(refs ?? {}).filter(([, element]) => element?.name === name);
+  let matches = Object.entries(refs ?? {}).filter(([, element]) => element?.name === name);
+  if (matches.length === 0 && typeof name === "string") {
+    const lower = name.toLowerCase();
+    matches = Object.entries(refs ?? {}).filter(
+      ([, element]) => typeof element?.name === "string" && element.name.toLowerCase() === lower,
+    );
+  }
   if (matches.length === 1) return { target: `@${matches[0]![0]}`, name };
   if (matches.length === 0) throw new ControlKindMeitnerError(`no element is named ${JSON.stringify(name)}`, "run `ui snapshot` and use the exact accessible name, or --ref");
   throw new ControlKindMeitnerError(

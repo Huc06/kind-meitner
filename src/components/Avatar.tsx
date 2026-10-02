@@ -3,6 +3,7 @@
 // ChartAvatar stays the OKX catalog mark. CursorAvatar is no longer rendered
 // here; one-shot motion beats still borrow a library state for a moment.
 import { forwardRef, memo, useEffect, useState } from "react";
+import { AgentMark } from "./agent-identity/AgentMark";
 import { BotAvatar as LibBotAvatar } from "bot-avatars";
 import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
 import { mascotBodyToType, mausColorToHex, mausStateToBotState } from "@/lib/bot-avatar-bridge";
@@ -183,12 +184,20 @@ export function ChartAvatar({
 
 export type BotAvatarProps = Omit<MausAvatarProps, "color"> & {
   bot: {
+    id?: string;
     name?: string;
-    color: MausColor;
+    title?: string;
+    color?: MausColor;
     avatarUrl?: string | null;
     avatarCrop?: BotAvatarCrop;
     mascotBody?: MascotBodyId | null;
-    okxImport?: { kind?: string };
+    okxImport?: {
+      kind?: string;
+      externalAgentId?: string;
+      capabilities?: readonly string[] | string[];
+      avatar?: string;
+      catalogAvatar?: string;
+    };
   };
 };
 
@@ -276,7 +285,7 @@ export function defaultMascotBodyForBot(bot: {
 }
 
 export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarProps) {
-  const effectiveBody = defaultMascotBodyForBot(bot);
+  void mascotProps;
   const profile = botAvatarProfile(bot);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -290,10 +299,8 @@ export function BotAvatar({ bot, size = 44, label, ...mascotProps }: BotAvatarPr
 
   if (outcome !== "flatImage") {
     return (
-      <MausAvatar
-        bodyId={effectiveBody}
-        {...mascotProps}
-        color={bot.color}
+      <AgentMark
+        bot={bot}
         size={size}
         label={label ?? bot.name}
       />

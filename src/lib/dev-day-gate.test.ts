@@ -25,13 +25,32 @@ function memoryStorage(): Storage {
 afterEach(() => Reflect.deleteProperty(globalThis, "localStorage"));
 
 describe("Dev Day Gate starters", () => {
-  it("defines one normalized Dev Day room and four literal tool-ready prompts", () => {
+  it("defines the 5 exact starters with @Markets tool prompts and hub action", () => {
     expect({ name: DEV_DAY_GATE_NAME, section: DEV_DAY_GATE_SECTION }).toEqual({ name: "#dev-day-gate", section: "Dev Day" });
     expect(DEV_DAY_GATE_BULLETIN).toContain("Gate before list");
-    expect(DEV_DAY_GATE_STARTERS).toHaveLength(4);
-    expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("https://demo.vercel.app/api/okx/free-mcp");
-    expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("agentId 99999");
-    expect(DEV_DAY_GATE_STARTERS.map((starter) => starter.prompt).join("\n")).toContain("agentId 13851");
+    expect(DEV_DAY_GATE_STARTERS).toHaveLength(5);
+    
+    expect(DEV_DAY_GATE_STARTERS.map((s) => s.label)).toEqual([
+      "Scan an ASP endpoint",
+      "Check trust before spend",
+      "Discover trending ASPs",
+      "Invite an OKX agent",
+      "View the Free A2MCP checklist",
+    ]);
+
+    const fillPrompts = DEV_DAY_GATE_STARTERS.filter((s) => s.action === "fill").map((s) => s.prompt);
+    expect(fillPrompts).toHaveLength(4);
+    expect(fillPrompts.join("\n")).toContain("scan_free_mcp_readiness");
+    expect(fillPrompts.join("\n")).toContain("get_asp_trust_card");
+    expect(fillPrompts.join("\n")).toContain("get_trending_asps");
+    expect(fillPrompts.join("\n")).toContain("get_free_a2mcp_launch_checklist");
+    for (const prompt of fillPrompts) {
+      expect(prompt).toContain("@Markets");
+    }
+
+    const inviteStarter = DEV_DAY_GATE_STARTERS.find((s) => s.label === "Invite an OKX agent");
+    expect(inviteStarter?.action).toBe("hub");
+
     expect(isDevDayGate({ name: "dev-day-gate", section: "Dev Day" })).toBe(true);
     expect(isDevDayGate({ name: "#dev-day-gate", section: "Elsewhere" })).toBe(false);
   });
@@ -45,7 +64,7 @@ describe("Dev Day Gate starters", () => {
     setDraftAttachments(store, draftId, [attachment]);
     setDraftChannelMode(store, draftId, "goal");
 
-    fillDevDayGateStarter(draftId, DEV_DAY_GATE_STARTERS[0].prompt);
+    fillDevDayGateStarter(draftId, DEV_DAY_GATE_STARTERS[0].prompt!);
 
     expect(getDraft(store, draftId)).toBe(DEV_DAY_GATE_STARTERS[0].prompt);
     expect(getDraftAttachments(store, draftId)).toEqual([attachment]);

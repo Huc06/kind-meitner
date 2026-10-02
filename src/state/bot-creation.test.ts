@@ -119,9 +119,14 @@ describe("setup navigation", () => {
   });
 
   it("opens the requested Plugins surface and remembers it on reopen", () => {
-    const next = reducer({ ...initialState, settingsOpen: true }, { type: "togglePlugins", open: true, surface: "mcp" });
-    expect(next).toMatchObject({ pluginsOpen: true, pluginsSurface: "mcp", settingsOpen: false });
+    const next = reducer({ ...initialState, settingsOpen: true }, { type: "togglePlugins", open: true, surface: "apps" });
+    expect(next).toMatchObject({ pluginsOpen: true, pluginsSurface: "apps", settingsOpen: false });
     const closed = reducer(next, { type: "togglePlugins", open: false });
-    expect(reducer(closed, { type: "togglePlugins", open: true })).toMatchObject({ pluginsSurface: "mcp" });
+    expect(reducer(closed, { type: "togglePlugins", open: true })).toMatchObject({ pluginsSurface: "apps" });
+  });
+
+  it("opens the Hub on MCP tab when mcp surface requested", () => {
+    const next = reducer(initialState, { type: "togglePlugins", open: true, surface: "mcp" });
+    expect(next).toMatchObject({ pluginsOpen: true, pluginsSurface: "hub", hubTab: "mcp" });
   });
 });

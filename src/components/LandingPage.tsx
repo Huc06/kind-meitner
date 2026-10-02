@@ -17,7 +17,7 @@ import { Frame } from "@/components/ui/frame";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { tileFor, TILE_FILL } from "@/components/ui/tile";
-import { MausAvatar } from "@/components/Avatar";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
 import { cn } from "@/lib/cn";
 
 const PILLARS = [
@@ -92,13 +92,9 @@ export function LandingPage() {
         {/* Brand: Mascot Avatar Logo + Nymspace mono brand + OKX.ai Tag */}
         <div className="flex items-center gap-3">
           <div className="flex size-7 shrink-0 items-center justify-center border border-hairline bg-raised overflow-hidden">
-            <MausAvatar
-              color="green"
-              bodyId="cursor"
+            <AgentMark
+              bot={{ id: "kind-meitner", name: "kind meitner" }}
               size={24}
-              animated={true}
-              state="happy"
-              label="kind-meitner mascot"
             />
           </div>
           <span className="font-mono text-xs uppercase tracking-[0.2em] font-semibold text-ink">
