@@ -92,6 +92,26 @@ describe("BotListItem", () => {
     expect(titleLine.test(renderRow(bot({ title: "  " })))).toBe(false);
   });
 
+  it("replaces 'OKX.ai Agent' title with 'OKX.AI catalog' source label above bot name", () => {
+    const marketsWithOfficialTitle = renderRow(bot({
+      name: "Markets",
+      title: "OKX.ai Agent",
+      okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1", provider: "OKX.ai", capabilities: ["chat"] },
+    }));
+
+    expect(titleLine.exec(marketsWithOfficialTitle)?.[1]).toBe("OKX.AI catalog");
+    expect(marketsWithOfficialTitle).not.toContain("OKX.ai Agent");
+    expect(marketsWithOfficialTitle).toContain(">Markets<");
+
+    // Untitled OKX catalog agent also gets the catalog source label
+    const marketsWithoutTitle = renderRow(bot({
+      name: "Markets",
+      title: "",
+      okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1", provider: "OKX.ai", capabilities: ["chat"] },
+    }));
+    expect(titleLine.exec(marketsWithoutTitle)?.[1]).toBe("OKX.AI catalog");
+  });
+
   it("keeps the title line's own truncate class instead of a shared-line width cap", () => {
     // renderToStaticMarkup keeps the full text regardless of CSS, so this
     // can't observe an actual ellipsis — it asserts the title line still

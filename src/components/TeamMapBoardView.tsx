@@ -160,11 +160,6 @@ export function TeamMapBoardView({
                         <BotAvatar
                           bot={bot}
                           size={32}
-                          motion="none"
-                          motionKey={0}
-                          interactive={false}
-                          animated={isWorking}
-                          state={isBlocked ? "sad" : isWorking ? "working" : "happy"}
                         />
 
                         <div className="min-w-0 flex-1">

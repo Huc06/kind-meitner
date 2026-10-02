@@ -189,6 +189,10 @@ export interface Message {
   /** steer-queue entry this drained user line came from. Pending chips
    * match on this id, not on equal text. Absent on ordinary sends. */
   queueId?: string;
+  /** Provenance of the engine that produced this response. */
+  engine?: { instanceId?: string; model?: string; simulated?: boolean };
+  /** True when produced by a simulated / test engine fixture. */
+  simulated?: boolean;
 }
 
 export type GroupDefaultResponder =
@@ -576,6 +580,8 @@ export interface InstanceInfo {
   instanceId: string;
   driverKind: string;
   displayName: string;
+  simulated?: boolean;
+  testEngine?: boolean;
   snapshot: {
     state: "available" | "unavailable";
     reason?: string;
@@ -591,6 +597,8 @@ export interface InstanceInfo {
     };
     /** a reported cost on a subscription is notional; the UI says so */
     billing?: "metered" | "subscription";
+    simulated?: boolean;
+    testEngine?: boolean;
   };
   models: { default: string; options: Array<{ id: string; label: string; custom?: boolean; loaded?: boolean; provider?: string }> };
   capabilities?: {
@@ -676,6 +684,8 @@ export interface AppState {
   /** Which tab the Plugins panel opens on; "mcp" when a bot's tools
    * sent the user there to add a server. */
   pluginsSurface: "hub" | "apps" | "mcp";
+  hubTab?: "agents" | "asps" | "mcp";
+  activityOpen: boolean;
   /** The "New bot" role picker. */
   newBotOpen: boolean;
   /** Creation continues even when the role picker is dismissed. */
@@ -934,7 +944,8 @@ export type Action =
   | { type: "notice"; notice: AppState["notice"] }
   | { type: "revealThread"; threadId: string }
   | { type: "toggleSettings"; open?: boolean; section?: BotSettingsSection; botId?: string }
-  | { type: "togglePlugins"; open?: boolean; surface?: "hub" | "apps" | "mcp" }
+  | { type: "togglePlugins"; open?: boolean; surface?: "hub" | "apps" | "mcp"; hubTab?: "agents" | "asps" | "mcp" }
+  | { type: "toggleActivity"; open?: boolean }
   | { type: "toggleNewBot"; open?: boolean }
   | { type: "toggleComputer"; open?: boolean }
   | { type: "toggleInspector"; open?: boolean }
@@ -1134,7 +1145,9 @@ export function reducer(state: AppState, action: Action): AppState {
     case "hydrate": {
       const known = (id: string) => action.bots.some((b) => b.id === id) || action.groups.some((g) => g.id === id);
       const selectedId =
-        state.selectedId && known(state.selectedId) ? state.selectedId : (action.bots[0]?.id ?? "");
+        state.selectedId && known(state.selectedId)
+          ? state.selectedId
+          : (action.groups.find((g) => !g.dm)?.id ?? action.groups[0]?.id ?? action.bots[0]?.id ?? "");
       const hydrated = {
         ...state,
         bots: action.bots,
@@ -1620,11 +1633,24 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case "togglePlugins": {
       const open = action.open ?? !state.pluginsOpen;
+      const isMcp = action.surface === "mcp";
+      const surface = isMcp ? "hub" : (action.surface ?? state.pluginsSurface);
+      const hubTab = isMcp
+        ? "mcp"
+        : (action.hubTab !== undefined ? action.hubTab : state.hubTab);
       return {
         ...state,
         pluginsOpen: open,
-        pluginsSurface: action.surface ?? state.pluginsSurface,
+        pluginsSurface: surface,
+        hubTab,
         ...(open ? { settingsOpen: false, appSettingsOpen: false, newBotOpen: false, shortcutsOpen: false } : {}),
+      };
+    }
+    case "toggleActivity": {
+      const open = action.open ?? !state.activityOpen;
+      return {
+        ...state,
+        activityOpen: open,
       };
     }
     case "botCreationPending":
@@ -1969,6 +1995,8 @@ export const initialState: AppState = {
   okxSettingsOpen: false,
   activeDisputesCount: 0,
   pluginsSurface: "hub",
+  hubTab: "agents",
+  activityOpen: false,
   newBotOpen: false,
   botCreationPending: false,
   computerOpen: false,

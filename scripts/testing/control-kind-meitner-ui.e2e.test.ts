@@ -156,7 +156,10 @@ describe("control-kind-meitner ui drives the real renderer", () => {
       return true;
     })()`);
     await click("You");
-    await click("Settings");
+    const menuSnapshot = await ui("snapshot", info.ui, "--interactive");
+    const [settingsItem] = refsNamed(menuSnapshot, "Settings", "menuitem");
+    expect(settingsItem).toBeDefined();
+    await ui("click", info.ui, "--ref", settingsItem);
     await click("Connections");
     await type("fixture-saved-key");
     await save();
@@ -234,6 +237,10 @@ describe("control-kind-meitner ui drives the real renderer", () => {
     const options = models.instances.find((instance: any) => instance.instanceId === originalBot.modelSelection.instanceId).models.options;
     const originalLabel = options.find((option: any) => option.id === originalModel).label;
     const nextModel = options.find((option: any) => option.id !== originalModel);
+    await expect.poll(async () => {
+      const snap = (await ui("snapshot", info.ui)) as { refs?: Record<string, { name?: unknown }> };
+      return Boolean(snap.refs && Object.values(snap.refs).some((r) => r.name === originalLabel));
+    }, { timeout: 10_000 }).toBe(true);
     await ui("click", info.ui, "--name", originalLabel);
     expect(await ui("eval", info.ui, "--js", "[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread').getAttribute('aria-pressed')"))
       .toMatchObject({ result: "true" });
@@ -347,7 +354,7 @@ describe("control-kind-meitner ui drives the real renderer", () => {
     expect(eventsTab).toBeDefined();
     await ui("click", info.ui, "--ref", eventsTab);
     const events = await ui("snapshot", info.ui);
-    expect(events.snapshot).toContain("turn.started");
+    expect((events.snapshot as string).toLowerCase()).toContain("turn.started");
     const [rawTab] = refsNamed(events, "Raw", "tab");
     await ui("click", info.ui, "--ref", rawTab);
     expect((await ui("snapshot", info.ui)).snapshot).toContain('tab "Raw" [selected');

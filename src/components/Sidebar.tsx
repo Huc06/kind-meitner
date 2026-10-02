@@ -25,15 +25,19 @@ import {
   Plus,
   Search,
   Scale,
+  Settings as SettingsIcon,
+  HelpCircle,
   MessageSquare,
   Trash2,
   Users,
   X,
-  Sparkles,
 } from "lucide-react";
 import { api, useStore, formatTime, visibleMessages, currentTaskBot, type AppState, type Bot, type Group } from "@/state/store";
 import { peerLine } from "@/lib/peer-message";
 
+import { HELP_CENTER_URL, openExternalLink } from "@/lib/app-links";
+import { AgentMark } from "./agent-identity/AgentMark";
+import { agentSource, agentSourceLabel } from "@/lib/agent-identity";
 import { BotAvatar, InitialsAvatar } from "./Avatar";
 import { stateForBot } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
@@ -87,13 +91,13 @@ import {
 import { sidebarSectionAttention } from "@/lib/sidebar-attention";
 import { botListItemPointerIntent } from "@/lib/sidebar-selection";
 import { phoneSettingsAction, SidebarPhoneButton } from "./SidebarPhoneButton";
-import { SidebarMoreMenu } from "./SidebarMoreMenu";
 import { DesktopWorkspaceSwitcher } from "./DesktopWorkspaceSwitcher";
 import { profileInitials, SidebarProfileMenu } from "./SidebarProfileMenu";
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { SidebarBotActivity, sidebarBotActivityTasks } from "./SidebarBotActivity";
 import { ShortcutHint } from "./ShortcutHint";
+import { SidebarMoreMenu } from "./SidebarMoreMenu";
 
 const SECTION_LABEL_KEYS: Record<string, LocaleKey> = {
   [PINNED_SECTION_ID]: "sidebar.section.pinned",
@@ -151,28 +155,37 @@ function groupPreview(group: Group, bots: Bot[]): string {
 /** A small member stack identifies a group without turning it into a card. */
 function StackedMauses({ members, density }: { members: Bot[]; density: SidebarDensity }) {
   const iconOnly = density === "icons";
-  const slotSize = iconOnly ? "size-12" : density === "compact" ? "size-7" : "size-8";
-  const singleSize = iconOnly ? 44 : density === "compact" ? 26 : 32;
+  const slotClass = iconOnly
+    ? "flex size-12 shrink-0 items-center justify-center"
+    : density === "compact"
+      ? "flex h-7 w-9 shrink-0 items-center justify-start pl-0.5"
+      : "flex h-8 w-10 shrink-0 items-center justify-start pl-0.5";
+  const singleSize = iconOnly ? 44 : density === "compact" ? 26 : 30;
+
   if (members.length <= 1) {
     const b = members[0];
     return (
-      <div className={cn("flex shrink-0 items-center justify-center", slotSize)}>
-        {b ? <BotAvatar bot={b} state="happy" size={singleSize} animated={false} /> : <Users size={24} className="text-ink-secondary" />}
+      <div className={slotClass}>
+        {b ? <AgentMark bot={b} size={singleSize} /> : <Users size={20} className="text-ink-secondary" />}
       </div>
     );
   }
-  const shown = members.slice(0, 3);
+
+  const maxShown = 2;
+  const shown = members.slice(0, maxShown);
   const extra = members.length - shown.length;
+  const markSize = iconOnly ? 22 : density === "compact" ? 16 : 18;
+
   return (
-    <div className={cn("flex shrink-0 items-center justify-center", slotSize)}>
-      <div className="flex items-center -space-x-2.5">
+    <div className={slotClass}>
+      <div className="flex items-center -space-x-1.5">
         {shown.map((b) => (
-          <span key={b.id} className="relative inline-flex rounded-full ring-2 ring-panel">
-            <BotAvatar bot={b} state="happy" size={iconOnly ? 30 : 20} animated={false} />
+          <span key={b.id} className="relative inline-flex ring-1 ring-panel shrink-0">
+            <AgentMark bot={b} size={markSize} />
           </span>
         ))}
         {extra > 0 && (
-          <span className="z-10 flex size-4 items-center justify-center rounded-full border-2 border-panel bg-raised text-[9px] font-medium text-ink-secondary">
+          <span className="z-10 flex size-4 items-center justify-center rounded-[2px] border border-panel bg-raised text-[9px] font-mono font-medium text-ink-secondary shrink-0">
             +{extra}
           </span>
         )}
@@ -219,13 +232,14 @@ export function GroupListItem({
         const rect = e.currentTarget.getBoundingClientRect();
         onMenu({ groupId: group.id, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
       }}
+      aria-current={selected && !expanded ? "page" : undefined}
       className={cn(
-        "relative flex w-full items-center text-left transition-colors outline-none",
+        "relative flex w-full items-center text-left transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
         density === "icons" ? "justify-center px-1 py-1.5" : density === "compact" ? "gap-1.5 py-1 pl-6 pr-2" : "gap-2 py-1.5 pl-6 pr-2",
         selected && !expanded ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
       )}
-      title={density === "icons" ? group.name : undefined}
-      aria-label={density === "icons" ? group.name : undefined}
+      title={group.name}
+      aria-label={group.name}
     >
       <StackedMauses members={members} density={density} />
       <div className={cn("min-w-0 flex-1", density === "icons" && "hidden")}>
@@ -1046,9 +1060,13 @@ export function BotListItem({
   // the role from Bot Settings → Title. A badge or tooltip beside the name
   // (#866, #871) always traded the name's width against the title's; its own
   // line above the name lets both truncate independently instead.
-  const title = bot.title.trim();
+  const isOkxCatalog = agentSource(bot) === "okx-catalog";
+  const rawTitle = bot.title.trim();
+  const title = (rawTitle === "OKX.ai Agent" || (isOkxCatalog && !rawTitle))
+    ? agentSourceLabel(bot)
+    : rawTitle;
   const rowClass = cn(
-    "flex w-full items-center text-left outline-none transition-colors",
+    "flex w-full items-center text-left outline-none transition-colors focus-visible:ring-1 focus-visible:ring-focus",
     iconOnly
       ? "justify-center px-1 py-1.5"
       : density === "compact"
@@ -1180,6 +1198,8 @@ export function BotListItem({
       <div
         role={renaming ? undefined : "button"}
         tabIndex={renaming ? undefined : 0}
+        aria-current={selected ? "page" : undefined}
+        title={bot.name}
         aria-label={
           !renaming && iconOnly
             ? deleting
@@ -1207,16 +1227,16 @@ export function BotListItem({
         aria-label={t(threadsOpen ? "task.collapseNamed" : "task.expandNamed", { name: bot.name })}
         aria-expanded={threadsOpen}
         onClick={() => setThreadsOpen((open) => !open)}
-        className="absolute left-0.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center text-ink-secondary outline-none hover:text-ink focus-visible:ring-1 focus-visible:ring-accent/60"
+        className="absolute left-0.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center text-ink-secondary outline-none hover:text-ink focus-visible:ring-1 focus-visible:ring-focus"
       ><ChevronRight aria-hidden="true" size={13} className={cn("transition-transform", threadsOpen && "rotate-90")} /></button>}
       {!renaming && iconOnly && unread && (
         <span className="pointer-events-none absolute bottom-1.5 right-1.5 size-2 rounded-full border border-panel bg-accent" />
       )}
       {!renaming && !deleting && !iconOnly && <>
         {showThreads && <button type="button" aria-label={t("folder.newNamed", { name: bot.name })} title={t("folder.new")} onClick={() => { setThreadsOpen(true); setCreatingProject(true); }}
-          className="pointer-events-none absolute right-8 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:pointer-events-auto max-md:opacity-70"><FolderPlus size={14} /></button>}
+          className="pointer-events-none absolute right-8 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:pointer-events-auto max-md:opacity-70 outline-none focus-visible:ring-1 focus-visible:ring-focus"><FolderPlus size={14} /></button>}
         <button type="button" aria-label={t("sidebar.bot.actions", { name: bot.name })} title={t("sidebar.bot.actions", { name: bot.name })} aria-haspopup="menu" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); onMenu({ botId: bot.id, x: rect.left, y: rect.bottom }); }}
-          className="pointer-events-none absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:pointer-events-auto max-md:opacity-70"><MoreHorizontal size={15} /></button>
+          className="pointer-events-none absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center text-ink-secondary opacity-0 hover:bg-raised-hover hover:text-ink group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:pointer-events-auto max-md:opacity-70 outline-none focus-visible:ring-1 focus-visible:ring-focus"><MoreHorizontal size={15} /></button>
       </>}
       {deleting && iconOnly && (
         <span className="pointer-events-none absolute bottom-1 right-1 rounded-full bg-card p-1 text-ink-secondary">
@@ -1501,6 +1521,56 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     from: string | null;
     over: { id: string; place: SectionDropPlace } | null;
   }>({ from: null, over: null });
+  const roomListRef = useRef<HTMLDivElement>(null);
+
+  const isSettingsActive = Boolean(state.appSettingsOpen);
+  const isHubActive = !isSettingsActive && state.pluginsOpen && state.pluginsSurface === "hub";
+  const isActivityActive = !isSettingsActive && !state.pluginsOpen && Boolean(state.activityOpen) && state.activeView === "chat";
+  const isMoreActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && (state.activeView === "routines" || state.activeView === "okx-evaluator");
+  const isRoomsActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && state.activeView === "chat";
+  const isRoutinesActive = state.activeView === "routines";
+  const isEvaluatorActive = state.activeView === "okx-evaluator";
+
+  const handleRoomsClick = () => {
+    if (state.activeView !== "chat") dispatch({ type: "showChat" });
+    if (state.pluginsOpen) dispatch({ type: "togglePlugins", open: false });
+    if (state.activityOpen) dispatch({ type: "toggleActivity", open: false });
+    roomListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    roomListRef.current?.focus();
+  };
+
+  const handleHubClick = () => {
+    dispatch({ type: "togglePlugins", open: true, surface: "hub", hubTab: "agents" });
+  };
+
+  const handleActivityClick = () => {
+    if (state.activeView !== "chat") {
+      dispatch({ type: "showChat" });
+    }
+    if (state.pluginsOpen) {
+      dispatch({ type: "togglePlugins", open: false });
+    }
+    const hasRoomSelected = state.groups.some((g) => g.id === state.selectedId);
+    if (!hasRoomSelected && state.groups.length > 0) {
+      const mostRecent = [...state.groups].sort((a, b) => {
+        const lastA = a.messages.at(-1)?.at ?? a.createdAt;
+        const lastB = b.messages.at(-1)?.at ?? b.createdAt;
+        return lastB - lastA;
+      })[0] ?? state.groups[0]!;
+      dispatch({ type: "select", id: mostRecent.id });
+    }
+    if (!state.activityOpen) {
+      dispatch({ type: "toggleActivity", open: true });
+    }
+  };
+
+  const handleRoutinesClick = () => {
+    dispatch({ type: "showRoutines" });
+  };
+
+  const handleEvaluatorClick = () => {
+    dispatch({ type: "showEvaluator" });
+  };
 
   const setDensity = (next: SidebarDensity) => {
     setDensityState(next);
@@ -1750,19 +1820,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       aria-label={t("sidebar.aria")}
       data-native-view-overlay
       data-sidebar
+      data-open={open ? "true" : "false"}
       className={cn(
         "flex h-full shrink-0 flex-col frame-rule-right bg-panel transition-[width] duration-200",
         density === "icons" ? "w-[80px]" : density === "compact" ? "w-[272px]" : "w-[320px]",
-        // Below md only: the sidebar leaves the flow and slides in over the chat.
-        // Scoped with max-md: rather than cancelled with md: on purpose — Tailwind
-        // v4 emits the native `translate` property, and any value other than
-        // `none` turns this element into a containing block for its `fixed`
-        // descendants. Cancelling it with an `md:` prefix still emits a value, which
-        // silently reparents NewRoomPanel's overlay and the "+" menu backdrop on
-        // desktop.
-        "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40",
-        "max-md:transition-transform max-md:duration-200",
-        open ? "max-md:translate-x-0" : "max-md:-translate-x-full",
+        "sidebar-drawer",
       )}
     >
       {/* macOS owns inset traffic lights; Linux/Windows/browser use native chrome
@@ -1789,9 +1851,18 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         >
           <button
             type="button"
+            onClick={onClose}
+            aria-label="Close bot list"
+            className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus min-[769px]:hidden"
+            title="Close bot list"
+          >
+            <X size={16} />
+          </button>
+          <button
+            type="button"
             onClick={toggleCollapsed}
             aria-label={density === "icons" ? t("sidebar.density.expand") : t("sidebar.density.collapseAria")}
-            className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink"
+            className="hidden min-[769px]:flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
             title={density === "icons" ? t("sidebar.density.expand") : t("sidebar.density.collapse")}
           >
             {density === "icons" ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
@@ -1802,7 +1873,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               onClick={() => setDensityOpen((value) => !value)}
               aria-label={t("sidebar.density.chooseAria")}
               aria-expanded={densityOpen}
-              className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink"
+              className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
               title={t("sidebar.density.title")}
             >
               <span aria-hidden="true" className="flex size-4 flex-col items-center justify-center gap-[2.5px]">
@@ -1844,7 +1915,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             ref={importReturnRef}
             onClick={() => setPlusOpen((o) => !o)}
             aria-label={remoteClient ? t("sidebar.new") : t("sidebar.newOrShare")}
-            className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink"
+            className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
             title={remoteClient ? t("sidebar.new") : t("sidebar.newOrShare")}
           >
             <Plus size={16} strokeWidth={2} />
@@ -1930,23 +2001,198 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       </div>
 
       <DesktopWorkspaceSwitcher compact={density === "icons"} />
-      {/* Search */}
-      <div className={cn("pt-1 pb-2.5", density === "icons" ? "hidden" : "px-3")}>
-        <div className="flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5 focus-within:border-ink">
-          <Search size={13} className="shrink-0 text-ink-secondary" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-            placeholder={t("sidebar.search")}
+      {/* Search and New room */}
+      {density === "icons" ? (
+        <div className="flex flex-col items-center gap-1 py-1">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
             aria-label={t("sidebar.searchAria")}
-            className="w-full bg-transparent font-mono text-[12px] text-ink placeholder:text-ink-secondary focus:outline-none"
-          />
+            title={t("sidebar.search")}
+            className="flex size-8 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
+          >
+            <Search size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewRoom(true)}
+            aria-label="New room"
+            title="New room"
+            className="flex size-8 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
+          >
+            <Plus size={16} />
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="px-3 pt-1 pb-2 flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 border border-hairline bg-inset px-2.5 py-1.5 focus-within:border-ink">
+            <Search size={13} className="shrink-0 text-ink-secondary" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+              placeholder={t("sidebar.search")}
+              aria-label={t("sidebar.searchAria")}
+              className="w-full bg-transparent font-mono text-[12px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setNewRoom(true)}
+            aria-label="New room"
+            title="New room"
+            className="flex h-8 w-full items-center justify-center gap-2 border border-dashed border-hairline bg-panel text-[12px] font-mono text-ink transition-colors hover:bg-raised-hover outline-none focus-visible:ring-1 focus-visible:ring-focus"
+          >
+            <Plus size={14} className="text-ink-secondary" />
+            <span>New room</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main navigation list */}
+      <nav aria-label="Main" className={cn("flex flex-col gap-0.5", density === "icons" ? "px-2" : "px-3")}>
+        <button
+          type="button"
+          onClick={handleRoomsClick}
+          aria-label="Rooms"
+          title="Rooms"
+          aria-current={isRoomsActive ? "page" : undefined}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+            isRoomsActive
+              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+              : "text-ink hover:bg-raised-hover",
+          )}
+        >
+          <MessageSquare size={16} className={cn("shrink-0", isRoomsActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && <span className="flex-1 truncate">Rooms</span>}
+        </button>
+
+        <button
+          type="button"
+          data-tour="nav-apps"
+          onClick={handleHubClick}
+          aria-label={tFromServer("okxHub.nav.agentHub", "OKX Agent Hub")}
+          title={tFromServer("okxHub.nav.agentHub", "OKX Agent Hub")}
+          aria-current={isHubActive ? "page" : undefined}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+            isHubActive
+              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+              : "text-ink hover:bg-raised-hover",
+          )}
+        >
+          <BotIcon size={16} className={cn("shrink-0", isHubActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && (
+            <span className="flex-1 truncate">{tFromServer("okxHub.nav.agentHub", "OKX Agent Hub")}</span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleActivityClick}
+          aria-label="Activity"
+          title="Activity"
+          aria-current={isActivityActive ? "page" : undefined}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+            isActivityActive
+              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+              : "text-ink hover:bg-raised-hover",
+          )}
+        >
+          <BellDot size={16} className={cn("shrink-0", isActivityActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && <span className="flex-1 truncate">Activity</span>}
+        </button>
+
+        <SidebarMoreMenu
+          density={density}
+          label="More"
+          active={isMoreActive}
+          badge={activeDisputesCount > 0 ? activeDisputesCount : undefined}
+          badgeTestId={activeDisputesCount > 0 ? "disputes-badge" : undefined}
+          badgeAriaLabel={activeDisputesCount > 0 ? "Evaluator Disputes" : undefined}
+          attention={state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt)}
+          items={[
+            {
+              key: "routines",
+              label: t("sidebar.nav.automations"),
+              icon: <CalendarDays size={15} />,
+              active: isRoutinesActive,
+              attention: state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt),
+              attentionTone: "danger",
+              onSelect: handleRoutinesClick,
+            },
+            {
+              key: "evaluator",
+              label: "Evaluator",
+              icon: <Scale size={15} />,
+              active: isEvaluatorActive,
+              trailing: activeDisputesCount > 0 ? (
+                <span
+                  data-testid="disputes-badge"
+                  aria-label="Evaluator Disputes"
+                  title="Evaluator Disputes"
+                  className="border border-hairline bg-panel font-mono text-[10px] text-ink flex items-center justify-center px-1.5 py-0.5"
+                >
+                  {activeDisputesCount}
+                </span>
+              ) : undefined,
+              onSelect: handleEvaluatorClick,
+            },
+          ]}
+        />
+
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "toggleAppSettings" })}
+          aria-label={t("sidebar.menu.settings")}
+          title={t("sidebar.menu.settings")}
+          aria-current={isSettingsActive ? "page" : undefined}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+            isSettingsActive
+              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+              : "text-ink hover:bg-raised-hover",
+          )}
+        >
+          <SettingsIcon size={16} className={cn("shrink-0", isSettingsActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.menu.settings")}</span>}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void openExternalLink(HELP_CENTER_URL)}
+          aria-label={t("sidebar.menu.help")}
+          title={t("sidebar.menu.help")}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus text-ink hover:bg-raised-hover",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+          )}
+        >
+          <HelpCircle size={16} className="shrink-0 text-ink-secondary" />
+          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.menu.help")}</span>}
+        </button>
+      </nav>
+
+      <div className="my-2 frame-rule" />
 
       {/* Bot list */}
-      <div className="flex-1 overflow-y-auto px-2">
+      <div ref={roomListRef} tabIndex={-1} className="flex-1 overflow-y-auto px-2 outline-none">
         <div className="flex flex-col gap-0.5">
           {matchingBots.length === 0 && visibleGroups.length === 0 && q && q.length < MIN_QUERY && (
             <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">{t("sidebar.noMatch", { query })}</div>
@@ -2077,189 +2323,52 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         {reorderAnnouncement}
       </p>
 
-      {/* Footer */}
-      <div className={cn("pb-3 pt-2", density === "icons" ? "px-2" : "px-3")}>
-        {density === "icons" && (
-          <>
-          <button
-            onClick={() => dispatch({ type: "showChat" })}
-            aria-label="Chat"
-            title="Chat"
-            className={cn(
-              "flex min-h-9 w-full items-center py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "chat" ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
-            )}
-          >
-            <MessageSquare size={18} className={state.activeView === "chat" ? "text-ink" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[13px] font-mono", density === "icons" && "hidden")}>Chat</span>
-          </button>
-          <button
-            onClick={() => dispatch({ type: "showTeamMap" })}
-            aria-label={density === "icons" ? t("sidebar.nav.teamMap") : undefined}
-            title={density === "icons" ? t("sidebar.nav.teamMap") : undefined}
-            className={cn(
-              "flex min-h-9 w-full items-center py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "team-map" ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
-            )}
-          >
-            <Network size={18} className={state.activeView === "team-map" ? "text-ink" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[13px] font-mono", density === "icons" && "hidden")}>{t("sidebar.nav.teamMap")}</span>
-          </button>
-          <button
-            data-tour="nav-automations"
-            onClick={() => dispatch({ type: "showRoutines" })}
-            aria-label={density === "icons" ? t("sidebar.nav.automations") : undefined}
-            title={density === "icons" ? t("sidebar.nav.automations") : undefined}
-            className={cn(
-              "flex min-h-9 w-full items-center py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "routines" ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
-            )}
-          >
-            <CalendarDays size={18} className={state.activeView === "routines" ? "text-ink" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[13px] font-mono", density === "icons" && "hidden")}>{t("sidebar.nav.automations")}</span>
-            {state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt) && (
-              <span className="size-1.5 rounded-full bg-danger" />
-            )}
-          </button>
-          <button
-            data-tour="nav-evaluator"
-            onClick={() => dispatch({ type: "showEvaluator" })}
-            aria-label={density === "icons" ? "Evaluator Disputes" : undefined}
-            title={density === "icons" ? "Evaluator Disputes" : undefined}
-            className={cn(
-              "relative flex min-h-9 w-full items-center py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.activeView === "okx-evaluator" ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]" : "text-ink hover:bg-raised-hover",
-            )}
-          >
-            <Scale size={18} className={state.activeView === "okx-evaluator" ? "text-ink" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[13px] font-mono", density === "icons" && "hidden")}>Evaluator Disputes</span>
-            {activeDisputesCount > 0 && (
-              <span
-                data-testid="disputes-badge"
-                className={cn(
-                  "flex items-center justify-center bg-accent text-[10px] font-bold text-accent-ink",
-                  density === "icons" ? "absolute -right-0.5 -top-0.5 size-4" : "ml-auto px-1.5 py-0.5",
-                )}
-              >
-                {activeDisputesCount}
-              </span>
-            )}
-          </button>
-          <button
-            data-tour="nav-apps"
-            onClick={() => dispatch({ type: "togglePlugins", open: true, surface: "hub" })}
-            aria-label={tFromServer("okxHub.nav.agentHub", "Agent Hub")}
-            title={tFromServer("okxHub.nav.agentHub", "Agent Hub")}
-            className={cn(
-              "flex min-h-9 w-full items-center py-2 text-left transition-colors",
-              density === "icons" ? "justify-center px-2" : "gap-3 px-3",
-              state.pluginsOpen && state.pluginsSurface === "hub"
-                ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
-                : "text-ink hover:bg-raised-hover",
-            )}
-          >
-            <BotIcon size={18} className={state.pluginsOpen && state.pluginsSurface === "hub" ? "text-ink" : "text-ink-secondary"} />
-            <span className={cn("flex-1 text-[13px] font-mono", density === "icons" && "hidden")}>
-              {tFromServer("okxHub.nav.agentHub", "Agent Hub")}
-            </span>
-          </button>
+      {/* Lower section */}
+      <div className={cn("pt-2 pb-2 frame-rule-above flex flex-col gap-0.5", density === "icons" ? "px-2 items-center" : "px-3")}>
 
-          </>
-        )}
+        {/* Connection status */}
+        <div
+          aria-label={state.connected ? "Connected" : "Offline"}
+          title={state.connected ? "Connected" : "Offline"}
+          className={cn(
+            "flex items-center text-ink-secondary select-none",
+            density === "icons"
+              ? "size-8 w-full justify-center"
+              : "h-7 w-full gap-2 px-3 text-[11px] font-mono",
+          )}
+        >
+          <span
+            className={cn(
+              "size-1.5 rounded-full shrink-0",
+              state.connected ? "bg-success" : "bg-ink-secondary",
+            )}
+          />
+          {density !== "icons" && (
+            <span className="truncate">{state.connected ? "Connected" : "Offline"}</span>
+          )}
+        </div>
+
+        {/* Phone button in icons mode */}
         {density === "icons" && (
           <SidebarPhoneButton
             density={density}
             onOpen={() => dispatch(phoneSettingsAction())}
           />
         )}
-          {density !== "icons" && (
-          <SidebarMoreMenu
-            items={[
-              {
-                key: "landing",
-                label: "Landing page",
-                icon: <Sparkles size={18} />,
-                active: state.activeView === "landing",
-                onSelect: () => dispatch({ type: "showLanding" }),
-              },
-              {
-                key: "chat",
-                label: "Chat",
-                icon: <MessageSquare size={18} />,
-                active: state.activeView === "chat",
-                onSelect: () => dispatch({ type: "showChat" }),
-              },
-              {
-                key: "team-map",
-                label: t("sidebar.nav.teamMap"),
-                icon: <Network size={18} />,
-                active: state.activeView === "team-map",
-                onSelect: () => dispatch({ type: "showTeamMap" }),
-              },
-              {
-                key: "routines",
-                tourId: "nav-automations",
-                label: t("sidebar.nav.automations"),
-                icon: <CalendarDays size={18} />,
-                active: state.activeView === "routines",
-                // folded away, this dot would otherwise vanish with the row
-                attention: state.routineRuns.some(
-                  (run) => ["failed", "missed"].includes(run.status) && !run.seenAt,
-                ),
-                onSelect: () => dispatch({ type: "showRoutines" }),
-              },
-              {
-                key: "okx-evaluator",
-                tourId: "nav-evaluator",
-                label: "Evaluator Disputes",
-                icon: <Scale size={18} />,
-                active: state.activeView === "okx-evaluator",
-                attention: activeDisputesCount > 0,
-                trailing: activeDisputesCount > 0 ? (
-                  <span
-                    data-testid="disputes-badge"
-                    className="border border-hairline bg-panel px-1.5 py-0.5 font-mono text-[10px] text-ink"
-                  >
-                    {activeDisputesCount}
-                  </span>
-                ) : undefined,
-                onSelect: () => dispatch({ type: "showEvaluator" }),
-              },
-              {
-                key: "agent-hub",
-                tourId: "nav-apps",
-                label: tFromServer("okxHub.nav.agentHub", "Agent Hub") ?? "Agent Hub",
-                icon: <BotIcon size={18} />,
-                active: state.pluginsOpen && state.pluginsSurface === "hub",
-                onSelect: () => dispatch({ type: "togglePlugins", open: true, surface: "hub" }),
-              },
 
-            ]}
-          />
-        )}
+        {/* Profile */}
         {density === "icons" ? (
-          <div className="flex items-center justify-center">
-            <button
-              onClick={() => dispatch({ type: "toggleAppSettings" })}
-              className="flex min-w-0 items-center justify-center p-1 text-left hover:bg-raised-hover"
-              aria-label={t("sidebar.appSettings")}
-              title={state.config?.profile?.name?.trim() || t("sidebar.appSettings")}
-            >
-              <InitialsAvatar initials={profileInitials(state.config?.profile)} size={28} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "toggleAppSettings" })}
+            className="flex size-9 w-full items-center justify-center p-1 hover:bg-raised-hover outline-none focus-visible:ring-1 focus-visible:ring-focus"
+            aria-label={t("sidebar.appSettings")}
+            title={state.config?.profile?.name?.trim() || t("sidebar.appSettings")}
+          >
+            <InitialsAvatar initials={profileInitials(state.config?.profile)} size={24} />
+          </button>
         ) : (
-          // The Tools row and the profile row are two different kinds of
-          // thing — places to go, versus who you are and what the app is —
-          // so they get clear space between them. A hairline lived here
-          // briefly and made it worse: full-bleed, it ran within a few pixels
-          // of the profile row's rounded hover pill, and the two hover states
-          // read as one crowded block rather than two rows.
-          <div className="mt-3">
+          <div className="mt-1">
             <SidebarProfileMenu />
           </div>
         )}

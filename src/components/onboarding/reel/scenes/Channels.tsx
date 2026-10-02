@@ -5,18 +5,18 @@
 // the header and answering while the other two stay quiet.
 import { useEffect, useState } from "react";
 import { Hash, Send } from "lucide-react";
-import { MausAvatar } from "@/components/Avatar";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
 import { cn } from "@/lib/cn";
 import type { MausColor } from "@/lib/mascot";
 import { reducedMotion } from "@/lib/onboarding";
-import type { SceneProps } from "./OrbitingApps";
+import type { SceneProps } from "./types";
 
 const CHANNELS_MS = 6000;
 
-const MEMBERS: Array<{ name: string; title: string; color: MausColor }> = [
-  { name: "Maus", title: "Chief of staff", color: "green" },
-  { name: "Researcher", title: "Finds and checks facts", color: "blue" },
-  { name: "Writer", title: "Drafts and edits", color: "orange" },
+const MEMBERS: Array<{ id: string; name: string; title: string; color: MausColor }> = [
+  { id: "lead", name: "Coordinator", title: "Chief of staff", color: "green" },
+  { id: "researcher", name: "Researcher", title: "Finds and checks facts", color: "blue" },
+  { id: "writer", name: "Writer", title: "Drafts and edits", color: "orange" },
 ];
 const RESEARCHER = 1;
 
@@ -123,7 +123,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
                     busy && i !== RESEARCHER && "opacity-45",
                   )}
                 >
-                  <MausAvatar color={m.color} state={active ? "working" : "happy"} size={24} animated={!still && active} />
+                  <AgentMark bot={m} size={24} />
                   {active && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border border-app bg-accent" />}
                 </span>
               );
@@ -144,7 +144,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
           {(thinking || replied) && (
             <div className="animate-rise flex items-start gap-2">
               <div className="mt-0.5 shrink-0">
-                <MausAvatar color="blue" state={replied ? "writing" : "working"} size={26} animated={!still} />
+                <AgentMark bot={MEMBERS[RESEARCHER]!} size={26} />
               </div>
               <div className="min-w-0">
                 <div className="mb-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-secondary">Researcher</div>
@@ -169,7 +169,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
             <div className="animate-spot-in absolute bottom-[48px] left-3.5 z-20 w-[210px] origin-bottom-left border border-hairline bg-menu p-1 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]">
               {[MEMBERS[RESEARCHER]!, MEMBERS[2]!].map((m, i) => (
                 <div key={m.name} className={cn("flex h-8 items-center gap-2 px-2.5 text-[12px] transition-colors hover:bg-raised-hover", i === 0 ? "bg-raised" : "")}>
-                  <MausAvatar color={m.color} state="happy" size={20} animated={false} />
+                  <AgentMark bot={m} size={20} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">{m.name}</span>
                     <span className="block truncate font-mono text-[9px] text-ink-secondary">{m.title}</span>
@@ -203,7 +203,7 @@ export function Channels({ playing, onCue, onEnded, label }: SceneProps) {
       {/* the guide keeps its distance: this room belongs to the members */}
       <div className="flex h-11 shrink-0 items-center justify-center">
         <div className="relative">
-          <MausAvatar color="green" state={replied ? "proud" : busy ? "listening" : "idle"} size={28} animated={!still} />
+          <AgentMark bot={{ id: "kind-meitner", name: "kind-meitner" }} size={28} />
         </div>
       </div>
     </div>

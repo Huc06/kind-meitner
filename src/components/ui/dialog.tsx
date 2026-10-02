@@ -1,7 +1,46 @@
-import type { HTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import { useEffect, type HTMLAttributes, type MouseEvent, type ReactNode, type Ref } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatIndex } from "./frame";
+
+let activeModalCount = 0;
+let previousActiveElement: HTMLElement | null = null;
+
+export function useModalA11y(active = true, onDismiss?: () => void) {
+  useEffect(() => {
+    if (!active) return;
+
+    if (activeModalCount === 0) {
+      previousActiveElement = (document.activeElement as HTMLElement) ?? null;
+      const elements = Array.from(document.querySelectorAll<HTMLElement>("main, aside, [data-app-shell]"));
+      elements.forEach((el) => el.setAttribute("inert", ""));
+    }
+    activeModalCount++;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && onDismiss) {
+        e.preventDefault();
+        onDismiss();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      activeModalCount--;
+      if (activeModalCount <= 0) {
+        activeModalCount = 0;
+        const elements = Array.from(document.querySelectorAll<HTMLElement>("main, aside, [data-app-shell]"));
+        elements.forEach((el) => el.removeAttribute("inert"));
+        if (previousActiveElement && typeof previousActiveElement.focus === "function") {
+          try {
+            previousActiveElement.focus();
+          } catch {}
+        }
+      }
+    };
+  }, [active, onDismiss]);
+}
 
 /** Full-viewport scrim. Presentational only: each dialog keeps its own focus
  * trap, Escape handling and portal, which differ per surface and are tested
@@ -12,6 +51,7 @@ export function DialogBackdrop({
   children,
   ...props
 }: HTMLAttributes<HTMLDivElement> & { onDismiss?: () => void }) {
+  useModalA11y(true, onDismiss);
   return (
     <div
       className={cn(
@@ -41,7 +81,7 @@ export function DialogPanel({ className, children, ref, ...props }: DialogPanelP
       role="dialog"
       aria-modal="true"
       className={cn(
-        "relative flex max-h-[min(88vh,56rem)] w-full max-w-lg flex-col border border-hairline bg-card text-ink shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)]",
+        "relative flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] w-full sm:max-w-lg flex-col border border-hairline bg-card text-ink shadow-[0_24px_64px_-24px_rgb(0_0_0/0.6)]",
         className,
       )}
       style={{ ["--frame-surface" as string]: "var(--color-card)" }}

@@ -50,7 +50,7 @@ describe("BotAvatar's two avatar outcomes", () => {
   it("renders a flat cropped image for circle/rounded/square, with no mascot at all", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "circle" });
     expect(markup).toContain("<img");
-    expect(markup).not.toContain("<canvas");
+    expect(markup).not.toContain("data-agent-mark");
   });
 
   it("shows the image as it is, with no mascot face painted on it", () => {
@@ -59,16 +59,16 @@ describe("BotAvatar's two avatar outcomes", () => {
     expect(markup).not.toContain("data-bot-avatar");
   });
 
-  it("renders the mascot when the crop is mascot, image or not", () => {
+  it("renders the agent mark when the crop is mascot, image or not", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "mascot" });
     expect(markup).not.toContain("<img");
-    expect(markup).toContain("<canvas");
+    expect(markup).toContain("data-agent-mark");
   });
 
-  it("falls back to the mascot when a flat crop has no valid image", () => {
+  it("falls back to the agent mark when a flat crop has no valid image", () => {
     const markup = renderBot({ avatarUrl: undefined, avatarCrop: "circle" });
     expect(markup).not.toContain("<img");
-    expect(markup).toContain("<canvas");
+    expect(markup).toContain("data-agent-mark");
   });
 });
 
@@ -103,20 +103,41 @@ describe("resolveBotAvatarOutcome", () => {
 });
 
 
-describe("catalog bot avatars", () => {
-  it("renders catalog bots with distinct dynamic bot-avatars mascots", () => {
-    const spend = renderBot({ name: "Spend Scout", okxImport: { kind: "okx-catalog" } });
-    const coach = renderBot({ name: "Listing Coach", okxImport: { kind: "okx-catalog" } });
-    const markets = renderBot({ name: "Markets", okxImport: { kind: "okx-catalog" } });
+describe("AgentMark in BotAvatar", () => {
+  it("renders OKX catalog bots with OKX mark and tile-cyan styling", () => {
+    const spend = renderBot({ name: "Spend Scout", okxImport: { kind: "okx-catalog", externalAgentId: "okx-spend-scout" } });
+    const coach = renderBot({ name: "Listing Coach", okxImport: { kind: "okx-catalog", externalAgentId: "okx-listing-coach" } });
+    const markets = renderBot({ name: "Markets", okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1" } });
 
-    // Spend Scout maps to shield -> droid
-    expect(spend).toContain('data-bot-avatar="droid"');
-    // Listing Coach maps to squircle -> pebble
-    expect(coach).toContain('data-bot-avatar="pebble"');
-    // Markets maps to star -> star
-    expect(markets).toContain('data-bot-avatar="star"');
+    expect(spend).toContain('data-agent-mark="okx"');
+    expect(spend).toContain("border-tile-cyan");
+    expect(coach).toContain('data-agent-mark="okx"');
+    expect(markets).toContain('data-agent-mark="okx"');
   });
 
+  it("renders local bots with geometric mono mark and tile left bar", () => {
+    const local = renderBot({ id: "tuli", name: "Tuli" });
+    expect(local).toContain('data-agent-mark="local"');
+    expect(local).toContain("T");
+    expect(local).toContain("font-mono");
+    expect(local).toContain("w-[2px]");
+  });
+
+  it("supports accessible labels for assistive tech", () => {
+    const markupWithLabel = renderToStaticMarkup(
+      createElement(BotAvatar, {
+        bot: { id: "bot-1", name: "Markets", color: "green", okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1" } },
+        label: "Markets catalog agent",
+      }),
+    );
+    expect(markupWithLabel).toContain('aria-label="Markets catalog agent"');
+
+    const defaultLabel = renderBot({ id: "bot-2", name: "Alice" });
+    expect(defaultLabel).toContain('aria-label="Alice"');
+  });
+});
+
+describe("catalog bot avatars", () => {
   it("maps catalog and local bots deterministically via defaultMascotBodyForBot", () => {
     // Known external catalog IDs
     expect(defaultMascotBodyForBot({ okxImport: { externalAgentId: "okx-market-scout-v1" } })).toBe("star");

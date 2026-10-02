@@ -119,4 +119,172 @@ describe("OKX action-card payload parsing", () => {
       endpointUrl: readiness.data.endpointUrl,
     });
   });
+
+  it("unwraps real tool-result contract with top-level content array (Defect 18)", () => {
+    const mcpResult = {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(readiness),
+        },
+      ],
+    };
+    const parsed = parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify(mcpResult),
+    });
+    expect(parsed).toMatchObject({
+      kind: "readiness",
+      verdict: "FAIL",
+      endpointUrl: readiness.data.endpointUrl,
+    });
+  });
+
+  it("unwraps real trust card contract with top-level content array (Defect 18)", () => {
+    const mcpResult = {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(trust),
+        },
+      ],
+    };
+    const parsed = parseOkxActionCard({
+      name: "get_asp_trust_card",
+      ok: true,
+      output: JSON.stringify(mcpResult),
+    });
+    expect(parsed).toMatchObject({
+      kind: "trust",
+      decision: "NO_GO",
+      agentId: "99999",
+    });
+  });
+
+  it("unwraps nested result.content tool outputs from JSON-RPC responses", () => {
+    const rpcEnvelope = {
+      jsonrpc: "2.0",
+      id: "scan-1",
+      result: {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(readiness),
+          },
+        ],
+      },
+    };
+    const parsed = parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify(rpcEnvelope),
+    });
+    expect(parsed).toMatchObject({
+      kind: "readiness",
+      verdict: "FAIL",
+      endpointUrl: readiness.data.endpointUrl,
+    });
+  });
+
+  it("handles malformed and empty content arrays without fabricating results", () => {
+    // Empty content array
+    expect(parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify({ content: [] }),
+    })).toBeNull();
+
+    // Content is not an array
+    expect(parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify({ content: "not an array" }),
+    })).toBeNull();
+
+    // Content text is not JSON
+    expect(parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify({ content: [{ type: "text", text: "invalid non-json string" }] }),
+    })).toBeNull();
+
+    // Content text is empty object
+    expect(parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
+    })).toBeNull();
+
+    // Content text is missing required readiness fields
+    expect(parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ verdict: "PASS" }) }] }),
+    })).toBeNull();
+
+    // In-flight or error tool calls
+    expect(parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: false,
+      output: JSON.stringify(readiness),
+    })).toBeNull();
+  });
+
+  it("parses limitations and lastChecked when supplied in data or resource", () => {
+    const withMetadata = {
+      resource: {
+        access: "free",
+        limitations: ["No mainnet settlement", "Rate limited to 10 req/min"],
+        lastChecked: "2026-10-02T12:00:00Z",
+      },
+      data: {
+        ...readiness.data,
+      },
+    };
+    const parsed = parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify(withMetadata),
+    });
+    expect(parsed).toMatchObject({
+      kind: "readiness",
+      limitations: ["No mainnet settlement", "Rate limited to 10 req/min"],
+      lastChecked: "2026-10-02T12:00:00Z",
+    });
+  });
+
+  it("is independent of key ordering in envelope and signals", () => {
+    const reverseOrder = {
+      data: {
+        remediation: ["Fix scheme"],
+        score: 50,
+        checks: [
+          { status: "pass", id: "tools_list", detail: "ok" },
+          { detail: "host=demo.vercel.app", status: "fail", id: "host_pitfall" },
+        ],
+        verdict: "WARN",
+        endpointUrl: "https://example.com/api",
+      },
+      resource: {
+        provenance: "probe",
+        mainnet: false,
+        walletRequired: false,
+        paymentRequired: false,
+        access: "free",
+      },
+    };
+    const parsed = parseOkxActionCard({
+      name: "scan_free_mcp_readiness",
+      ok: true,
+      output: JSON.stringify(reverseOrder),
+    });
+    expect(parsed).toMatchObject({
+      kind: "readiness",
+      verdict: "WARN",
+      endpointUrl: "https://example.com/api",
+      score: 50,
+    });
+    expect(parsed?.kind === "readiness" && parsed.checks).toHaveLength(2);
+  });
 });

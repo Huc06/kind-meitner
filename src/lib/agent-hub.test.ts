@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearHubCatalogCache,
+  findLatestAspResults,
   importHubAgent,
   loadFreeMcpService,
   loadHubCatalog,
@@ -356,6 +357,65 @@ describe("agent-hub", () => {
       ).toBe(
         "@Markets run get_asp_trust_card for agentId 13851 with endpointUrl https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
       );
+    });
+  });
+
+  describe("findLatestAspResults", () => {
+    it("returns empty results when no groups or messages have gate tools", () => {
+      const res = findLatestAspResults([], "https://demo.app/api/okx/free-mcp", "13851");
+      expect(res.readinessVerdict).toBeUndefined();
+      expect(res.trustDecision).toBeUndefined();
+      expect(res.lastCheckedTime).toBeUndefined();
+    });
+
+    it("extracts readiness verdict and trust decision from transcript", () => {
+      const groups = [
+        {
+          id: "room-1",
+          messages: [
+            {
+              at: 1000,
+              tool: {
+                name: "scan_free_mcp_readiness",
+                ok: true,
+                output: JSON.stringify({
+                  endpointUrl: "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
+                  verdict: "PASS",
+                  checks: [{ id: "c1", status: "pass", detail: "ok" }],
+                  remediation: ["none"],
+                }),
+              },
+            },
+            {
+              at: 2000,
+              tool: {
+                name: "get_asp_trust_card",
+                ok: true,
+                output: JSON.stringify({
+                  agentId: "13851",
+                  decision: "GO",
+                  summary: "Trusted",
+                  signals: [{ id: "s1", status: "pass", detail: "ok" }],
+                  notChecked: ["none"],
+                  remediation: ["none"],
+                  safeNextStep: "proceed",
+                }),
+              },
+            },
+          ],
+        },
+      ];
+
+      const res = findLatestAspResults(
+        groups,
+        "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
+        "13851",
+      );
+      expect(res.readinessVerdict).toBe("PASS");
+      expect(res.trustDecision).toBe("GO");
+      expect(res.lastCheckedTimestamp).toBe(2000);
+      expect(res.trustRoomId).toBe("room-1");
+      expect(res.evidenceJson).toContain("Trusted");
     });
   });
 });

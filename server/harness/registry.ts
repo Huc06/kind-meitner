@@ -54,12 +54,29 @@ function cliOfRaw(raw: unknown): string | undefined {
   const cli = (raw as { cli?: unknown } | undefined)?.cli;
   return typeof cli === "string" && cli ? cli : undefined;
 }
+function isSimulatedConfig(entry: {
+  simulated?: boolean;
+  testEngine?: boolean;
+  config?: unknown;
+  environment?: Record<string, string>;
+}): boolean {
+  if (entry.simulated || entry.testEngine) return true;
+  const rawCli = cliOfRaw(entry.config);
+  if (typeof rawCli === "string" && (rawCli.includes("fake-claude-cli") || rawCli.includes("fake-codex") || rawCli.includes("fake-acp") || rawCli.includes("fake-driver"))) {
+    return true;
+  }
+  if (entry.environment && Object.keys(entry.environment).some((k) => k.startsWith("FAKE_CLAUDE_") || k.startsWith("FAKE_CODEX_") || k.startsWith("FAKE_ACP_"))) {
+    return true;
+  }
+  return false;
+}
 
 export class ProviderRegistry {
   private byId = new Map<InstanceId, RegistryEntry>();
   /** decoded per-instance `cli` overrides, for describe() — drivers spawn
    * from their own config; this map only reports what was configured */
   private cliByInstance = new Map<InstanceId, string>();
+  private simulatedByInstance = new Map<InstanceId, boolean>();
   private driversByKind: Map<string, AnyProviderDriver>;
   /** Where Settings-driven npm installs go; the data directory by default. */
   private readonly enginesBaseDir: string | undefined;
@@ -77,6 +94,9 @@ export class ProviderRegistry {
     for (const [instanceId, entry] of Object.entries(configs)) {
       // Account edits replace only their own process/session state.
       await this.dispose(instanceId);
+      const isSim = isSimulatedConfig(entry);
+      if (isSim) this.simulatedByInstance.set(instanceId, true);
+      else this.simulatedByInstance.delete(instanceId);
       const driver = this.driversByKind.get(entry.driver);
       if (!driver) {
         this.byId.set(instanceId, {
@@ -126,6 +146,10 @@ export class ProviderRegistry {
   get(instanceId: InstanceId): ProviderInstance | null {
     return this.byId.get(instanceId)?.live ?? null;
   }
+  isSimulated(instanceId: InstanceId): boolean {
+    return this.simulatedByInstance.get(instanceId) === true;
+  }
+
 
   /** The configured executable for instance-scoped maintenance actions.
    * This deliberately comes from the registry/config, never an HTTP body. */
@@ -214,12 +238,15 @@ export class ProviderRegistry {
     return Promise.all(
       this.entries().map(async (entry) => {
         const driver = this.driversByKind.get(entry.shadow?.driverKind ?? entry.live!.driverKind);
+        const isSim = this.simulatedByInstance.get(entry.instanceId) ?? false;
         if (entry.shadow) {
           return {
             instanceId: entry.instanceId,
             driverKind: entry.shadow.driverKind,
             displayName: entry.shadow.displayName ?? entry.shadow.driverKind,
-            snapshot: { state: "unavailable", reason: entry.shadow.reason } satisfies ProviderSnapshot,
+            snapshot: { state: "unavailable", reason: entry.shadow.reason, ...(isSim ? { simulated: true, testEngine: true } : {}) } satisfies ProviderSnapshot,
+            simulated: isSim,
+            testEngine: isSim,
             models: { default: "", options: [] },
             capabilities: { computerMcp: false, agentsMcp: false, localComputerMcp: false },
             // an unknown driver has no driver record, hence no install path
@@ -239,11 +266,16 @@ export class ProviderRegistry {
         } catch (e) {
           snapshot = { state: "unavailable", reason: e instanceof Error ? e.message : String(e) };
         }
+        if (isSim) {
+          snapshot = { ...snapshot, simulated: true, testEngine: true };
+        }
         return {
           instanceId: inst.instanceId,
           driverKind: inst.driverKind,
           displayName: inst.displayName ?? inst.driverKind,
           snapshot,
+          simulated: isSim,
+          testEngine: isSim,
           models: inst.models,
           capabilities: {
             computerMcp: inst.adapter.capabilities.computerMcp === true,
@@ -285,12 +317,14 @@ export class ProviderRegistry {
     await Promise.allSettled(this.instances().map((i) => i.dispose()));
     this.byId.clear();
     this.cliByInstance.clear();
+    this.simulatedByInstance.clear();
   }
 
   async dispose(instanceId: InstanceId) {
     const entry = this.byId.get(instanceId);
     this.byId.delete(instanceId);
     this.cliByInstance.delete(instanceId);
+    this.simulatedByInstance.delete(instanceId);
     await entry?.live?.dispose();
   }
 }

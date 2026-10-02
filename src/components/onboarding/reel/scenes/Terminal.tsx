@@ -4,10 +4,10 @@
 // ones from server/cli-setup.ts, typed at a human pace, with the picker
 // drawn the way Clack draws it.
 import { useEffect, useState } from "react";
-import { MausAvatar } from "@/components/Avatar";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
 import { cn } from "@/lib/cn";
 import { reducedMotion } from "@/lib/onboarding";
-import type { SceneProps } from "./OrbitingApps";
+import type { SceneProps } from "./types";
 
 const TERMINAL_MS = 6400;
 
@@ -141,7 +141,7 @@ export function Terminal({ playing, onCue, onEnded, label }: SceneProps) {
               <span className="size-2.5 rounded-full bg-[#28c840]" />
             </div>
             <div className="ml-2 flex h-6 max-w-[150px] items-center gap-1.5 border-t border-hairline bg-[#35363a] px-2.5 text-[9.5px] text-[#e8eaed]">
-              <MausAvatar color="green" state="idle" size={10} animated={false} />
+              <AgentMark bot={{ id: "kind-meitner", name: "kind-meitner" }} size={10} />
               <span className="truncate">kind-meitner</span>
               <span className="ml-1 text-[#9aa0a6]">×</span>
             </div>
@@ -167,7 +167,7 @@ export function Terminal({ playing, onCue, onEnded, label }: SceneProps) {
             <div className="h-5 bg-inset" />
             <div className="mt-2 font-mono text-[7px] font-semibold uppercase tracking-[0.12em] text-ink-secondary">Bots</div>
             <div className="mt-1 flex items-center gap-1.5 bg-raised/70 px-1.5 py-1">
-              <MausAvatar color="green" state="happy" size={14} animated={false} />
+              <AgentMark bot={{ id: "bot", name: "Bot" }} size={14} />
               <div className="min-w-0">
                 <div className="h-1.5 w-9 bg-ink/70" />
                 <div className="mt-1 h-1 w-12 bg-ink-secondary/40" />
@@ -180,14 +180,14 @@ export function Terminal({ playing, onCue, onEnded, label }: SceneProps) {
           </div>
           <div className="relative flex-1">
             <div className="flex items-center gap-2 border-b border-hairline/40 px-3 py-2">
-              <MausAvatar color="green" state="happy" size={14} animated={false} />
+              <AgentMark bot={{ id: "bot", name: "Bot" }} size={14} />
               <div className="h-1.5 w-10 bg-ink/70" />
             </div>
             {/* dimmed shell under the welcome card, as the real first run looks */}
             <div className="absolute inset-0 top-[29px] bg-app/80" />
             <div className="absolute left-1/2 top-[6px] w-[196px] -translate-x-1/2 border border-hairline bg-panel px-4 py-2.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]">
               <div className="flex flex-col items-center">
-                <MausAvatar color="green" state="happy" size={24} animated={!still} />
+                <AgentMark bot={{ id: "kind-meitner", name: "kind-meitner" }} size={24} />
                 <div className="mt-1 text-[10px] font-semibold text-ink">Welcome to kind-meitner</div>
                 <div className="mt-0.5 h-1 w-24 bg-ink-secondary/40" />
                 <div className="mt-2 flex h-[18px] w-full items-center border border-hairline bg-inset px-2 font-mono text-[7.5px] text-ink-secondary">Your name</div>
@@ -202,7 +202,7 @@ export function Terminal({ playing, onCue, onEnded, label }: SceneProps) {
       {/* the guide: loading while the wizard runs, happy when the app opens */}
       <div className="absolute bottom-3 right-5 z-20">
         <div className="relative">
-          <MausAvatar color="green" state={rising ? "happy" : now > 1800 ? "working" : "loading"} size={36} animated={!still} />
+          <AgentMark bot={{ id: "guide", name: "Guide" }} size={36} />
         </div>
       </div>
     </div>

@@ -2190,7 +2190,10 @@ const defaultRoomWelcome = `Welcome to #${DEFAULT_ROOM_NAME}.`;
 
 function roomActivity(room: GroupRecord, text: string, from?: BotRecord): Message {
   const existing = store.messagesFor(room.threadId).find(
-    (message) => message.kind === "activity" && message.tool?.name === text,
+    (message) =>
+      message.kind === "activity" &&
+      (message.tool?.name === text ||
+        (from && message.from?.botId === from.id && message.tool?.name?.startsWith(`${from.name} joined`))),
   );
   if (existing) {
     const tool = existing.tool;
@@ -2217,6 +2220,7 @@ function migrateSystemRoomActivities(): void {
     for (const bot of store.bots) {
       if (!bot.okxImport || !room.memberIds.includes(bot.id)) continue;
       lifecycleNames.add(`${bot.name} joined #${room.name} from ${bot.okxImport.provider}.`);
+      lifecycleNames.add(`${bot.name} joined #${room.name} from the local OKX.AI catalog.`);
     }
     for (const message of store.messagesFor(room.threadId)) {
       if (message.kind !== "activity" || !message.tool || message.tool.system === true || !lifecycleNames.has(message.tool.name)) continue;
@@ -2331,7 +2335,7 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
   let created = false;
   if (!bot) {
     bot = store.createBot(
-      { name: agent.name, title: "OKX.ai Agent", description: agent.description, soul: agent.soul },
+      { name: agent.name, title: "OKX.AI catalog", description: agent.description, soul: agent.soul },
       { seedMessages: false },
     );
     bot = store.patchBot(bot.id, {
@@ -2363,6 +2367,7 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
     // Keep custom names intact, but migrate the old catalog display name to
     // the role name used in the Dev Day room roster and @mention prompts.
     if (bot.name === "Market Scout" && agent.name === "Markets") bot = store.patchBot(bot.id, { name: agent.name }) ?? bot;
+    if (bot.title === "OKX.ai Agent") bot = store.patchBot(bot.id, { title: "OKX.AI catalog" }) ?? bot;
     // Repair a bot imported before sections were carried over. `undefined`
     // means never set; an explicit "" is someone choosing General, so leave it.
     if (bot.section === undefined && room.section) bot = store.patchBot(bot.id, { section: room.section }) ?? bot;
@@ -2372,7 +2377,7 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
     created = true;
   }
   const roomLabel = room.name.startsWith("#") ? room.name : `#${room.name}`;
-  return { room, bot, activity: roomActivity(room, `${agent.name} joined ${roomLabel} from ${agent.provider}.`, bot), created };
+  return { room, bot, activity: roomActivity(room, `${agent.name} joined ${roomLabel} from the local OKX.AI catalog.`, bot), created };
 }
 
 /** Create the Dev Day workbench once, then repair its catalog roster on every
@@ -3680,7 +3685,14 @@ bus.subscribe((event: RuntimeEvent) => {
   const speaker = group ? groupSpeakers.get(event.threadId) : undefined;
 
   const pushMessage = (m: Omit<Message, "id" | "at">) => {
-    const message = store.appendMessage(event.threadId, group && m.role === "bot" ? { ...m, from: speaker } : m);
+    const instanceId = event.providerInstanceId ?? (speaker ? store.bot(speaker.botId)?.modelSelection?.instanceId : bot?.modelSelection?.instanceId);
+    const isSim = instanceId ? registry.isSimulated(instanceId) || Boolean(instanceConfigs(cfg)[instanceId]?.simulated || instanceConfigs(cfg)[instanceId]?.testEngine) : false;
+    const withEngine: Omit<Message, "id" | "at"> = {
+      ...m,
+      ...(instanceId && m.role === "bot" ? { engine: { instanceId, simulated: isSim } } : {}),
+      ...(isSim && m.role === "bot" ? { simulated: true } : {}),
+    };
+    const message = store.appendMessage(event.threadId, group && m.role === "bot" ? { ...withEngine, from: speaker } : withEngine);
     return message;
   };
 
@@ -4378,7 +4390,13 @@ function finalizeDelegationWatch(
             kind: "text",
             text: `@${targetName} replied to the delegated task:\n\n${reply.trim()}`,
           };
-          if (target) sourceReply.from = { botId: target.id, name: target.name, color: target.color };
+          if (target) {
+            const targetInstanceId = target.modelSelection?.instanceId;
+            const isSim = targetInstanceId ? registry.isSimulated(targetInstanceId) || Boolean(instanceConfigs(cfg)[targetInstanceId]?.simulated || instanceConfigs(cfg)[targetInstanceId]?.testEngine) : false;
+            sourceReply.from = { botId: target.id, name: target.name, color: target.color };
+            if (targetInstanceId) sourceReply.engine = { instanceId: targetInstanceId, simulated: isSim };
+            if (isSim) sourceReply.simulated = true;
+          }
           store.appendMessage(terminalThreadId, sourceReply);
         } else {
           store.appendMessage(terminalThreadId, {
@@ -4407,7 +4425,13 @@ function finalizeDelegationWatch(
           kind: "text",
           text: `@${targetName} replied to the delegated task:\n\n${reply.trim()}`,
         };
-        if (target) sourceReply.from = { botId: target.id, name: target.name, color: target.color };
+        if (target) {
+          const targetInstanceId = target.modelSelection?.instanceId;
+          const isSim = targetInstanceId ? registry.isSimulated(targetInstanceId) || Boolean(instanceConfigs(cfg)[targetInstanceId]?.simulated || instanceConfigs(cfg)[targetInstanceId]?.testEngine) : false;
+          sourceReply.from = { botId: target.id, name: target.name, color: target.color };
+          if (targetInstanceId) sourceReply.engine = { instanceId: targetInstanceId, simulated: isSim };
+          if (isSim) sourceReply.simulated = true;
+        }
         store.appendMessage(watched.sourceThreadId, sourceReply);
       } else {
         store.appendMessage(watched.sourceThreadId, {
@@ -8844,14 +8868,23 @@ async function describeInstances() {
   const configs = instanceConfigs(cfg);
   return (await registry.describe()).map((instance) => {
     const entry = configs[instance.instanceId];
-    if (entry?.driver !== "claudeAgent") return instance;
+    const isSim = ("simulated" in instance ? Boolean(instance.simulated) : false) || Boolean(entry?.simulated || entry?.testEngine);
+    const withSim = isSim
+      ? {
+          ...instance,
+          simulated: true,
+          testEngine: true,
+          snapshot: { ...instance.snapshot, simulated: true, testEngine: true },
+        }
+      : instance;
+    if (entry?.driver !== "claudeAgent") return withSim;
     try {
       const claudeAccount = claudeAccountInfo(instance.instanceId, entry, instance.cli ?? instance.cliDefault ?? "claude");
-      return { ...instance, claudeAccount, install: { ...instance.install, signInCommand: claudeAccount.signInCommand } };
+      return { ...withSim, claudeAccount, install: { ...withSim.install, signInCommand: claudeAccount.signInCommand } };
     } catch {
       // A malformed saved config remains a repairable shadow, never takes
       // the model picker down or offers a login for the wrong directory.
-      return { ...instance, install: { ...instance.install, signInCommand: undefined } };
+      return { ...withSim, install: { ...withSim.install, signInCommand: undefined } };
     }
   });
 }

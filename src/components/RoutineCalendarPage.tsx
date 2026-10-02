@@ -2064,7 +2064,7 @@ export function RoutinesPage({ onBack, onOpenRoom }: { onBack: () => void; onOpe
           <div data-tour="automations-page" className="flex items-center gap-2">
             <CalendarDays size={18} className="text-ink" />
             <h1 className="font-mono text-[13.5px] font-medium tracking-[0.06em] text-ink uppercase">
-              [ AUTOMATIONS ]
+              Routines
             </h1>
           </div>
           <div className="flex items-center gap-4 ml-2" style={windowNoDragStyle} aria-label="Automation type">

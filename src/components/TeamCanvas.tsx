@@ -94,11 +94,6 @@ function BotCard({
         <BotAvatar
           bot={bot}
           size={36}
-          motion="none"
-          motionKey={0}
-          interactive={false}
-          animated={isWorking}
-          state={isBlocked ? "sad" : isWorking ? "working" : "happy"}
         />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
@@ -652,7 +647,7 @@ export function TeamCanvas({
       })}
     </div>
     {dragged && <div className="pointer-events-none absolute z-40 border border-hairline bg-card p-3 text-[13px] shadow-2xl" style={{ left: dragged.point.x + 16, top: dragged.point.y + 16 }}>
-      <span className="flex items-center gap-2"><BotAvatar bot={dragged.bot} size={24} animated={false} />{dragged.bot.name}</span>
+      <span className="flex items-center gap-2"><BotAvatar bot={dragged.bot} size={24} />{dragged.bot.name}</span>
       {dropHint && <p className="mt-1 font-mono text-[10.5px] text-ink-secondary">{dropHint}</p>}
     </div>}
     <div className="pointer-events-none absolute inset-x-5 bottom-5 flex items-end justify-between gap-3">

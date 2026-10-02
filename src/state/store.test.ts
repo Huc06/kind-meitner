@@ -1875,10 +1875,17 @@ describe("togglePlugins surface", () => {
     expect(opened.pluginsSurface).toBe("hub");
   });
 
-  it.each(["hub", "apps", "mcp"] as const)("accepts surface %s", (surface) => {
-    const state = reducer(initialState, { type: "togglePlugins", open: true, surface });
+  it("accepts surface apps", () => {
+    const state = reducer(initialState, { type: "togglePlugins", open: true, surface: "apps" });
     expect(state.pluginsOpen).toBe(true);
-    expect(state.pluginsSurface).toBe(surface);
+    expect(state.pluginsSurface).toBe("apps");
+  });
+
+  it("opens hub on mcp tab when surface is mcp", () => {
+    const state = reducer(initialState, { type: "togglePlugins", open: true, surface: "mcp" });
+    expect(state.pluginsOpen).toBe(true);
+    expect(state.pluginsSurface).toBe("hub");
+    expect(state.hubTab).toBe("mcp");
   });
 
   it("retains the active surface when toggled open without specifying a surface", () => {
@@ -1890,5 +1897,22 @@ describe("togglePlugins surface", () => {
     const reopened = reducer(closed, { type: "togglePlugins", open: true });
     expect(reopened.pluginsOpen).toBe(true);
     expect(reopened.pluginsSurface).toBe("apps");
+  });
+
+  it("accepts hubTab option on togglePlugins", () => {
+    const state = reducer(initialState, { type: "togglePlugins", open: true, surface: "hub", hubTab: "asps" });
+    expect(state.pluginsOpen).toBe(true);
+    expect(state.pluginsSurface).toBe("hub");
+    expect(state.hubTab).toBe("asps");
+  });
+
+  it("toggles activityOpen with toggleActivity", () => {
+    expect(initialState.activityOpen).toBe(false);
+    const opened = reducer(initialState, { type: "toggleActivity" });
+    expect(opened.activityOpen).toBe(true);
+    const closed = reducer(opened, { type: "toggleActivity", open: false });
+    expect(closed.activityOpen).toBe(false);
+    const forced = reducer(closed, { type: "toggleActivity", open: true });
+    expect(forced.activityOpen).toBe(true);
   });
 });

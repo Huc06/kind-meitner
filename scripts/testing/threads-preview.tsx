@@ -7,5 +7,10 @@ import "../../src/styles.css";
 // This entry point is served only by the disposable verification launcher.
 setAnalyticsEnabled(false);
 if (!new URLSearchParams(location.search).has("onboarding")) setEmailGateDone("skipped");
+try {
+  sessionStorage.setItem("kind-meitner:entered-app", "1");
+} catch {
+  // Ignore sessionStorage errors
+}
 applySkin(readSkin());
 createRoot(document.getElementById("root")!).render(<App />);

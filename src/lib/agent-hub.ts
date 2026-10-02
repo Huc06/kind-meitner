@@ -1,3 +1,8 @@
+import {
+  parseOkxActionCard,
+  type ReadinessVerdict,
+  type TrustDecision,
+} from "./okx-action-cards";
 export interface CatalogAgent {
   id: string;
   name: string;
@@ -284,7 +289,7 @@ export async function loadFreeMcpService(
 
   return {
     id: "okx-free-mcp",
-    name: "Kind Meitner Markets · Free A2MCP",
+    name: "Kind Meitner Markets Free A2MCP",
     endpoint: PUBLIC_FREE_MCP_ENDPOINT,
     tools,
     provenance: "kind-meitner local registry and public OKX.AI setup guidance",
@@ -303,4 +308,106 @@ export function trustPrompt(agentId: string, endpoint?: string): string {
     return `@Markets run get_asp_trust_card for agentId ${id} with endpointUrl ${ep}`;
   }
   return `@Markets run get_asp_trust_card for agentId ${id}`;
+}
+
+export interface AspScanEvidence {
+  readinessVerdict?: ReadinessVerdict;
+  trustDecision?: TrustDecision;
+  lastCheckedTime?: string;
+  lastCheckedTimestamp?: number;
+  evidenceJson?: string;
+  trustRoomId?: string;
+  readinessRoomId?: string;
+}
+
+export function findLatestAspResults(
+  groups: readonly unknown[],
+  endpoint: string,
+  okxAgentId?: string,
+): AspScanEvidence {
+  let latestReadiness: {
+    verdict: ReadinessVerdict;
+    at: number;
+    rawJson: string;
+    roomId: string;
+  } | null = null;
+  let latestTrust: {
+    decision: TrustDecision;
+    at: number;
+    rawJson: string;
+    roomId: string;
+  } | null = null;
+
+  const cleanEndpoint = endpoint.trim().toLowerCase();
+
+  for (const group of (groups ?? []) as Array<{
+    id?: string;
+    messages?: Array<{ at?: number; tool?: { name: string; output?: string; ok?: boolean } }>;
+  }>) {
+    if (!group || !Array.isArray(group.messages)) continue;
+    const roomId = group.id ?? "";
+
+    for (const msg of group.messages) {
+      if (!msg || !msg.tool) continue;
+      const card = parseOkxActionCard(msg.tool);
+      if (!card) continue;
+
+      const at = typeof msg.at === "number" ? msg.at : 0;
+
+      if (card.kind === "readiness") {
+        const cardEndpoint = card.endpointUrl.trim().toLowerCase();
+        const matches =
+          !cleanEndpoint ||
+          cardEndpoint === cleanEndpoint ||
+          (cardEndpoint.endsWith("/api/okx/free-mcp") && cleanEndpoint.endsWith("/api/okx/free-mcp"));
+
+        if (matches && (!latestReadiness || at >= latestReadiness.at)) {
+          latestReadiness = {
+            verdict: card.verdict,
+            at,
+            rawJson: card.rawJson,
+            roomId,
+          };
+        }
+      } else if (card.kind === "trust") {
+        const cardAgentId = card.agentId.trim();
+        const targetAgentId = (okxAgentId ?? PUBLIC_OKX_AGENT_ID).trim();
+        const matches =
+          !targetAgentId ||
+          cardAgentId === targetAgentId ||
+          (targetAgentId === "13851" &&
+            (cardAgentId === "13851" || cardAgentId === "okx-market-scout-v1"));
+
+        if (matches && (!latestTrust || at >= latestTrust.at)) {
+          latestTrust = {
+            decision: card.decision,
+            at,
+            rawJson: card.rawJson,
+            roomId,
+          };
+        }
+      }
+    }
+  }
+
+  const latestAt = Math.max(latestReadiness?.at ?? 0, latestTrust?.at ?? 0);
+  const lastCheckedTime =
+    latestAt > 0
+      ? new Date(latestAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : undefined;
+
+  const evidenceJson = latestTrust?.rawJson ?? latestReadiness?.rawJson;
+
+  return {
+    readinessVerdict: latestReadiness?.verdict,
+    trustDecision: latestTrust?.decision,
+    lastCheckedTime,
+    lastCheckedTimestamp: latestAt > 0 ? latestAt : undefined,
+    evidenceJson,
+    trustRoomId: latestTrust?.roomId,
+    readinessRoomId: latestReadiness?.roomId,
+  };
 }

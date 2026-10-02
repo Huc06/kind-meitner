@@ -32,6 +32,7 @@ import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { saveOkxSettings } from "./okx/okx-settings-api";
 import { setLocale } from "@/lib/i18n";
 import { shouldOpenKeyboardShortcuts } from "@/lib/keyboard-shortcuts";
+import { cn } from "@/lib/cn";
 
 export function handleInitialNavigation(
   href: string,
@@ -174,7 +175,26 @@ function Shell() {
   // drawer whenever an action opens something over the chat.
   useEffect(() => {
     setDrawerOpen(false);
-  }, [state.selectedId, bot?.threadId, group?.threadId, state.activeView, state.pluginsOpen, state.settingsOpen]);
+  }, [state.selectedId, bot?.threadId, group?.threadId, state.activeView, state.pluginsOpen, state.settingsOpen, state.activityOpen]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  const mainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!mainRef.current) return;
+    if (drawerOpen) {
+      mainRef.current.setAttribute("inert", "");
+    } else {
+      mainRef.current.removeAttribute("inert");
+    }
+  }, [drawerOpen]);
 
   useEffect(() => {
     if (state.activeView === "routines" && previousViewRef.current !== "routines") {
@@ -242,14 +262,17 @@ function Shell() {
     <div className="flex h-full flex-col">
       {/* fixed-position popup, bottom-left — outside the layout flow */}
       <UpdateBanner />
-      <div className="relative flex min-h-0 flex-1">
+      <div data-app-shell className="relative flex min-h-0 flex-1">
       {!calendarFocus && <button
         type="button"
         ref={menuButtonRef}
-        aria-label="Open bot list"
+        aria-label={drawerOpen ? "Close bot list" : "Open bot list"}
         aria-expanded={drawerOpen}
-        onClick={() => setDrawerOpen(true)}
-        className="absolute left-3 top-3 z-30 border border-hairline bg-panel p-1.5 text-ink-secondary hover:bg-raised-hover hover:text-ink md:hidden"
+        onClick={() => setDrawerOpen((open) => !open)}
+        className={cn(
+          "absolute left-3 top-3 z-30 border border-hairline bg-panel p-1.5 text-ink-secondary hover:bg-raised-hover hover:text-ink min-[769px]:hidden",
+          drawerOpen && "hidden",
+        )}
       >
         <Menu size={18} />
       </button>}
@@ -257,16 +280,22 @@ function Shell() {
         <div
           aria-hidden
           onMouseDown={(e) => e.target === e.currentTarget && setDrawerOpen(false)}
-          className="absolute inset-0 z-30 bg-black/60 backdrop-blur-[2px] md:hidden"
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-[2px] min-[769px]:hidden"
         />
       )}
       {!calendarFocus && state.activeView !== "landing" && <Sidebar
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
-          menuButtonRef.current?.focus();
+          requestAnimationFrame(() => {
+            menuButtonRef.current?.focus();
+          });
         }}
       />}
+      <div
+        ref={mainRef}
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+      >
       {state.activeView === "landing" ? (
         <LandingPage />
       ) : state.activeView === "team-map" ? (
@@ -296,6 +325,7 @@ function Shell() {
           )}
         </main>
       )}
+      </div>
       {state.settingsOpen && bot && (
         remoteClient
           ? <RemoteAgentSettingsPanel bot={bot} />
@@ -303,6 +333,7 @@ function Shell() {
       )}
       {state.computerOpen && bot && <ComputerPanel key={bot.id} bot={bot} />}
       {!remoteClient && state.inspectorOpen && bot && <InspectorPanel key={bot.threadId} bot={bot} />}
+      </div>
       {state.appSettingsOpen && <SettingsModal />}
       {state.pluginsOpen && <PluginsPanel />}
       {state.newBotOpen && <NewBotDialog />}
@@ -324,7 +355,6 @@ function Shell() {
       {/* mounted after the modals: same z-50 tier, so DOM order keeps the
           palette on top when one of them is open underneath */}
       <CommandPalette onOpenChange={setPaletteOpen} />
-      </div>
       {/* Renderer-drawn caption buttons for the overlay-less frameless
           Windows window. Deliberately the LAST child of the shell: Blink
           resolves -webkit-app-region in DOM-walk order, so these no-drag

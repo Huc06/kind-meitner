@@ -138,7 +138,7 @@ it("serves only the catalog and provisions/imports Markets exactly once across r
     });
     expect(room.memberIds.filter((id: string) => id === scout.id)).toHaveLength(1);
     expect(room.messages.filter((message: { kind: string; tool?: { name?: string; system?: boolean } }) =>
-      message.kind === "activity" && message.tool?.name === "Markets joined #Channel 1 from OKX.ai." && message.tool.system === true,
+      message.kind === "activity" && message.tool?.name === "Markets joined #Channel 1 from the local OKX.AI catalog." && message.tool.system === true,
     )).toHaveLength(1);
 
     const clearedLegacySoul = await api(url, `/api/bots/${scout.id}`, "PATCH", { soul: "" });

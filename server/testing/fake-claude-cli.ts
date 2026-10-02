@@ -103,7 +103,11 @@ const argAfter = (flag: string): string | null => {
 
 const out = (obj: unknown) => process.stdout.write(JSON.stringify(obj) + "\n");
 
-// Snapshot probes: both answer on argv alone and exit without reading stdin.
+// Snapshot probes: answer on argv alone and exit without reading stdin.
+if (argv[0] === "--simulated" || argv[0] === "--test-engine") {
+  process.stdout.write(JSON.stringify({ simulated: true, testEngine: true }) + "\n");
+  process.exit(0);
+}
 if (argv[0] === "--version") {
   // FAKE_CLAUDE_VERSION lets a test stand in for an older CLI: the driver
   // withholds flags that version predates (CLAUDE_FLAG_FLOORS).
