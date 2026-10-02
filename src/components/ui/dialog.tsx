@@ -5,6 +5,20 @@ import { formatIndex } from "./frame";
 
 let activeModalCount = 0;
 let previousActiveElement: HTMLElement | null = null;
+let inertedByModal: HTMLElement[] = [];
+
+/** Every sibling on the path from the open dialog up to <body>. Making those
+ * inert hides the rest of the app from focus and assistive tech without ever
+ * making the dialog itself — or anything that contains it — inert. */
+function backgroundAround(dialog: Element): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  for (let node: Element | null = dialog; node && node !== document.body; node = node.parentElement) {
+    for (const sibling of Array.from(node.parentElement?.children ?? [])) {
+      if (sibling !== node && sibling instanceof HTMLElement && !sibling.hasAttribute("inert") && sibling.tagName !== "SCRIPT") out.push(sibling);
+    }
+  }
+  return out;
+}
 
 export function useModalA11y(active = true, onDismiss?: () => void) {
   useEffect(() => {
@@ -12,8 +26,10 @@ export function useModalA11y(active = true, onDismiss?: () => void) {
 
     if (activeModalCount === 0) {
       previousActiveElement = (document.activeElement as HTMLElement) ?? null;
-      const elements = Array.from(document.querySelectorAll<HTMLElement>("main, aside, [data-app-shell]"));
-      elements.forEach((el) => el.setAttribute("inert", ""));
+      const modals = document.querySelectorAll('[aria-modal="true"]');
+      const dialog = modals[modals.length - 1];
+      inertedByModal = dialog ? backgroundAround(dialog) : [];
+      inertedByModal.forEach((el) => el.setAttribute("inert", ""));
     }
     activeModalCount++;
 
@@ -30,8 +46,8 @@ export function useModalA11y(active = true, onDismiss?: () => void) {
       activeModalCount--;
       if (activeModalCount <= 0) {
         activeModalCount = 0;
-        const elements = Array.from(document.querySelectorAll<HTMLElement>("main, aside, [data-app-shell]"));
-        elements.forEach((el) => el.removeAttribute("inert"));
+        inertedByModal.forEach((el) => el.removeAttribute("inert"));
+        inertedByModal = [];
         if (previousActiveElement && typeof previousActiveElement.focus === "function") {
           try {
             previousActiveElement.focus();

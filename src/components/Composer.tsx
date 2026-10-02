@@ -4,6 +4,7 @@ import { ArrowUp, BookOpen, ChevronDown, Clock, Mic, Paperclip, SlidersHorizonta
 import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type GroupDefaultResponder, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { activeLocale, t } from "@/lib/i18n";
+import { setExternalResponder, useExternalAgents } from "@/lib/external-agents";
 import {
   draftRevision,
   appendDraftAttachments,
@@ -81,8 +82,13 @@ interface ComposerDraftSnapshot extends ComposerSendSnapshot {
 
 export function DefaultResponderSelect({ group, members }: { group: Group; members: Bot[] }) {
   const { dispatch } = useStore();
+  const externalAgents = useExternalAgents();
+  const roomExternal = externalAgents.filter(
+    (agent) => (group.externalAgentIds?.includes(agent.id) && agent.status !== "revoked") || agent.id === group.externalResponderId,
+  );
+  const externalResponder = roomExternal.find((agent) => agent.id === group.externalResponderId);
   const responder = effectiveDefaultResponder(group, members);
-  const value = responder.kind === "member" ? `member:${responder.botId}` : responder.kind;
+  const value = externalResponder ? `external:${externalResponder.id}` : responder.kind === "member" ? `member:${responder.botId}` : responder.kind;
   const lead = responder.kind === "member" ? members.find((member) => member.id === responder.botId) : undefined;
   const title =
     responder.kind === "everyone"
@@ -92,6 +98,11 @@ export function DefaultResponderSelect({ group, members }: { group: Group; membe
         : t("room.responder.lead", { name: lead?.name ?? t("room.responder.leadFallback") });
 
   const change = (nextValue: string) => {
+    if (nextValue.startsWith("external:")) {
+      void setExternalResponder(group.id, nextValue.slice("external:".length));
+      return;
+    }
+    if (group.externalResponderId) void setExternalResponder(group.id, null);
     let next: GroupDefaultResponder;
     if (nextValue === "everyone") next = { kind: "everyone" };
     else if (nextValue === "mentions") next = { kind: "mentions" };
@@ -118,6 +129,18 @@ export function DefaultResponderSelect({ group, members }: { group: Group; membe
           <option value="everyone">{t("room.responder.everyoneOption")}</option>
           <option value="mentions">{t("room.responder.mentionsOption")}</option>
         </optgroup>
+        {roomExternal.length > 0 && (
+          <optgroup label={t("room.responder.groupExternal")}>
+            {roomExternal.map((agent) => (
+              <option key={agent.id} value={`external:${agent.id}`}>
+                {agent.transport === "zroute"
+                  ? t("room.responder.externalZroute", { name: agent.reportedUpstream?.name ?? agent.displayName })
+                  : t("room.responder.externalDirect", { name: agent.displayName })}
+                {agent.status === "revoked" ? ` · ${t("external.status.revoked")}` : ""}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
       <ChevronDown
         size={11}
@@ -263,8 +286,17 @@ export function Composer({
     return Boolean(members && text.includes("@") && responders.length > 0);
   }, [group, text, members, responders]);
 
+  const externalAgents = useExternalAgents();
+  const externalResponder = group?.externalResponderId ? externalAgents.find((agent) => agent.id === group.externalResponderId) : undefined;
   const respondingText = useMemo(() => {
     if (!group) return null;
+    if (externalResponder) {
+      return t("composer.responding.agent", {
+        name: externalResponder.transport === "zroute"
+          ? t("room.responder.externalZroute", { name: externalResponder.reportedUpstream?.name ?? externalResponder.displayName })
+          : externalResponder.displayName,
+      }) + (externalResponder.status === "revoked" ? ` · ${t("external.status.revoked")}` : "");
+    }
     if (hasMentions && responders.length > 1) {
       return t("composer.responding.mentioned");
     }
@@ -280,7 +312,7 @@ export function Composer({
       return t("composer.responding.everyone");
     }
     return t("composer.responding.mentioned");
-  }, [group, members, hasMentions, responders]);
+  }, [group, members, hasMentions, responders, externalResponder]);
 
   // image paste is offered only when every bot that will actually answer
   // can open one. sendGroup routes to mentions, else the room default —

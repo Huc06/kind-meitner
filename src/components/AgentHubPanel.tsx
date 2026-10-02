@@ -13,6 +13,7 @@ import {
 import { DialogBackdrop, DialogBody, DialogHeader, DialogPanel } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
+import { ExternalAgentsSection } from "./agent-hub/ExternalAgentsSection";
 import { McpServersPanel } from "./McpServersPanel";
 import { AgentCard } from "./agent-hub/AgentCard";
 import { AspServiceCard } from "./agent-hub/AspServiceCard";
@@ -543,6 +544,8 @@ export function AgentHubPanel({
                     </div>
                   </div>
                 )}
+
+                <ExternalAgentsSection currentRoom={currentRoom} />
               </div>
             )}
 

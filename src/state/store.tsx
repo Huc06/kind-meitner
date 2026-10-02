@@ -172,6 +172,19 @@ export interface Message {
   sendId?: string;
   /** rooms: which member said this (sender attribution). */
   from?: { botId: string; name: string; color: MausColor };
+  /** Safe provenance for messages from or about an external agent. */
+  external?: {
+    connectionId: string;
+    displayName: string;
+    transport: "direct" | "zroute";
+    provider: string;
+    upstreamAgentId?: string;
+    upstreamName?: string;
+    requestId: string;
+    provenance: "direct-endpoint" | "zroute-proxy" | "local-catalog";
+    status: "started" | "completed" | "failed" | "timeout";
+    latencyMs?: number;
+  };
   /** a user-role line another bot delivered into this conversation
    * (ask_bot, delegate_bot, start_thread): the words are that bot's, not
    * the person's. Rendered as the peer speaking — see lib/peer-message. */
@@ -206,6 +219,10 @@ export interface Group {
   threadId: string;
   name: string;
   memberIds: string[];
+  /** External A2A agents in this room (connection IDs), separate from bots. */
+  externalAgentIds?: string[];
+  /** Set when plain messages go to an external agent instead of bots. */
+  externalResponderId?: string | null;
   defaultResponder: GroupDefaultResponder;
   bulletin: string;
   unread: boolean;

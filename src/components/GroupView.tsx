@@ -31,6 +31,9 @@ import { ChatMarkdown } from "./ChatMarkdown";
 import { Composer, DefaultResponderSelect } from "./Composer";
 import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
 import { EngineModeBadge } from "./EngineModeBadge";
+import { ExternalAgentLabel } from "./ExternalAgentLabel";
+import { useExternalAgents } from "@/lib/external-agents";
+import { Tag } from "@/components/ui/tag";
 import { RoomActivityTimeline } from "./RoomActivityTimeline";
 import { ModelPicker } from "./ModelPicker";
 import { usageDetail } from "@/lib/usage";
@@ -137,7 +140,7 @@ export function RoomToolChip({ message, roomId }: { message: Message; roomId?: s
 
 /** 16px profile avatar + name, shown once per sender cluster — the same mono
  * header row the 1:1 transcript uses. */
-function ClusterLabel({ bot, name, color, instances }: { bot?: Bot; name: string; color: string; instances?: readonly InstanceInfo[] }) {
+function ClusterLabel({ bot, name, color, instances, external }: { bot?: Bot; name: string; color: string; instances?: readonly InstanceInfo[]; external?: boolean }) {
   return (
     <div className="mt-2 flex items-center gap-1.5 pl-0.5">
       <BotAvatar
@@ -149,7 +152,7 @@ function ClusterLabel({ bot, name, color, instances }: { bot?: Bot; name: string
         animated={false}
       />
       <span className="label-mono text-ink">{name}</span>
-      <EngineModeBadge bot={bot} instances={instances} variant="status" />
+      {external ? null : <EngineModeBadge bot={bot} instances={instances} variant="status" />}
     </div>
   );
 }
@@ -379,7 +382,11 @@ const Transcript = memo(function Transcript({
                       <MessageAttachmentGallery text={m.text ?? ""} attachments={m.attachments} message={{ threadId: group.threadId, messageId: m.id }} className={m.text ? undefined : "mb-0"} eager={m.id === newestMessageId || m.id === newestUserMessageId} />
                       {m.text ? <ChatMarkdown text={m.text} mentionPeers={members} everyone={!group.dm} message={{ threadId: group.threadId, messageId: m.id }} /> : null}
                       <div className="mt-1 flex items-center gap-1.5">
-                        <EngineModeBadge message={m} bot={memberOf(m.from?.botId)} instances={state.instances} />
+                        {m.external ? (
+                          <ExternalAgentLabel external={m.external} />
+                        ) : (
+                          <EngineModeBadge message={m} bot={memberOf(m.from?.botId)} instances={state.instances} />
+                        )}
                       </div>
                     </>
                   )}
@@ -409,7 +416,7 @@ const Transcript = memo(function Transcript({
           <div key={m.id} className="contents" data-mid={m.id}>
             {newDay && <DaySeparator at={m.at} />}
             {!user && m.from && newCluster && !(m.kind === "activity" && m.comm) && (
-              <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} instances={state.instances} />
+              <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} instances={state.instances} external={Boolean(m.external)} />
             )}
             {row}
           </div>
@@ -957,8 +964,10 @@ export function GroupView({ group }: { group: Group }) {
     ? members.find((m) => m.id === defaultResp.botId) ?? members[0]
     : members[0];
   const purpose = group.bulletin?.trim().split("\n")[0]?.trim() || "No room purpose yet — add group instructions";
-  const participantCount = members.length + 1;
-  const agentCount = members.length;
+  const externalAgents = useExternalAgents();
+  const roomExternal = externalAgents.filter((agent) => group.externalAgentIds?.includes(agent.id) && agent.status !== "revoked");
+  const participantCount = members.length + roomExternal.length + 1;
+  const agentCount = members.length + roomExternal.length;
   const connectionLabel = state.connected ? "Connected" : "Offline";
   const speaker = members.find((b) => b.id === group.busyBotId);
   const importedOkxAgentIds = useMemo(
@@ -1462,7 +1471,7 @@ export function GroupView({ group }: { group: Group }) {
           )}
 
           {/* Agent roster strip */}
-          {members.length > 0 && (
+          {members.length + roomExternal.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 border border-hairline bg-panel px-3 py-2 min-w-0">
               <span className="label-mono text-ink-secondary mr-1 shrink-0">AGENTS:</span>
               {members.map((member) => (
@@ -1474,6 +1483,13 @@ export function GroupView({ group }: { group: Group }) {
                     className="max-w-full flex-wrap"
                   />
                 </div>
+              ))}
+              {roomExternal.map((agent) => (
+                <span key={agent.id} className="inline-flex min-w-0 max-w-full items-center gap-1.5 font-mono text-[11px]" data-external-member={agent.transport}>
+                  <span className="truncate font-semibold text-ink">{agent.displayName}</span>
+                  <span className="text-ink-secondary">({agent.transport === "zroute" ? t("external.transport.zroute") : t("external.transport.direct")})</span>
+                  <Tag tone={agent.status === "ready" ? "success" : "danger"} variant="soft" size="sm">{t(`external.status.${agent.status}`)}</Tag>
+                </span>
               ))}
             </div>
           )}

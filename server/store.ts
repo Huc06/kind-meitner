@@ -231,6 +231,20 @@ export interface Message {
   channelMode?: "chat" | "goal";
   /** group threads: which member said this (sender attribution). */
   from?: { botId: string; name: string; color: string };
+  /** Set on messages from or about an external agent connection. Safe
+   * metadata only: no credentials, headers or tokens. */
+  external?: {
+    connectionId: string;
+    displayName: string;
+    transport: "direct" | "zroute";
+    provider: string;
+    upstreamAgentId?: string;
+    upstreamName?: string;
+    requestId: string;
+    provenance: "direct-endpoint" | "zroute-proxy" | "local-catalog";
+    status: "started" | "completed" | "failed" | "timeout";
+    latencyMs?: number;
+  };
   /** Set on a room message a bot pushed in with post_to_room instead of by
    * taking a turn there. Internal transport changes custody, not authorship:
    * a reader's turn wraps this one in a provenance preamble rather than
@@ -320,6 +334,12 @@ export interface GroupRecord {
    * and remain immediately usable. */
   setupCompletedAt?: number | null;
   setupSkippedAt?: number | null;
+  /** External A2A agents invited into this room (connection IDs). They are
+   * participants, not bots: no bot record, engine or wallet is created. */
+  externalAgentIds?: string[];
+  /** When set, plain messages go to this external connection instead of the
+   * bot responders. Never a silent fallback in either direction. */
+  externalResponderId?: string | null;
 }
 
 /** A lightweight organizational label within one bot. */
@@ -1291,7 +1311,7 @@ export class Store {
     );
   }
 
-  patchGroup(id: string, patch: Partial<Pick<GroupRecord, "name" | "memberIds" | "defaultResponder" | "bulletin" | "unread" | "busyBotId" | "cwd" | "pinnedMessageId" | "section" | "setupCompletedAt" | "setupSkippedAt">>): GroupRecord | null {
+  patchGroup(id: string, patch: Partial<Pick<GroupRecord, "name" | "memberIds" | "defaultResponder" | "bulletin" | "unread" | "busyBotId" | "cwd" | "pinnedMessageId" | "section" | "setupCompletedAt" | "setupSkippedAt" | "externalAgentIds" | "externalResponderId">>): GroupRecord | null {
     const group = this.group(id);
     if (!group) return null;
     if (Object.prototype.hasOwnProperty.call(patch, "section")) {

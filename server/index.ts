@@ -7,6 +7,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join } from "node:path";
 
 import { z } from "zod";
+import { adapterFor, ExternalAgentRegistry, MESSAGES as EXTERNAL_MESSAGES, toPublic as publicExternalAgent, type ExternalAgentConnection } from "./external-agents.ts";
 import { SharedComputers, sharedComputerOperation, sharedComputerRegistration } from "./shared-computers.ts";
 import { SharedComputerControl } from "./shared-computer-control.ts";
 import { RoomHandoffs, type RoomHandoff } from "./room-handoffs.ts";
@@ -1445,6 +1446,9 @@ function checkedMemberIds(value: unknown): { ok: true; memberIds: string[] } | {
 }
 let bootSelection = { instanceId: "", model: "" };
 const store = new Store(() => bootSelection);
+const externalAgents = new ExternalAgentRegistry(DATA_DIR);
+/** A2A conversation per room × connection, so follow-ups keep context. */
+const externalContexts = new Map<string, string>();
 const teamComputers = new TeamComputers(join(DATA_DIR, "team-computers.json"), ENVIRONMENT_ID);
 let followupsReady = false;
 const sendSequencer = new SendSequencer();
@@ -7665,6 +7669,83 @@ type StartGroupTurnOptions = {
   via?: "api";
 };
 
+/** A room message for an external agent. The user line persists first; the
+ * reply (or a visible failure) follows asynchronously. Nothing here falls back
+ * to a bot, engine or other provider. */
+function startExternalAgentTurn(
+  group: GroupRecord,
+  threadId: string,
+  text: string,
+  replyTo: Message | undefined,
+  sendId: string | undefined,
+  via: "api" | undefined,
+): Message {
+  const message = store.appendMessage(threadId, { role: "user", kind: "text", text, replyToId: replyTo?.id, sendId, channelMode: "chat", via });
+  if (!group.dm) store.titleGroupTaskFromFirstMessage(group.id, text, threadId);
+  const connection = group.externalResponderId ? externalAgents.get(group.externalResponderId) : undefined;
+  const requestId = sendId ?? message.id;
+  const meta = (connection: ExternalAgentConnection, status: NonNullable<Message["external"]>["status"], extra: Partial<NonNullable<Message["external"]>> = {}): NonNullable<Message["external"]> => ({
+    connectionId: connection.id,
+    displayName: connection.displayName,
+    transport: connection.transport,
+    provider: connection.provider,
+    ...(connection.upstreamAgentId ? { upstreamAgentId: connection.upstreamAgentId } : {}),
+    ...(connection.reportedUpstream?.name ? { upstreamName: connection.reportedUpstream.name } : {}),
+    requestId,
+    provenance: connection.provenance,
+    status,
+    ...extra,
+  });
+  const fail = (safeMessage: string, connection?: ExternalAgentConnection, status: "failed" | "timeout" = "failed", latencyMs?: number) =>
+    store.appendMessage(threadId, {
+      role: "bot",
+      kind: "activity",
+      tool: { name: safeMessage, ok: false, system: true },
+      ...(connection ? { external: meta(connection, status, latencyMs === undefined ? {} : { latencyMs }) } : {}),
+    });
+  if (!connection || connection.status === "revoked") {
+    fail(connection ? EXTERNAL_MESSAGES.revoked : EXTERNAL_MESSAGES.notInRoom, connection);
+    return message;
+  }
+  if (!(group.externalAgentIds ?? []).includes(connection.id)) {
+    fail(EXTERNAL_MESSAGES.notInRoom, connection);
+    return message;
+  }
+  if (!connection.capabilities.includes("chat")) {
+    fail(EXTERNAL_MESSAGES.capability, connection);
+    return message;
+  }
+  if (!externalAgents.claim(requestId)) return message;
+  const route = connection.transport === "zroute" ? `zroute proxy → ${connection.reportedUpstream?.name ?? connection.upstreamAgentId}` : "direct endpoint";
+  store.appendMessage(threadId, {
+    role: "bot",
+    kind: "activity",
+    tool: { name: "External agent request started", ok: true, system: true, summary: `${connection.displayName} · ${route}` },
+    external: meta(connection, "started"),
+  });
+  const contextKey = `${group.id}:${connection.id}`;
+  void adapterFor(connection.transport)
+    .sendMessage({ connection, roomId: group.id, requestId, message: text, conversationId: externalContexts.get(contextKey) })
+    .then((result) => {
+      if (!result.ok) {
+        fail(result.safeMessage, connection, result.status === "timeout" ? "timeout" : "failed", result.latencyMs);
+        return;
+      }
+      if (result.contextId) externalContexts.set(contextKey, result.contextId);
+      const upstreamName = result.upstream?.name ?? connection.reportedUpstream?.name;
+      store.appendMessage(threadId, {
+        role: "bot",
+        kind: "text",
+        text: result.text,
+        from: { botId: `external:${connection.id}`, name: connection.displayName, color: "cyan" },
+        external: meta(connection, "completed", { latencyMs: result.latencyMs, ...(result.upstream?.agentId ? { upstreamAgentId: result.upstream.agentId } : {}), ...(upstreamName ? { upstreamName } : {}) }),
+      });
+    })
+    .catch(() => fail(EXTERNAL_MESSAGES.unreachable, connection))
+    .finally(() => externalAgents.release(requestId));
+  return message;
+}
+
 function startGroupTurn(
   groupId: string,
   text: string,
@@ -11747,6 +11828,70 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         throw Object.assign(new Error("This bot has multiple threads. Update this client and choose a thread before sending this action."), { status: 409 });
       }
     };
+    if (path === "/api/external-agents" && method === "GET") {
+      return json(res, 200, { agents: externalAgents.list().map(publicExternalAgent) });
+    }
+    if (path === "/api/external-agents" && method === "POST") {
+      const created = externalAgents.create(await readBody(req));
+      if (!created.ok) return json(res, 400, { error: created.message });
+      return json(res, 201, { agent: publicExternalAgent(created.connection) });
+    }
+    m = path.match(/^\/api\/external-agents\/([\w-]+)\/check$/);
+    if (m && method === "POST") {
+      const connection = externalAgents.get(m[1]);
+      if (!connection) return json(res, 404, { error: "no such external agent" });
+      if (connection.status === "revoked") return json(res, 409, { error: EXTERNAL_MESSAGES.revoked });
+      const check = await adapterFor(connection.transport).checkConnection(connection);
+      const updated = externalAgents.applyCheck(connection.id, check) ?? connection;
+      return json(res, 200, { check, agent: publicExternalAgent(updated) });
+    }
+    m = path.match(/^\/api\/external-agents\/([\w-]+)$/);
+    if (m && method === "DELETE") {
+      const connection = externalAgents.revoke(m[1]);
+      if (!connection) return json(res, 404, { error: "no such external agent" });
+      for (const group of store.groups) {
+        if (!group.externalAgentIds?.includes(connection.id)) continue;
+        // The responder stays pointed at the removed connection on purpose:
+        // the next send fails visibly instead of silently reaching a bot.
+        const patched = store.patchGroup(group.id, {
+          externalAgentIds: group.externalAgentIds.filter((id) => id !== connection.id),
+        });
+        if (patched) broadcast({ kind: "group", group: publicGroupState(patched) });
+      }
+      return json(res, 200, { agent: publicExternalAgent(connection) });
+    }
+    m = path.match(/^\/api\/groups\/([\w-]+)\/external-agents$/);
+    if (m && method === "POST") {
+      const body = await readBody(req);
+      const connectionId = body && typeof body === "object" && !Array.isArray(body) && typeof body.connectionId === "string" ? body.connectionId : "";
+      const group = store.group(m[1]);
+      if (!group || group.dm) return json(res, 404, { error: "no such room" });
+      const connection = externalAgents.get(connectionId);
+      if (!connection || connection.status === "revoked") return json(res, 404, { error: "no such external agent" });
+      if (connection.status !== "ready") return json(res, 409, { error: "Test the connection before inviting this agent." });
+      if (group.externalAgentIds?.includes(connection.id)) return json(res, 200, { status: "already", group: publicGroupState(group) });
+      const patched = store.patchGroup(group.id, { externalAgentIds: [...(group.externalAgentIds ?? []), connection.id] }) ?? group;
+      store.appendMessage(patched.threadId, {
+        role: "bot",
+        kind: "activity",
+        tool: { name: `${connection.displayName} joined via ${connection.transport === "zroute" ? "zroute proxy" : "direct endpoint"}. Read-only connection.`, ok: true, system: true },
+      });
+      broadcast({ kind: "group", group: publicGroupState(patched) });
+      return json(res, 200, { status: "added", group: publicGroupState(patched) });
+    }
+    m = path.match(/^\/api\/groups\/([\w-]+)\/external-responder$/);
+    if (m && method === "PUT") {
+      const body = await readBody(req);
+      const raw = body && typeof body === "object" && !Array.isArray(body) ? body.connectionId : undefined;
+      const group = store.group(m[1]);
+      if (!group || group.dm) return json(res, 404, { error: "no such room" });
+      if (raw !== null && (typeof raw !== "string" || !group.externalAgentIds?.includes(raw))) {
+        return json(res, 409, { error: EXTERNAL_MESSAGES.notInRoom });
+      }
+      const patched = store.patchGroup(group.id, { externalResponderId: raw }) ?? group;
+      broadcast({ kind: "group", group: publicGroupState(patched) });
+      return json(res, 200, { group: publicGroupState(patched) });
+    }
     if (method === "GET" && path === "/api/bots") {
       const limit = pageSize(url.searchParams.get("messages"));
       if (limit === null) return json(res, 400, { error: "messages must be a non-negative whole number" });
@@ -12814,6 +12959,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
               via,
             });
             return { ok: true as const, queued: true as const, queueId: queued.id, threadId };
+          }
+          if (current.externalResponderId && channelMode === "chat") {
+            const message = startExternalAgentTurn(current, threadId, text, replyTo, sendId, via);
+            return { ok: true as const, threadId, message };
           }
           const message = startGroupTurn(current.id, text, replyTo, sendId, channelMode, undefined, { via });
           return { ok: true as const, threadId, message };
