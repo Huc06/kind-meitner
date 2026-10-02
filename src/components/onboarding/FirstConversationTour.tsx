@@ -91,6 +91,7 @@ export function FirstConversationTour() {
       mascot={copy.mascot}
       primary={{ label: t("onboarding.spot.gotIt"), onClick: dismiss }}
       onDone={dismiss}
+      modal={false}
     >
       {t(copy.key)}
     </Spotlight>

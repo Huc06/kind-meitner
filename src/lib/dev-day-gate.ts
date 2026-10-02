@@ -10,6 +10,7 @@ export interface DevDayGateStarter {
   label: string;
   prompt?: string;
   action: "fill" | "hub";
+  capability?: string;
 }
 
 export const DEV_DAY_GATE_STARTERS: readonly DevDayGateStarter[] = [
@@ -18,29 +19,34 @@ export const DEV_DAY_GATE_STARTERS: readonly DevDayGateStarter[] = [
     label: "Scan an ASP endpoint",
     prompt: `@Markets run scan_free_mcp_readiness for ${DEV_DAY_GATE_FREE_MCP_URL}`,
     action: "fill",
+    capability: "readiness",
   },
   {
     id: "trust-spend",
     label: "Check trust before spend",
     prompt: `@Markets run get_asp_trust_card for agentId 13851 with endpointUrl ${DEV_DAY_GATE_FREE_MCP_URL}`,
     action: "fill",
+    capability: "trust",
   },
   {
     id: "trending-asps",
     label: "Discover trending ASPs",
     prompt: "@Markets run get_trending_asps",
     action: "fill",
+    capability: "discovery",
   },
   {
     id: "invite-agent",
     label: "Invite an OKX agent",
     action: "hub",
+    capability: "invite",
   },
   {
     id: "a2mcp-checklist",
     label: "View the Free A2MCP checklist",
     prompt: "@Markets run get_free_a2mcp_launch_checklist",
     action: "fill",
+    capability: "checklist",
   },
 ] as const;
 

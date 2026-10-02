@@ -231,4 +231,19 @@ describe("computePopoverPlacement", () => {
     expect(result.y).toBe(16 + (standardViewport.h - 32 - standardCardSize.h) / 2);
     expect(result.transform).toBe(`translate3d(${result.x}px, ${result.y}px, 0)`);
   });
+
+  it("computes safe max placement height fitting within viewport bounds", () => {
+    const smallHeightViewport = { w: 1000, h: 300 };
+    const tallPopover = { w: 320, h: 400 };
+    const result = computePopoverPlacement({
+      anchorRect: null,
+      popoverSize: tallPopover,
+      viewport: smallHeightViewport,
+      margin: 16,
+    });
+
+    expect(result.height).toBe(smallHeightViewport.h - 32);
+    expect(result.y).toBe(16);
+    expect(result.y + result.height).toBeLessThanOrEqual(smallHeightViewport.h - 16);
+  });
 });

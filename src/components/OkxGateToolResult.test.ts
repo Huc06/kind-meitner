@@ -17,6 +17,7 @@ const readinessData = {
 const trustBase = {
   kind: "trust" as const,
   agentId: "99999",
+  decision: "NO_GO" as const,
   summary: "Listing or endpoint checks failed.",
   signals: [{ id: "listing_page", status: "fail" as const, detail: "HTTP 404" }],
   notChecked: ["on-chain credit score", "historical settlement volume", "OKX official endorsement"],
@@ -260,5 +261,147 @@ describe("OKX action cards", () => {
     expect(html).toContain("GO");
     expect(html).toContain("Spend not blocked");
     expect(html).not.toContain("Spend blocked");
+  });
+
+  it("renders Unknown and never No for undefined wallet, payment, and mainnet", () => {
+    const html = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        resource: undefined,
+      },
+      onRescan: () => {},
+      onApplyHost: () => {},
+    }));
+
+    expect(html).toContain("Access: Unknown");
+    expect(html).toContain("Payment required: Unknown");
+    expect(html).toContain("Wallet required: Unknown");
+    expect(html).toContain("Mainnet: Unknown");
+    expect(html).not.toContain("Payment required: No");
+    expect(html).not.toContain("Wallet required: No");
+    expect(html).not.toContain("Mainnet: No");
+
+    const trustHtml = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        resource: undefined,
+      },
+    }));
+
+    expect(trustHtml).toContain("Access: Unknown");
+    expect(trustHtml).toContain("Payment required: Unknown");
+    expect(trustHtml).toContain("Wallet required: Unknown");
+    expect(trustHtml).toContain("Mainnet: Unknown");
+    expect(trustHtml).not.toContain("Payment required: No");
+    expect(trustHtml).not.toContain("Wallet required: No");
+    expect(trustHtml).not.toContain("Mainnet: No");
+  });
+
+  it("distinguishes Yes, No, and Unknown correctly in boundary values", () => {
+    const html = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        resource: {
+          access: "metered",
+          paymentRequired: true,
+          walletRequired: false,
+          mainnet: undefined,
+        },
+      },
+      onRescan: () => {},
+      onApplyHost: () => {},
+    }));
+
+    expect(html).toContain("Access: Metered");
+    expect(html).toContain("Payment required: Yes");
+    expect(html).toContain("Wallet required: No");
+    expect(html).toContain("Mainnet: Unknown");
+  });
+
+  it("removes '· OKX.ai Marketplace Agent' from TrustCard and uses localized accurate provenance", () => {
+    const html = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        agentName: "Markets",
+        score: "4.9",
+      },
+    }));
+
+    expect(html).not.toContain("· OKX.ai Marketplace Agent");
+    expect(html).toContain("Markets · Local registry · ⭐ 4.9/5.0");
+    expect(html).toContain("Source: kind-meitner local intelligence registry + optional listing probe; not an OKX endorsement");
+  });
+
+  it("uses distinct default provenance for readiness vs trust cards", () => {
+    const readinessHtml = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        resource: undefined,
+      },
+    }));
+    expect(readinessHtml).toContain("Source: kind-meitner live HTTPS probes + public listing pitfalls");
+
+    const trustHtml = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        resource: undefined,
+      },
+    }));
+    expect(trustHtml).toContain("Source: kind-meitner local intelligence registry + optional listing probe; not an OKX endorsement");
+  });
+
+  it("renders limitations and last-checked when supplied", () => {
+    const readinessHtml = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        lastChecked: "2026-10-02 12:00 UTC",
+        limitations: ["Endpoint rate limit: 60 rpm", "Free tier only"],
+      },
+    }));
+    expect(readinessHtml).toContain("Last checked: 2026-10-02 12:00 UTC");
+    expect(readinessHtml).toContain("Endpoint rate limit: 60 rpm");
+    expect(readinessHtml).toContain("Free tier only");
+
+    const trustHtml = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        lastChecked: "2026-10-02 14:00 UTC",
+        limitations: ["No on-chain history", "Testnet only"],
+      },
+    }));
+    expect(trustHtml).toContain("Last checked: 2026-10-02 14:00 UTC");
+    expect(trustHtml).toContain("No on-chain history");
+    expect(trustHtml).toContain("Testnet only");
+  });
+
+  it("structures cards with actionable sections and lengthy metadata in expandable details", () => {
+    const readinessHtml = renderToStaticMarkup(createElement(ReadinessRunCard, {
+      data: {
+        ...readinessData,
+        checks: [
+          { id: "https_scheme", status: "pass", detail: "https" },
+          { id: "host_pitfall", status: "fail", detail: "host=demo.vercel.app" },
+        ],
+        remediation: ["Switch to Railway host"],
+      },
+    }));
+
+    expect(readinessHtml).toContain("<details");
+    expect(readinessHtml).toContain("Details &amp; metadata");
+    expect(readinessHtml).toContain("Failed checks (1)");
+    expect(readinessHtml).toContain("Switch to Railway host");
+
+    const trustHtml = renderToStaticMarkup(createElement(TrustCard, {
+      data: {
+        ...trustBase,
+        services: [
+          { serviceId: "s1", name: "Market Snapshot", description: "Real-time snapshot", price: "0" },
+        ],
+      },
+    }));
+
+    expect(trustHtml).toContain("<details");
+    expect(trustHtml).toContain("Details &amp; metadata");
+    expect(trustHtml).toContain("Verified services (1)");
   });
 });

@@ -5,6 +5,7 @@ import { importHubAgent } from "@/lib/agent-hub";
 import { ChartAvatar } from "./Avatar";
 import { Tag } from "@/components/ui/tag";
 import { Button } from "@/components/ui/button";
+import { t } from "@/lib/i18n";
 export interface OkxCatalogAgent {
   id: string;
   name: string;
@@ -157,13 +158,13 @@ export function OkxAgentInvite({
       {open ? (
         <section
           id="okx-agent-invite-panel"
-          aria-label="Invite an OKX agent"
+          aria-label={t("okxAgentInvite.panelAria")}
           className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] border border-hairline bg-menu p-3 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]"
         >
-          <p className="text-[12px] leading-relaxed text-ink-secondary">Invite an OKX.ai intelligence agent to this room.</p>
+          <p className="text-[12px] leading-relaxed text-ink-secondary">{t("okxAgentInvite.description")}</p>
           {loadingCatalog ? (
             <p role="status" aria-live="polite" className="mt-3 flex items-center gap-2 font-mono text-[11.5px] text-ink-secondary">
-              <Loader2 size={13} className="animate-spin" /> Loading OKX agents…
+              <Loader2 size={13} className="animate-spin" /> {t("okxAgentInvite.loading")}
             </p>
           ) : null}
           {error ? <p role="alert" className="mt-3 font-mono text-[11.5px] text-danger">{error}</p> : null}
@@ -179,11 +180,11 @@ export function OkxAgentInvite({
                 <div className="mt-3 flex items-center justify-between gap-3">
                   {inRoom ? (
                     <span role="status" className="flex items-center gap-1 font-mono text-[11px] text-success">
-                      <Check size={12} /> In this room
+                      <Check size={12} /> {t("agent.type.inRoom")}
                     </span>
                   ) : requested ? (
                     <span role="status" aria-live="polite" className="font-mono text-[11px] text-ink-secondary">
-                      Waiting for room update…
+                      {t("okxAgentInvite.waiting")}
                     </span>
                   ) : (
                     <span />
@@ -195,14 +196,14 @@ export function OkxAgentInvite({
                     disabled={inRoom || requested || importing || agent.status !== "available"}
                   >
                     {importing ? <Loader2 size={11} className="animate-spin" /> : null}
-                    {importing ? "Inviting…" : inRoom ? "Added" : requested ? "Invited" : "Invite"}
+                    {importing ? t("okxAgentInvite.inviting") : inRoom ? t("okxAgentInvite.added") : requested ? t("okxAgentInvite.invited") : t("okxAgentInvite.invite")}
                   </Button>
                 </div>
               </article>
             );
           })}
-          {catalog && catalog.length === 0 ? <p role="status" className="mt-3 font-mono text-[11.5px] text-ink-secondary">No OKX agents are available.</p> : null}
-          {error && catalog === null ? <button type="button" onClick={() => void loadCatalog()} className="mt-3 font-mono text-[11.5px] text-ink underline hover:text-ink-secondary">Try again</button> : null}
+          {catalog && catalog.length === 0 ? <p role="status" className="mt-3 font-mono text-[11.5px] text-ink-secondary">{t("okxAgentInvite.noAgents")}</p> : null}
+          {error && catalog === null ? <button type="button" onClick={() => void loadCatalog()} className="mt-3 font-mono text-[11.5px] text-ink underline hover:text-ink-secondary">{t("okxAgentInvite.tryAgain")}</button> : null}
         </section>
       ) : null}
     </div>

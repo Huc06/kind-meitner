@@ -431,6 +431,7 @@ export function ModelPicker({
       }}
       aria-expanded={open && !bot.busy}
       aria-haspopup="dialog"
+      aria-label={modelLabel(active, selection.model)}
       className={cn(
         "cursor-pointer flex items-center gap-1.5 border border-hairline bg-control/60 py-1 pl-2 pr-2.5 font-mono text-[11px] uppercase tracking-wide text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-control/60",
         !contained && active && !showActiveAccount && COMPACT_SQUARE,

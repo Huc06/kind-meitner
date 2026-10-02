@@ -1,7 +1,7 @@
 import { Children, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import type { AppState } from "@/state/store";
+import type { AppState, Bot } from "@/state/store";
 import type { SidebarMenuItem } from "./SidebarPopoverMenu";
 
 const fixture = vi.hoisted(() => ({
@@ -53,9 +53,13 @@ vi.mock("react-dom", () => ({
 }));
 
 vi.mock("./SidebarMoreMenu", () => ({
-  SidebarMoreMenu: ({ items }: { items: SidebarMenuItem[] }) => {
+  SidebarMoreMenu: ({ items, active, label = "More" }: { items: SidebarMenuItem[]; active?: boolean; label?: string }) => {
     fixture.capturedMoreMenuItems = items;
-    return createElement("div", { "data-testid": "more-menu" });
+    return createElement("button", {
+      "data-testid": "more-menu",
+      "aria-label": label,
+      "aria-current": active ? "page" : undefined,
+    });
   },
 }));
 
@@ -164,7 +168,7 @@ describe("Sidebar Agent Hub entry", () => {
     });
   });
 
-  it("renders ASP Directory in main nav and opens hub surface with asps tab", () => {
+  it("does not render separate ASP Directory in main nav (Hub replaces it)", () => {
     let tree: ReactNode;
     function Capture() {
       tree = Sidebar({ open: true, onClose: vi.fn() });
@@ -173,17 +177,15 @@ describe("Sidebar Agent Hub entry", () => {
     renderToStaticMarkup(createElement(Capture));
 
     const aspButton = findElement(tree, "aria-label", "ASP Directory");
-    expect(aspButton).toBeDefined();
-    (aspButton?.props.onClick as () => void)?.();
-    expect(fixture.dispatch).toHaveBeenCalledWith({
-      type: "togglePlugins",
-      open: true,
-      surface: "hub",
-      hubTab: "asps",
-    });
+    expect(aspButton).toBeUndefined();
   });
 
-  it("renders Activity in main nav and dispatches toggleActivity", () => {
+  it("renders Activity in main nav and switches to chat with activityOpen", () => {
+    fixture.state = {
+      activeView: "routines",
+      activityOpen: false,
+      groups: [{ id: "room-1", threadId: "t-1", name: "Room 1", memberIds: [], defaultResponder: { kind: "everyone" }, bulletin: "", unread: false, createdAt: 1000, messages: [] }],
+    };
     let tree: ReactNode;
     function Capture() {
       tree = Sidebar({ open: true, onClose: vi.fn() });
@@ -194,9 +196,86 @@ describe("Sidebar Agent Hub entry", () => {
     const actButton = findElement(tree, "aria-label", "Activity");
     expect(actButton).toBeDefined();
     (actButton?.props.onClick as () => void)?.();
-    expect(fixture.dispatch).toHaveBeenCalledWith({
-      type: "toggleActivity",
-    });
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "showChat" });
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "select", id: "room-1" });
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "toggleActivity", open: true });
+  });
+
+  it("renders More menu with Routines and Evaluator badge, plus Settings and Help in main nav", () => {
+    fixture.state = {
+      activeDisputesCount: 3,
+    };
+    let tree: ReactNode;
+    function Capture() {
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
+    }
+    renderToStaticMarkup(createElement(Capture));
+
+    const settingsButton = findElement(tree, "aria-label", "Settings");
+    expect(settingsButton).toBeDefined();
+
+    const helpButton = findElement(tree, "aria-label", "Help");
+    expect(helpButton).toBeDefined();
+
+    expect(fixture.capturedMoreMenuItems).toHaveLength(2);
+    expect(fixture.capturedMoreMenuItems[0]?.key).toBe("routines");
+    expect(fixture.capturedMoreMenuItems[1]?.key).toBe("evaluator");
+  });
+
+  it("guarantees exactly one aria-current in main nav across all views", () => {
+    const views: Array<{
+      activeView: AppState["activeView"];
+      activityOpen?: boolean;
+      pluginsOpen?: boolean;
+      pluginsSurface?: "hub" | "apps" | "mcp";
+      appSettingsOpen?: boolean;
+      expected: string;
+    }> = [
+      { activeView: "chat", activityOpen: false, pluginsOpen: false, expected: "Rooms" },
+      { activeView: "chat", activityOpen: true, pluginsOpen: false, expected: "Activity" },
+      { activeView: "chat", activityOpen: false, pluginsOpen: true, pluginsSurface: "hub", expected: "OKX Agent Hub" },
+      { activeView: "routines", activityOpen: false, pluginsOpen: false, expected: "More" },
+      { activeView: "okx-evaluator", activityOpen: false, pluginsOpen: false, expected: "More" },
+      { activeView: "chat", activityOpen: false, appSettingsOpen: true, pluginsOpen: false, expected: "Settings" },
+    ];
+
+    for (const v of views) {
+      fixture.state = {
+        activeView: v.activeView,
+        activityOpen: v.activityOpen,
+        pluginsOpen: v.pluginsOpen,
+        pluginsSurface: v.pluginsSurface,
+        appSettingsOpen: v.appSettingsOpen,
+      };
+
+      let tree: ReactNode;
+      function Capture() {
+        tree = Sidebar({ open: true, onClose: vi.fn() });
+        return tree;
+      }
+      renderToStaticMarkup(createElement(Capture));
+
+      const currentButtons: string[] = [];
+      function collectCurrent(node: ReactNode) {
+        for (const child of Children.toArray(node)) {
+          if (!isValidElement<Record<string, unknown>>(child)) continue;
+          const isCurrent = child.props["aria-current"] === "page" || child.props.active === true;
+          const label = child.props["aria-label"] ?? child.props.label;
+          if (isCurrent && typeof label === "string") {
+            currentButtons.push(label);
+          }
+          collectCurrent(child.props.children as ReactNode);
+        }
+      }
+
+      // Inspect main nav
+      const nav = findElement(tree, "aria-label", "Main");
+      expect(nav).toBeDefined();
+      collectCurrent(nav);
+      expect(currentButtons).toHaveLength(1);
+      expect(currentButtons[0]).toBe(v.expected);
+    }
   });
 
   it("renders connection status with text", () => {
@@ -208,6 +287,58 @@ describe("Sidebar Agent Hub entry", () => {
     }
     const html = renderToStaticMarkup(createElement(Capture));
     expect(html).toContain("Connected");
+  });
+  it("renders collapsed rail with aria-label and title tooltips for all main nav items", () => {
+    fixture.density = "icons";
+    let tree: ReactNode;
+    function Capture() {
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
+    }
+    renderToStaticMarkup(createElement(Capture));
+
+    const nav = findElement(tree, "aria-label", "Main");
+    expect(nav).toBeDefined();
+
+    const expectedLabels = ["Rooms", "OKX Agent Hub", "Activity", "Settings", "Help"];
+    for (const label of expectedLabels) {
+      const btn = findElement(nav, "aria-label", label);
+      expect(btn).toBeDefined();
+      expect(btn?.props.title).toBe(label);
+    }
+  });
+
+  it("renders room avatar stack as a bounded group with +N for groups with >2 members", () => {
+    fixture.state = {
+      bots: [
+        { id: "b1", threadId: "t1", name: "Bot 1", title: "", color: "cyan", messages: [] },
+        { id: "b2", threadId: "t2", name: "Bot 2", title: "", color: "magenta", messages: [] },
+        { id: "b3", threadId: "t3", name: "Bot 3", title: "", color: "yellow", messages: [] },
+        { id: "b4", threadId: "t4", name: "Bot 4", title: "", color: "green", messages: [] },
+      ] as unknown as Bot[],
+      groups: [
+        {
+          id: "g1",
+          threadId: "gt1",
+          name: "Trading Room",
+          memberIds: ["b1", "b2", "b3", "b4"],
+          defaultResponder: { kind: "everyone" },
+          bulletin: "",
+          unread: false,
+          createdAt: 1000,
+          messages: [],
+        },
+      ],
+    };
+    let tree: ReactNode;
+    function Capture() {
+      tree = Sidebar({ open: true, onClose: vi.fn() });
+      return tree;
+    }
+    const html = renderToStaticMarkup(createElement(Capture));
+    expect(html).toContain("Trading Room");
+    expect(html).toContain("+2");
+    expect(html).toContain("w-10");
   });
 });
 
@@ -235,9 +366,9 @@ describe("CommandPalette Open Agent Hub", () => {
     const html = renderToStaticMarkup(createElement(Capture));
 
     expect(html).toContain("Commands");
-    expect(html).toContain("Open Agent Hub");
+    expect(html).toContain("Open OKX Agent Hub");
 
-    const cmdButton = findButtonWithText(tree, "Open Agent Hub");
+    const cmdButton = findButtonWithText(tree, "Open OKX Agent Hub");
     expect(cmdButton).toBeDefined();
     (cmdButton?.props.onClick as () => void)?.();
 

@@ -21,6 +21,8 @@ export interface AgentIdentityProps {
   state?: EngineInstanceStateLike | null;
   className?: string;
   showCapabilities?: boolean;
+  isImported?: boolean;
+  inRoom?: boolean;
 }
 
 export const AgentIdentity = memo(function AgentIdentity({
@@ -29,20 +31,43 @@ export const AgentIdentity = memo(function AgentIdentity({
   state,
   className,
   showCapabilities = true,
+  isImported,
+  inRoom,
 }: AgentIdentityProps) {
-  const isOkx = agentSource(bot) === "okx-catalog";
   const sourceLabel = agentSourceLabel(bot);
-  const status = agentStatus(bot, state);
+  const isOkxCatalog = agentSource(bot) === "okx-catalog";
+  const isInRoom = inRoom ?? Boolean(bot && "inRoom" in bot && bot.inRoom);
+  const isImportedMember = isOkxCatalog && (
+    isImported !== undefined
+      ? isImported
+      : bot && "isImported" in bot && bot.isImported !== undefined
+        ? Boolean(bot.isImported)
+        : Boolean(
+            bot?.okxImport?.externalAgentId &&
+            bot.id &&
+            bot.id !== bot.okxImport.externalAgentId,
+          )
+  );
+  const status = agentStatus(bot, state, { isImported: isImportedMember, inRoom: isInRoom });
   const statusLabel = agentStatusLabel(status);
   const capabilities = agentCapabilities(bot);
   const name = bot?.name || bot?.title || "Agent";
   const isOffline = status === "offline";
-
   const statusTone =
-    status === "available" ? "success" : status === "working" ? "accent" : "neutral";
+    status === "available"
+      ? "success"
+      : status === "working"
+        ? "accent"
+        : status === "testEngine"
+          ? "warning"
+          : "neutral";
 
   // Full accessible sentence for screen readers
-  const typeText = isOkx ? `${t("agent.type.imported")}. ` : "";
+  const typeText = isInRoom
+    ? `${t("agent.type.inRoom")}. `
+    : isImportedMember
+      ? `${t("agent.type.imported")}. `
+      : "";
   const capText = capabilities.length > 0 ? ` Capabilities: ${capabilities.join(", ")}.` : "";
   const offlineText = isOffline
     ? ` ${agentOfflineTitle(bot)} ${agentOfflineReason()}`
@@ -56,14 +81,18 @@ export const AgentIdentity = memo(function AgentIdentity({
         data-agent-identity="compact"
       >
         <span className="sr-only">{srSentence}</span>
-        <AgentMark bot={bot} size={20} />
-        <span className="font-semibold text-ink truncate max-w-[140px]">{name}</span>
+        <AgentMark bot={bot} size={20} className="shrink-0" />
+        <span className="font-semibold text-ink truncate max-w-[140px]" title={name} aria-label={name}>{name}</span>
         <span className="text-[10.5px] text-ink-secondary">({sourceLabel})</span>
-        {isOkx && (
+        {isInRoom ? (
+          <Tag tone="cyan" variant="soft" size="sm">
+            {t("agent.type.inRoom")}
+          </Tag>
+        ) : isImportedMember ? (
           <Tag tone="cyan" variant="soft" size="sm">
             {t("agent.type.imported")}
           </Tag>
-        )}
+        ) : null}
         <Tag tone={statusTone} variant="soft" size="sm">
           {statusLabel}
         </Tag>
@@ -84,25 +113,29 @@ export const AgentIdentity = memo(function AgentIdentity({
         data-agent-identity="card"
       >
         <span className="sr-only">{srSentence}</span>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <AgentMark bot={bot} size={36} />
-            <div className="min-w-0">
-              <div className="font-semibold text-ink text-[14px] truncate">{name}</div>
-              <div className="text-[11px] font-mono text-ink-secondary truncate">
-                {sourceLabel}
-              </div>
+        <div className="flex items-start gap-2.5 min-w-0">
+          <AgentMark bot={bot} size={36} className="shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-ink text-[14px] truncate" title={name} aria-label={name}>
+              {name}
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {isOkx && (
-              <Tag tone="cyan" variant="soft" size="sm">
-                {t("agent.type.imported")}
+            <div className="text-[11px] font-mono text-ink-secondary truncate" title={sourceLabel}>
+              {sourceLabel}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              {isInRoom ? (
+                <Tag tone="cyan" variant="soft" size="sm">
+                  {t("agent.type.inRoom")}
+                </Tag>
+              ) : isImportedMember ? (
+                <Tag tone="cyan" variant="soft" size="sm">
+                  {t("agent.type.imported")}
+                </Tag>
+              ) : null}
+              <Tag tone={statusTone} variant="solid" size="sm">
+                {statusLabel}
               </Tag>
-            )}
-            <Tag tone={statusTone} variant="solid" size="sm">
-              {statusLabel}
-            </Tag>
+            </div>
           </div>
         </div>
 
@@ -139,15 +172,19 @@ export const AgentIdentity = memo(function AgentIdentity({
       data-agent-identity="row"
     >
       <span className="sr-only">{srSentence}</span>
-      <div className="flex items-center gap-2.5 min-w-0">
-        <AgentMark bot={bot} size={28} />
-        <span className="font-medium text-ink text-[13px] truncate">{name}</span>
-        <span className="text-[11px] font-mono text-ink-secondary">· {sourceLabel}</span>
-        {isOkx && (
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <AgentMark bot={bot} size={28} className="shrink-0" />
+        <span className="font-medium text-ink text-[13px] truncate" title={name} aria-label={name}>{name}</span>
+        <span className="text-[11px] font-mono text-ink-secondary shrink-0">· {sourceLabel}</span>
+        {isInRoom ? (
+          <Tag tone="cyan" variant="soft" size="sm">
+            {t("agent.type.inRoom")}
+          </Tag>
+        ) : isImportedMember ? (
           <Tag tone="cyan" variant="soft" size="sm">
             {t("agent.type.imported")}
           </Tag>
-        )}
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2 shrink-0">

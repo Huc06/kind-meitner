@@ -1,6 +1,6 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
-import { ArrowUp, BookOpen, ChevronDown, Clock, Mic, Paperclip, Square, Target, Users, X } from "lucide-react";
+import { ArrowUp, BookOpen, ChevronDown, Clock, Mic, Paperclip, SlidersHorizontal, Square, Target, Users, X } from "lucide-react";
 import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type GroupDefaultResponder, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { activeLocale, t } from "@/lib/i18n";
@@ -266,17 +266,20 @@ export function Composer({
   const respondingText = useMemo(() => {
     if (!group) return null;
     if (hasMentions && responders.length > 1) {
-      return "Responding: mentioned agents";
+      return t("composer.responding.mentioned");
     }
     if (hasMentions && responders.length === 1) {
-      return `Responding agent: ${responders[0].name}`;
+      return t("composer.responding.agent", { name: responders[0].name });
     }
     const defaultResp = effectiveDefaultResponder(group, members ?? []);
     if (defaultResp.kind === "member") {
       const lead = members?.find((m) => m.id === defaultResp.botId);
-      return lead ? `Responding agent: ${lead.name}` : "Responding: mentioned agents";
+      return lead ? t("composer.responding.agent", { name: lead.name }) : t("composer.responding.mentioned");
     }
-    return "Responding: mentioned agents";
+    if (defaultResp.kind === "everyone") {
+      return t("composer.responding.everyone");
+    }
+    return t("composer.responding.mentioned");
   }, [group, members, hasMentions, responders]);
 
   // image paste is offered only when every bot that will actually answer
@@ -543,6 +546,27 @@ export function Composer({
     threadId: string;
   } | null>(null);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!optionsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) {
+        setOptionsOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOptionsOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [optionsOpen]);
+
   // Approval mode belongs to one bot; a room has several, each with its own.
   const modeBot = group ? undefined : bot;
   const approvalEngine = modeBot
@@ -991,10 +1015,10 @@ export function Composer({
               >
                 <Paperclip size={16} />
               </button>
-              {group && !group.dm && (
+              {group && !group.dm && effectiveChannelMode === "goal" && (
                 <button
                   type="button"
-                  aria-pressed={effectiveChannelMode === "goal"}
+                  aria-pressed={true}
                   aria-label={t("composer.goal.aria")}
                   title={t("composer.goal.title")}
                   onClick={() => {
@@ -1003,25 +1027,64 @@ export function Composer({
                       const nextCaret = Math.max(0, caret - (text.length - typedGoalText.length));
                       editText(typedGoalText);
                       setCaret(nextCaret);
-                      setChannelMode("chat");
-                      requestAnimationFrame(() => {
-                        inputRef.current?.focus();
-                        inputRef.current?.setSelectionRange(nextCaret, nextCaret);
-                      });
-                      return;
                     }
-                    setChannelMode((current) => current === "goal" ? "chat" : "goal");
+                    setChannelMode("chat");
                   }}
-                  className={cn(
-                    "cursor-pointer flex h-7 items-center gap-1.5 whitespace-nowrap border px-2 font-mono text-[11px] uppercase tracking-wide transition-colors",
-                    effectiveChannelMode === "goal"
-                      ? "border-accent bg-accent text-accent-ink"
-                      : "border-hairline bg-transparent text-ink-secondary hover:bg-raised-hover hover:text-ink",
-                  )}
+                  className="cursor-pointer flex h-7 items-center gap-1.5 whitespace-nowrap border border-accent bg-accent text-accent-ink px-2 font-mono text-[11px] uppercase tracking-wide transition-colors"
                 >
                   <Target size={14} aria-hidden="true" />
-                  {effectiveChannelMode === "goal" ? "/goal" : t("composer.goal.chip")}
+                  /goal
                 </button>
+              )}
+              {group && !group.dm && (
+                <div className="relative" ref={optionsRef}>
+                  <button
+                    type="button"
+                    aria-expanded={optionsOpen}
+                    aria-haspopup="menu"
+                    aria-label={t("composer.options.title")}
+                    title={t("composer.options.title")}
+                    onClick={() => setOptionsOpen((open) => !open)}
+                    className="cursor-pointer flex h-7 items-center gap-1 border border-hairline bg-raised px-2 font-mono text-[11px] text-ink-secondary hover:bg-raised-hover hover:text-ink transition-colors"
+                  >
+                    <SlidersHorizontal size={13} aria-hidden="true" />
+                    <span>{t("composer.options.button")}</span>
+                  </button>
+                  {optionsOpen && (
+                    <div
+                      role="menu"
+                      className="absolute left-0 bottom-full z-30 mb-1 min-w-[200px] border border-hairline bg-menu p-1.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] font-mono text-[12px]"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOptionsOpen(false);
+                          markDraftEdited(draftId);
+                          if (effectiveChannelMode === "goal") {
+                            if (typedGoalText !== null) {
+                              const nextCaret = Math.max(0, caret - (text.length - typedGoalText.length));
+                              editText(typedGoalText);
+                              setCaret(nextCaret);
+                            }
+                            setChannelMode("chat");
+                          } else {
+                            setChannelMode("goal");
+                          }
+                        }}
+                        className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Target size={13} />
+                          <span>{t("composer.options.goal")}</span>
+                        </span>
+                        {effectiveChannelMode === "goal" && (
+                          <span className="text-[10px] text-accent font-bold">ON</span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {modeBot && approvalEngine && !remoteClient && (
                 <ApprovalModeSelector
@@ -1123,10 +1186,10 @@ export function Composer({
                   ? t("composer.placeholder.queueGroup", { name: busyName })
                   : t("composer.placeholder.queue", { name: busyName })
                 : group
-                  ? "Ask an agent to inspect an ASP, check readiness, or coordinate a task…"
+                  ? t("composer.placeholder.room")
                   : t("composer.placeholder.bot", { name: bot?.name ?? "" })
           }
-          aria-label={group ? "Ask an agent to inspect an ASP, check readiness, or coordinate a task…" : t("composer.placeholder.bot", { name: bot?.name ?? "" })}
+          aria-label={group ? t("composer.placeholder.room") : t("composer.placeholder.bot", { name: bot?.name ?? "" })}
             className="block max-h-[9rem] min-h-6 w-full resize-none overflow-y-auto bg-transparent px-1 py-1 text-[15px] leading-6 placeholder:text-ink-secondary focus:outline-none"
           />
           <div className="flex items-center gap-1">
@@ -1196,12 +1259,12 @@ export function Composer({
               )}
             </div>
             <div className="shrink-0 text-ink-secondary/70">
-              Enter to send · Shift+Enter for a new line
+              {t("composer.hint.keyboard")}
             </div>
           </div>
         ) : (
           <div className="mt-1.5 flex items-center justify-end border-t border-hairline/60 pt-1.5 font-mono text-[11px] text-ink-secondary/70">
-            Enter to send · Shift+Enter for a new line
+            {t("composer.hint.keyboard")}
           </div>
         )}
         </div>

@@ -158,8 +158,8 @@ describe("updateNoteworthy", () => {
 describe("outward links", () => {
   // was pointed somewhere else once; pin it so a future tidy-up of
   // app-links does not quietly send Help back to the README
-  it("sends Help Center to the docs the website also links to", () => {
+  it("sends Help directly to the help documentation file", () => {
     expect(HELP_CENTER_URL).toBe(DOCS_URL);
-    expect(DOCS_URL).toBe("https://github.com/harrymove-ctrl/kind-meitner/tree/main/docs");
+    expect(DOCS_URL).toBe("https://github.com/harrymove-ctrl/kind-meitner/blob/main/docs/kind-meitner.md");
   });
 });

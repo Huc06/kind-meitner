@@ -6,9 +6,9 @@ import { DevDayGateStarters } from "./DevDayGateStarters";
 import { DEV_DAY_GATE_STARTERS } from "@/lib/dev-day-gate";
 
 describe("DevDayGateStarters", () => {
-  it("renders five named starters, exactly matching the console starters specification", () => {
+  it("renders five named starters with dynamic count copy and capability tags", () => {
     const markup = renderToStaticMarkup(createElement(DevDayGateStarters, { composerDraftId: "group:dev-day:thread" }));
-    expect(markup).toContain("Three agents, one gate");
+    expect(markup).toContain("3 agents, one gate");
     expect(markup.match(/<button/g)).toHaveLength(5);
     
     const expectedLabels = [
@@ -22,6 +22,13 @@ describe("DevDayGateStarters", () => {
       expect(markup).toContain(label);
     }
 
+    // Verify capability badges
+    expect(markup).toContain("[readiness]");
+    expect(markup).toContain("[trust]");
+    expect(markup).toContain("[discovery]");
+    expect(markup).toContain("[invite]");
+    expect(markup).toContain("[checklist]");
+
     // Verify tour anchors
     expect(markup).toContain('data-tour="starters"');
     expect(markup).toContain('data-tour="starter-readiness"');
@@ -29,6 +36,18 @@ describe("DevDayGateStarters", () => {
     expect(markup).toContain('data-tour="starter-trending"');
     expect(markup).toContain('data-tour="starter-invite"');
     expect(markup).toContain('data-tour="starter-checklist"');
+  });
+
+  it("renders dynamic count for single or specific member counts", () => {
+    const singleMarkup = renderToStaticMarkup(
+      createElement(DevDayGateStarters, { composerDraftId: "group:dev-day:thread", agentCount: 1 }),
+    );
+    expect(singleMarkup).toContain("1 agent, one gate");
+
+    const twoMarkup = renderToStaticMarkup(
+      createElement(DevDayGateStarters, { composerDraftId: "group:dev-day:thread", agentCount: 2 }),
+    );
+    expect(twoMarkup).toContain("2 agents, one gate");
   });
 
   it("ensures prompt starters are fill-only and invite opens agent hub", () => {

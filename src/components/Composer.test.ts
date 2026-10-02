@@ -93,6 +93,11 @@ describe("Composer in a Room", () => {
 
     // Mention mirror metrics preserved
     expect(markup).toContain("mention-editor-mirror");
+
+    // Default view hides GOAL chip, exposes secondary Options control
+    expect(markup).not.toContain(">Goal</button>");
+    expect(markup).not.toContain(">/goal</button>");
+    expect(markup).toContain("Options");
   });
 
   it("shows 'Responding: mentioned agents' when room default responder is mentions", () => {

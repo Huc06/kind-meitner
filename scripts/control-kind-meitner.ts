@@ -377,6 +377,8 @@ export async function launchVerificationServer(
         driver: "claudeAgent",
         displayName: "Verification fixture",
         config: { cli: FAKE_CLI },
+        simulated: true,
+        testEngine: true,
         ...(room?.scripted ? { environment: { FAKE_CLAUDE_ROOM_PLAN: join(dataDir, "room-plan.json") } } : {}),
       },
     },

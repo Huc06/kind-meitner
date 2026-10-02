@@ -3,7 +3,7 @@ import type { HubAgent, ImportHubAgentResult } from "@/lib/agent-hub";
 import { importHubAgent } from "@/lib/agent-hub";
 import { useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
-import { setComposerDraft } from "@/lib/drafts";
+import { getDraft, setComposerDraft } from "@/lib/drafts";
 import { AgentMark } from "@/components/agent-identity/AgentMark";
 import { Tag } from "@/components/ui/tag";
 import { Button } from "@/components/ui/button";
@@ -126,7 +126,11 @@ export function AgentDetail({ agent, bot, onBack }: AgentDetailProps) {
     const targetRoom = (state.groups ?? []).find((g) => g.id === roomId);
     if (!targetRoom) return;
     const draftId = `group:${targetRoom.id}:${targetRoom.threadId}`;
-    setComposerDraft(draftId, `@${agent.name} `);
+    const store = typeof localStorage !== "undefined" ? localStorage : undefined;
+    const existingDraft = getDraft(store, draftId);
+    if (!existingDraft || existingDraft.trim() === "") {
+      setComposerDraft(draftId, `@${agent.name} `);
+    }
     dispatch({ type: "togglePlugins", open: false });
     dispatch({ type: "select", id: targetRoom.id });
   };
@@ -154,7 +158,7 @@ export function AgentDetail({ agent, bot, onBack }: AgentDetailProps) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[18px] font-semibold text-ink">{agent.name}</h3>
             <Tag tone={isOkx ? "cyan" : "neutral"} variant="soft" size="sm">
-              {isOkx ? "OKX.AI catalog · local registry" : "Local workspace agent"}
+              {isOkx ? t("okxHub.provenance.localCatalog") : t("okxHub.provenance.localWorkspace")}
             </Tag>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary">

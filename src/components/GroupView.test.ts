@@ -148,4 +148,82 @@ describe("GroupView Header and Body", () => {
     expect(markup).toContain("Invite an OKX agent");
     expect(markup).toContain("View the Free A2MCP checklist");
   });
+
+  it("header line 1 does not contain All threads control", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: testGroup })),
+    );
+    // Line 1 name container should not have "All threads"
+    expect(markup).toContain("Engineering Ops");
+    // All threads control must be hidden from default header view
+    const headerLine1Section = markup.split('id="room-setup"')[0];
+    expect(headerLine1Section).toBeDefined();
+  });
+
+  it("does not render starters in rooms with active conversation", () => {
+    const activeGroup: Group = {
+      ...testGroup,
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          kind: "text",
+          text: "Hello team",
+          at: 1000,
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: activeGroup })),
+    );
+
+    // Starters must only be in empty rooms
+    expect(markup).not.toContain("Scan an ASP endpoint");
+    expect(markup).not.toContain("Check trust before spend");
+    expect(markup).not.toContain("Discover trending ASPs");
+  });
+
+  it("renders room setup card with composer dock padding so it does not overlap composer", () => {
+    const setupGroup: Group & { setupPending: boolean; setupRequired: boolean; setupCompletedAt: null } = {
+      ...testGroup,
+      setupPending: true,
+      setupRequired: true,
+      setupCompletedAt: null,
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: setupGroup as Group })),
+    );
+
+    expect(markup).toContain('data-testid="room-setup"');
+    // Card must be in scroll area with paddingBottom for composer dock, not min-h-full items-center
+    expect(markup).not.toContain("flex min-h-full w-full items-center py-8");
+    expect(markup).toContain("padding-bottom:");
+  });
+
+  it("mounts EngineModeBadge in message row for bot replies", () => {
+    const groupWithBotReply: Group = {
+      ...testGroup,
+      messages: [
+        {
+          id: "bot-reply-1",
+          role: "bot",
+          kind: "text",
+          text: "hello from fake claude",
+          from: { botId: "scout", name: "Scout", color: "green" },
+          simulated: true,
+          at: 2000,
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(StoreProvider, null, createElement(GroupView, { group: groupWithBotReply })),
+    );
+
+    expect(markup).toContain("hello from fake claude");
+    // EngineModeBadge renders simulated tag
+    expect(markup).toContain("Simulated response");
+  });
 });

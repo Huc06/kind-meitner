@@ -4,7 +4,7 @@
 // default responder; @mentions override that routing.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { activeLocale, t } from "@/lib/i18n";
-import { ArrowDown, Check, ChevronDown, ChevronRight, Folder, FolderOpen, Loader2, MessageSquareReply, Pin, PinOff, Search, X } from "lucide-react";
+import { ArrowDown, Check, ChevronDown, ChevronRight, Clock, Folder, FolderOpen, Loader2, MessageSquareReply, Pin, PinOff, Search, Users, X } from "lucide-react";
 import {
   api,
   useStore,
@@ -14,6 +14,7 @@ import {
   type Bot,
   type Group,
   type GroupDefaultResponder,
+  type InstanceInfo,
   type Message,
 } from "@/state/store";
 import { BotAvatar } from "./Avatar";
@@ -29,6 +30,7 @@ import { effectiveDefaultResponder, groupResponseHint } from "@/lib/group-routin
 import { ChatMarkdown } from "./ChatMarkdown";
 import { Composer, DefaultResponderSelect } from "./Composer";
 import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
+import { EngineModeBadge } from "./EngineModeBadge";
 import { RoomActivityTimeline } from "./RoomActivityTimeline";
 import { ModelPicker } from "./ModelPicker";
 import { usageDetail } from "@/lib/usage";
@@ -135,7 +137,7 @@ export function RoomToolChip({ message, roomId }: { message: Message; roomId?: s
 
 /** 16px profile avatar + name, shown once per sender cluster — the same mono
  * header row the 1:1 transcript uses. */
-function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: string }) {
+function ClusterLabel({ bot, name, color, instances }: { bot?: Bot; name: string; color: string; instances?: readonly InstanceInfo[] }) {
   return (
     <div className="mt-2 flex items-center gap-1.5 pl-0.5">
       <BotAvatar
@@ -147,6 +149,7 @@ function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: st
         animated={false}
       />
       <span className="label-mono text-ink">{name}</span>
+      <EngineModeBadge bot={bot} instances={instances} variant="status" />
     </div>
   );
 }
@@ -245,7 +248,7 @@ const Transcript = memo(function Transcript({
             <div key={item.id} className="contents">
               {newDay && <DaySeparator at={first.at} />}
               {first.from && cluster && (
-                <ClusterLabel bot={memberOf(first.from.botId)} name={first.from.name} color={first.from.color} />
+                <ClusterLabel bot={memberOf(first.from.botId)} name={first.from.name} color={first.from.color} instances={state.instances} />
               )}
               <ActivityRun messages={item.messages} forceOpen={item.messages.some((step) => step.id === focusedId || isOkxGateTool(step.tool?.name))}>
                 {item.messages.map((step) => (
@@ -375,6 +378,9 @@ const Transcript = memo(function Transcript({
                     <>
                       <MessageAttachmentGallery text={m.text ?? ""} attachments={m.attachments} message={{ threadId: group.threadId, messageId: m.id }} className={m.text ? undefined : "mb-0"} eager={m.id === newestMessageId || m.id === newestUserMessageId} />
                       {m.text ? <ChatMarkdown text={m.text} mentionPeers={members} everyone={!group.dm} message={{ threadId: group.threadId, messageId: m.id }} /> : null}
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <EngineModeBadge message={m} bot={memberOf(m.from?.botId)} instances={state.instances} />
+                      </div>
                     </>
                   )}
                 </div>
@@ -403,7 +409,7 @@ const Transcript = memo(function Transcript({
           <div key={m.id} className="contents" data-mid={m.id}>
             {newDay && <DaySeparator at={m.at} />}
             {!user && m.from && newCluster && !(m.kind === "activity" && m.comm) && (
-              <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} />
+              <ClusterLabel bot={memberOf(m.from.botId)} name={m.from.name} color={m.from.color} instances={state.instances} />
             )}
             {row}
           </div>
@@ -1130,23 +1136,22 @@ export function GroupView({ group }: { group: Group }) {
         className={cn(
           "shrink-0 frame-rule-below bg-app px-4 py-2 flex items-center justify-between gap-3",
           // Room for the drawer button, which overlays this corner below md.
-          "pl-11 md:pl-4",
+          // Room for the drawer button, which overlays this corner on <= 768px.
+          "pl-12 min-[769px]:pl-4",
         )}
       >
-        <div className="flex min-w-0 flex-col gap-0.5" style={headerNoDragStyle}>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5" style={headerNoDragStyle}>
           {/* Line 1: room name */}
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate font-mono text-[14px] font-semibold text-ink">{group.name}</span>
-            {!setupPending && !group.dm && <GroupTaskPicker group={group} />}
           </div>
           {/* Line 2: purpose */}
           <div className="truncate font-mono text-[11.5px] text-ink-secondary" title={purpose}>
             {purpose}
           </div>
           {/* Line 3: counts + connection state */}
-          <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-ink-secondary">
-            <span>{participantCount} participants · {agentCount} agents</span>
-            <span>·</span>
+          <div className="truncate font-mono text-[10.5px] text-ink-secondary">
+            <span>{participantCount} participants · {agentCount} agents · </span>
             <span className="inline-flex items-center gap-1">
               <span className={cn("size-1.5 rounded-full", state.connected ? "bg-success" : "bg-warning")} />
               <span>{connectionLabel}</span>
@@ -1165,18 +1170,20 @@ export function GroupView({ group }: { group: Group }) {
             onClick={() => setFindOpen((open) => !open)}
             aria-label={t("chat.find")}
             aria-pressed={findOpen}
-            className={findOpen ? "text-ink bg-raised" : "text-ink-secondary"}
+            className={cn("hidden min-[769px]:inline-flex", findOpen ? "text-ink bg-raised" : "text-ink-secondary")}
             title={t("chat.findShortcut")}
           >
             <Search size={14} />
           </Button>
 
           {canInviteOkxAgent(group, remoteClient) && (
-            <OkxAgentInvite
-              roomId={group.id}
-              importedExternalAgentIds={importedOkxAgentIds}
-              label="Invite agent"
-            />
+            <div className="hidden min-[1025px]:inline-flex">
+              <OkxAgentInvite
+                roomId={group.id}
+                importedExternalAgentIds={importedOkxAgentIds}
+                label={t("room.inviteAgent")}
+              />
+            </div>
           )}
 
           {!group.dm && (
@@ -1186,8 +1193,9 @@ export function GroupView({ group }: { group: Group }) {
               size="sm"
               onClick={() => setMembersOpen(true)}
               title={t("room.members.manage")}
+              className="hidden min-[769px]:inline-flex"
             >
-              Room details
+              {t("room.details")}
             </Button>
           )}
 
@@ -1197,8 +1205,9 @@ export function GroupView({ group }: { group: Group }) {
             onClick={() => dispatch({ type: "toggleActivity" })}
             aria-pressed={state.activityOpen}
             title="Activity timeline"
+            className="hidden min-[769px]:inline-flex"
           >
-            Activity
+            {t("activity.title")}
           </Button>
 
           <div className="relative" ref={moreMenuRef}>
@@ -1207,7 +1216,7 @@ export function GroupView({ group }: { group: Group }) {
               size="sm"
               onClick={() => setMoreOpen((open) => !open)}
               aria-expanded={moreOpen}
-              title="More actions"
+              title={t("room.moreActions")}
             >
               More
               <ChevronDown size={11} className={cn("transition-transform", moreOpen && "rotate-180")} />
@@ -1217,14 +1226,68 @@ export function GroupView({ group }: { group: Group }) {
                 role="menu"
                 className="absolute right-0 top-full z-30 mt-1 min-w-[220px] border border-hairline bg-menu p-2 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] font-mono text-[12px]"
               >
+                {/* Collapsed actions at narrow widths */}
+                <div className="min-[769px]:hidden border-b border-hairline/60 pb-2 mb-2 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFindOpen((open) => !open);
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                  >
+                    <Search size={14} className="shrink-0 text-ink-secondary" />
+                    <span>{t("chat.find")}</span>
+                  </button>
+                  {!group.dm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMembersOpen(true);
+                        setMoreOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                    >
+                      <Users size={14} className="shrink-0 text-ink-secondary" />
+                      <span>{t("room.details")}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: "toggleActivity" });
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-2 py-1.5 text-left text-ink hover:bg-raised-hover"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Clock size={14} className="shrink-0 text-ink-secondary" />
+                      <span>{t("activity.title")}</span>
+                    </span>
+                    {state.activityOpen && (
+                      <span className="text-[10px] text-accent font-bold">Active</span>
+                    )}
+                  </button>
+                </div>
+
+                {canInviteOkxAgent(group, remoteClient) && (
+                  <div className="min-[1025px]:hidden border-b border-hairline/60 pb-2 mb-2 py-1">
+                    <OkxAgentInvite
+                      roomId={group.id}
+                      importedExternalAgentIds={importedOkxAgentIds}
+                      label={t("room.inviteAgent")}
+                    />
+                  </div>
+                )}
+
                 {leadBot && !remoteClient && (
                   <div className="border-b border-hairline/60 pb-2 mb-2">
-                    <div className="label-mono text-ink-secondary mb-1">Model</div>
+                    <div className="label-mono text-ink-secondary mb-1">{t("room.model")}</div>
                     <ModelPicker bot={leadBot} threadId={group.threadId} />
                   </div>
                 )}
                 <div className="border-b border-hairline/60 pb-2 mb-2">
-                  <div className="label-mono text-ink-secondary mb-1">Tokens & Cost</div>
+                  <div className="label-mono text-ink-secondary mb-1">{t("room.tokensAndCost")}</div>
                   <div className="text-[11px] text-ink-secondary">
                     {(() => {
                       const usage = leadBot?.tasks?.find((t) => t.threadId === group.threadId)?.usage;
@@ -1249,8 +1312,14 @@ export function GroupView({ group }: { group: Group }) {
                 )}
                 {!remoteClient && !setupPending && !group.dm && (
                   <div className="pt-2 border-t border-hairline/60 mt-1">
-                    <div className="label-mono text-ink-secondary mb-1">Responder Mode</div>
+                    <div className="label-mono text-ink-secondary mb-1">{t("room.responderMode")}</div>
                     <DefaultResponderSelect group={group} members={members} />
+                  </div>
+                )}
+                {!remoteClient && !setupPending && !group.dm && (
+                  <div className="pt-2 border-t border-hairline/60 mt-1">
+                    <div className="label-mono text-ink-secondary mb-1">{t("room.threads")}</div>
+                    <GroupTaskPicker group={group} />
                   </div>
                 )}
               </div>
@@ -1302,7 +1371,7 @@ export function GroupView({ group }: { group: Group }) {
       })()}
 
       <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-        <div className="relative min-h-0 flex-1 flex flex-col">
+        <div className="relative min-h-0 min-w-0 flex-1 flex flex-col">
       <div
         ref={scrollRef}
         className="h-full overflow-x-hidden overflow-y-auto px-5 [overflow-anchor:none]"
@@ -1331,7 +1400,11 @@ export function GroupView({ group }: { group: Group }) {
         }}
       >
         {setupPending ? (
-          <div className="flex min-h-full w-full items-center py-8">
+          <div
+            ref={transcriptRef}
+            className="mx-auto flex w-full max-w-[52rem] flex-col py-6"
+            style={{ paddingBottom: composerDock.pad }}
+          >
             <RoomSetup group={group} members={members} />
           </div>
         ) : (
@@ -1345,14 +1418,14 @@ export function GroupView({ group }: { group: Group }) {
         >
           {/* Compact purpose banner */}
           {!setupPending && (
-            <div className="border border-hairline bg-panel p-2.5 flex items-center justify-between gap-3">
+            <div className="border border-hairline bg-panel p-2.5 flex flex-wrap items-center justify-between gap-2 min-w-0 w-full max-w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span className="label-mono text-ink-secondary shrink-0 flex items-center gap-1">
                   <Pin size={10} />
                   <span>PURPOSE:</span>
                 </span>
                 {bulletinOpen ? (
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <textarea
                       autoFocus
                       value={bulletinDraft}
@@ -1371,7 +1444,7 @@ export function GroupView({ group }: { group: Group }) {
                     />
                   </div>
                 ) : (
-                  <span className="truncate font-mono text-[12px] text-ink">
+                  <span className="break-words font-mono text-[12px] text-ink min-w-0">
                     {purpose}
                   </span>
                 )}
@@ -1390,25 +1463,19 @@ export function GroupView({ group }: { group: Group }) {
 
           {/* Agent roster strip */}
           {members.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border border-hairline bg-panel px-3 py-2">
-              <span className="label-mono text-ink-secondary mr-1">AGENTS:</span>
+            <div className="flex flex-wrap items-center gap-2 border border-hairline bg-panel px-3 py-2 min-w-0">
+              <span className="label-mono text-ink-secondary mr-1 shrink-0">AGENTS:</span>
               {members.map((member) => (
-                <AgentIdentity
-                  key={member.id}
-                  bot={member}
-                  variant="compact"
-                  state={{ instances: state.instances }}
-                />
+                <div key={member.id} className="min-w-0 max-w-full">
+                  <AgentIdentity
+                    bot={member}
+                    variant="compact"
+                    state={{ instances: state.instances }}
+                    className="max-w-full flex-wrap"
+                  />
+                </div>
               ))}
             </div>
-          )}
-          {devDayGate && hasDevDayConversation && (
-            <details className="self-center border border-hairline bg-panel px-3 py-2">
-              <summary className="cursor-pointer font-mono text-[11.5px] font-medium text-ink-secondary hover:text-ink">Starters</summary>
-              <div className="mt-2">
-                <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} compact />
-              </div>
-            </details>
           )}
           {group.messages.length === 0 || (devDayGate && !hasDevDayConversation) ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-center">
@@ -1427,9 +1494,17 @@ export function GroupView({ group }: { group: Group }) {
               </div>
               <div className="font-mono text-[16px] font-medium tracking-tight text-ink">{group.name}</div>
               <div className="max-w-[420px] font-mono text-[12px] leading-relaxed text-ink-secondary">
-                {devDayGate ? "Markets, Listing Coach, and Spend Scout gate every listing and spend." : groupResponseHint(group, members)}
+                {devDayGate && members.length > 0
+                  ? `${members.map((m) => m.name).join(", ")} gate every listing and spend.`
+                  : devDayGate
+                    ? "Markets, Listing Coach, and Spend Scout gate every listing and spend."
+                    : groupResponseHint(group, members)}
               </div>
-              <DevDayGateStarters composerDraftId={`group:${group.id}:${group.threadId}`} />
+              <DevDayGateStarters
+                composerDraftId={`group:${group.id}:${group.threadId}`}
+                members={members}
+                agentCount={members.length}
+              />
             </div>
           ) : null}
           {hiddenCount > 0 && (

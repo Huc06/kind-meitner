@@ -252,6 +252,8 @@ const instanceConfigSchema = z.object({
   environment: z.record(z.string(), z.string()).optional(),
   enabled: z.boolean().optional(),
   config: z.json().optional(),
+  simulated: z.boolean().optional(),
+  testEngine: z.boolean().optional(),
 });
 const instanceConfigMapSchema = z.record(z.string(), instanceConfigSchema);
 const defaultModelSelectionSchema = z.object({

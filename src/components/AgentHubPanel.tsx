@@ -54,8 +54,10 @@ export function AgentHubPanel({
   useEffect(() => {
     if (storeHubTab) {
       setActiveTab(storeHubTab);
+      setSelectedAgent(null);
     } else if (surface === "mcp") {
       setActiveTab("mcp");
+      setSelectedAgent(null);
     }
   }, [storeHubTab, surface]);
 
@@ -146,11 +148,7 @@ export function AgentHubPanel({
   const handleTabChange = (tab: AgentHubTab) => {
     setActiveTab(tab);
     setSelectedAgent(null);
-    if (tab === "mcp") {
-      dispatch({ type: "togglePlugins", open: true, surface: "mcp", hubTab: "mcp" });
-    } else {
-      dispatch({ type: "togglePlugins", open: true, surface: "hub", hubTab: tab });
-    }
+    dispatch({ type: "togglePlugins", open: true, surface: "hub", hubTab: tab });
   };
 
   const handleOpenApps = () => {
@@ -179,6 +177,12 @@ export function AgentHubPanel({
       )
     : [];
 
+  const inRoomExternalIds = new Set(
+    importedInRoomBots
+      .map((b) => b.okxImport?.externalAgentId)
+      .filter((id): id is string => Boolean(id)),
+  );
+
   const matchingImportedInRoom = importedInRoomBots.filter((b) => {
     if (!query) return true;
     return (
@@ -189,21 +193,22 @@ export function AgentHubPanel({
     );
   });
 
-  // Section 2: Available from OKX.AI catalog
-  const catalogAgents = (catalog ?? []).map((cat) => {
-    const merged = mergedAgents.find((m) => m.id === cat.id);
-    return (
-      merged ?? {
-        id: cat.id,
-        name: cat.name,
-        summary: cat.description,
-        provider: cat.provider,
-        capabilities: [...cat.capabilities],
-        rooms: [],
-      }
-    );
-  });
-
+  // Section 2: Available from OKX.AI catalog (excluding agents already in this room)
+  const catalogAgents = (catalog ?? [])
+    .filter((cat) => !inRoomExternalIds.has(cat.id))
+    .map((cat) => {
+      const merged = mergedAgents.find((m) => m.id === cat.id);
+      return (
+        merged ?? {
+          id: cat.id,
+          name: cat.name,
+          summary: cat.description,
+          provider: cat.provider,
+          capabilities: [...cat.capabilities],
+          rooms: [],
+        }
+      );
+    });
   const matchingCatalogAgents = catalogAgents.filter((agent) => {
     if (!query) return true;
     return (
@@ -331,7 +336,7 @@ export function AgentHubPanel({
                   : "border-transparent text-ink-secondary hover:text-ink",
               )}
             >
-              Agents
+              {t("okxHub.tab.agents")}
             </button>
             <button
               type="button"
@@ -345,7 +350,7 @@ export function AgentHubPanel({
                   : "border-transparent text-ink-secondary hover:text-ink",
               )}
             >
-              ASPs
+              {t("okxHub.tab.asps")}
             </button>
             <button
               type="button"
@@ -359,7 +364,7 @@ export function AgentHubPanel({
                   : "border-transparent text-ink-secondary hover:text-ink",
               )}
             >
-              MCP servers
+              {t("okxHub.tab.mcp")}
             </button>
           </div>
         </div>
@@ -490,7 +495,7 @@ export function AgentHubPanel({
                         <RefreshCw size={12} className="mr-1 inline" /> Refresh
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => handleTabChange("mcp")}>
-                        Open MCP servers
+                        {t("okxHub.openMcpServers")}
                       </Button>
                     </div>
                   </div>
@@ -502,7 +507,7 @@ export function AgentHubPanel({
                           [ Available from OKX.AI catalog ]
                         </div>
                         <div className="font-mono text-[11px] text-ink-secondary">
-                          OKX.AI catalog · local registry
+                          {t("okxHub.provenance.localCatalog")}
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

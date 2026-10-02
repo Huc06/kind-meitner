@@ -1,9 +1,9 @@
 import { Children, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Group, Bot } from "@/state/store";
+import type { Group, Bot, InstanceInfo } from "@/state/store";
 import type * as AgentHubModule from "@/lib/agent-hub";
-import type { CatalogAgent, HubService, ImportHubAgentResult } from "@/lib/agent-hub";
+import type { CatalogAgent, HubAgent, HubService, ImportHubAgentResult } from "@/lib/agent-hub";
 
 const { marketScout, freeMcpService, fixture } = vi.hoisted(() => {
   const marketScout: CatalogAgent = {
@@ -41,14 +41,15 @@ const { marketScout, freeMcpService, fixture } = vi.hoisted(() => {
     dispatch: vi.fn(),
     groups: [mockRoom],
     bots: [] as Bot[],
+    instances: [] as InstanceInfo[],
     selectedId: "room-general",
     catalogResult: { agents: [marketScout], stale: false },
     freeMcpResult: freeMcpService,
     importResult: { kind: "added" as ImportHubAgentResult["kind"], room: "room-general" },
+    existingDrafts: {} as Record<string, string>,
     setComposerDraftMock: vi.fn(),
     apiFetchMock: vi.fn(),
   };
-
   return { marketScout, freeMcpService, fixture };
 });
 
@@ -63,6 +64,7 @@ vi.mock("@/state/store", () => ({
       hubTab: fixture.hubTab,
       groups: fixture.groups,
       bots: fixture.bots,
+      instances: fixture.instances,
       selectedId: fixture.selectedId,
     },
     dispatch: fixture.dispatch,
@@ -80,7 +82,9 @@ vi.mock("@/lib/agent-hub", async (importOriginal) => {
 });
 
 vi.mock("@/lib/drafts", () => ({
+  getDraft: (_store: unknown, id: string) => fixture.existingDrafts[id] ?? "",
   setComposerDraft: (id: string, text: string) => {
+    fixture.existingDrafts[id] = text;
     fixture.setComposerDraftMock(id, text);
   },
 }));
@@ -204,7 +208,7 @@ describe("AgentHubPanel", () => {
 
     // Agents section
     expect(html).toContain("Available from OKX.AI catalog");
-    expect(html).toContain("OKX.AI catalog · local registry");
+    expect(html).toContain("Local catalog for OKX.AI");
     expect(html).toContain("Markets");
   });
 
@@ -400,5 +404,245 @@ describe("AgentHubPanel", () => {
       ([action]) => action.type === "send" || action.type === "sendGroup",
     );
     expect(sendCalls).toHaveLength(0);
+  });
+  it("switching to MCP tab keeps surface as hub and opens mcp tab", () => {
+    const { nodes: treeNodes } = render();
+    const mcpTabBtn = treeNodes.find(
+      (n) => n.props.role === "tab" && n.props.children === "MCP servers",
+    );
+    expect(mcpTabBtn).toBeDefined();
+    mcpTabBtn?.props.onClick?.();
+    expect(fixture.dispatch).toHaveBeenCalledWith({
+      type: "togglePlugins",
+      open: true,
+      surface: "hub",
+      hubTab: "mcp",
+    });
+  });
+
+  it("removes in-room agents from catalog section and disables active invite", () => {
+    const inRoomBot: Bot = {
+      id: "bot-markets-1",
+      name: "Markets",
+      okxImport: {
+        externalAgentId: "okx-market-scout-v1",
+        provider: "OKX.ai",
+      },
+    } as unknown as Bot;
+    fixture.bots = [inRoomBot];
+    fixture.groups = [
+      {
+        id: "room-general",
+        name: "General",
+        threadId: "thread-general-1",
+        memberIds: ["bot-markets-1"],
+        dm: false,
+        messages: [],
+      } as unknown as Group,
+    ];
+
+    const { html } = render();
+    expect(html).toContain("Imported into this room");
+    expect(html).not.toContain("Available from OKX.AI catalog");
+  });
+
+  it("prefills @Name when draft is empty and preserves non-empty draft", () => {
+    const agent: HubAgent = {
+      id: "okx-market-scout-v1",
+      name: "Markets",
+      summary: "Market scanner",
+      provider: "OKX.ai",
+      capabilities: ["chat"],
+      rooms: [{ id: "room-general", name: "General" }],
+    };
+
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AgentCard({ agent, currentRoomId: "room-general" }) as ReactElement;
+      return cardTree;
+    }
+    renderToStaticMarkup(createElement(CaptureCard));
+
+    const useInChannelBtn = findButtonWithText(cardTree, "Use in channel");
+    expect(useInChannelBtn).toBeDefined();
+
+    // 1. With empty draft: prefills
+    fixture.existingDrafts = {};
+    (useInChannelBtn?.props.onClick as () => void)?.();
+    expect(fixture.setComposerDraftMock).toHaveBeenCalledWith(
+      "group:room-general:thread-general-1",
+      "@Markets ",
+    );
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "togglePlugins", open: false });
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "select", id: "room-general" });
+
+    // 2. With existing non-empty draft: preserves
+    fixture.setComposerDraftMock.mockReset();
+    fixture.dispatch.mockReset();
+    fixture.existingDrafts["group:room-general:thread-general-1"] = "My existing draft";
+
+    (useInChannelBtn?.props.onClick as () => void)?.();
+    expect(fixture.setComposerDraftMock).not.toHaveBeenCalled();
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "togglePlugins", open: false });
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "select", id: "room-general" });
+  });
+
+  it("labels catalog agent with local catalog provenance and does not claim imported agent", () => {
+    const uninvitedAgent: HubAgent = {
+      id: "okx-market-scout-v1",
+      name: "Markets",
+      summary: "Market scanner",
+      provider: "OKX.ai",
+      capabilities: ["chat"],
+      rooms: [],
+    };
+
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AgentCard({ agent: uninvitedAgent }) as ReactElement;
+      return cardTree;
+    }
+    const html = renderToStaticMarkup(createElement(CaptureCard));
+
+    expect(html).toContain("Local catalog for OKX.AI");
+    expect(html).not.toContain("Imported agent");
+    expect(html).not.toContain("In this room");
+  });
+
+  it("stacks room row and wraps action buttons without overflowing card", () => {
+    const agent: HubAgent = {
+      id: "okx-market-scout-v1",
+      name: "Markets",
+      summary: "Market scanner",
+      provider: "OKX.ai",
+      capabilities: ["chat"],
+      rooms: [{ id: "room-general", name: "General" }],
+    };
+
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AgentCard({ agent }) as ReactElement;
+      return cardTree;
+    }
+    const html = renderToStaticMarkup(createElement(CaptureCard));
+
+    // Contains room name and action buttons
+    expect(html).toContain("#General");
+    expect(html).toContain("Open room");
+    expect(html).toContain("Use in channel");
+    // Uses vertical stacking for room item and flex-wrap for action buttons
+    expect(html).toContain("flex flex-col gap-1.5 border border-hairline bg-inset p-2");
+    expect(html).toContain("flex flex-wrap items-center gap-1.5");
+  });
+
+  it("never shows 'Imported agent' for local agent Tuli, and shows 'In this room' only when member", () => {
+    const tuliBot: Bot = {
+      id: "tuli",
+      name: "Tuli",
+      description: "Local assistant",
+      title: "Assistant",
+      color: "green",
+      messages: [],
+      threadId: "thread-tuli",
+      modelSelection: { instanceId: "inst-test", model: "default" },
+      notifications: true,
+      unread: false,
+    } as Bot;
+
+    const tuliAgent: HubAgent = {
+      id: "tuli",
+      name: "Tuli",
+      summary: "Local assistant",
+      provider: "Local workspace",
+      capabilities: [],
+      importedBotId: "tuli",
+      rooms: [{ id: "room-general", name: "General" }],
+    };
+
+    // 1. Tuli when viewing a different room: neither "Imported agent" nor "In this room"
+    let notInRoomTree!: ReactElement;
+    function CaptureNotInRoom() {
+      notInRoomTree = AgentCard({
+        agent: tuliAgent,
+        bot: tuliBot,
+        currentRoomId: "room-other",
+      }) as ReactElement;
+      return notInRoomTree;
+    }
+    const notInRoomHtml = renderToStaticMarkup(createElement(CaptureNotInRoom));
+    expect(notInRoomHtml).not.toContain("Imported agent");
+    expect(notInRoomHtml).not.toContain("In this room");
+    expect(notInRoomHtml).toContain("Local workspace agent");
+
+    // 2. Tuli when viewing room-general (where Tuli is a member): shows "In this room", never "Imported agent"
+    let inRoomTree!: ReactElement;
+    function CaptureInRoom() {
+      inRoomTree = AgentCard({
+        agent: tuliAgent,
+        bot: tuliBot,
+        currentRoomId: "room-general",
+      }) as ReactElement;
+      return inRoomTree;
+    }
+    const inRoomHtml = renderToStaticMarkup(createElement(CaptureInRoom));
+    expect(inRoomHtml).toContain("In this room");
+    expect(inRoomHtml).not.toContain("Imported agent");
+  });
+
+  it("shows 'Available' and never 'Test engine' for uninvited catalog entries when engine is in test mode", () => {
+    fixture.instances = [
+      {
+        instanceId: "inst-test",
+        driverKind: "claude",
+        displayName: "Test engine",
+        simulated: true,
+        testEngine: true,
+        snapshot: { state: "available", simulated: true, testEngine: true },
+        models: { default: "test", options: [] },
+      },
+    ];
+
+    const uninvitedAgent: HubAgent = {
+      id: "okx-market-scout-v1",
+      name: "Markets",
+      summary: "Market scanner",
+      provider: "OKX.ai",
+      capabilities: ["chat"],
+      rooms: [],
+    };
+
+    let cardTree!: ReactElement;
+    function CaptureCard() {
+      cardTree = AgentCard({ agent: uninvitedAgent }) as ReactElement;
+      return cardTree;
+    }
+    const html = renderToStaticMarkup(createElement(CaptureCard));
+
+    // Uninvited catalog entry must show catalog availability, not runtime connectivity
+    expect(html).toContain("Available");
+    expect(html).not.toContain("Test engine");
+    expect(html).not.toContain("TEST ENGINE");
+
+    // But an imported bot in the workspace shows Test engine
+    const importedAgent: HubAgent = {
+      ...uninvitedAgent,
+      importedBotId: "bot-markets",
+      rooms: [{ id: "room-general", name: "General" }],
+    };
+    let importedTree!: ReactElement;
+    function CaptureImportedCard() {
+      importedTree = AgentCard({
+        agent: importedAgent,
+        bot: {
+          id: "bot-markets",
+          name: "Markets",
+          okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1" },
+          modelSelection: { instanceId: "inst-test" },
+        },
+      }) as ReactElement;
+      return importedTree;
+    }
+    const importedHtml = renderToStaticMarkup(createElement(CaptureImportedCard));
+    expect(importedHtml).toContain("Test engine");
   });
 });

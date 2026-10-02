@@ -14,7 +14,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { MausAvatar } from "@/components/Avatar";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
+import type { BotIdentityLike } from "@/lib/agent-identity";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -72,17 +73,20 @@ interface Action {
 export function Spotlight({
   anchor,
   placement,
-  mascot = "curious",
+  mascot: _mascot = "curious",
+  bot,
   title,
   children,
   progress,
   primary,
   secondary,
   onDone,
+  modal = true,
 }: {
   anchor: string | null;
   placement: "above" | "below" | "right";
   mascot?: MausState;
+  bot?: BotIdentityLike | null;
   title?: ReactNode;
   children: ReactNode;
   /** "Step 2 of 6", shown small under the text. */
@@ -93,6 +97,8 @@ export function Spotlight({
   secondary?: Action;
   /** Escape or close button. */
   onDone: () => void;
+  /** Whether this spotlight is a modal dialog. Nonmodal hints do not steal focus. */
+  modal?: boolean;
 }) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [composerRect, setComposerRect] = useState<Rect | null>(null);
@@ -103,6 +109,19 @@ export function Spotlight({
   const [settled, setSettled] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [cardHeight, setCardHeight] = useState(CARD_ESTIMATED_H);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previousActiveElement.current = (document.activeElement as HTMLElement) ?? null;
+    return () => {
+      if (previousActiveElement.current && typeof previousActiveElement.current.focus === "function") {
+        try {
+          previousActiveElement.current.focus();
+        } catch {}
+      }
+    };
+  }, []);
+
 
   // Follow the anchor: layout, scroll, resize, and the anchor's own size.
   useLayoutEffect(() => {
@@ -161,6 +180,7 @@ export function Spotlight({
         return;
       }
       if (e.key === "Tab") {
+        if (!modal) return;
         const card = cardRef.current;
         if (!card) return;
         const focusable = card.querySelectorAll<HTMLElement>(
@@ -173,21 +193,27 @@ export function Spotlight({
         }
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
-        if (e.shiftKey && (document.activeElement === first || !card.contains(document.activeElement))) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
+        if (e.shiftKey) {
+          if (document.activeElement === first || !card.contains(document.activeElement)) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last || !card.contains(document.activeElement)) {
+            e.preventDefault();
+            first?.focus();
+          }
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onDone]);
+  }, [modal, onDone]);
 
   // Auto-focus primary action or close button on mount / anchor change
+  // Auto-focus primary action or close button on mount / anchor change (modal only)
   useEffect(() => {
+    if (!modal) return;
     const timer = setTimeout(() => {
       const card = cardRef.current;
       if (!card) return;
@@ -195,7 +221,7 @@ export function Spotlight({
       target?.focus();
     }, 50);
     return () => clearTimeout(timer);
-  }, [anchor]);
+  }, [anchor, modal]);
 
   // an anchored step whose control is not on screen yet shows nothing
   if (anchor && !rect) return null;
@@ -252,25 +278,29 @@ export function Spotlight({
         ref={cardRef}
         data-tour-card
         className="pointer-events-auto absolute left-0 top-0 transition-transform duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-        style={{ transform: placementResult.transform, width: placementResult.width }}
+        style={{
+          transform: placementResult.transform,
+          width: placementResult.width,
+          maxHeight: placementResult.height,
+        }}
       >
         <div
-          role="dialog"
-          aria-modal="true"
+          role={modal ? "dialog" : "status"}
+          aria-modal={modal ? "true" : undefined}
           className={cn(
-            "relative flex items-start gap-3 border border-hairline bg-panel p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)]",
+            "relative flex items-start gap-3 border border-hairline bg-panel p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.6)] overflow-y-auto",
             originClass,
             settled ? "animate-spot-in motion-reduce:animate-none" : "opacity-0",
           )}
+          style={{ maxHeight: placementResult.height }}
         >
           <span aria-hidden className="frame-corner" data-corner="tl" />
           <span aria-hidden className="frame-corner" data-corner="tr" />
           <span aria-hidden className="frame-corner" data-corner="bl" />
           <span aria-hidden className="frame-corner" data-corner="br" />
           <div className="shrink-0">
-            <MausAvatar
-              color="green"
-              state={mascot}
+            <AgentMark
+              bot={bot ?? { id: "okx-guide", name: "OKX", okxImport: { kind: "okx-catalog", catalogAvatar: "chart" } }}
               size={38}
             />
           </div>

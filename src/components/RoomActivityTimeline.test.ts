@@ -197,6 +197,55 @@ describe("RoomActivityTimeline derivation", () => {
       statusTone: "danger",
     });
   });
+  it("orders tool steps before the reply it preceded even when timestamps tie or input is out-of-order", () => {
+    const messages: Message[] = [
+      {
+        id: "msg-reply",
+        role: "bot",
+        kind: "text",
+        at: 2000,
+        text: "Command finished",
+        turnId: "turn-1",
+        turnTerminal: true,
+        from: { botId: "bot-markets", name: "Markets", color: "cyan" },
+      },
+      {
+        id: "msg-tool",
+        role: "bot",
+        kind: "activity",
+        at: 2000,
+        turnId: "turn-1",
+        turnTerminal: false,
+        from: { botId: "bot-markets", name: "Markets", color: "cyan" },
+        tool: { name: "bash", ok: true, summary: "echo hi", input: "echo hi", output: "hi\n" },
+      },
+      {
+        id: "msg-task",
+        role: "user",
+        kind: "text",
+        at: 1000,
+        text: "run echo",
+      },
+    ];
+
+    const events = deriveRoomTimelineEvents(messages, mockBots);
+    expect(events.map((e) => e.kind)).toEqual(["task", "tool", "reply"]);
+    expect(events[1]?.action).toBe("echo hi");
+    expect(events[2]?.action).toBe("Command finished");
+  });
+
+  it("sets hasEvidence true only for events with tool evidence or artifacts", () => {
+    const messages: Message[] = [
+      { id: "m1", role: "user", kind: "text", at: 1000, text: "plain task" },
+      { id: "m2", role: "bot", kind: "activity", at: 1100, tool: { name: "echo", ok: true, output: "done" } },
+      { id: "m3", role: "bot", kind: "text", at: 1200, text: "plain reply" },
+    ];
+
+    const events = deriveRoomTimelineEvents(messages, mockBots);
+    expect(events[0]?.hasEvidence).toBe(false);
+    expect(events[1]?.hasEvidence).toBe(true);
+    expect(events[2]?.hasEvidence).toBe(false);
+  });
 });
 
 describe("RoomActivityTimeline component", () => {
@@ -239,5 +288,29 @@ describe("RoomActivityTimeline component", () => {
     expect(markup).toContain("PASS");
     expect(markup).toContain("View evidence");
     expect(markup).toContain("Show technical details");
+  });
+  it("renders 'View evidence' only for tool/evidence events and not plain tasks or plain replies", () => {
+    const messages: Message[] = [
+      { id: "task-1", role: "user", kind: "text", at: 1000, text: "Task only" },
+      { id: "tool-1", role: "bot", kind: "activity", at: 2000, tool: { name: "bash", ok: true, output: "result" } },
+      { id: "reply-1", role: "bot", kind: "text", at: 3000, text: "Plain reply without evidence" },
+    ];
+
+    const markup = renderToStaticMarkup(
+      createElement(
+        StoreProvider,
+        null,
+        createElement(RoomActivityTimeline, {
+          group: mockGroup,
+          messages,
+          bots: mockBots,
+          onClose: () => undefined,
+        }),
+      ),
+    );
+
+    const matches = markup.match(/<button[^>]*>View evidence<\/button>/g) || [];
+    expect(matches).toHaveLength(1);
+    expect(markup).toContain("room-activity-timeline-drawer");
   });
 });

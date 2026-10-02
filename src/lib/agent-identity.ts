@@ -2,7 +2,7 @@ import { t } from "@/lib/i18n";
 import type { Bot, InstanceInfo } from "@/state/store";
 
 export type AgentSource = "okx-catalog" | "local";
-export type AgentStatus = "available" | "offline" | "working";
+export type AgentStatus = "available" | "offline" | "working" | "testEngine";
 
 export type BotIdentityLike =
   | Bot
@@ -29,6 +29,8 @@ export type BotIdentityLike =
         avatar?: string;
         catalogAvatar?: string;
       };
+      isImported?: boolean;
+      inRoom?: boolean;
     };
 
 export interface EngineInstanceStateLike {
@@ -37,16 +39,22 @@ export interface EngineInstanceStateLike {
     | InstanceInfo[]
     | ReadonlyArray<{
         instanceId: string;
+        simulated?: boolean;
+        testEngine?: boolean;
         snapshot?: {
           state?: string;
           reason?: string;
+          simulated?: boolean;
         };
       }>
     | Array<{
         instanceId: string;
+        simulated?: boolean;
+        testEngine?: boolean;
         snapshot?: {
           state?: string;
           reason?: string;
+          simulated?: boolean;
         };
       }>;
 }
@@ -80,6 +88,7 @@ export function agentCapabilities(bot?: BotIdentityLike | null): string[] {
 export function agentStatus(
   bot?: BotIdentityLike | null,
   state?: EngineInstanceStateLike | null,
+  options?: { isImported?: boolean; inRoom?: boolean },
 ): AgentStatus {
   if (!state?.instances || state.instances.length === 0) {
     return "offline";
@@ -91,6 +100,10 @@ export function agentStatus(
     engineId?: string;
     activity?: string;
     busy?: boolean;
+    isImported?: boolean;
+    inRoom?: boolean;
+    okxImport?: { externalAgentId?: string; kind?: string };
+    id?: string;
   } | null | undefined;
 
   const instanceId =
@@ -98,21 +111,50 @@ export function agentStatus(
     botObj?.instanceId ??
     botObj?.engineId;
 
+  const matchingInstance = instanceId
+    ? state.instances.find((i) => i.instanceId === instanceId)
+    : state.instances.find((i) => i.snapshot?.state === "available") ?? state.instances[0];
+
   const isAvailable = instanceId
-    ? state.instances.find((i) => i.instanceId === instanceId)?.snapshot?.state === "available"
+    ? matchingInstance?.snapshot?.state === "available"
     : state.instances.some((i) => i.snapshot?.state === "available");
 
   if (!isAvailable) {
     return "offline";
   }
 
-  if (botObj?.activity === "working" || botObj?.busy === true) {
+  const isOkx = agentSource(bot) === "okx-catalog";
+  // Catalog availability must not imply runtime connectivity:
+  // show engine mode only for actual workspace bots (members/imported), never for catalog-only entries.
+  const isActualWorkspaceBot =
+    !isOkx ||
+    Boolean(
+      options?.inRoom ||
+        options?.isImported ||
+        botObj?.inRoom ||
+        botObj?.isImported ||
+        (botObj?.okxImport?.externalAgentId && botObj?.id && botObj.id !== botObj.okxImport.externalAgentId),
+    );
+
+  const instAny = matchingInstance as
+    | { simulated?: boolean; testEngine?: boolean; snapshot?: { simulated?: boolean; testEngine?: boolean } }
+    | undefined;
+  if (
+    isActualWorkspaceBot &&
+    (instAny?.simulated === true ||
+      instAny?.testEngine === true ||
+      instAny?.snapshot?.simulated === true ||
+      instAny?.snapshot?.testEngine === true)
+  ) {
+    return "testEngine";
+  }
+
+  if (isActualWorkspaceBot && (botObj?.activity === "working" || botObj?.busy === true)) {
     return "working";
   }
 
   return "available";
 }
-
 /**
  * Localized source label ("OKX.AI catalog" vs "Local workspace agent").
  */
@@ -129,6 +171,8 @@ export function agentStatusLabel(status: AgentStatus): string {
   switch (status) {
     case "available":
       return t("agent.status.available");
+    case "testEngine":
+      return t("agent.status.testEngine");
     case "working":
       return t("agent.status.working");
     case "offline":

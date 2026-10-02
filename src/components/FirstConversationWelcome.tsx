@@ -11,7 +11,7 @@ import {
 } from "@/lib/drafts";
 import {
   applyWelcomeSuggestion,
-  WELCOME_SUGGESTIONS,
+  welcomeSuggestionsForBot,
   welcomeSuggestionLabel,
 } from "@/lib/first-conversation-welcome";
 import {
@@ -172,7 +172,7 @@ export function FirstConversationWelcome({
         </div>
 
         <div className="mt-3 overflow-hidden border border-hairline bg-inset/40 divide-y divide-hairline">
-          {WELCOME_SUGGESTIONS.map((suggestion) => (
+          {welcomeSuggestionsForBot(bot).map((suggestion) => (
             <button
               key={suggestion.id}
               type="button"

@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getDraft } from "./drafts";
 import {
   applyWelcomeSuggestion,
+  isOkxCatalogAgent,
+  OKX_WELCOME_SUGGESTIONS,
   WELCOME_SUGGESTIONS,
   welcomeSuggestionDraft,
+  welcomeSuggestionsForBot,
 } from "./first-conversation-welcome";
 
 function memoryStorage(): Storage {
@@ -62,6 +65,24 @@ describe("welcome suggestion drafts", () => {
       expect(draft.toLowerCase()).not.toContain("every morning automatically");
       expect(draft.toLowerCase()).not.toContain("i will open your computer");
       expect(draft.toLowerCase()).not.toContain("without asking");
+    }
+  });
+
+  it("returns capability-specific starters for OKX catalog agents", () => {
+    const markets = { name: "Markets", okxImport: { kind: "okx-catalog" } };
+    const suggestions = welcomeSuggestionsForBot(markets);
+    expect(suggestions).toBe(OKX_WELCOME_SUGGESTIONS);
+    expect(suggestions.map((s) => s.id)).toEqual(["readiness", "trust", "trending"]);
+    expect(isOkxCatalogAgent(markets)).toBe(true);
+    expect(isOkxCatalogAgent({ name: "Pepper" })).toBe(false);
+    expect(welcomeSuggestionsForBot({ name: "Pepper" })).toBe(WELCOME_SUGGESTIONS);
+  });
+
+  it("ensures OKX starters have capability-honest drafts", () => {
+    for (const suggestion of OKX_WELCOME_SUGGESTIONS) {
+      const draft = welcomeSuggestionDraft(suggestion);
+      expect(draft.trim().length).toBeGreaterThan(10);
+      expect(draft).toMatch(/run|scan|trust|trending/i);
     }
   });
 });

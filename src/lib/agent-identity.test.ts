@@ -159,6 +159,53 @@ describe("agentStatus offline detection", () => {
     expect(agentStatus(unconfiguredBot, availableEngine)).toBe("available");
     expect(agentStatus(unconfiguredBot, unavailableEngine)).toBe("offline");
   });
+
+  it("returns available (never testEngine) for uninvited catalog entries even when engine is simulated/testEngine", () => {
+    const testEngineState: EngineInstanceStateLike = {
+      instances: [
+        {
+          instanceId: "inst-test",
+          simulated: true,
+          testEngine: true,
+          snapshot: { state: "available", simulated: true },
+        },
+      ],
+    };
+
+    const uninvitedCatalogAgent: BotIdentityLike = {
+      id: "okx-market-scout-v1",
+      name: "Markets",
+      okxImport: {
+        kind: "okx-catalog",
+        externalAgentId: "okx-market-scout-v1",
+      },
+      isImported: false,
+      inRoom: false,
+    };
+    // Catalog availability must not imply runtime connectivity
+    expect(agentStatus(uninvitedCatalogAgent, testEngineState)).toBe("available");
+    expect(agentStatus(uninvitedCatalogAgent, testEngineState, { isImported: false, inRoom: false })).toBe("available");
+
+    // But actual workspace bots (imported or in room) show testEngine
+    const importedBot: BotIdentityLike = {
+      ...uninvitedCatalogAgent,
+      isImported: true,
+    };
+    expect(agentStatus(importedBot, testEngineState)).toBe("testEngine");
+
+    const inRoomBot: BotIdentityLike = {
+      ...uninvitedCatalogAgent,
+      inRoom: true,
+    };
+    expect(agentStatus(inRoomBot, testEngineState)).toBe("testEngine");
+
+    // Local workspace bots are actual workspace bots and show testEngine
+    const localBot: BotIdentityLike = {
+      id: "local-tuli",
+      name: "Tuli",
+    };
+    expect(agentStatus(localBot, testEngineState)).toBe("testEngine");
+  });
 });
 
 describe("offline state copy", () => {

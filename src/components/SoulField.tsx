@@ -107,6 +107,7 @@ export function SoulField({
       )}
       <textarea
         id={`bot-soul-${bot.id}`}
+        aria-label="Standing instructions (SOUL.md)"
         className={cn(
           fieldClass,
           "min-h-[220px] resize-y font-mono text-[12px] leading-relaxed",

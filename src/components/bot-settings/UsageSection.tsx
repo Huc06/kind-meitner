@@ -29,6 +29,7 @@ export function UsageSection({ bot }: { bot: Bot }) {
         <div className="text-[14px] font-medium text-ink">Usage</div>
         <button
           type="button"
+          aria-label="All bots"
           onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: "usage" })}
           className="font-mono text-[11px] uppercase tracking-wide text-ink-secondary hover:text-ink"
         >

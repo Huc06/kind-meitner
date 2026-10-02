@@ -22,6 +22,8 @@ export type EnvelopeResource = {
   walletRequired?: boolean;
   mainnet?: boolean;
   provenance?: string;
+  limitations?: string[];
+  lastChecked?: string | number;
 };
 
 export type ReadinessRunCardData = {
@@ -34,6 +36,8 @@ export type ReadinessRunCardData = {
   score?: number | string;
   resource?: EnvelopeResource;
   lastRun?: GateLastRun;
+  limitations?: string[];
+  lastChecked?: string | number;
 };
 
 export type TrustCardData = {
@@ -53,6 +57,8 @@ export type TrustCardData = {
   rawJson: string;
   resource?: EnvelopeResource;
   lastRun?: GateLastRun;
+  limitations?: string[];
+  lastChecked?: string | number;
 };
 export type OkxActionCardData = ReadinessRunCardData | TrustCardData;
 
@@ -129,21 +135,27 @@ export function extractEnvelope(parsed: unknown): {
   resource: EnvelopeResource | undefined;
 } {
   if (Array.isArray(parsed) && parsed.length > 0) {
-    const first = parsed[0];
-    if (isRecord(first)) {
-      if (isRecord(first.text)) return extractEnvelope(first.text);
-      if (typeof first.text === "string") {
-        try {
-          return extractEnvelope(JSON.parse(first.text));
-        } catch {
-          /* not json string */
+    for (const item of parsed) {
+      if (isRecord(item)) {
+        if (isRecord(item.text)) {
+          const res = extractEnvelope(item.text);
+          if (res.data) return res;
         }
+        if (typeof item.text === "string") {
+          try {
+            const res = extractEnvelope(JSON.parse(item.text));
+            if (res.data) return res;
+          } catch {
+            /* not json string */
+          }
+        }
+        const res = extractEnvelope(item);
+        if (res.data) return res;
       }
-      return extractEnvelope(first);
     }
+    return { data: null, resource: undefined };
   }
   if (!isRecord(parsed)) return { data: null, resource: undefined };
-  if (isRecord(parsed.result)) return extractEnvelope(parsed.result);
 
   let resource: EnvelopeResource | undefined;
   const rawRes = isRecord(parsed.resource) ? parsed.resource : undefined;
@@ -154,7 +166,29 @@ export function extractEnvelope(parsed: unknown): {
       walletRequired: typeof rawRes.walletRequired === "boolean" ? rawRes.walletRequired : undefined,
       mainnet: typeof rawRes.mainnet === "boolean" ? rawRes.mainnet : undefined,
       provenance: text(rawRes.provenance, 500) ?? undefined,
+      limitations: listOfText(rawRes.limitations) ?? undefined,
+      lastChecked: typeof rawRes.lastChecked === "string" || typeof rawRes.lastChecked === "number" ? rawRes.lastChecked : undefined,
     };
+  }
+
+  if (isRecord(parsed.result)) {
+    const inner = extractEnvelope(parsed.result);
+    if (inner.data) {
+      return {
+        data: inner.data,
+        resource: resource ?? inner.resource,
+      };
+    }
+  }
+
+  if (Array.isArray(parsed.content)) {
+    const inner = extractEnvelope(parsed.content);
+    if (inner.data) {
+      return {
+        data: inner.data,
+        resource: resource ?? inner.resource,
+      };
+    }
   }
 
   if (isRecord(parsed.data)) {
@@ -166,6 +200,8 @@ export function extractEnvelope(parsed: unknown): {
         walletRequired: typeof dRes.walletRequired === "boolean" ? dRes.walletRequired : undefined,
         mainnet: typeof dRes.mainnet === "boolean" ? dRes.mainnet : undefined,
         provenance: text(dRes.provenance, 500) ?? undefined,
+        limitations: listOfText(dRes.limitations) ?? undefined,
+        lastChecked: typeof dRes.lastChecked === "string" || typeof dRes.lastChecked === "number" ? dRes.lastChecked : undefined,
       };
     }
     return { data: parsed.data, resource };
@@ -200,6 +236,10 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     const score = typeof data.score === "number" || typeof data.score === "string" ? data.score : undefined;
     if (!endpointUrl || !verdict || !readinessVerdicts.has(verdict as ReadinessVerdict) || !checks || !remediation) return null;
     const lastRun = extractGateLastRun(data, checks);
+    const limitations = listOfText(data.limitations) ?? resource?.limitations;
+    const lastChecked = (typeof data.lastChecked === "string" || typeof data.lastChecked === "number")
+      ? data.lastChecked
+      : resource?.lastChecked;
     return {
       kind: "readiness",
       endpointUrl,
@@ -210,6 +250,8 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
       ...(score !== undefined ? { score } : {}),
       ...(resource ? { resource } : {}),
       ...(lastRun ? { lastRun } : {}),
+      ...(limitations && limitations.length > 0 ? { limitations } : {}),
+      ...(lastChecked !== undefined ? { lastChecked } : {}),
     };
   }
 
@@ -239,6 +281,10 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   const safeNextStep = text(data.safeNextStep);
   if (!agentId || !decision || !trustDecisions.has(decision as TrustDecision) || !summary || !signalsList || !notChecked || !remediation || !safeNextStep) return null;
   const lastRun = extractGateLastRun(data, signalsList);
+  const limitations = listOfText(data.limitations) ?? resource?.limitations;
+  const lastChecked = (typeof data.lastChecked === "string" || typeof data.lastChecked === "number")
+    ? data.lastChecked
+    : resource?.lastChecked;
   return {
     kind: "trust",
     agentId,
@@ -256,6 +302,8 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     rawJson,
     ...(resource ? { resource } : {}),
     ...(lastRun ? { lastRun } : {}),
+    ...(limitations && limitations.length > 0 ? { limitations } : {}),
+    ...(lastChecked !== undefined ? { lastChecked } : {}),
   };
 }
 

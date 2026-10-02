@@ -6,7 +6,7 @@ import type { LocaleKey } from "@/locales";
 import { setComposerDraft } from "./drafts";
 import { t } from "./i18n";
 
-export type WelcomeSuggestionId = "inbox" | "meetings" | "slack" | "research";
+export type WelcomeSuggestionId = "inbox" | "meetings" | "slack" | "research" | "readiness" | "trust" | "trending";
 
 export interface WelcomeSuggestion {
   id: WelcomeSuggestionId;
@@ -43,6 +43,43 @@ export const WELCOME_SUGGESTIONS: readonly WelcomeSuggestion[] = [
     draftKey: "chat.welcome.suggestion.research.draft",
   },
 ];
+export const OKX_WELCOME_SUGGESTIONS: readonly WelcomeSuggestion[] = [
+  {
+    id: "readiness",
+    letter: "A",
+    labelKey: "chat.welcome.suggestion.readiness",
+    draftKey: "chat.welcome.suggestion.readiness.draft",
+  },
+  {
+    id: "trust",
+    letter: "B",
+    labelKey: "chat.welcome.suggestion.trust",
+    draftKey: "chat.welcome.suggestion.trust.draft",
+  },
+  {
+    id: "trending",
+    letter: "C",
+    labelKey: "chat.welcome.suggestion.trending",
+    draftKey: "chat.welcome.suggestion.trending.draft",
+  },
+];
+
+export function isOkxCatalogAgent(bot?: {
+  id?: string;
+  name?: string;
+  okxImport?: { kind?: string; externalAgentId?: string; provider?: string } | null;
+} | null): boolean {
+  if (!bot) return false;
+  return bot.okxImport?.kind === "okx-catalog";
+}
+
+export function welcomeSuggestionsForBot(bot?: {
+  id?: string;
+  name?: string;
+  okxImport?: { kind?: string; externalAgentId?: string; provider?: string } | null;
+} | null): readonly WelcomeSuggestion[] {
+  return isOkxCatalogAgent(bot) ? OKX_WELCOME_SUGGESTIONS : WELCOME_SUGGESTIONS;
+}
 
 export function welcomeSuggestionLabel(suggestion: WelcomeSuggestion): string {
   return t(suggestion.labelKey);

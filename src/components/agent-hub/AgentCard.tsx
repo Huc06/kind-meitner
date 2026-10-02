@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChannelPicker, formatChannelName } from "./ChannelPicker";
 import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
 import type { BotIdentityLike } from "@/lib/agent-identity";
+import { getDraft, setComposerDraft } from "@/lib/drafts";
 import { Check, Loader2, ArrowRight, MessageSquare, AlertCircle } from "lucide-react";
 
 export interface AgentCardProps {
@@ -50,11 +51,23 @@ export function AgentCard({
   }, [resultMessage]);
 
   const isOkx = agent.provider.toLowerCase().includes("okx") || Boolean(bot?.okxImport);
+  const isAgentInRoom = Boolean(
+    _currentRoomId &&
+      (agent.rooms.some((r) => r.id === _currentRoomId) ||
+        Boolean(bot?.id && state.groups?.find((g) => g.id === _currentRoomId)?.memberIds?.includes(bot.id))),
+  );
+  const isAgentImported = isOkx && Boolean(
+    agent.importedBotId ||
+      agent.rooms.length > 0 ||
+      (bot && Boolean(bot.okxImport)),
+  );
 
   const botForIdentity: BotIdentityLike = bot ?? {
     id: agent.importedBotId ?? agent.id,
     name: agent.name,
     description: agent.summary,
+    isImported: isAgentImported,
+    inRoom: isAgentInRoom,
     okxImport: isOkx
       ? {
           kind: "okx-catalog",
@@ -140,12 +153,17 @@ export function AgentCard({
   const handleUseInChannel = (roomId: string) => {
     const targetRoom = (state.groups ?? []).find((g) => g.id === roomId);
     if (!targetRoom) return;
+    const draftId = `group:${targetRoom.id}:${targetRoom.threadId}`;
+    const store = typeof localStorage !== "undefined" ? localStorage : undefined;
+    const existingDraft = getDraft(store, draftId);
+    if (!existingDraft || existingDraft.trim() === "") {
+      setComposerDraft(draftId, `@${agent.name} `);
+    }
     dispatch({ type: "togglePlugins", open: false });
     dispatch({ type: "select", id: targetRoom.id });
   };
 
   const isImported = agent.rooms.length > 0;
-
   return (
     <div
       className="flex flex-col border border-hairline bg-card p-4 transition-colors hover:border-ink-secondary/40 gap-3"
@@ -157,6 +175,8 @@ export function AgentCard({
         variant="card"
         state={state}
         showCapabilities={false}
+        isImported={isAgentImported}
+        inRoom={isAgentInRoom}
       />
 
       {/* Description */}
@@ -184,47 +204,51 @@ export function AgentCard({
       <div className="font-mono text-[11px] text-ink-secondary">
         <span className="text-ink-secondary">Provenance:</span>{" "}
         <span className="text-ink">
-          {isOkx ? "OKX.AI catalog · local registry" : "Local workspace agent"}
+          {isOkx ? t("okxHub.provenance.localCatalog") : t("okxHub.provenance.localWorkspace")}
         </span>
       </div>
 
       {/* Rooms display for imported agents */}
       {isImported && (
-        <div className="border-t border-hairline pt-3">
+        <div className="border-t border-hairline pt-3 min-w-0 w-full">
           <div className="label-mono mb-2 text-[10px] text-ink-secondary">
             {agent.rooms.length === 1
               ? t("okxHub.inRoomsLabelOne")
               : t("okxHub.inRoomsLabelMany", { count: agent.rooms.length })}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 min-w-0 w-full">
             {agent.rooms.map((room) => (
               <div
                 key={room.id}
-                className="flex items-center gap-1.5 border border-hairline bg-inset px-2 py-1 text-[11px] font-mono text-ink"
+                className="flex flex-col gap-1.5 border border-hairline bg-inset p-2 text-[11px] font-mono text-ink min-w-0 w-full overflow-hidden"
               >
-                <span>{formatChannelName(room.name)}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => handleOpenRoom(room.id)}
-                  title={t("okxHub.action.openRoom")}
-                  className="h-5 px-1 text-[10px]"
-                >
-                  <ArrowRight size={10} className="mr-0.5 inline" />
-                  {t("okxHub.action.openRoom")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => handleUseInChannel(room.id)}
-                  title={t("okxHub.action.useInChannel")}
-                  className="h-5 px-1 text-[10px]"
-                >
-                  <MessageSquare size={10} className="mr-0.5 inline" />
-                  {t("okxHub.action.useInChannel")}
-                </Button>
+                <span className="truncate font-medium min-w-0 w-full" title={formatChannelName(room.name)}>
+                  {formatChannelName(room.name)}
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0 w-full">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => handleOpenRoom(room.id)}
+                    title={t("okxHub.action.openRoom")}
+                    className="h-5 px-1.5 text-[10px] shrink-0"
+                  >
+                    <ArrowRight size={10} className="mr-0.5 inline" />
+                    {t("okxHub.action.openRoom")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => handleUseInChannel(room.id)}
+                    title={t("okxHub.action.useInChannel")}
+                    className="h-5 px-1.5 text-[10px] shrink-0"
+                  >
+                    <MessageSquare size={10} className="mr-0.5 inline" />
+                    {t("okxHub.action.useInChannel")}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -249,7 +273,17 @@ export function AgentCard({
                   />
                 </div>
               )}
-              {nonDmGroups.length > 0 && (
+              {isAgentInRoom ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled
+                  className="shrink-0"
+                >
+                  {t("agent.type.inRoom")}
+                </Button>
+              ) : nonDmGroups.length > 0 ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -264,10 +298,10 @@ export function AgentCard({
                       {t("okxHub.adding")}
                     </>
                   ) : (
-                    "Invite to room"
+                    t("okxHub.inviteToRoom")
                   )}
                 </Button>
-              )}
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -275,7 +309,7 @@ export function AgentCard({
                 onClick={() => onSelect?.(agent)}
                 className="shrink-0"
               >
-                View details
+                {t("okxHub.viewDetails")}
               </Button>
             </div>
 

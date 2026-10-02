@@ -10,10 +10,10 @@
 // so a user recognises both when they meet them for real.
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, MousePointer2, Zap } from "lucide-react";
-import { MausAvatar } from "@/components/Avatar";
+import { AgentMark } from "@/components/agent-identity/AgentMark";
 import { cn } from "@/lib/cn";
 import { reducedMotion } from "@/lib/onboarding";
-import type { SceneProps } from "./OrbitingApps";
+import type { SceneProps } from "./types";
 
 const AUTOMATIONS_MS = 6200;
 
@@ -148,7 +148,7 @@ export function Automations({ playing, onCue, onEnded, label }: SceneProps) {
                     )}
                     style={{ top: ROW + 2, height: ROW - 8 }}
                   >
-                    <MausAvatar color="green" state={busy ? "working" : "idle"} size={16} animated={!still} />
+                    <AgentMark bot={{ id: "routine", name: "Routine" }} size={16} />
                     <div className="min-w-0">
                       <div className="truncate text-[9.5px] font-semibold leading-tight text-ink">Weekly report</div>
                       <div className="font-mono text-[8px] leading-tight tabular-nums text-ink-secondary">09:00 · weekly</div>
@@ -203,12 +203,7 @@ export function Automations({ playing, onCue, onEnded, label }: SceneProps) {
       {/* the guide, asleep until something needs it */}
       <div className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2">
         <div className="relative">
-          <MausAvatar
-            color="green"
-            state={hookDone ? "happy" : hook ? "alerting" : done ? "proud" : firing ? "working" : "drowsy"}
-            size={40}
-            animated={!still}
-          />
+          <AgentMark bot={{ id: "guide", name: "Guide" }} size={40} />
         </div>
       </div>
     </div>

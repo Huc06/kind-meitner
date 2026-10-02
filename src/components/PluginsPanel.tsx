@@ -233,10 +233,15 @@ export function ServiceIcon({ card, className = "size-11" }: { card: Pick<Toolki
 }
 
 export function PluginsPanel() {
-  const { state, dispatch } = useStore();
-  if (state.pluginsSurface === "hub") {
-    return <AgentHubPanel />;
+  const { state } = useStore();
+  if (state.pluginsSurface === "apps") {
+    return <LegacyAppsPanel />;
   }
+  return <AgentHubPanel />;
+}
+
+export function LegacyAppsPanel() {
+  const { state, dispatch } = useStore();
   const remoteClient = window.ogb?.remoteClient?.active === true;
   const dialogRef = useRef<HTMLDivElement>(null);
   const surface = state.pluginsSurface;

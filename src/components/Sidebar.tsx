@@ -37,6 +37,7 @@ import { peerLine } from "@/lib/peer-message";
 
 import { HELP_CENTER_URL, openExternalLink } from "@/lib/app-links";
 import { AgentMark } from "./agent-identity/AgentMark";
+import { agentSource, agentSourceLabel } from "@/lib/agent-identity";
 import { BotAvatar, InitialsAvatar } from "./Avatar";
 import { stateForBot } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
@@ -96,6 +97,7 @@ import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { SidebarBotActivity, sidebarBotActivityTasks } from "./SidebarBotActivity";
 import { ShortcutHint } from "./ShortcutHint";
+import { SidebarMoreMenu } from "./SidebarMoreMenu";
 
 const SECTION_LABEL_KEYS: Record<string, LocaleKey> = {
   [PINNED_SECTION_ID]: "sidebar.section.pinned",
@@ -153,28 +155,37 @@ function groupPreview(group: Group, bots: Bot[]): string {
 /** A small member stack identifies a group without turning it into a card. */
 function StackedMauses({ members, density }: { members: Bot[]; density: SidebarDensity }) {
   const iconOnly = density === "icons";
-  const slotSize = iconOnly ? "size-12" : density === "compact" ? "size-7" : "size-8";
-  const singleSize = iconOnly ? 44 : density === "compact" ? 26 : 32;
+  const slotClass = iconOnly
+    ? "flex size-12 shrink-0 items-center justify-center"
+    : density === "compact"
+      ? "flex h-7 w-9 shrink-0 items-center justify-start pl-0.5"
+      : "flex h-8 w-10 shrink-0 items-center justify-start pl-0.5";
+  const singleSize = iconOnly ? 44 : density === "compact" ? 26 : 30;
+
   if (members.length <= 1) {
     const b = members[0];
     return (
-      <div className={cn("flex shrink-0 items-center justify-center", slotSize)}>
+      <div className={slotClass}>
         {b ? <AgentMark bot={b} size={singleSize} /> : <Users size={20} className="text-ink-secondary" />}
       </div>
     );
   }
-  const shown = members.slice(0, 3);
+
+  const maxShown = 2;
+  const shown = members.slice(0, maxShown);
   const extra = members.length - shown.length;
+  const markSize = iconOnly ? 22 : density === "compact" ? 16 : 18;
+
   return (
-    <div className={cn("flex shrink-0 items-center justify-center", slotSize)}>
-      <div className="flex items-center -space-x-2">
+    <div className={slotClass}>
+      <div className="flex items-center -space-x-1.5">
         {shown.map((b) => (
-          <span key={b.id} className="relative inline-flex ring-1 ring-panel">
-            <AgentMark bot={b} size={iconOnly ? 30 : 20} />
+          <span key={b.id} className="relative inline-flex ring-1 ring-panel shrink-0">
+            <AgentMark bot={b} size={markSize} />
           </span>
         ))}
         {extra > 0 && (
-          <span className="z-10 flex size-4 items-center justify-center border border-panel bg-raised text-[9px] font-mono text-ink-secondary">
+          <span className="z-10 flex size-4 items-center justify-center rounded-[2px] border border-panel bg-raised text-[9px] font-mono font-medium text-ink-secondary shrink-0">
             +{extra}
           </span>
         )}
@@ -1049,7 +1060,11 @@ export function BotListItem({
   // the role from Bot Settings → Title. A badge or tooltip beside the name
   // (#866, #871) always traded the name's width against the title's; its own
   // line above the name lets both truncate independently instead.
-  const title = bot.title.trim();
+  const isOkxCatalog = agentSource(bot) === "okx-catalog";
+  const rawTitle = bot.title.trim();
+  const title = (rawTitle === "OKX.ai Agent" || (isOkxCatalog && !rawTitle))
+    ? agentSourceLabel(bot)
+    : rawTitle;
   const rowClass = cn(
     "flex w-full items-center text-left outline-none transition-colors focus-visible:ring-1 focus-visible:ring-focus",
     iconOnly
@@ -1508,10 +1523,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   }>({ from: null, over: null });
   const roomListRef = useRef<HTMLDivElement>(null);
 
-  const isRoomsActive = state.activeView === "chat" && !state.pluginsOpen && !state.activityOpen;
-  const isHubActive = state.pluginsOpen && state.pluginsSurface === "hub" && state.hubTab !== "asps";
-  const isAspActive = state.pluginsOpen && state.pluginsSurface === "hub" && state.hubTab === "asps";
-  const isActivityActive = Boolean(state.activityOpen);
+  const isSettingsActive = Boolean(state.appSettingsOpen);
+  const isHubActive = !isSettingsActive && state.pluginsOpen && state.pluginsSurface === "hub";
+  const isActivityActive = !isSettingsActive && !state.pluginsOpen && Boolean(state.activityOpen) && state.activeView === "chat";
+  const isMoreActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && (state.activeView === "routines" || state.activeView === "okx-evaluator");
+  const isRoomsActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && state.activeView === "chat";
   const isRoutinesActive = state.activeView === "routines";
   const isEvaluatorActive = state.activeView === "okx-evaluator";
 
@@ -1527,12 +1543,25 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     dispatch({ type: "togglePlugins", open: true, surface: "hub", hubTab: "agents" });
   };
 
-  const handleAspDirectoryClick = () => {
-    dispatch({ type: "togglePlugins", open: true, surface: "hub", hubTab: "asps" });
-  };
-
   const handleActivityClick = () => {
-    dispatch({ type: "toggleActivity" });
+    if (state.activeView !== "chat") {
+      dispatch({ type: "showChat" });
+    }
+    if (state.pluginsOpen) {
+      dispatch({ type: "togglePlugins", open: false });
+    }
+    const hasRoomSelected = state.groups.some((g) => g.id === state.selectedId);
+    if (!hasRoomSelected && state.groups.length > 0) {
+      const mostRecent = [...state.groups].sort((a, b) => {
+        const lastA = a.messages.at(-1)?.at ?? a.createdAt;
+        const lastB = b.messages.at(-1)?.at ?? b.createdAt;
+        return lastB - lastA;
+      })[0] ?? state.groups[0]!;
+      dispatch({ type: "select", id: mostRecent.id });
+    }
+    if (!state.activityOpen) {
+      dispatch({ type: "toggleActivity", open: true });
+    }
   };
 
   const handleRoutinesClick = () => {
@@ -1791,19 +1820,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       aria-label={t("sidebar.aria")}
       data-native-view-overlay
       data-sidebar
+      data-open={open ? "true" : "false"}
       className={cn(
         "flex h-full shrink-0 flex-col frame-rule-right bg-panel transition-[width] duration-200",
         density === "icons" ? "w-[80px]" : density === "compact" ? "w-[272px]" : "w-[320px]",
-        // Below md only: the sidebar leaves the flow and slides in over the chat.
-        // Scoped with max-md: rather than cancelled with md: on purpose — Tailwind
-        // v4 emits the native `translate` property, and any value other than
-        // `none` turns this element into a containing block for its `fixed`
-        // descendants. Cancelling it with an `md:` prefix still emits a value, which
-        // silently reparents NewRoomPanel's overlay and the "+" menu backdrop on
-        // desktop.
-        "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40",
-        "max-md:transition-transform max-md:duration-200",
-        open ? "max-md:translate-x-0" : "max-md:-translate-x-full",
+        "sidebar-drawer",
       )}
     >
       {/* macOS owns inset traffic lights; Linux/Windows/browser use native chrome
@@ -1830,9 +1851,18 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         >
           <button
             type="button"
+            onClick={onClose}
+            aria-label="Close sidebar"
+            className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus min-[769px]:hidden"
+            title="Close sidebar"
+          >
+            <X size={16} />
+          </button>
+          <button
+            type="button"
             onClick={toggleCollapsed}
             aria-label={density === "icons" ? t("sidebar.density.expand") : t("sidebar.density.collapseAria")}
-            className="flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
+            className="hidden min-[769px]:flex size-7 items-center justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink outline-none focus-visible:ring-1 focus-visible:ring-focus"
             title={density === "icons" ? t("sidebar.density.expand") : t("sidebar.density.collapse")}
           >
             {density === "icons" ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
@@ -2066,26 +2096,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
         <button
           type="button"
-          onClick={handleAspDirectoryClick}
-          aria-label="ASP Directory"
-          title="ASP Directory"
-          aria-current={isAspActive ? "page" : undefined}
-          className={cn(
-            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
-            density === "icons"
-              ? "size-9 w-full justify-center px-2"
-              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
-            isAspActive
-              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
-              : "text-ink hover:bg-raised-hover",
-          )}
-        >
-          <Network size={16} className={cn("shrink-0", isAspActive ? "text-ink" : "text-ink-secondary")} />
-          {density !== "icons" && <span className="flex-1 truncate">ASP Directory</span>}
-        </button>
-
-        <button
-          type="button"
           onClick={handleActivityClick}
           aria-label="Activity"
           title="Activity"
@@ -2104,65 +2114,78 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           {density !== "icons" && <span className="flex-1 truncate">Activity</span>}
         </button>
 
+        <SidebarMoreMenu
+          density={density}
+          label="More"
+          active={isMoreActive}
+          badge={activeDisputesCount > 0 ? activeDisputesCount : undefined}
+          badgeTestId={activeDisputesCount > 0 ? "disputes-badge" : undefined}
+          badgeAriaLabel={activeDisputesCount > 0 ? "Evaluator Disputes" : undefined}
+          attention={state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt)}
+          items={[
+            {
+              key: "routines",
+              label: t("sidebar.nav.automations"),
+              icon: <CalendarDays size={15} />,
+              active: isRoutinesActive,
+              attention: state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt),
+              attentionTone: "danger",
+              onSelect: handleRoutinesClick,
+            },
+            {
+              key: "evaluator",
+              label: "Evaluator",
+              icon: <Scale size={15} />,
+              active: isEvaluatorActive,
+              trailing: activeDisputesCount > 0 ? (
+                <span
+                  data-testid="disputes-badge"
+                  aria-label="Evaluator Disputes"
+                  title="Evaluator Disputes"
+                  className="border border-hairline bg-panel font-mono text-[10px] text-ink flex items-center justify-center px-1.5 py-0.5"
+                >
+                  {activeDisputesCount}
+                </span>
+              ) : undefined,
+              onSelect: handleEvaluatorClick,
+            },
+          ]}
+        />
+
         <button
           type="button"
-          data-tour="nav-automations"
-          onClick={handleRoutinesClick}
-          aria-label={t("sidebar.nav.automations")}
-          title={t("sidebar.nav.automations")}
-          aria-current={isRoutinesActive ? "page" : undefined}
+          onClick={() => dispatch({ type: "toggleAppSettings" })}
+          aria-label={t("sidebar.menu.settings")}
+          title={t("sidebar.menu.settings")}
+          aria-current={isSettingsActive ? "page" : undefined}
           className={cn(
             "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
             density === "icons"
               ? "size-9 w-full justify-center px-2"
               : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
-            isRoutinesActive
+            isSettingsActive
               ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
               : "text-ink hover:bg-raised-hover",
           )}
         >
-          <CalendarDays size={16} className={cn("shrink-0", isRoutinesActive ? "text-ink" : "text-ink-secondary")} />
-          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.nav.automations")}</span>}
-          {state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt) && (
-            <span
-              className={cn(
-                "size-1.5 rounded-full bg-danger shrink-0",
-                density === "icons" ? "absolute top-1.5 right-1.5" : "ml-auto",
-              )}
-            />
-          )}
+          <SettingsIcon size={16} className={cn("shrink-0", isSettingsActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.menu.settings")}</span>}
         </button>
 
         <button
           type="button"
-          data-tour="nav-evaluator"
-          onClick={handleEvaluatorClick}
-          aria-label="Evaluator Disputes"
-          title="Evaluator Disputes"
-          aria-current={isEvaluatorActive ? "page" : undefined}
+          onClick={() => void openExternalLink(HELP_CENTER_URL)}
+          aria-label={t("sidebar.menu.help")}
+          title={t("sidebar.menu.help")}
           className={cn(
-            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus text-ink hover:bg-raised-hover",
             density === "icons"
               ? "size-9 w-full justify-center px-2"
               : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
-            isEvaluatorActive
-              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
-              : "text-ink hover:bg-raised-hover",
           )}
         >
-          <Scale size={16} className={cn("shrink-0", isEvaluatorActive ? "text-ink" : "text-ink-secondary")} />
-          {density !== "icons" && <span className="flex-1 truncate">Evaluator</span>}
-          {activeDisputesCount > 0 && (
-            <span
-              data-testid="disputes-badge"
-              className={cn(
-                "border border-hairline bg-panel font-mono text-[10px] text-ink flex items-center justify-center",
-                density === "icons" ? "absolute -top-0.5 -right-0.5 size-4" : "ml-auto px-1.5 py-0.5",
-              )}
-            >
-              {activeDisputesCount}
-            </span>
-          )}
+          <HelpCircle size={16} className="shrink-0 text-ink-secondary" />
+          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.menu.help")}</span>}
         </button>
       </nav>
 
@@ -2302,43 +2325,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
       {/* Lower section */}
       <div className={cn("pt-2 pb-2 frame-rule-above flex flex-col gap-0.5", density === "icons" ? "px-2 items-center" : "px-3")}>
-        {/* Settings */}
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "toggleAppSettings" })}
-          aria-label={t("sidebar.menu.settings")}
-          title={t("sidebar.menu.settings")}
-          aria-current={state.appSettingsOpen ? "page" : undefined}
-          className={cn(
-            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
-            density === "icons"
-              ? "size-9 w-full justify-center px-2"
-              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
-            state.appSettingsOpen
-              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
-              : "text-ink hover:bg-raised-hover",
-          )}
-        >
-          <SettingsIcon size={16} className={cn("shrink-0", state.appSettingsOpen ? "text-ink" : "text-ink-secondary")} />
-          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.menu.settings")}</span>}
-        </button>
-
-        {/* Help */}
-        <button
-          type="button"
-          onClick={() => void openExternalLink(HELP_CENTER_URL)}
-          aria-label={t("sidebar.menu.help")}
-          title={t("sidebar.menu.help")}
-          className={cn(
-            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus text-ink hover:bg-raised-hover",
-            density === "icons"
-              ? "size-9 w-full justify-center px-2"
-              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
-          )}
-        >
-          <HelpCircle size={16} className="shrink-0 text-ink-secondary" />
-          {density !== "icons" && <span className="flex-1 truncate">{t("sidebar.menu.help")}</span>}
-        </button>
 
         {/* Connection status */}
         <div

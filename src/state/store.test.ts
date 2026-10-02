@@ -1875,10 +1875,17 @@ describe("togglePlugins surface", () => {
     expect(opened.pluginsSurface).toBe("hub");
   });
 
-  it.each(["hub", "apps", "mcp"] as const)("accepts surface %s", (surface) => {
-    const state = reducer(initialState, { type: "togglePlugins", open: true, surface });
+  it("accepts surface apps", () => {
+    const state = reducer(initialState, { type: "togglePlugins", open: true, surface: "apps" });
     expect(state.pluginsOpen).toBe(true);
-    expect(state.pluginsSurface).toBe(surface);
+    expect(state.pluginsSurface).toBe("apps");
+  });
+
+  it("opens hub on mcp tab when surface is mcp", () => {
+    const state = reducer(initialState, { type: "togglePlugins", open: true, surface: "mcp" });
+    expect(state.pluginsOpen).toBe(true);
+    expect(state.pluginsSurface).toBe("hub");
+    expect(state.hubTab).toBe("mcp");
   });
 
   it("retains the active surface when toggled open without specifying a surface", () => {

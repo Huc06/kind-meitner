@@ -26,6 +26,11 @@ import { t } from "@/lib/i18n";
 
 type Lens = "run" | "events" | "raw";
 
+const TAB_LABELS: Record<Lens, string> = {
+  run: "Run Log",
+  events: "Events",
+  raw: "Raw",
+};
 export function InspectorPanel({ bot }: { bot: Bot }) {
   const { dispatch } = useStore();
   // Docked flush under the Windows caption corner: drop the header 16px.
@@ -228,6 +233,7 @@ export function InspectorPanel({ bot }: { bot: Bot }) {
               id={`inspector-tab-${l}`}
               aria-selected={lens === l}
               aria-controls={`inspector-panel-${l}`}
+              aria-label={TAB_LABELS[l]}
               tabIndex={lens === l ? 0 : -1}
               onClick={() => setLens(l)}
               className={cn(

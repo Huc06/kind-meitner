@@ -88,11 +88,21 @@ export function AspServiceCard({ service, lastCheck: _lastCheck, evidence: propE
     }
   };
 
+  const targetUrl = service.okxAgentId
+    ? `https://www.okx.ai/agents/${service.okxAgentId}`
+    : service.endpoint;
+  const isListingUrl = Boolean(
+    service.okxAgentId ||
+    targetUrl.includes("/agents/") ||
+    targetUrl.includes("okx.ai/agents"),
+  );
+  const openUrlLabel = isListingUrl
+    ? t("okxHub.action.openListing")
+    : t("okxHub.action.openEndpoint");
+
   const handleOpenListing = () => {
-    const agentId = service.okxAgentId || PUBLIC_OKX_AGENT_ID;
-    const url = `https://www.okx.ai/agents/${agentId}`;
-    if (typeof window !== "undefined") {
-      window.open(url, "_blank", "noopener,noreferrer");
+    if (typeof window !== "undefined" && targetUrl) {
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -279,10 +289,10 @@ export function AspServiceCard({ service, lastCheck: _lastCheck, evidence: propE
 
         <div>
           <div className="text-[10px] uppercase tracking-wider text-ink-secondary">
-            Last checked time
+            {t("okxHub.lastCheckedTime")}
           </div>
           <div className="mt-1 text-ink">
-            {lastCheckedTime ? lastCheckedTime : "Not checked yet"}
+            {lastCheckedTime ? lastCheckedTime : t("okxHub.notCheckedYet")}
           </div>
         </div>
       </div>
@@ -334,82 +344,79 @@ export function AspServiceCard({ service, lastCheck: _lastCheck, evidence: propE
 
       {/* Target room picker & Actions */}
       <div className="mt-4 border-t border-hairline pt-3 flex flex-col gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1 sm:max-w-[260px]">
-            <ChannelPicker
-              selectedRoomId={selectedRoomId}
-              onSelectRoom={setSelectedRoomId}
-              disabled={nonDmGroups.length === 0}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* 1. Run readiness scan */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={!selectedRoomId}
-              onClick={handleCheckReadiness}
-            >
-              <Cpu size={12} className="mr-1.5 inline" />
-              Run readiness scan
-            </Button>
-
-            {/* 2. View trust card */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={!selectedRoomId && !evidence.trustRoomId}
-              onClick={handleViewTrustCard}
-            >
-              <ShieldCheck size={12} className="mr-1.5 inline" />
-              View trust card
-            </Button>
-
-            {/* 3. Open endpoint / Open listing */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={handleOpenListing}
-            >
-              <ExternalLink size={12} className="mr-1.5 inline" />
-              Open listing
-            </Button>
-
-            {/* 4. Invite related agent (Markets) */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={!selectedRoomId || invitePending}
-              onClick={handleInviteMarkets}
-            >
-              <UserPlus size={12} className="mr-1.5 inline" />
-              Invite related agent
-            </Button>
-
-            {/* 5. Copy evidence */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={!evidenceJson}
-              title={
-                !evidenceJson
-                  ? "No scan or trust card results recorded yet."
-                  : undefined
-              }
-              onClick={handleCopyEvidence}
-            >
-              <Copy size={12} className="mr-1.5 inline" />
-              {copiedEvidence ? "Evidence copied!" : "Copy evidence"}
-            </Button>
-          </div>
+        <div className="w-full">
+          <ChannelPicker
+            selectedRoomId={selectedRoomId}
+            onSelectRoom={setSelectedRoomId}
+            disabled={nonDmGroups.length === 0}
+          />
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 1. Run readiness scan */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!selectedRoomId}
+            onClick={handleCheckReadiness}
+          >
+            <Cpu size={12} className="mr-1.5 inline" />
+            {t("okxHub.action.runReadinessScan")}
+          </Button>
+
+          {/* 2. View trust card */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!selectedRoomId && !evidence.trustRoomId}
+            onClick={handleViewTrustCard}
+          >
+            <ShieldCheck size={12} className="mr-1.5 inline" />
+            {t("okxHub.action.viewTrustCard")}
+          </Button>
+
+          {/* 3. Open endpoint / Open listing */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleOpenListing}
+          >
+            <ExternalLink size={12} className="mr-1.5 inline" />
+            {openUrlLabel}
+          </Button>
+
+          {/* 4. Invite related agent (Markets) */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!selectedRoomId || invitePending}
+            onClick={handleInviteMarkets}
+          >
+            <UserPlus size={12} className="mr-1.5 inline" />
+            {t("okxHub.action.inviteRelatedAgent")}
+          </Button>
+
+          {/* 5. Copy evidence */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!evidenceJson}
+            title={
+              !evidenceJson
+                ? "No scan or trust card results recorded yet."
+                : undefined
+            }
+            onClick={handleCopyEvidence}
+          >
+            <Copy size={12} className="mr-1.5 inline" />
+            {copiedEvidence ? t("okxHub.action.evidenceCopied") : t("okxHub.action.copyEvidence")}
+          </Button>
+        </div>
         {/* Invite feedback with aria-live polite */}
         {inviteStatus && (
           <div

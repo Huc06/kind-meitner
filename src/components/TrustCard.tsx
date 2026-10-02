@@ -95,15 +95,21 @@ export function TrustCard({
     }
   };
 
+  const formatBoundaryBool = (value: boolean | undefined): string => {
+    if (value === true) return t("okxGate.boundary.yes");
+    if (value === false) return t("okxGate.boundary.no");
+    return t("okxGate.boundary.unknown");
+  };
+
   const accessVal = data.resource?.access
     ? data.resource.access.charAt(0).toUpperCase() + data.resource.access.slice(1)
-    : "Free";
-  const paymentVal = data.resource?.paymentRequired ? "Yes" : "No";
-  const walletVal = data.resource?.walletRequired ? "Yes" : "No";
-  const mainnetVal = data.resource?.mainnet ? "Yes" : "No";
+    : t("okxGate.boundary.unknown");
+  const paymentVal = formatBoundaryBool(data.resource?.paymentRequired);
+  const walletVal = formatBoundaryBool(data.resource?.walletRequired);
+  const mainnetVal = formatBoundaryBool(data.resource?.mainnet);
   const sourceVal =
     data.resource?.provenance ||
-    "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement";
+    t("okxGate.trust.provenanceDefault");
   return (
     <Frame
       as="section"
@@ -128,12 +134,12 @@ export function TrustCard({
               {t("okxGate.trust.title")}
             </h3>
             <span className="label-mono text-ink-secondary">
-              [AGENT #{data.agentId}]
+              {t("okxGate.trust.agentTag", { agentId: data.agentId })}
             </span>
           </div>
           <p className="font-mono text-[11px] text-ink-secondary truncate break-all mt-0.5">
             {data.agentName
-              ? `${data.agentName} · OKX.ai Marketplace Agent${data.score ? ` · ⭐ ${data.score}/5.0` : ""}`
+              ? `${data.agentName} · ${t("okxGate.trust.agentProvenance")}${data.score ? ` · ⭐ ${data.score}/5.0` : ""}`
               : t("okxGate.trust.agent", { agentId: data.agentId })}
           </p>
           <p className="font-mono text-[11px] text-ink-secondary mt-0.5">
@@ -150,13 +156,17 @@ export function TrustCard({
               </time>
             </p>
           )}
+          {data.lastChecked !== undefined && (
+            <p className="font-mono text-[11px] text-ink-secondary mt-0.5">
+              {t("okxGate.lastChecked", { time: String(data.lastChecked) })}
+            </p>
+          )}
           <div className="mt-2 flex items-center gap-2 font-mono text-[11px]">
             <span
               className={cn(
                 "size-1.5 rounded-full shrink-0",
                 isSpendBlocked ? "bg-danger" : "bg-success",
               )}
-              aria-hidden="true"
             />
             <span className={cn("font-medium", isSpendBlocked ? "text-danger" : "text-success")}>
               {isSpendBlocked ? t("okxGate.trust.spendBlocked") : t("okxGate.trust.spendNotBlocked")}
@@ -168,22 +178,6 @@ export function TrustCard({
       <p className="mt-3 text-[12px] leading-relaxed text-ink-secondary break-words">
         {data.summary}
       </p>
-      {data.services && data.services.length > 0 && (
-        <div className="mt-2.5 border border-hairline bg-inset p-2.5">
-          <div className="label-mono text-ink-secondary">
-            Verified Services on OKX ({data.services.length})
-          </div>
-          <div className="mt-1.5 space-y-1">
-            {data.services.slice(0, 3).map((s) => (
-              <div key={s.serviceId} className="flex items-center justify-between font-mono text-[11.5px] text-ink">
-                <span className="truncate">{s.name}</span>
-                <span className="ml-2 shrink-0 text-ink-secondary">{s.price} USDT</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="frame-rule my-3" />
 
       <ul aria-label={t("okxGate.trust.signals")} className="space-y-1.5 font-mono text-[11px]">
@@ -222,6 +216,17 @@ export function TrustCard({
         </ul>
       </div>
 
+      {data.limitations && data.limitations.length > 0 && (
+        <div className="mt-2.5">
+          <h4 className="label-mono text-ink-secondary mb-1">{t("okxGate.limitations")}</h4>
+          <ul className="list-disc pl-4 space-y-0.5 font-mono text-[11px] text-ink-secondary">
+            {data.limitations.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="frame-rule my-3" />
 
       <div>
@@ -231,30 +236,22 @@ export function TrustCard({
         </p>
       </div>
 
-      <div className="frame-rule my-3" />
-
-      <div className="border border-hairline bg-inset p-2.5 font-mono text-[11px] space-y-1">
-        <div className="label-mono text-ink-secondary mb-1">
-          {t("okxGate.boundary.title")}
+      {data.remediation.length > 0 && (
+        <div className="mt-2">
+          <ol className="space-y-1 font-mono text-[11.5px] leading-relaxed text-ink-secondary">
+            {data.remediation.map((fix, idx) => (
+              <li key={fix} className="flex gap-2">
+                <span aria-hidden="true" className="select-none text-ink-secondary">
+                  {String(idx + 1).padStart(2, "0")}.
+                </span>
+                <span>{fix}</span>
+              </li>
+            ))}
+          </ol>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 text-ink-secondary">
-          <div>{t("okxGate.boundary.access", { access: accessVal })}</div>
-          <div>{t("okxGate.boundary.payment", { required: paymentVal })}</div>
-          <div>{t("okxGate.boundary.wallet", { required: walletVal })}</div>
-          <div>{t("okxGate.boundary.mainnet", { mainnet: mainnetVal })}</div>
-        </div>
-        <div className="text-ink-secondary pt-0.5 break-all">
-          {t("okxGate.boundary.source", { source: sourceVal })}
-        </div>
-      </div>
+      )}
 
       <div className="frame-rule my-3" />
-
-      <p className="font-mono text-[10.5px] text-ink-secondary leading-relaxed">
-        {t("okxGate.trust.disclaimer")}
-      </p>
-      <div className="frame-rule my-3" />
-
       <div className="flex flex-wrap items-center gap-1.5">
         {showBlockSpend && (
           <Button
@@ -306,7 +303,7 @@ export function TrustCard({
           aria-label={t("okxGate.copyEvidence")}
         >
           <Copy size={12} aria-hidden="true" />
-          {copiedEvidence ? t("okxGate.copied") : t("okxGate.copyEvidence")}
+          {copiedEvidence ? t("okxGate.evidenceCopied") : t("okxGate.copyEvidence")}
         </Button>
         <Button
           size="sm"
@@ -333,10 +330,10 @@ export function TrustCard({
                 setCloning(false);
               }
             }}
-            aria-label="Clone to Team"
+            aria-label={t("okxGate.cloneToTeam")}
           >
             {cloning ? <Loader2 size={12} className="animate-spin" /> : cloned ? <Check size={12} /> : <UserPlus size={12} />}
-            {cloned ? "In Team" : "Clone to Team"}
+            {cloned ? t("okxGate.inTeam") : t("okxGate.cloneToTeam")}
           </Button>
         )}
       </div>
@@ -349,6 +346,47 @@ export function TrustCard({
           {data.rawJson}
         </pre>
       )}
+
+      <details className="border border-hairline bg-inset p-2.5 font-mono text-[11px] space-y-2 mt-3">
+        <summary className="cursor-pointer label-mono text-ink-secondary hover:text-ink select-none">
+          {t("okxGate.details")}
+        </summary>
+        <div className="pt-2 space-y-3">
+          {data.services && data.services.length > 0 && (
+            <div>
+              <div className="label-mono text-ink-secondary">
+                {t("okxGate.trust.servicesTitle", { count: data.services.length })}
+              </div>
+              <div className="mt-1.5 space-y-1">
+                {data.services.slice(0, 3).map((s) => (
+                  <div key={s.serviceId} className="flex items-center justify-between font-mono text-[11.5px] text-ink">
+                    <span className="truncate">{s.name}</span>
+                    <span className="ml-2 shrink-0 text-ink-secondary">{s.price} USDT</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1 border-t border-hairline pt-2">
+            <div className="label-mono text-ink-secondary mb-1">
+              {t("okxGate.boundary.title")}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 text-ink-secondary">
+              <div>{t("okxGate.boundary.access", { access: accessVal })}</div>
+              <div>{t("okxGate.boundary.payment", { required: paymentVal })}</div>
+              <div>{t("okxGate.boundary.wallet", { required: walletVal })}</div>
+              <div>{t("okxGate.boundary.mainnet", { mainnet: mainnetVal })}</div>
+            </div>
+            <div className="text-ink-secondary pt-0.5 break-all">
+              {t("okxGate.boundary.source", { source: sourceVal })}
+            </div>
+          </div>
+        </div>
+      </details>
+      <p className="mt-3 font-mono text-[10.5px] text-ink-secondary leading-relaxed">
+        {t("okxGate.trust.disclaimer")}
+      </p>
     </Frame>
   );
 }

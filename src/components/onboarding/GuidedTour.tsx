@@ -13,23 +13,23 @@ import { hintSeenPatch } from "@/lib/onboarding";
 import type { LocaleKey } from "@/locales";
 import { api, useStore } from "@/state/store";
 import { Spotlight } from "./Spotlight";
+import { loadHubCatalog } from "@/lib/agent-hub";
 
 const MASCOT: Record<TourStep["id"], MausState> = {
-  "tour.composer": "happy",
-  "tour.model": "curious",
-  "tour.computer": "working",
-  "tour.computer-browser": "curious",
-  "tour.tools": "curious",
-  "tour.apps": "happy",
-  "tour.apps-panel": "proud",
-  "tour.readiness": "curious",
-  "tour.trust": "working",
-  "tour.automations": "happy",
-  "tour.automations-page": "drowsy",
-  "tour.done": "celebrate",
+  "tour.room": "happy",
+  "tour.agents": "curious",
+  "tour.readiness": "working",
+  "tour.trust": "proud",
 };
 
-const stepContent = (id: TourStep["id"]): { title?: string; body: string } => {
+const stepContent = (id: TourStep["id"], agentName: string | null): { title?: string; body: string } => {
+  if (id === "tour.agents") {
+    const title = t("onboarding.tour.agents.title");
+    const body = agentName
+      ? t("onboarding.tour.agents.body", { agent: agentName })
+      : t("onboarding.tour.agents.fallback");
+    return { title, body };
+  }
   const base = id.slice(5);
   const titleKey = `onboarding.tour.${base}.title` as LocaleKey;
   const bodyKey = `onboarding.tour.${base}.body` as LocaleKey;
@@ -72,6 +72,18 @@ export function GuidedTour() {
   const [failed, setFailed] = useState(false);
   const entered = useRef<string | null>(null);
   const [fallback, setFallback] = useState<string | null>(null);
+
+  const [catalogAgentName, setCatalogAgentName] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadHubCatalog()
+      .then(({ agents }) => {
+        if (agents.length > 0 && agents[0]?.name) {
+          setCatalogAgentName(agents[0].name);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!state.tourOpen) return;
@@ -201,7 +213,7 @@ export function GuidedTour() {
 
   // clicking the pointed-at control is as good as Next
   useEffect(() => {
-    if (!active || !step?.anchor || step.id === "tour.apps-panel" || step.id === "tour.automations-page" || step.id === "tour.done") return;
+    if (!active || !step?.anchor) return;
     const onClick = (event: MouseEvent) => {
       const target = event.target as Element | null;
       if (target?.closest(`[data-tour="${step.anchor}"]`)) advance(true);
@@ -213,18 +225,18 @@ export function GuidedTour() {
   if (!active || !step) return null;
 
   const { current, total } = stepNumber(step);
-  const closing = step.id === "tour.done";
+  const isLast = step.id === TOUR_STEPS[TOUR_STEPS.length - 1]!.id;
   const anchor = fallback === step.id && step.fallbackAnchor ? step.fallbackAnchor : step.anchor;
-  const { title, body } = stepContent(step.id);
+  const { title, body } = stepContent(step.id, catalogAgentName);
   return (
     <Spotlight
       anchor={anchor}
       placement={step.placement}
       mascot={MASCOT[step.id]}
       title={title}
-      progress={closing ? undefined : t("onboarding.tour.progress", { current, total })}
-      primary={{ label: closing ? t("onboarding.tour.finish") : t("onboarding.tour.next"), onClick: closing ? finish : () => advance() }}
-      secondary={closing ? undefined : { label: t("onboarding.tour.skip"), onClick: finish }}
+      progress={t("onboarding.tour.progress", { current, total })}
+      primary={{ label: isLast ? t("onboarding.tour.finish") : t("onboarding.tour.next"), onClick: isLast ? finish : () => advance() }}
+      secondary={{ label: t("onboarding.tour.skip"), onClick: finish }}
       onDone={finish}
     >
       {body}

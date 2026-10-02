@@ -9,19 +9,23 @@
 import type { OnboardingStatus } from "@/lib/onboarding";
 
 export type TourStepId =
-  | "tour.composer"
-  | "tour.model"
-  | "tour.computer"
-  | "tour.computer-browser"
-  | "tour.tools"
-  | "tour.apps"
-  | "tour.apps-panel"
+  | "tour.room"
+  | "tour.agents"
   | "tour.readiness"
-  | "tour.trust"
-  | "tour.automations"
-  | "tour.automations-page"
-  | "tour.done";
+  | "tour.trust";
 
+export const LEGACY_TOUR_STEP_IDS: readonly string[] = [
+  "tour.composer",
+  "tour.model",
+  "tour.computer",
+  "tour.computer-browser",
+  "tour.tools",
+  "tour.apps",
+  "tour.apps-panel",
+  "tour.automations",
+  "tour.automations-page",
+  "tour.done",
+];
 /** Something the tour does to the app when a step begins or ends. The
  * "open" effects press the real control when it is on screen, so the app
  * reacts exactly as it would to the user. */
@@ -54,21 +58,10 @@ export interface TourStep {
 }
 
 export const TOUR_STEPS: TourStep[] = [
-  { id: "tour.composer", anchor: "composer", placement: "above" },
-  { id: "tour.model", anchor: "model", placement: "below" },
-  { id: "tour.computer", anchor: "computer", placement: "below", onExit: "openComputer" },
-  // every step that lives inside something the previous step opened also
-  // opens it on enter, so a reload mid-tour rebuilds the scene
-  { id: "tour.computer-browser", anchor: "computer-browser", fallbackAnchor: "computer-tabs", skipIfMissing: true, placement: "below", onEnter: "openComputer", onExit: "closeComputer" },
-  { id: "tour.tools", anchor: "tools", placement: "right", onExit: "openTools" },
-  { id: "tour.apps", anchor: "nav-apps", skipIfMissing: true, placement: "right", onEnter: "openTools", onExit: "openApps" },
-  { id: "tour.apps-panel", anchor: "apps-panel", placement: "below", onEnter: "openApps", onExit: "closeApps" },
+  { id: "tour.room", anchor: "composer", placement: "above" },
+  { id: "tour.agents", anchor: "nav-apps", fallbackAnchor: "apps-panel", skipIfMissing: true, placement: "right" },
   { id: "tour.readiness", anchor: "starter-readiness", fallbackAnchor: "starters", skipIfMissing: true, placement: "above" },
   { id: "tour.trust", anchor: "starter-trust", fallbackAnchor: "starters", skipIfMissing: true, placement: "above" },
-  { id: "tour.automations", anchor: "nav-automations", skipIfMissing: true, placement: "right", onEnter: "openTools", onExit: "openAutomations" },
-  { id: "tour.automations-page", anchor: "automations-page", placement: "below", onEnter: "openAutomations", onExit: "backToChat" },
-  // back where they started: the closing card sits on the chat itself
-  { id: "tour.done", anchor: "composer", placement: "above" },
 ];
 
 function stepDone(record: OnboardingStatus | undefined, id: TourStepId): boolean {
@@ -77,19 +70,19 @@ function stepDone(record: OnboardingStatus | undefined, id: TourStepId): boolean
 
 /** The first step not yet done, or null when the tour is over. */
 export function currentStep(record: OnboardingStatus | undefined): TourStep | null {
+  if (isTourCompleted(record)) return null;
   return TOUR_STEPS.find((step) => !stepDone(record, step.id)) ?? null;
 }
 
 /** 1-based position among the steps the user actually sees. */
 export function stepNumber(step: TourStep): { current: number; total: number } {
-  const visible = TOUR_STEPS.filter((s) => s.id !== "tour.done");
-  const index = visible.indexOf(step);
-  return { current: index < 0 ? visible.length : index + 1, total: visible.length };
+  const index = TOUR_STEPS.indexOf(step);
+  return { current: index < 0 ? TOUR_STEPS.length : index + 1, total: TOUR_STEPS.length };
 }
 
 /** The hint list with every tour step removed, for a replay from the start. */
 export function withTourReset(record: OnboardingStatus | undefined): string[] {
-  const ids = new Set<string>(TOUR_STEPS.map((s) => s.id));
+  const ids = new Set<string>([...TOUR_STEPS.map((s) => s.id), ...LEGACY_TOUR_STEP_IDS]);
   return (record?.hintsSeen ?? []).filter((id) => !ids.has(id));
 }
 
@@ -104,6 +97,7 @@ export function withTourFinished(record: OnboardingStatus | undefined): string[]
 /** Check if all guided tour steps have been recorded as completed in hintsSeen. */
 export function isTourCompleted(record: OnboardingStatus | undefined): boolean {
   if (!record?.hintsSeen) return false;
+  if (record.hintsSeen.includes("tour.done")) return true;
   return TOUR_STEPS.every((step) => record.hintsSeen?.includes(step.id));
 }
 
@@ -119,6 +113,9 @@ export function isTourEligible(options: {
   if (options.remoteClient) return false;
   if (!options.completedAt) return false;
   if (options.welcomeOpen) return false;
-  if (options.hintsSeen && TOUR_STEPS.every((step) => options.hintsSeen?.includes(step.id))) return false;
+  if (options.hintsSeen) {
+    if (options.hintsSeen.includes("tour.done")) return false;
+    if (TOUR_STEPS.every((step) => options.hintsSeen?.includes(step.id))) return false;
+  }
   return true;
 }
