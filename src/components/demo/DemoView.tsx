@@ -15,7 +15,7 @@ const STORAGE_KEY_HISTORY = "kind-meitner:demo-history";
 
 type TabId = "demo" | "service" | "history";
 
-export function DemoView({ onExit }: { onExit: () => void }) {
+export function DemoView({ onExit, onOpenChat }: { onExit: () => void; onOpenChat: () => Promise<void> | void }) {
   const [activeTab, setActiveTab] = useState<TabId>("demo");
   const [status, setStatus] = useState<OkxDemoStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -229,7 +229,7 @@ export function DemoView({ onExit }: { onExit: () => void }) {
         </div>
       </main>
 
-      <DemoFooter />
+      <DemoFooter onOpenChat={onOpenChat} />
     </div>
   );
 }
