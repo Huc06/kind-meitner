@@ -1,33 +1,17 @@
 import { useState } from "react";
 import { MessageSquare, Loader2 } from "lucide-react";
-import { useStore, api } from "@/state/store";
-import { isDevDayGate } from "@/lib/dev-day-gate";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
-export function DemoFooter() {
-  const { state, dispatch } = useStore();
+export function DemoFooter({ onOpenChat }: { onOpenChat: () => Promise<void> | void }) {
   const [opening, setOpening] = useState(false);
 
   const handleOpenGateChat = async () => {
     setOpening(true);
     try {
-      const { room } = await api("/api/okx/dev-day-gate", {
-        method: "POST",
-        body: "{}",
-      });
-      if (room) {
-        dispatch({ type: "groupPatched", group: room });
-        dispatch({ type: "select", id: room.id });
-      }
-    } catch {
-      const existing = state.groups.find(isDevDayGate);
-      if (existing) {
-        dispatch({ type: "select", id: existing.id });
-      }
+      await onOpenChat();
     } finally {
       setOpening(false);
-      dispatch({ type: "showChat" });
     }
   };
 

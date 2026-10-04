@@ -34,7 +34,7 @@ describe("runOkxSetup", () => {
     const code = await runOkxSetup(io, d);
     expect(code).toBe(0);
     expect(readStoredOkxCredentials(d)).toEqual({ apiKey: "k", secretKey: "s", passphrase: "p" });
-    expect(statSync(okxCredentialsStorePath(d)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(okxCredentialsStorePath(d)).mode & 0o777).toBe(0o600);
   });
 
   it("includes an optional base URL when provided", async () => {
