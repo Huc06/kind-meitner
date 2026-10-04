@@ -27,8 +27,9 @@ import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { TeamMapPage } from "@/components/TeamMapPage";
-import { LandingPage } from "@/components/LandingPage";
+import { LandingPage, type LandingTarget } from "@/components/LandingPage";
 import { DemoView } from "@/components/demo/DemoView";
+import { useOpenDevDayGate } from "@/components/demo/useOpenDevDayGate";
 import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { saveOkxSettings } from "./okx/okx-settings-api";
 import { setLocale } from "@/lib/i18n";
@@ -65,6 +66,19 @@ export function handleInitialNavigation(
 function Shell() {
   const { state, dispatch } = useStore();
   const { capabilities } = useDesktopCapabilities();
+  const openDevDayGate = useOpenDevDayGate();
+  const onLandingNavigate = (target: LandingTarget) => {
+    if (target === "demo") return dispatch({ type: "showDemo" });
+    if (target === "workspace") {
+      try {
+        sessionStorage.setItem("kind-meitner:entered-app", "1");
+      } catch {
+        // Session storage may be unavailable; the view still switches.
+      }
+      return dispatch({ type: "showChat" });
+    }
+    dispatch({ type: target });
+  };
   const unreadCount =
     state.bots.filter((bot) => !bot.hidden && bot.unread).length +
     state.groups.filter((group) => group.unread).length;
@@ -319,9 +333,9 @@ function Shell() {
         className="flex min-h-0 min-w-0 flex-1 flex-col"
       >
       {state.activeView === "landing" ? (
-        <LandingPage />
+        <LandingPage onNavigate={onLandingNavigate} />
       ) : state.activeView === "demo" ? (
-        <DemoView onExit={() => dispatch({ type: "showChat" })} />
+        <DemoView onExit={() => dispatch({ type: "showChat" })} onOpenChat={openDevDayGate} />
       ) : state.activeView === "team-map" ? (
         <TeamMapPage />
       ) : state.activeView === "routines" ? (

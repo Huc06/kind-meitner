@@ -9686,6 +9686,27 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         });
       }
     }
+    // Public without sign-in: the Dev Day Demo view (live calls to the pinned
+    // Kind Meitner Markets endpoint, rate-limited per visitor) and the proof
+    // key external agents use to verify X-KM-Request-Proof signatures.
+    if (method === "GET" && path === "/api/external-agents/proof-key") {
+      return json(res, 200, { algorithm: "Ed25519", header: "X-KM-Request-Proof", publicKeyPem: externalSecrets.proofPublicKeyPem() });
+    }
+    if (path === "/api/okx/demo/status" || path === "/api/okx/demo/check") {
+      const isCheck = path === "/api/okx/demo/check";
+      if (method !== (isCheck ? "POST" : "GET")) return json(res, 405, { error: "Method not allowed." });
+      const limit = checkOkxMcpRateLimit(`demo:${isCheck ? "check" : "status"}:${requestSource(req)}`, isCheck ? 20 : 30, 60_000);
+      if (!limit.allowed) {
+        res.setHeader("retry-after", String(limit.retryAfter));
+        return json(res, 429, { error: "Too many checks from this browser. Wait a minute and retry." });
+      }
+      if (!isCheck) return json(res, 200, await demoStatus());
+      const body = await readBody(req).catch(() => undefined);
+      if (!body || typeof body !== "object") return json(res, 400, { error: "Expected a JSON check request." });
+      const aborted = new AbortController();
+      req.once("close", () => { if (!res.writableEnded) aborted.abort(); });
+      return json(res, 200, await runDemoCheck(body, {}, aborted.signal));
+    }
     // Pre-Auth Free A2MCP resource server. This is deliberately separate from
     // the legacy paid endpoint: no wallet, payment header, nonce, key, or
     // mainnet operation is accepted here.
@@ -11967,10 +11988,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         throw Object.assign(new Error("This bot has multiple threads. Update this client and choose a thread before sending this action."), { status: 409 });
       }
     };
-    if (path === "/api/external-agents/proof-key" && method === "GET") {
-      // Public: agents verify X-KM-Request-Proof signatures with this key.
-      return json(res, 200, { algorithm: "Ed25519", header: "X-KM-Request-Proof", publicKeyPem: externalSecrets.proofPublicKeyPem() });
-    }
     if (path === "/api/external-payments/wallet" && method === "GET") {
       const limits = externalPayments.limits();
       return json(res, 200, {
@@ -12483,17 +12500,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     if (method === "POST" && path === "/api/okx/agents/import") {
       const imported = await importCatalogOkxAgent(await readBody(req));
       return json(res, imported.created ? 201 : 200, imported.result);
-    }
-    // Dev Day demo: live calls to the pinned Kind Meitner Markets endpoint.
-    if (method === "GET" && path === "/api/okx/demo/status") {
-      return json(res, 200, await demoStatus());
-    }
-    if (method === "POST" && path === "/api/okx/demo/check") {
-      const body = await readBody(req).catch(() => undefined);
-      if (!body || typeof body !== "object") return json(res, 400, { error: "Expected a JSON check request." });
-      const aborted = new AbortController();
-      req.once("close", () => { if (!res.writableEnded) aborted.abort(); });
-      return json(res, 200, await runDemoCheck(body, {}, aborted.signal));
     }
     if (method === "POST" && path === "/api/okx/resolve-agent") {
       const body = await readBody(req);

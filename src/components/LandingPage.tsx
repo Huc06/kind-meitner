@@ -8,7 +8,6 @@ import {
   Code,
   Terminal,
 } from "lucide-react";
-import { useStore } from "@/state/store";
 import { ThemeToggle } from "./landing/theme-toggle";
 import { InviteSpec } from "./landing/invite-deep-dive";
 import { FolderCards, LANDING_PAGES } from "./landing/folder-cards";
@@ -59,8 +58,29 @@ const PILLARS = [
   },
 ];
 
-export function LandingPage() {
-  const { dispatch } = useStore();
+export type LandingTarget = "demo" | "workspace" | (typeof PILLARS)[number]["action"];
+
+const STEPS = [
+  {
+    n: "1",
+    title: "Check an endpoint",
+    body: "Paste a Free MCP endpoint. Get PASS, WARN or FAIL with every check and the exact fix, before you list it.",
+  },
+  {
+    n: "2",
+    title: "Check an agent",
+    body: "Enter an OKX.AI agent ID. See GO, CAUTION or NO_GO, the evidence found, and what was not checked.",
+  },
+  {
+    n: "3",
+    title: "Call it from your agent",
+    body: "The same checks are MCP tools on a public endpoint. No sign-in, no wallet, no payment.",
+  },
+] as const;
+
+/** Navigation is passed in: the signed-in app maps targets to views, and the
+ * public shell sends anything but the demo to sign-in. */
+export function LandingPage({ onNavigate }: { onNavigate: (target: LandingTarget) => void }) {
   const [deepDiveOpen, setDeepDiveOpen] = useState(false);
 
   useEffect(() => {
@@ -72,18 +92,9 @@ export function LandingPage() {
     }
   }, []);
 
-  const handleOpenApp = () => {
-    try {
-      sessionStorage.setItem("kind-meitner:entered-app", "1");
-    } catch {
-      // Ignore sessionStorage errors
-    }
-    dispatch({ type: "showChat" });
-  };
-
-  const handleOpenTeamMap = () => {
-    dispatch({ type: "showTeamMap" });
-  };
+  const handleOpenApp = () => onNavigate("workspace");
+  const handleOpenTeamMap = () => onNavigate("showTeamMap");
+  const handleTryDemo = () => onNavigate("demo");
 
   return (
     <main className="flex min-h-screen flex-1 flex-col overflow-y-auto bg-app text-ink">
@@ -110,18 +121,18 @@ export function LandingPage() {
           <nav className="flex items-center gap-3 sm:gap-5" aria-label="Main navigation">
             <button
               type="button"
-              onClick={handleOpenApp}
+              onClick={handleTryDemo}
               className="nav-link font-mono text-xs text-ink-secondary hover:text-ink cursor-pointer"
             >
-              Console
+              Live demo
             </button>
 
             <button
               type="button"
-              onClick={handleOpenTeamMap}
+              onClick={handleOpenApp}
               className="nav-link font-mono text-xs text-ink-secondary hover:text-ink cursor-pointer"
             >
-              Team map
+              Workspace
             </button>
 
             <button
@@ -141,33 +152,29 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section with Mechanical WordTiles */}
+      {/* Hero: the one thing a visitor can try right now */}
       <section className="mx-auto flex w-full max-w-5xl flex-col items-center px-4 pt-12 pb-8 text-center sm:pt-20">
         <span className="label-mono text-ink-secondary mb-4 tracking-[0.25em]">
-          OKX ONCHAIN OS &amp; X LAYER
+          KIND MEITNER MARKETS · ASP #13851 ON OKX.AI
         </span>
 
-        {/* Interactive Mechanical WordTiles at display size (40-64px responsive), one-line positioning */}
         <div className="my-2 flex max-w-full justify-center py-2">
-          <WordTiles sentence="kind meitner is the autonomous agent suite" />
+          <WordTiles sentence="check before you list" />
         </div>
 
-        {/* One-line positioning copy grounded in docs */}
         <p className="mt-6 max-w-2xl text-sm sm:text-base leading-relaxed text-ink-secondary">
-          All-in-one multichat workbench for the &ldquo;Build a Company&rdquo; track: free pre-listing readiness and pre-spend trust gates, audit-to-hire workflows, and autonomous scheduled agent routines.
+          Builders check a Free MCP endpoint before listing it. Callers see what trust evidence exists before using an agent. Free and read-only. No sign-in, wallet or payment.
         </p>
 
-        {/* CTAs: primary Launch workspace, secondary Team map, ghost GitHub */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button variant="primary" size="lg" onClick={handleOpenApp}>
+          <Button variant="primary" size="lg" onClick={handleTryDemo}>
             <Terminal className="size-4" aria-hidden="true" />
-            <span>Launch workspace</span>
+            <span>Try the live demo</span>
             <ArrowRight className="size-4" aria-hidden="true" />
           </Button>
 
-          <Button variant="secondary" size="lg" onClick={handleOpenTeamMap}>
-            <Network className="size-4" aria-hidden="true" />
-            <span>Team map</span>
+          <Button variant="secondary" size="lg" onClick={handleOpenApp}>
+            <span>Open workspace</span>
           </Button>
 
           <a
@@ -180,6 +187,38 @@ export function LandingPage() {
             <span>GitHub</span>
           </a>
         </div>
+        <p className="mt-3 font-mono text-[11px] text-ink-secondary">
+          The workspace needs sign-in. The demo doesn&rsquo;t.
+        </p>
+      </section>
+
+      {/* Onboarding: how it works in three steps, each leading to the demo */}
+      <section aria-labelledby="how-it-works" className="mx-auto w-full max-w-5xl px-4 pb-4">
+        <h2 id="how-it-works" className="label-mono mb-3 text-ink-secondary">How it works</h2>
+        <ol className="grid gap-3 sm:grid-cols-3">
+          {STEPS.map((step) => (
+            <li key={step.n} className="flex flex-col justify-between border border-hairline bg-card p-4">
+              <div>
+                <span className="font-mono text-[11px] text-ink-secondary">STEP {step.n}</span>
+                <h3 className="mt-1 text-[15px] font-semibold text-ink">{step.title}</h3>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">{step.body}</p>
+              </div>
+              {step.n === "3" ? (
+                <code className="mt-3 block break-all border border-hairline bg-inset p-2 font-mono text-[10.5px] text-ink">
+                  POST https://kind-meitner-production.up.railway.app/api/okx/free-mcp
+                </code>
+              ) : (
+                <Button variant="secondary" size="sm" className="mt-3 w-full justify-between" onClick={handleTryDemo}>
+                  <span>Try it</span>
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="mt-3 font-mono text-[11px] text-ink-secondary">
+          Not an OKX endorsement or a safety guarantee. Every result lists what was not checked.
+        </p>
       </section>
 
       {/* [ 01 · THE LOOP ] Console Strip - Demo Story in 4 Steps */}
@@ -419,7 +458,7 @@ export function LandingPage() {
                     variant="secondary"
                     size="sm"
                     className="w-full justify-between"
-                    onClick={() => dispatch({ type: p.action })}
+                    onClick={() => onNavigate(p.action)}
                   >
                     <span>Launch {p.badge}</span>
                     <span className="transition-transform group-hover:translate-x-0.5" aria-hidden="true">
