@@ -60,7 +60,7 @@ describe("readStoredOkxCredentials", () => {
 });
 
 describe("writeStoredOkxCredentials", () => {
-  it("writes the file at mode 0600", () => {
+  it.skipIf(process.platform === "win32")("writes the file at mode 0600", () => {
     const d = freshDir();
     writeStoredOkxCredentials({ apiKey: "k", secretKey: "s", passphrase: "p" }, d);
     const mode = statSync(okxCredentialsStorePath(d)).mode & 0o777;
@@ -87,7 +87,7 @@ describe("storedOkxCredentialsAreSecure", () => {
     expect(storedOkxCredentialsAreSecure(d)).toBe(true);
   });
 
-  it("is false when the file is group- or world-readable", () => {
+  it.skipIf(process.platform === "win32")("is false when the file is group- or world-readable", () => {
     const d = freshDir();
     writeStoredOkxCredentials({ apiKey: "k", secretKey: "s", passphrase: "p" }, d);
     chmodSync(okxCredentialsStorePath(d), 0o644);
