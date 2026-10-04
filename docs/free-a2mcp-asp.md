@@ -34,14 +34,15 @@ All listed tools include MCP annotations declaring `readOnlyHint: true`, `destru
 
 - `list_okx_ai_use_cases` — returns the four showable use cases: market intelligence, service discovery, recurring research inputs, and responsible A2MCP launch.
 - `get_free_a2mcp_launch_checklist` — returns the launch guardrails and official documentation links.
-- `scan_free_mcp_readiness` — probes a candidate public HTTPS Free A2MCP endpoint with `tools/list`, returning PASS/WARN/FAIL checks, bounded evidence, and remediation. It blocks private, loopback, and link-local targets; it never sends credentials, payment headers, or wallet data.
+- `scan_free_mcp_readiness` — probes a candidate public HTTPS Free A2MCP endpoint with `tools/list` and a soft `initialize`, returning PASS/WARN/FAIL checks, bounded evidence, and remediation. It blocks private, loopback, and link-local targets before any network request; it never sends credentials, payment headers, or wallet data.
+- `get_asp_trust_card` — checks an OKX.AI agent ID (`agentId` required, `endpointUrl` optional): listing-page reachability on okx.ai and, when an endpoint is given, its readiness. Returns GO / CAUTION / NO_GO, the signals, an explicit `notChecked` list, and a safe next step. It is not a safety guarantee or an OKX endorsement.
 - `query_market_benchmarks` — returns locally indexed category benchmarks; optional `category` is a non-empty string of at most 80 characters.
 - `get_asp_reputation` — returns a locally indexed ASP record; `aspId` is required.
 - `get_trending_asps` — returns locally indexed rankings; optional `limit` is an integer from 1 to 20.
 
 ## Data provenance
 
-The marketplace tools return data from the local `kind-meitner` intelligence registry, not a live OKX marketplace index. Every successful tool result includes:
+The registry tools (`query_market_benchmarks`, `get_asp_reputation`, `get_trending_asps`) return illustrative sample records from the local `kind-meitner` registry, not a live OKX marketplace index or real marketplace statistics. Every successful registry tool result includes:
 
 ```json
 {
@@ -50,7 +51,7 @@ The marketplace tools return data from the local `kind-meitner` intelligence reg
     "paymentRequired": false,
     "walletRequired": false,
     "mainnet": false,
-    "provenance": "kind-meitner local registry and public OKX.AI setup guidance"
+    "provenance": "kind-meitner sample registry (illustrative records, not OKX.AI marketplace statistics) and public OKX.AI setup guidance"
   }
 }
 ```

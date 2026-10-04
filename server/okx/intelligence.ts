@@ -3,6 +3,7 @@ import { lookup } from "node:dns/promises";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic.ts";
+import { OKX_LOCAL_REGISTRY_PROVENANCE } from "../../shared/okx-demo-identity.ts";
 
 export type ReadinessCheckStatus = "pass" | "warn" | "fail";
 
@@ -293,7 +294,7 @@ export async function getAspTrustCard(agentId: string, endpointUrl?: string, dep
       services: metadata?.services?.map(s => ({ serviceId: s.serviceId, name: s.name, description: s.description, price: s.price })),
       decision,
       summary: decision === "GO"
-        ? (displayName ? `Verified ${displayName} on OKX.ai. Endpoint readiness PASS.` : "Listing page reachable and endpoint readiness PASS.")
+        ? (displayName ? `Found ${displayName} on OKX.ai; listing page reachable and endpoint readiness PASS.` : "Listing page reachable and endpoint readiness PASS.")
         : decision === "NO_GO"
           ? "Listing or endpoint checks failed."
           : (displayName ? `Found ${displayName} on OKX.ai. Signals are incomplete; use caution before spending.` : "Signals are incomplete; use caution before spending."),
@@ -930,7 +931,7 @@ export class OkxMarketplaceIntelligence {
       paymentRequired: false,
       walletRequired: false,
       mainnet: false,
-      provenance: "kind-meitner local registry and public OKX.AI setup guidance",
+      provenance: OKX_LOCAL_REGISTRY_PROVENANCE,
     };
     const success = (data: unknown): McpToolCallResult => ({
       content: [{ type: "text", text: JSON.stringify({ resource, data }, null, 2) }],

@@ -700,7 +700,7 @@ export interface AppState {
   config: ConfigStatus | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator" | "landing";
+  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator" | "landing" | "demo";
   okxSettingsOpen?: boolean;
   activeDisputesCount?: number;
   routines: Routine[];
@@ -860,6 +860,7 @@ export type Action =
   | { type: "showTeamMap" }
   | { type: "showChat" }
   | { type: "showLanding" }
+  | { type: "showDemo" }
   | { type: "showBloomberg" }
   | { type: "showEvaluator" }
   | { type: "toggleOkxSettings"; open?: boolean }
@@ -1212,6 +1213,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
     case "showLanding":
       return state.activeView === "landing" ? state : { ...state, activeView: "landing" };
+    case "showDemo":
+      return state.activeView === "demo" ? state : { ...state, activeView: "demo" };
     case "showTeamMap":
       return {
         ...state,
@@ -1985,6 +1988,7 @@ export function reducer(state: AppState, action: Action): AppState {
   }
 }
 function safeInitialActiveView(activeView?: string): AppState["activeView"] {
+  if (activeView === "demo") return "demo";
   if (activeView === "team-map") return "team-map";
   if (activeView === "landing") return "landing";
   if (typeof window === "undefined" || !window.location) return "landing";
@@ -1992,6 +1996,7 @@ function safeInitialActiveView(activeView?: string): AppState["activeView"] {
     const search = window.location.search ?? "";
     const hash = window.location.hash ?? "";
     const p = new URLSearchParams(search);
+    if (p.get("view") === "demo" || hash === "#demo") return "demo";
     if (p.get("view") === "team-map" || hash === "#team-map") return "team-map";
     if (p.get("view") === "routines") return "routines";
     if (p.get("view") === "chat" || p.get("app") === "1") return "chat";

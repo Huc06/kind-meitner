@@ -24,6 +24,7 @@ export function ReadinessRunCard({
   onCloneAgent,
   busy = false,
   ranAt,
+  hideApplyHost = false,
 }: {
   data: ReadinessRunCardData;
   onRescan?: (endpointUrl: string) => void;
@@ -35,6 +36,7 @@ export function ReadinessRunCard({
   busy?: boolean;
   /** Transcript message time for the last-run age line. */
   ranAt?: number;
+  hideApplyHost?: boolean;
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -227,16 +229,18 @@ export function ReadinessRunCard({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
-        <Button
-          variant={data.verdict === "FAIL" ? "primary" : "secondary"}
-          size="sm"
-          disabled={busy || !onApplyHost}
-          onClick={() => runOnce(() => onApplyHost?.(OKX_PRODUCTION_FREE_MCP_URL))}
-          aria-label={t("okxGate.readiness.applyHost")}
-        >
-          <Link2 size={12} aria-hidden="true" />
-          {t("okxGate.readiness.applyHost")}
-        </Button>
+        {!hideApplyHost && (
+          <Button
+            variant={data.verdict === "FAIL" ? "primary" : "secondary"}
+            size="sm"
+            disabled={busy || !onApplyHost}
+            onClick={() => runOnce(() => onApplyHost?.(OKX_PRODUCTION_FREE_MCP_URL))}
+            aria-label={t("okxGate.readiness.applyHost")}
+          >
+            <Link2 size={12} aria-hidden="true" />
+            {t("okxGate.readiness.applyHost")}
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="sm"
@@ -284,7 +288,7 @@ export function ReadinessRunCard({
               if (cloning || cloned) return;
               setCloning(true);
               try {
-                await onCloneAgent("13837");
+                await onCloneAgent("okx-market-scout-v1");
                 setCloned(true);
               } catch (err) {
                 console.error("Failed to clone agent:", err);

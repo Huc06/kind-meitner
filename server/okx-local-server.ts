@@ -20,6 +20,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 
 import { DATA_DIR } from "./config.ts";
+import { OKX_LOCAL_REGISTRY_PROVENANCE } from "../shared/okx-demo-identity.ts";
 import { OkxGateway } from "./okx/gateway.ts";
 import { OkxTreasuryManager } from "./okx/scheduler.ts";
 import { OkxWebhookJournal } from "./okx/journal.ts";
@@ -518,7 +519,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         const resource = {
           mode: "x402-testnet",
           network: "eip155:1952",
-          provenance: "kind-meitner local registry and public OKX.AI setup guidance",
+          provenance: OKX_LOCAL_REGISTRY_PROVENANCE,
           data: { benchmarks: okxIntelligence.getCategoryBenchmarks() },
         };
         const settlement = await okxX402Testnet.settle(adapter, processed, Buffer.from(JSON.stringify(resource)));

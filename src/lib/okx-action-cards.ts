@@ -213,22 +213,20 @@ export function extractCardPayload(parsed: unknown): Record<string, unknown> | n
   return extractEnvelope(parsed).data;
 }
 
-/** The provider records a completed MCP result as a string in `tool.output`.
- * Accept the real `{ resource, data }` envelope and a bare `data` object for
- * older transcripts, but never fabricate a verdict/decision from malformed data. */
-export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxActionCardData | null {
-  if (!tool || tool.ok !== true || !tool.output || !isOkxGateTool(tool.name)) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(tool.output);
-  } catch {
-    return null;
-  }
-  const { data, resource } = extractEnvelope(parsed);
+/** Parse an arbitrary `{ resource, data }` or `{ data }` envelope from an OKX gate tool.
+ * Never fabricates a verdict/decision from malformed data. */
+export function parseOkxActionCardEnvelope(
+  toolName: string,
+  envelope: unknown,
+  rawJson?: string,
+): OkxActionCardData | null {
+  if (!isOkxGateTool(toolName)) return null;
+  const { data, resource } = extractEnvelope(envelope);
   if (!data) return null;
-  const rawJson = tool.output.length <= 20_000 ? tool.output : tool.output.slice(0, 20_000);
+  const jsonText = rawJson ?? (typeof envelope === "string" ? envelope : JSON.stringify(envelope, null, 2));
+  const rawJsonSlice = jsonText.length <= 20_000 ? jsonText : jsonText.slice(0, 20_000);
 
-  if (isReadinessTool(tool.name)) {
+  if (isReadinessTool(toolName)) {
     const endpointUrl = text(data.endpointUrl, 2_000);
     const verdict = text(data.verdict, 20);
     const checks = signals(data.checks);
@@ -246,7 +244,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
       verdict: verdict as ReadinessVerdict,
       checks,
       remediation,
-      rawJson,
+      rawJson: rawJsonSlice,
       ...(score !== undefined ? { score } : {}),
       ...(resource ? { resource } : {}),
       ...(lastRun ? { lastRun } : {}),
@@ -261,7 +259,7 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
   const score = text(data.score, 20);
   const avatarUrl = text(data.avatarUrl, 500);
   const services = Array.isArray(data.services)
-    ? data.services.slice(0, 10).flatMap((s: any) => {
+    ? data.services.slice(0, 10).flatMap((s: unknown) => {
         if (!isRecord(s)) return [];
         const name = text(s.name, 100);
         if (!name) return [];
@@ -299,12 +297,27 @@ export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxAction
     notChecked,
     remediation,
     safeNextStep,
-    rawJson,
+    rawJson: rawJsonSlice,
     ...(resource ? { resource } : {}),
     ...(lastRun ? { lastRun } : {}),
     ...(limitations && limitations.length > 0 ? { limitations } : {}),
     ...(lastChecked !== undefined ? { lastChecked } : {}),
   };
+}
+
+/** The provider records a completed MCP result as a string in `tool.output`.
+ * Accept the real `{ resource, data }` envelope and a bare `data` object for
+ * older transcripts, but never fabricate a verdict/decision from malformed data. */
+export function parseOkxActionCard(tool: Message["tool"] | undefined): OkxActionCardData | null {
+  if (!tool || tool.ok !== true || !tool.output || !isOkxGateTool(tool.name)) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(tool.output);
+  } catch {
+    return null;
+  }
+  const rawJson = tool.output.length <= 20_000 ? tool.output : tool.output.slice(0, 20_000);
+  return parseOkxActionCardEnvelope(tool.name, parsed, rawJson);
 }
 
 /** Tool providers namespace MCP calls (for example `mcp__markets__…`), so
