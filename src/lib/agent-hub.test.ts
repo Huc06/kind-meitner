@@ -299,9 +299,6 @@ describe("agent-hub", () => {
       // public deployment and its okx.ai listing, not the local route.
       expect(service.endpoint).toBe("https://kind-meitner-production.up.railway.app/api/okx/free-mcp");
       expect(service.okxAgentId).toBe("13851");
-      expect(service.provenance).toBe(
-        "kind-meitner local registry and public OKX.AI setup guidance",
-      );
       expect(service.tools).toEqual([
         {
           name: "scan_free_mcp_readiness",

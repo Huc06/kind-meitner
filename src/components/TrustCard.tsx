@@ -23,6 +23,7 @@ export function TrustCard({
   onCloneAgent,
   busy = false,
   ranAt,
+  hideSpendControls = false,
 }: {
   data: TrustCardData;
   onBlockSpend?: (agentId: string) => void;
@@ -35,6 +36,8 @@ export function TrustCard({
   busy?: boolean;
   /** Transcript message time for the last-run age line. */
   ranAt?: number;
+  /** Read-only contexts (the Dev Day demo): no spend state or Continue action. */
+  hideSpendControls?: boolean;
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -161,6 +164,7 @@ export function TrustCard({
               {t("okxGate.lastChecked", { time: String(data.lastChecked) })}
             </p>
           )}
+          {!hideSpendControls && (
           <div className="mt-2 flex items-center gap-2 font-mono text-[11px]">
             <span
               className={cn(
@@ -172,6 +176,7 @@ export function TrustCard({
               {isSpendBlocked ? t("okxGate.trust.spendBlocked") : t("okxGate.trust.spendNotBlocked")}
             </span>
           </div>
+          )}
         </div>
       </div>
 
@@ -265,16 +270,18 @@ export function TrustCard({
             {t("okxGate.trust.blockSpend")}
           </Button>
         )}
-        <Button
-          variant={data.decision === "GO" ? "primary" : "secondary"}
-          size="sm"
-          disabled={!continueEnabled}
-          onClick={() => runOnce(() => onContinue?.(data.agentId))}
-          aria-label={t("okxGate.trust.continueFree")}
-        >
-          <Play size={12} aria-hidden="true" />
-          {t("okxGate.trust.continueFree")}
-        </Button>
+        {!hideSpendControls && (
+          <Button
+            variant={data.decision === "GO" ? "primary" : "secondary"}
+            size="sm"
+            disabled={!continueEnabled}
+            onClick={() => runOnce(() => onContinue?.(data.agentId))}
+            aria-label={t("okxGate.trust.continueFree")}
+          >
+            <Play size={12} aria-hidden="true" />
+            {t("okxGate.trust.continueFree")}
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="sm"

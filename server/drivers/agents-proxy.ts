@@ -834,18 +834,18 @@ const TOOLS = [
       type: "object",
       properties: {
         endpointUrl: { type: "string", description: "The public HTTPS endpoint to scan (e.g. https://kind-meitner-production.up.railway.app/api/okx/free-mcp)." },
-        agentId: { type: "string", description: "Optional OKX Agent ID (e.g. 13837 or 896)." },
+        agentId: { type: "string", description: "Optional OKX Agent ID (e.g. 13851)." },
       },
       required: ["endpointUrl"],
     },
   },
   {
     name: "get_asp_trust_card",
-    description: "Evaluate an OKX Agent Service Provider (ASP) by Agent ID or endpoint before payment, spend, or delegation to produce an authoritative GO / NO_GO decision.",
+    description: "Check an OKX Agent Service Provider (ASP) by Agent ID, and optionally its endpoint, before payment, spend, or delegation. Returns a GO / CAUTION / NO_GO decision from listing-page and endpoint-readiness probes, with what was not checked; it is not a safety guarantee or an OKX endorsement.",
     inputSchema: {
       type: "object",
       properties: {
-        agentId: { type: "string", description: "The OKX Agent ID (e.g. 13837 or 896)." },
+        agentId: { type: "string", description: "The OKX Agent ID (e.g. 13851)." },
         endpointUrl: { type: "string", description: "Optional candidate endpoint URL." },
       },
       required: ["agentId"],

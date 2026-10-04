@@ -28,6 +28,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { TeamMapPage } from "@/components/TeamMapPage";
 import { LandingPage } from "@/components/LandingPage";
+import { DemoView } from "@/components/demo/DemoView";
 import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { saveOkxSettings } from "./okx/okx-settings-api";
 import { setLocale } from "@/lib/i18n";
@@ -48,6 +49,9 @@ export function handleInitialNavigation(
       dispatch({ type: "togglePlugins", open: true, surface: "hub" });
     }
     const viewParam = url.searchParams.get("view");
+    if (viewParam === "demo" || url.hash === "#demo") {
+      dispatch({ type: "showDemo" });
+    }
     if (viewParam === "team-map" || url.hash === "#team-map") {
       if (viewParam) {
         url.searchParams.delete("view");
@@ -105,7 +109,7 @@ function Shell() {
   // the panel hands off to this and back)
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const previousViewRef = useRef(state.activeView);
-  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "landing">("chat");
+  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "landing" | "demo">("chat");
   const group = state.groups.find((g) => g.id === state.selectedId);
   const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
   const calendarFocus = state.activeView === "routines";
@@ -201,8 +205,22 @@ function Shell() {
       calendarOriginRef.current = previousViewRef.current;
     }
     previousViewRef.current = state.activeView;
-  }, [state.activeView]);
 
+    if (typeof window !== "undefined" && window.location) {
+      try {
+        const url = new URL(window.location.href);
+        if (state.activeView === "demo") {
+          if (url.searchParams.get("view") !== "demo") {
+            url.searchParams.set("view", "demo");
+            window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+          }
+        } else if (url.searchParams.get("view") === "demo") {
+          url.searchParams.delete("view");
+          window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+        }
+      } catch {}
+    }
+  }, [state.activeView]);
   const closeCalendar = useCallback(() => {
     if (calendarOriginRef.current === "team-map") {
       dispatch({ type: "showTeamMap" });
@@ -218,6 +236,10 @@ function Shell() {
     }
     if (calendarOriginRef.current === "landing") {
       dispatch({ type: "showLanding" });
+      return;
+    }
+    if (calendarOriginRef.current === "demo") {
+      dispatch({ type: "showDemo" });
       return;
     }
     dispatch({ type: "select", id: state.selectedId });
@@ -263,7 +285,7 @@ function Shell() {
       {/* fixed-position popup, bottom-left — outside the layout flow */}
       <UpdateBanner />
       <div data-app-shell className="relative flex min-h-0 flex-1">
-      {!calendarFocus && <button
+      {!calendarFocus && state.activeView !== "demo" && <button
         type="button"
         ref={menuButtonRef}
         aria-label={drawerOpen ? "Close bot list" : "Open bot list"}
@@ -283,7 +305,7 @@ function Shell() {
           className="fixed inset-0 z-30 bg-black/60 backdrop-blur-[2px] min-[769px]:hidden"
         />
       )}
-      {!calendarFocus && state.activeView !== "landing" && <Sidebar
+      {!calendarFocus && state.activeView !== "landing" && state.activeView !== "demo" && <Sidebar
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
@@ -298,6 +320,8 @@ function Shell() {
       >
       {state.activeView === "landing" ? (
         <LandingPage />
+      ) : state.activeView === "demo" ? (
+        <DemoView onExit={() => dispatch({ type: "showChat" })} />
       ) : state.activeView === "team-map" ? (
         <TeamMapPage />
       ) : state.activeView === "routines" ? (

@@ -26,6 +26,7 @@ import {
   Search,
   Scale,
   Settings as SettingsIcon,
+  Sparkles,
   HelpCircle,
   MessageSquare,
   Trash2,
@@ -1525,6 +1526,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
   const isSettingsActive = Boolean(state.appSettingsOpen);
   const isHubActive = !isSettingsActive && state.pluginsOpen && state.pluginsSurface === "hub";
+  const isDemoActive = !isSettingsActive && !state.pluginsOpen && state.activeView === "demo";
   const isActivityActive = !isSettingsActive && !state.pluginsOpen && Boolean(state.activityOpen) && state.activeView === "chat";
   const isMoreActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && (state.activeView === "routines" || state.activeView === "okx-evaluator");
   const isRoomsActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && state.activeView === "chat";
@@ -1543,6 +1545,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     dispatch({ type: "togglePlugins", open: true, surface: "hub", hubTab: "agents" });
   };
 
+  const handleDemoClick = () => {
+    if (state.pluginsOpen) dispatch({ type: "togglePlugins", open: false });
+    if (state.activityOpen) dispatch({ type: "toggleActivity", open: false });
+    dispatch({ type: "showDemo" });
+  };
   const handleActivityClick = () => {
     if (state.activeView !== "chat") {
       dispatch({ type: "showChat" });
@@ -2091,6 +2098,28 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <BotIcon size={16} className={cn("shrink-0", isHubActive ? "text-ink" : "text-ink-secondary")} />
           {density !== "icons" && (
             <span className="flex-1 truncate">{tFromServer("okxHub.nav.agentHub", "OKX Agent Hub")}</span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDemoClick}
+          aria-label={t("demo.nav.demo")}
+          title={t("demo.nav.demo")}
+          aria-current={isDemoActive ? "page" : undefined}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+            isDemoActive
+              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+              : "text-ink hover:bg-raised-hover",
+          )}
+        >
+          <Sparkles size={16} className={cn("shrink-0", isDemoActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && (
+            <span className="flex-1 truncate">{t("demo.nav.demo")}</span>
           )}
         </button>
 

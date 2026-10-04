@@ -3,6 +3,7 @@ import {
   type ReadinessVerdict,
   type TrustDecision,
 } from "./okx-action-cards";
+import { OKX_DEMO_IDENTITY, OKX_LOCAL_REGISTRY_PROVENANCE } from "../../shared/okx-demo-identity";
 export interface CatalogAgent {
   id: string;
   name: string;
@@ -258,8 +259,8 @@ export async function importHubAgent(
  * listing. The readiness scanner only probes public HTTPS hosts, and the trust
  * card takes an okx.ai agent id, so the card advertises these rather than the
  * local relative route it reads the tool list from. */
-export const PUBLIC_FREE_MCP_ENDPOINT = "https://kind-meitner-production.up.railway.app/api/okx/free-mcp";
-export const PUBLIC_OKX_AGENT_ID = "13851";
+export const PUBLIC_FREE_MCP_ENDPOINT = OKX_DEMO_IDENTITY.endpointUrl;
+export const PUBLIC_OKX_AGENT_ID = OKX_DEMO_IDENTITY.agentId;
 
 export async function loadFreeMcpService(
   endpoint = "/api/okx/free-mcp",
@@ -292,7 +293,7 @@ export async function loadFreeMcpService(
     name: "Kind Meitner Markets Free A2MCP",
     endpoint: PUBLIC_FREE_MCP_ENDPOINT,
     tools,
-    provenance: "kind-meitner local registry and public OKX.AI setup guidance",
+    provenance: OKX_LOCAL_REGISTRY_PROVENANCE,
     okxAgentId: PUBLIC_OKX_AGENT_ID,
   };
 }

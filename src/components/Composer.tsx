@@ -29,6 +29,7 @@ import { LocalComputerAutoWarning } from "./LocalComputerAutoWarning";
 import { FullAccessWarning } from "./FullAccessWarning";
 import { ApprovalModeSelector } from "./ApprovalModeSelector";
 import { approvalModeFor, type ApprovalMode } from "../../shared/approval-mode";
+import { OKX_DEMO_IDENTITY } from "../../shared/okx-demo-identity";
 import {
   appendPastedText,
   handoffAttachmentImagePreview,
@@ -384,7 +385,7 @@ export function Composer({
       {
         id: "scan",
         label: "/scan",
-        description: "Scan Railway Free-MCP endpoint (PASS · ASP #13837)",
+        description: `Scan Railway Free-MCP endpoint (ASP #${OKX_DEMO_IDENTITY.agentId})`,
       },
       {
         id: "scan-vercel",
@@ -496,7 +497,7 @@ export function Composer({
     let replacement = "";
     if (command.id === "learn") replacement = "/learn ";
     else if (command.id === "setup") replacement = "/setup ";
-    else if (command.id === "scan") replacement = '@Markets scan endpoint https://kind-meitner-production.up.railway.app/api/okx/free-mcp agentId="13837"';
+    else if (command.id === "scan") replacement = `@Markets scan endpoint ${OKX_DEMO_IDENTITY.endpointUrl} agentId="${OKX_DEMO_IDENTITY.agentId}"`;
     else if (command.id === "scan-vercel") replacement = "@Markets scan endpoint https://demo.vercel.app/api/okx/free-mcp";
     else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="3598"';
     else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';

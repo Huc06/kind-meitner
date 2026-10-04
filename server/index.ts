@@ -297,6 +297,8 @@ import { OkxGateway } from "./okx/gateway.ts";
 import { OkxRecurringEngine, OkxTreasuryManager } from "./okx/scheduler.ts";
 import { OkxWebhookJournal } from "./okx/journal.ts";
 import { OkxMarketplaceIntelligence, fetchOkxAgentMetadata, verifyEip3009Payment } from "./okx/intelligence.ts";
+import { OKX_LOCAL_REGISTRY_PROVENANCE } from "../shared/okx-demo-identity.ts";
+import { demoStatus, runDemoCheck } from "./okx/demo-client.ts";
 import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
 import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor, type OkxCatalogAgent } from "./okx/agent-import.ts";
 import { resolveOkxAgent, executeOkxAgentTool } from "./okx/agent-mcp-resolver.ts";
@@ -5802,7 +5804,7 @@ if (okxIntelligence.getMarketOverview().totalAsps === 0) {
   okxIntelligence.indexAsps([
     {
       id: "13837",
-      name: "Markets (Official ASP)",
+      name: "Markets (sample record)",
       category: "research",
       reputationScore: 98,
       medianPrice: 0,
@@ -5869,6 +5871,12 @@ if (okxIntelligence.getMarketOverview().totalAsps === 0) {
       updatedAt: Date.now() - 1800_000,
     },
   ]);
+}
+// Earlier builds seeded this sample record as "Markets (Official ASP)" and
+// persisted it; nothing verifies an official status, so relabel it.
+{
+  const legacy = okxIntelligence.getAsp("13837");
+  if (legacy?.name === "Markets (Official ASP)") okxIntelligence.indexAsps([{ ...legacy, name: "Markets (sample record)" }]);
 }
 const okxX402Testnet = new X402TestnetResource({
   enabled: process.env.OKX_X402_TESTNET_ENABLED === "true",
@@ -9847,7 +9855,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         const resource = {
           mode: "x402-testnet",
           network: "eip155:1952",
-          provenance: "kind-meitner local registry and public OKX.AI setup guidance",
+          provenance: OKX_LOCAL_REGISTRY_PROVENANCE,
           data: { benchmarks: okxIntelligence.getCategoryBenchmarks() },
         };
         const settlement = await okxX402Testnet.settle(adapter, processed, Buffer.from(JSON.stringify(resource)));
@@ -12475,6 +12483,17 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     if (method === "POST" && path === "/api/okx/agents/import") {
       const imported = await importCatalogOkxAgent(await readBody(req));
       return json(res, imported.created ? 201 : 200, imported.result);
+    }
+    // Dev Day demo: live calls to the pinned Kind Meitner Markets endpoint.
+    if (method === "GET" && path === "/api/okx/demo/status") {
+      return json(res, 200, await demoStatus());
+    }
+    if (method === "POST" && path === "/api/okx/demo/check") {
+      const body = await readBody(req).catch(() => undefined);
+      if (!body || typeof body !== "object") return json(res, 400, { error: "Expected a JSON check request." });
+      const aborted = new AbortController();
+      req.once("close", () => { if (!res.writableEnded) aborted.abort(); });
+      return json(res, 200, await runDemoCheck(body, {}, aborted.signal));
     }
     if (method === "POST" && path === "/api/okx/resolve-agent") {
       const body = await readBody(req);
