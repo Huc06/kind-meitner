@@ -537,7 +537,13 @@ export function brokerSocketCandidates(threadId: string, botId?: string): string
       .update(`${DATA_DIR}\0${process.pid}\0${botId ?? ""}\0${threadId}`)
       .digest("hex")
       .slice(0, 16);
-    return [base, join(tmpdir(), `kind-meitner-perm-${scope}.sock`)];
+    const name = `kind-meitner-perm-${scope}.sock`;
+    // TMPDIR itself can be deep (a per-user macOS temp dir, or an isolated
+    // fixture's data dir), so /tmp is the last, always-short resort. The
+    // broker chmods the socket to 0600 wherever it binds.
+    const candidates = [base, join(tmpdir(), name)];
+    if (tmpdir() !== "/tmp") candidates.push(join("/tmp", name));
+    return candidates;
   }
   return [
     base,

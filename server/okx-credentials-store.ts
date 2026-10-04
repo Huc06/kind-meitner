@@ -69,11 +69,13 @@ export function writeStoredOkxCredentials(credentials: StoredOkxCredentials, dat
 
 /** True only when the file exists, is owner-only (0600 or stricter on
  * the relevant bits), and parses to a complete credential set. Used by
- * the setup command to confirm a save actually took effect. */
+ * the setup command to confirm a save actually took effect. Windows has no
+ * POSIX mode bits (Node always reports 0666 there; access is governed by the
+ * user-profile ACL), so the mode check applies on POSIX only. */
 export function storedOkxCredentialsAreSecure(dataDir: string = DATA_DIR): boolean {
   const path = okxCredentialsStorePath(dataDir);
   if (!existsSync(path)) return false;
   const mode = statSync(path).mode & 0o777;
-  if (mode & 0o077) return false; // group/other has any permission bit
+  if (process.platform !== "win32" && mode & 0o077) return false; // group/other has any permission bit
   return readStoredOkxCredentials(dataDir) !== undefined;
 }

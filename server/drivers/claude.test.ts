@@ -222,11 +222,21 @@ describe("ClaudeDriver.decodeConfig", () => {
       expect(candidates.length).toBeGreaterThan(1);
       expect(new Set(candidates).size).toBe(candidates.length);
     } else {
-      // macOS has a small Unix-socket path limit, so a deep HOME needs a
-      // short fallback under the OS temp root.
-      expect(candidates).toHaveLength(2);
-      expect(candidates[1]).toMatch(/kind-meitner-perm-[0-9a-f]{16}\.sock$/);
-      expect(candidates[1]).not.toBe(candidates[0]);
+      // macOS limits Unix-socket paths to 104 bytes and TMPDIR can be deep
+      // (an isolated fixture points it inside its data dir), so the last
+      // candidate must always be short enough to bind.
+      expect(candidates.at(-1)).toMatch(/kind-meitner-perm-[0-9a-f]{16}\.sock$/);
+      expect(Buffer.byteLength(candidates.at(-1)!)).toBeLessThan(104);
+      expect(new Set(candidates).size).toBe(candidates.length);
+      const deep = process.env.TMPDIR;
+      process.env.TMPDIR = `/tmp/${"d".repeat(120)}`;
+      try {
+        const deepCandidates = brokerSocketCandidates("t-candidates");
+        expect(deepCandidates.at(-1)!.startsWith("/tmp/kind-meitner-perm-")).toBe(true);
+      } finally {
+        if (deep === undefined) delete process.env.TMPDIR;
+        else process.env.TMPDIR = deep;
+      }
     }
   });
 
