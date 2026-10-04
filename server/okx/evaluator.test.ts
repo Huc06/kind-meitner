@@ -897,7 +897,7 @@ export function api() {}
       // Verify persistence on disk with 0o600
       expect(existsSync(storageFile)).toBe(true);
       const stat = statSync(storageFile);
-      expect(stat.mode & 0o777).toBe(0o600);
+      if (process.platform !== "win32") expect(stat.mode & 0o777).toBe(0o600);
 
       const diskData = JSON.parse(readFileSync(storageFile, "utf8"));
       expect(diskData.commitments).toHaveLength(1);

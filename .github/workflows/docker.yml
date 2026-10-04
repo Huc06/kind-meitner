@@ -50,10 +50,13 @@ jobs:
       - name: Prove the non-root user can browse with the baked-in Chrome
         run: |
           set -euo pipefail
-          test "$(docker exec kind-meitner id -un)" = maus
-          timeout 45 docker exec kind-meitner agent-browser --session ci-browser open 'data:text/html,<title>kind-meitner browser smoke</title><h1>Browser ready</h1>'
-          timeout 15 docker exec kind-meitner agent-browser --session ci-browser get title | grep -Fx 'kind-meitner browser smoke'
-          timeout 15 docker exec kind-meitner agent-browser --session ci-browser close
+          # The image starts as root so the entrypoint can own a Railway
+          # volume, then setpriv drops to maus: the server (PID 1) must run
+          # as maus, and the browser must work for maus.
+          test "$(docker exec kind-meitner stat -c %U /proc/1)" = maus
+          timeout 45 docker exec -u maus kind-meitner agent-browser --session ci-browser open 'data:text/html,<title>kind-meitner browser smoke</title><h1>Browser ready</h1>'
+          timeout 15 docker exec -u maus kind-meitner agent-browser --session ci-browser get title | grep -Fx 'kind-meitner browser smoke'
+          timeout 15 docker exec -u maus kind-meitner agent-browser --session ci-browser close
       - name: Prove the server never binds a public interface
         # The loopback-trust model is the auth model, so the image must keep
         # the server unreachable from the container's own network. Probe from a
