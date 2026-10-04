@@ -20,29 +20,39 @@ const renderBot = (bot: Partial<BotAvatarProps["bot"]>) =>
   );
 
 describe("MausAvatar body", () => {
-  it("wears the ghost when no body is given", () => {
-    expect(render({})).toContain('data-bot-avatar="ghost"');
+  it("wears the default logo when no body is given", () => {
+    expect(render({})).toContain('data-agent-logo="cursor"');
   });
 
   it("wears the mapped body it is given", () => {
-    expect(render({ bodyId: "star" })).toContain('data-bot-avatar="star"');
-    expect(render({ bodyId: "squircle" })).toContain('data-bot-avatar="pebble"');
+    expect(render({ bodyId: "star" })).toContain('data-agent-logo="star"');
+    expect(render({ bodyId: "squircle" })).toContain('data-agent-logo="squircle"');
+    // each body wears a different logo image
+    const src = (bodyId: MausAvatarProps["bodyId"]) => render({ bodyId }).match(/<img[^>]*src="([^"]+)"/)?.[1];
+    expect(src("star")).not.toBe(src("squircle"));
   });
 
-  it("falls back to the ghost for an unknown body", () => {
+  it("falls back to the default logo for an unknown body", () => {
     // SAFETY: "hexagram" is deliberately not a valid MascotBodyId — this
     // exercises the runtime fallback for a value that could arrive from
     // persisted/streamed data, which the type system would otherwise rule
     // out at this call site.
     expect(render({ bodyId: "hexagram" as MausAvatarProps["bodyId"] })).toContain(
-      'data-bot-avatar="ghost"',
+      'data-agent-logo="cursor"',
     );
   });
 
-  it("collapses app states onto the library's three states", () => {
-    expect(render({ state: "idle" })).toContain('data-state="sleeping"');
+  it("marks working agents and bobs only while animated", () => {
+    expect(render({ state: "idle" })).toContain('data-state="resting"');
     expect(render({ state: "working" })).toContain('data-state="working"');
-    expect(render({ state: "happy" })).toContain('data-state="default"');
+    expect(render({ state: "working", animated: true })).toContain("agent-bob");
+    expect(render({ state: "working", animated: false })).not.toContain("agent-bob");
+    expect(render({ state: "idle", animated: true })).not.toContain("agent-bob");
+  });
+
+  it("names the logo for assistive tech only when labelled", () => {
+    expect(render({ label: "Eli" })).toContain('aria-label="Eli"');
+    expect(render({})).toContain('aria-hidden="true"');
   });
 });
 
@@ -56,19 +66,18 @@ describe("BotAvatar's two avatar outcomes", () => {
   it("shows the image as it is, with no mascot face painted on it", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "square" });
     expect(markup).toContain("<img");
-    expect(markup).not.toContain("data-bot-avatar");
+    expect(markup).not.toContain("data-agent-logo");
   });
 
   it("renders the mascot when the crop is mascot, image or not", () => {
     const markup = renderBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "mascot" });
-    expect(markup).not.toContain("<img");
-    expect(markup).toContain("<canvas");
+    expect(markup).toContain("data-agent-logo");
+    expect(markup).not.toContain("cat.webp");
   });
 
   it("falls back to the mascot when a flat crop has no valid image", () => {
     const markup = renderBot({ avatarUrl: undefined, avatarCrop: "circle" });
-    expect(markup).not.toContain("<img");
-    expect(markup).toContain("<canvas");
+    expect(markup).toContain("data-agent-logo");
   });
 });
 
@@ -104,17 +113,14 @@ describe("resolveBotAvatarOutcome", () => {
 
 
 describe("catalog bot avatars", () => {
-  it("renders catalog bots with distinct dynamic bot-avatars mascots", () => {
+  it("renders catalog bots with distinct logos", () => {
     const spend = renderBot({ name: "Spend Scout", okxImport: { kind: "okx-catalog" } });
     const coach = renderBot({ name: "Listing Coach", okxImport: { kind: "okx-catalog" } });
     const markets = renderBot({ name: "Markets", okxImport: { kind: "okx-catalog" } });
 
-    // Spend Scout maps to shield -> droid
-    expect(spend).toContain('data-bot-avatar="droid"');
-    // Listing Coach maps to squircle -> pebble
-    expect(coach).toContain('data-bot-avatar="pebble"');
-    // Markets maps to star -> star
-    expect(markets).toContain('data-bot-avatar="star"');
+    expect(spend).toContain('data-agent-logo="shield"');
+    expect(coach).toContain('data-agent-logo="squircle"');
+    expect(markets).toContain('data-agent-logo="star"');
   });
 
   it("maps catalog and local bots deterministically via defaultMascotBodyForBot", () => {
