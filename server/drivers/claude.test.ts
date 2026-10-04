@@ -420,6 +420,20 @@ describe("ClaudeDriver turns (fake CLI)", () => {
     expect(recorder.events.at(-1)).toMatchObject({ type: "turn.completed", ok: false, stopReason: "auth_required" });
   });
 
+  it("reports a plan usage limit as an error, not as the bot's reply", async () => {
+    await create("usage-limit");
+    await instance.adapter.sendTurn({ threadId: "t-limit", text: "hi" });
+    await recorder.until((e) => e.type === "turn.completed");
+
+    const failure = recorder.events.find((e) => e.type === "runtime.error");
+    if (failure?.type !== "runtime.error") throw new Error("expected a runtime.error event");
+    expect(failure.message).toBe("You've hit your session limit \u00b7 resets 10am (UTC)");
+    // not a sign-in problem: the account is logged in, it is out of usage
+    expect(failure.setup).toBeUndefined();
+    expect(recorder.events.some((e) => e.type === "item.completed" && e.itemType === "assistant_text")).toBe(false);
+    expect(recorder.events.at(-1)).toMatchObject({ type: "turn.completed", ok: false });
+  });
+
   it("keeps a workspace Anthropic key set on purpose while still dropping one from the parent env", async () => {
     await create(undefined, { ANTHROPIC_API_KEY: "sk-ant-workspace-fixture" });
     const dump = join(scratch, "dump-workspace-key.json");
