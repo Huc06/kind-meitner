@@ -774,7 +774,7 @@ function decodeConfig(raw: unknown): ClaudeConfig {
   };
 }
 
-function firstText(content: unknown): string {
+export function firstText(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content
