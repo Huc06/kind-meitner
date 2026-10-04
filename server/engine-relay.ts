@@ -112,6 +112,17 @@ class RelayRateLimiter {
   }
 }
 
+/** Claude Code session ids are UUIDs; the runner refuses anything else. */
+const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isClaudeSessionId(value: unknown): value is string {
+  return typeof value === "string" && SESSION_ID_RE.test(value);
+}
+
+/** Relayed turns run with every tool disabled; say so, so the model never
+ * claims to have run a command or written a file. */
+const RELAY_NO_TOOLS_NOTE =
+  "You are running through Laptop Claude with all tools disabled: you cannot run commands, read or write files, browse, or call MCP tools. If a request needs any of that, say plainly that you cannot do it here instead of saying you will.";
+
 export class EngineRelayManager {
   private tokens = new Map<string, RelayTokenRecord>();
   private threadSessions = new Map<string, string>();
@@ -173,7 +184,7 @@ export class EngineRelayManager {
         const obj = JSON.parse(raw);
         if (obj && typeof obj === "object" && !Array.isArray(obj)) {
           for (const [k, v] of Object.entries(obj)) {
-            if (typeof v === "string") this.threadSessions.set(k, v);
+            if (isClaudeSessionId(v)) this.threadSessions.set(k, v);
           }
         }
       }
@@ -234,7 +245,7 @@ export class EngineRelayManager {
           job.emit({
             ...base,
             type: "runtime.error",
-            message: "Laptop Claude is not connected. Start the runner from Settings → Engines → Claude.",
+            message: "Laptop Claude is not connected. Start the runner from Settings → Engines → Laptop Claude.",
             setup: true,
           });
           job.emit({
@@ -524,7 +535,7 @@ export class EngineRelayManager {
         const subtype = typeof record.subtype === "string" ? record.subtype : "";
         if (subtype === "init") {
           const init = record as unknown as JsonInit;
-          if (typeof init.session_id === "string") {
+          if (isClaudeSessionId(init.session_id)) {
             job.sessionId = init.session_id;
             this.threadSessions.set(job.threadId, init.session_id);
             this.saveSessions();
@@ -641,7 +652,7 @@ export class EngineRelayManager {
     if (!job) return false;
     this.lastRunnerPollAt = Date.now();
 
-    const finalSessionId = sessionId || job.sessionId;
+    const finalSessionId = isClaudeSessionId(sessionId) ? sessionId : job.sessionId;
     if (finalSessionId) {
       this.threadSessions.set(job.threadId, finalSessionId);
       this.saveSessions();
@@ -700,7 +711,7 @@ export class EngineRelayManager {
         emit({
           ...base,
           type: "runtime.error",
-          message: "Laptop Claude is not connected. Start the runner from Settings → Engines → Claude.",
+          message: "Laptop Claude is not connected. Start the runner from Settings → Engines → Laptop Claude.",
           setup: true,
         });
         emit({
@@ -725,10 +736,10 @@ export class EngineRelayManager {
     }
 
     const jobId = randomUUID();
-    const resumeSessionId: string | undefined =
-      typeof turnInput.resumeCursor === "string"
-        ? turnInput.resumeCursor
-        : this.threadSessions.get(turnInput.threadId);
+    // Only a real Claude session id (a UUID) is ever sent to the runner; the
+    // runner refuses anything else, which would otherwise fail every turn.
+    const candidateResume = typeof turnInput.resumeCursor === "string" ? turnInput.resumeCursor : this.threadSessions.get(turnInput.threadId);
+    const resumeSessionId = isClaudeSessionId(candidateResume) ? candidateResume : undefined;
 
     const job: RelayJob = {
       id: jobId,
@@ -736,7 +747,7 @@ export class EngineRelayManager {
       threadId: turnInput.threadId,
       turnId,
       prompt: turnInput.text,
-      system: turnInput.system,
+      system: [turnInput.system, RELAY_NO_TOOLS_NOTE].filter(Boolean).join("\n\n"),
       model: turnInput.model,
       resumeSessionId,
       sent: false,
@@ -884,7 +895,7 @@ export class ClaudeRelayDriver implements ProviderDriver {
         }
         return {
           state: "unavailable",
-          reason: "Laptop Claude is not connected. Start the runner from Settings → Engines → Claude.",
+          reason: "Laptop Claude is not connected. Start the runner from Settings → Engines → Laptop Claude.",
         };
       },
       async dispose(): Promise<void> {

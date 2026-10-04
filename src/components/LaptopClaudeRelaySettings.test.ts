@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { StoreProvider } from "@/state/store";
 import { afterEach, expect, it, vi } from "vitest";
 import type * as StoreModule from "@/state/store";
 
@@ -30,7 +31,7 @@ afterEach(() => {
 });
 
 it("renders the Run on my laptop section with command line and setup prompt", () => {
-  const markup = renderToStaticMarkup(createElement<LaptopClaudeRelaySettingsProps>(LaptopClaudeRelaySettings, { initialTokens: fixture.tokens }));
+  const markup = renderToStaticMarkup(createElement(StoreProvider, null, createElement<LaptopClaudeRelaySettingsProps>(LaptopClaudeRelaySettings, { initialTokens: fixture.tokens })));
   expect(markup).toContain("Run on my laptop");
   expect(markup).toContain("Start command");
   expect(markup).toContain("curl -fsSL");

@@ -8,7 +8,6 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { Tag } from "@/components/ui/tag";
-import { LaptopClaudeRelaySettings } from "./LaptopClaudeRelaySettings";
 export function ClaudeAccountForm({ instance, onSaved, onCancel }: {
   instance?: InstanceInfo;
   onSaved: () => void;
@@ -220,7 +219,6 @@ export function ClaudeAccountSettings({ instance }: { instance: InstanceInfo }) 
         onCancel={() => setConfirmSignOut(false)}
         onConfirm={() => void signOut()}
       />
-      {account.isDefault && <LaptopClaudeRelaySettings />}
     </div>
   );
 }

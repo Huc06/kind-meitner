@@ -12,6 +12,7 @@ import { EngineCard, EngineSections, RefreshEngines, engineReady } from "./Engin
 import { t } from "@/lib/i18n";
 import { EngineSetup, EngineUpdateNotice } from "./EngineSetup";
 import { AddClaudeAccount, ClaudeAccountSettings } from "./ClaudeAccountSettings";
+import { LaptopClaudeRelaySettings } from "./LaptopClaudeRelaySettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 
@@ -249,6 +250,16 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
       .catch((e) => setError(e.message))
       .finally(() => setUpdating(false));
   };
+
+  // The relay engine runs the owner's laptop CLI: its card is the runner
+  // setup itself, with no local CLI path, update or sign-in controls.
+  if (instance.driverKind === "claudeRelay") {
+    return (
+      <EngineCard instance={instance}>
+        <LaptopClaudeRelaySettings />
+      </EngineCard>
+    );
+  }
 
   return (
     <EngineCard instance={instance}>

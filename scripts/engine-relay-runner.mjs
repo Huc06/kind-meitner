@@ -4,6 +4,7 @@
 // Runs Claude Code locally with tools disabled. Single dependency-free script.
 
 import { spawn } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 const MODEL_REGEX = /^[a-z0-9.-]+$/i;
@@ -269,8 +270,17 @@ function sleep(ms, signal) {
   });
 }
 
-// CLI entry point
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// CLI entry point. Node resolves symlinks for import.meta.url but not for
+// argv[1] (macOS /tmp → /private/tmp, a symlinked home), so compare real paths.
+function invokedDirectly() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+if (invokedDirectly()) {
   const { values: flags } = parseArgs({
     options: {
       server: { type: "string" },

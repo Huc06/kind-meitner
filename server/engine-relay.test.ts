@@ -246,7 +246,7 @@ describe("Laptop Claude Engine Relay", () => {
       const err = events.find((e) => e.type === "runtime.error");
       expect(err).toBeDefined();
       expect((err as { message: string }).message).toBe(
-        "Laptop Claude is not connected. Start the runner from Settings → Engines → Claude.",
+        "Laptop Claude is not connected. Start the runner from Settings → Engines → Laptop Claude.",
       );
 
       const completed = events.find((e) => e.type === "turn.completed");

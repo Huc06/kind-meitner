@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 
-import { api } from "@/state/store";
+import { api, useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export interface LaptopClaudeRelaySettingsProps {
 }
 
 export function LaptopClaudeRelaySettings({ initialTokens = [] }: LaptopClaudeRelaySettingsProps = {}) {
+  const { refreshInstances } = useStore();
   const [tokens, setTokens] = useState<RelayTokenItem[]>(initialTokens);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("Laptop");
@@ -50,6 +51,18 @@ export function LaptopClaudeRelaySettings({ initialTokens = [] }: LaptopClaudeRe
   useEffect(() => {
     void fetchTokens();
   }, [fetchTokens]);
+
+  // A runner connects or drops while this card is open; keep its token row
+  // and the engine's ready badge current without a manual refresh.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void api("/api/engine-relay/tokens")
+        .then((data: unknown) => { if (Array.isArray(data)) setTokens(data as RelayTokenItem[]); })
+        .catch(() => {});
+      void Promise.resolve(refreshInstances()).catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [refreshInstances]);
 
   const createToken = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +150,28 @@ export function LaptopClaudeRelaySettings({ initialTokens = [] }: LaptopClaudeRe
       )}
 
       <div className="mt-3 space-y-3">
+        <div className="border-t border-hairline pt-3">
+          <form onSubmit={(e) => void createToken(e)} className="flex items-center gap-2">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("engines.relay.tokenNamePlaceholder")}
+              maxLength={80}
+              disabled={creating}
+              className="h-7 text-[12px]"
+            />
+            <Button
+              variant="secondary"
+              size="xs"
+              type="submit"
+              disabled={creating || !name.trim()}
+              className="h-7 shrink-0 gap-1 px-2 text-[12px]"
+            >
+              {creating ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
+              {creating ? t("engines.relay.creating") : t("engines.relay.createToken")}
+            </Button>
+          </form>
+        </div>
         <div>
           <label className="text-[11.5px] font-medium text-ink-secondary">
             {t("engines.relay.startCommand")}
@@ -166,28 +201,6 @@ export function LaptopClaudeRelaySettings({ initialTokens = [] }: LaptopClaudeRe
           </pre>
         </div>
 
-        <div className="border-t border-hairline pt-3">
-          <form onSubmit={(e) => void createToken(e)} className="flex items-center gap-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("engines.relay.tokenNamePlaceholder")}
-              maxLength={80}
-              disabled={creating}
-              className="h-7 text-[12px]"
-            />
-            <Button
-              variant="secondary"
-              size="xs"
-              type="submit"
-              disabled={creating || !name.trim()}
-              className="h-7 shrink-0 gap-1 px-2 text-[12px]"
-            >
-              {creating ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
-              {creating ? t("engines.relay.creating") : t("engines.relay.createToken")}
-            </Button>
-          </form>
-        </div>
 
         <div className="space-y-1.5">
           <label className="text-[11.5px] font-medium text-ink-secondary">

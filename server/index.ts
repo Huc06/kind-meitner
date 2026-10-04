@@ -9824,7 +9824,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     }
 
     if (path === "/api/engine-relay/poll" && method === "POST") {
-      const clientIp = req.socket.remoteAddress ?? "unknown";
+      const clientIp = requestSource(req);
       const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
       if (!authResult.ok) {
         return json(res, authResult.status, { error: authResult.error });
@@ -9839,7 +9839,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
 
     m = path.match(/^\/api\/engine-relay\/jobs\/([^/]+)\/events$/);
     if (m && method === "POST") {
-      const clientIp = req.socket.remoteAddress ?? "unknown";
+      const clientIp = requestSource(req);
       const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
       if (!authResult.ok) return json(res, authResult.status, { error: authResult.error });
       const body = await readBody(req, 1024 * 1024);
@@ -9854,7 +9854,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
 
     m = path.match(/^\/api\/engine-relay\/jobs\/([^/]+)\/lease$/);
     if (m && method === "POST") {
-      const clientIp = req.socket.remoteAddress ?? "unknown";
+      const clientIp = requestSource(req);
       const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
       if (!authResult.ok) return json(res, authResult.status, { error: authResult.error });
       const result = engineRelay.lease(m[1], authResult.record.tokenHash);
@@ -9863,7 +9863,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
 
     m = path.match(/^\/api\/engine-relay\/jobs\/([^/]+)\/done$/);
     if (m && method === "POST") {
-      const clientIp = req.socket.remoteAddress ?? "unknown";
+      const clientIp = requestSource(req);
       const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
       if (!authResult.ok) return json(res, authResult.status, { error: authResult.error });
       const body = await readBody(req, 16384);
