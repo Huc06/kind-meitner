@@ -27,7 +27,7 @@ const base: ExternalAgentConnection = {
   provider: "Acme",
   transport: "direct",
   protocol: "a2a",
-  endpointUrl: "https://agent.example/a2a?key=secret",
+  endpointUrl: "https://agent.example/a2a?tenant=acme-internal",
   capabilities: ["chat"],
   status: "ready",
   provenance: "direct-endpoint",
@@ -55,6 +55,9 @@ describe("endpoint validation", () => {
     expect(validateEndpoint("https://agent.example/a2a").ok).toBe(true);
     expect(validateEndpoint("http://agent.example/a2a")).toEqual({ ok: false, message: MESSAGES.notHttps });
     expect(validateEndpoint("https://user:pass@agent.example/")).toMatchObject({ ok: false });
+    expect(validateEndpoint("https://agent.example/a2a?api_key=abc")).toMatchObject({ ok: false });
+    expect(validateEndpoint("https://agent.example/a2a?access_token=abc")).toMatchObject({ ok: false });
+    expect(validateEndpoint("https://agent.example/a2a?route=research").ok).toBe(true);
   });
   it("allows http loopback only behind the development flag", () => {
     expect(validateEndpoint("http://127.0.0.1:8810/").ok).toBe(false);
@@ -75,7 +78,21 @@ describe("direct adapter", () => {
     const { fetch, calls } = fakeFetch(() => json(card()));
     const check = await adapterFor("direct", { fetch: fetch }).checkConnection(base);
     expect(check).toMatchObject({ ok: true, status: "ready", agentId: "acme-research", capabilities: ["chat", "research"] });
-    expect(calls[0]!.url).toBe("https://agent.example/a2a/.well-known/agent.json");
+    expect(calls[0]!.url).toBe("https://agent.example/a2a/.well-known/agent-card.json");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("falls back to the v0.2 agent.json card only when agent-card.json is missing", async () => {
+    const { fetch, calls } = fakeFetch((call) => call.url.endsWith("/agent-card.json") ? new Response("", { status: 404 }) : json(card()));
+    const check = await adapterFor("direct", { fetch: fetch }).checkConnection(base);
+    expect(check).toMatchObject({ ok: true, status: "ready", agentId: "acme-research" });
+    expect(calls.map((call) => call.url)).toEqual([
+      "https://agent.example/a2a/.well-known/agent-card.json",
+      "https://agent.example/a2a/.well-known/agent.json",
+    ]);
+    const refused = fakeFetch(() => new Response("", { status: 401 }));
+    expect(await adapterFor("direct", { fetch: refused.fetch }).checkConnection(base)).toMatchObject({ ok: false, status: "unauthorized" });
+    expect(refused.calls).toHaveLength(1);
   });
 
   it("translates message/send and reads a Message or completed Task", async () => {
@@ -135,7 +152,7 @@ describe("redaction and public view", () => {
   it("never exposes the credential variable or endpoint query", () => {
     const view = toPublic({ ...base, credentialEnv: "KIND_MEITNER_EXT_TEST" });
     expect(view).toMatchObject({ endpointHost: "agent.example", endpointPath: "/a2a", credentialsConfigured: false, readOnly: true });
-    expect(JSON.stringify(view)).not.toContain("secret");
+    expect(JSON.stringify(view)).not.toContain("acme-internal");
     expect(JSON.stringify(view)).not.toContain("KIND_MEITNER_EXT_TEST");
   });
   it("redacts token-shaped values from reply text", () => {

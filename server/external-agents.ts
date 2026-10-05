@@ -2,8 +2,9 @@
 // directly or through a zroute proxy. They are room participants, not models:
 // nothing here touches bot records or engine selection.
 //
-// Protocol: A2A JSON-RPC 2.0. Identity comes from the agent card at
-// /.well-known/agent.json; chat uses `message/send`, or `message/stream`
+// Protocol: A2A JSON-RPC 2.0 (v0.2/v0.3 method names). Identity comes from the
+// agent card at /.well-known/agent-card.json (v0.3+) or agent.json (v0.2);
+// chat uses `message/send`, or `message/stream`
 // (Server-Sent Events) when the card advertises streaming, and `tasks/cancel`
 // when the person stops a streamed task. A zroute connection is the same wire
 // protocol through a proxy, plus a route ID sent as message metadata and a
@@ -151,7 +152,9 @@ export function loopbackAllowed(): boolean {
 }
 
 /** HTTPS only; plain http only for loopback hosts and only when the
- * development flag is on. No credentials or fragments in the URL. */
+ * development flag is on. No credentials (userinfo or credential-like query
+ * keys) or fragments in the URL: tokens go to the server secret store. */
+const CREDENTIAL_QUERY_KEY = /token|secret|key|auth|pass|sig|session|credential|bearer/i;
 export function validateEndpoint(raw: string): { ok: true; url: URL } | { ok: false; message: string } {
   let url: URL;
   try {
@@ -160,6 +163,9 @@ export function validateEndpoint(raw: string): { ok: true; url: URL } | { ok: fa
     return { ok: false, message: "Endpoint is not a valid URL." };
   }
   if (url.username || url.password) return { ok: false, message: "Endpoint must not contain credentials." };
+  if ([...url.searchParams.keys()].some((key) => CREDENTIAL_QUERY_KEY.test(key))) {
+    return { ok: false, message: "Endpoint must not contain credentials; set the token as a server credential." };
+  }
   const loopback = LOOPBACK.has(url.hostname);
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback && loopbackAllowed())) {
     return { ok: false, message: MESSAGES.notHttps };
@@ -472,10 +478,19 @@ class A2AAdapter implements ExternalAgentAdapter {
     if (connection.credentialEnv && !credentialFor(connection, this.secrets)) {
       return { ...base, ok: false, status: "unauthorized", safeMessage: MESSAGES.noAuth };
     }
-    const card = new URL(valid.url);
-    card.pathname = `${card.pathname.replace(/\/$/, "")}/.well-known/agent.json`;
-    card.search = "";
-    const opened = await this.open(card.toString(), { method: "GET", headers: this.headers(connection, card, "agent-card", randomUUID()) });
+    // A2A v0.3+ publishes the card at agent-card.json; v0.2 agents at agent.json.
+    // Only a 404 moves on to the older path; any other answer is the result.
+    const fetchCard = (file: string) => {
+      const card = new URL(valid.url);
+      card.pathname = `${card.pathname.replace(/\/$/, "")}/.well-known/${file}`;
+      card.search = "";
+      return this.open(card.toString(), { method: "GET", headers: this.headers(connection, card, "agent-card", randomUUID()) });
+    };
+    let opened = await fetchCard("agent-card.json");
+    if (!("error" in opened) && opened.res.status === 404) {
+      opened.done();
+      opened = await fetchCard("agent.json");
+    }
     if ("error" in opened) {
       return opened.error === "timeout"
         ? { ...base, ok: false, status: "timeout", latencyMs: opened.latencyMs, safeMessage: "The agent did not answer before the timeout." }

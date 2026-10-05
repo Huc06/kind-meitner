@@ -130,20 +130,24 @@ export function resolveClaudeConfigDir(configDir?: string, env: NodeJS.ProcessEn
   return normalize(expanded);
 }
 
+/** Whether a stream frame is the CLI's own API-error report (no login, plan
+ * usage limit, overload, bad request…). The CLI flags these frames with
+ * `error` / `is_api_error_message`; a model reply never carries them, so an
+ * answer that merely discusses limits or logins is never misread. */
+export function claudeApiErrorFrame(frame: { error?: unknown; is_api_error_message?: unknown }): boolean {
+  return frame.is_api_error_message === true || typeof frame.error === "string";
+}
+
 /** Whether a stream frame is the CLI reporting that it has no login.
  *
- * The CLI flags its own api-error frames (`error`, `is_api_error_message`);
- * a model reply never carries them. Requiring that flag first is what keeps
- * an answer that merely discusses being logged out from being read as a
- * failure — the text classifier runs only once the CLI has already called
- * the frame an error, and covers CLI builds that flag the frame without
- * naming the reason.
+ * The text classifier runs only once the CLI has already called the frame an
+ * error, and covers CLI builds that flag the frame without naming the reason.
  */
 export function claudeAuthFailure(
   frame: { error?: unknown; is_api_error_message?: unknown },
   text: string,
 ): boolean {
-  if (frame.is_api_error_message !== true && typeof frame.error !== "string") return false;
+  if (!claudeApiErrorFrame(frame)) return false;
   return frame.error === "authentication_failed" || classifyError({ text }).reason === "auth";
 }
 
@@ -1494,14 +1498,20 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
           case "assistant": {
             const msg = o.message ?? {};
             const text = firstText(msg.content);
-            // An unauthenticated turn comes back as an api-error frame whose
-            // only content is the CLI's own "run /login" instruction — a
-            // command this app has no terminal to run, so relaying it as a
-            // reply strands the user. Every other engine reports this as a
-            // setup error; that is what routes them to the sign-in card.
-            if (claudeAuthFailure(o, text)) {
-              if (session.turn) session.turn.authFailed = true;
-              emit({ ...base(threadId, currentTurnId()), type: "runtime.error", message: text, setup: true });
+            // The CLI reports its own failures (no login, plan usage limit,
+            // overload) as assistant frames flagged as API errors. Relaying
+            // that text as the bot's reply makes the agent appear to say it;
+            // it is a runtime error. A missing login is a setup error, which
+            // is what routes the chat to the sign-in card.
+            if (claudeApiErrorFrame(o)) {
+              const auth = claudeAuthFailure(o, text);
+              if (auth && session.turn) session.turn.authFailed = true;
+              emit({
+                ...base(threadId, currentTurnId()),
+                type: "runtime.error",
+                message: text.trim() || "Claude returned an error without details.",
+                ...(auth ? { setup: true } : {}),
+              });
               break;
             }
             if (text.trim()) {

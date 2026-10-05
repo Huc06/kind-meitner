@@ -941,6 +941,20 @@ export class OkxMarketplaceIntelligence {
       content: [{ type: "text", text: message }],
     });
 
+    // Honour the declared `additionalProperties: false`: an unknown argument
+    // (a misspelt key, or a credential someone tried to pass) is refused,
+    // not silently ignored. Allowed keys come from the same declarations
+    // tools/list publishes, so the two cannot drift.
+    const declared = this.getFreeToolDeclarations().find((tool) => tool.name === toolName);
+    if (declared) {
+      const allowed = Object.keys((declared.inputSchema.properties ?? {}) as Record<string, unknown>);
+      const extra = Object.keys(args ?? {}).filter((key) => !allowed.includes(key));
+      if (extra.length) {
+        const named = extra.slice(0, 5).map((key) => key.slice(0, 40)).join(", ");
+        return invalid(`Unsupported argument${extra.length > 1 ? "s" : ""}: ${named}. Accepted: ${allowed.join(", ") || "none"}.`);
+      }
+    }
+
     if (toolName === "scan_free_mcp_readiness") {
       const endpointUrl = args.endpointUrl;
       const agentId = args.agentId;

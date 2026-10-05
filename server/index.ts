@@ -7734,12 +7734,15 @@ function runExternalRequest(input: {
   const { group, threadId, connection, requestId, text } = input;
   if (!externalAgents.claim(requestId)) return;
   const route = connection.transport === "zroute" ? `zroute proxy → ${connection.reportedUpstream?.name ?? connection.upstreamAgentId}` : "direct endpoint";
-  store.appendMessage(threadId, {
+  // In flight until settled (renders "Running"); `finally` records the outcome.
+  const startedTool = { name: input.paymentHeaders ? "External agent request resent with approved testnet payment" : "External agent request started", system: true, summary: `${connection.displayName} · ${route}` };
+  const started = store.appendMessage(threadId, {
     role: "bot",
     kind: "activity",
-    tool: { name: input.paymentHeaders ? "External agent request resent with approved testnet payment" : "External agent request started", ok: true, system: true, summary: `${connection.displayName} · ${route}` },
+    tool: startedTool,
     external: externalMeta(connection, requestId, "started"),
   });
+  let succeeded = false;
   const abort = new AbortController();
   externalAborts.set(group.id, abort);
   broadcastGroup(group.id);
@@ -7766,6 +7769,7 @@ function runExternalRequest(input: {
     .then((result) => {
       input.onResult?.(result);
       if (result.ok) {
+        succeeded = true;
         if (result.contextId) externalContexts.set(contextKey, result.contextId);
         const upstreamName = result.upstream?.name ?? connection.reportedUpstream?.name;
         const meta = externalMeta(connection, requestId, "completed", {
@@ -7776,6 +7780,12 @@ function runExternalRequest(input: {
         });
         if (reply) store.patchMessage(threadId, reply.id, { text: result.text, external: meta });
         else store.appendMessage(threadId, { role: "bot", kind: "text", text: result.text, from, external: meta });
+        store.appendMessage(threadId, {
+          role: "bot",
+          kind: "activity",
+          tool: { name: "External agent request completed", ok: true, system: true, summary: `${connection.displayName} · ${route} · ${result.latencyMs} ms` },
+          external: meta,
+        });
         return;
       }
       if (reply) store.patchMessage(threadId, reply.id, { external: externalMeta(connection, requestId, result.status === "cancelled" ? "cancelled" : "failed") });
@@ -7803,6 +7813,7 @@ function runExternalRequest(input: {
           },
         });
         pending.messageId = card.id;
+        succeeded = true;
         return;
       }
       externalFailure(threadId, result.safeMessage, connection, requestId, result.status === "timeout" ? "timeout" : result.status === "cancelled" ? "cancelled" : "failed", result.latencyMs);
@@ -7810,6 +7821,7 @@ function runExternalRequest(input: {
     .catch(() => externalFailure(threadId, EXTERNAL_MESSAGES.unreachable, connection, requestId))
     .finally(() => {
       externalAgents.release(requestId);
+      store.patchMessage(threadId, started.id, { tool: { ...startedTool, ok: succeeded } });
       if (externalAborts.get(group.id) === abort) externalAborts.delete(group.id);
       broadcastGroup(group.id);
     });
