@@ -2418,6 +2418,30 @@ async function ensureDevDayGate(): Promise<{ room: GroupRecord; created: boolean
   return { room, created };
 }
 
+const LAUNCH_CHECK_NAME = "Launch Check Team";
+const LAUNCH_CHECK_SECTION = "Dev Day";
+const LAUNCH_CHECK_BULLETIN = "Check, explain and monitor an agent service";
+/** The one coordinator bot that owns this room's monitors. It is a local
+ * catalog bot; the service check itself is the remote Kind Meitner Markets tool. */
+const LAUNCH_CHECK_COORDINATOR_ID = "okx-market-scout-v1";
+
+async function ensureLaunchCheckTeam(): Promise<{ room: GroupRecord; coordinator: BotRecord; created: boolean }> {
+  let room = store.groups.find((group) => !group.dm && group.section === LAUNCH_CHECK_SECTION && group.name === LAUNCH_CHECK_NAME);
+  let created = false;
+  if (!room) {
+    room = store.createGroup(
+      LAUNCH_CHECK_NAME,
+      [],
+      false,
+      LAUNCH_CHECK_SECTION,
+      { bulletin: LAUNCH_CHECK_BULLETIN, defaultResponder: { kind: "mentions" }, completed: true },
+    );
+    created = true;
+  }
+  const ensured = await ensureCatalogOkxAgent(room, LAUNCH_CHECK_COORDINATOR_ID);
+  return { room: ensured.room, coordinator: ensured.bot, created: created || ensured.created };
+}
+
 /** Import is keyed by durable external-agent provenance plus room membership,
  * not the client request id, so it remains idempotent after a restart. */
 async function importCatalogOkxAgent(value: unknown): Promise<{ created: boolean; result: ReturnType<typeof okxImportResult> }> {
@@ -5990,7 +6014,8 @@ routines = new RoutineManager({
         }
 
         const devDayGateRoom = store.groups.find((group) => !group.dm && isDevDayGate(group));
-        const targetThreadId = run.resultsThreadId || run.sourceThreadId || devDayGateRoom?.threadId || run.threadId;
+        const resultsRoom = run.groupId ? store.group(run.groupId) : undefined;
+        const targetThreadId = resultsRoom?.threadId || run.resultsThreadId || run.sourceThreadId || devDayGateRoom?.threadId || run.threadId;
         const output = typeof execResult.result === "string" ? execResult.result : JSON.stringify(execResult.result, null, 2);
 
         if (targetThreadId) {
@@ -12569,6 +12594,22 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       const seeded = await ensureDevDayGate();
       return json(res, seeded.created ? 201 : 200, {
         room: { ...publicGroupState(seeded.room), messages: store.messagesFor(seeded.room.threadId) },
+      });
+    }
+    if (method === "GET" && path === "/api/launch-check") {
+      const room = store.groups.find((group) => !group.dm && group.section === LAUNCH_CHECK_SECTION && group.name === LAUNCH_CHECK_NAME);
+      const coordinator = store.bots.find((bot) => bot.okxImport?.externalAgentId === LAUNCH_CHECK_COORDINATOR_ID);
+      if (!room || !coordinator) return json(res, 404, { error: "Launch Check Team has not been set up" });
+      return json(res, 200, {
+        room: { ...publicGroupState(room), messages: store.messagesFor(room.threadId) },
+        coordinator: { id: coordinator.id, name: coordinator.name },
+      });
+    }
+    if (method === "POST" && path === "/api/launch-check") {
+      const seeded = await ensureLaunchCheckTeam();
+      return json(res, seeded.created ? 201 : 200, {
+        room: { ...publicGroupState(seeded.room), messages: store.messagesFor(seeded.room.threadId) },
+        coordinator: { id: seeded.coordinator.id, name: seeded.coordinator.name },
       });
     }
     if (method === "POST" && path === "/api/okx/agents/import") {

@@ -700,7 +700,7 @@ export interface AppState {
   config: ConfigStatus | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator" | "landing" | "demo";
+  activeView: "chat" | "team-map" | "routines" | "okx-bloomberg" | "okx-evaluator" | "landing" | "demo" | "launch";
   okxSettingsOpen?: boolean;
   activeDisputesCount?: number;
   routines: Routine[];
@@ -861,6 +861,7 @@ export type Action =
   | { type: "showChat" }
   | { type: "showLanding" }
   | { type: "showDemo" }
+  | { type: "showLaunch" }
   | { type: "showBloomberg" }
   | { type: "showEvaluator" }
   | { type: "toggleOkxSettings"; open?: boolean }
@@ -1215,6 +1216,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return state.activeView === "landing" ? state : { ...state, activeView: "landing" };
     case "showDemo":
       return state.activeView === "demo" ? state : { ...state, activeView: "demo" };
+    case "showLaunch":
+      return state.activeView === "launch" ? state : { ...state, activeView: "launch" };
     case "showTeamMap":
       return {
         ...state,
@@ -1989,6 +1992,7 @@ export function reducer(state: AppState, action: Action): AppState {
 }
 function safeInitialActiveView(activeView?: string): AppState["activeView"] {
   if (activeView === "demo") return "demo";
+  if (activeView === "launch") return "launch";
   if (activeView === "team-map") return "team-map";
   if (activeView === "landing") return "landing";
   if (typeof window === "undefined" || !window.location) return "landing";
@@ -1997,6 +2001,7 @@ function safeInitialActiveView(activeView?: string): AppState["activeView"] {
     const hash = window.location.hash ?? "";
     const p = new URLSearchParams(search);
     if (p.get("view") === "demo" || hash === "#demo") return "demo";
+    if (p.get("view") === "launch") return "launch";
     if (p.get("view") === "team-map" || hash === "#team-map") return "team-map";
     if (p.get("view") === "routines") return "routines";
     if (p.get("view") === "chat" || p.get("app") === "1") return "chat";

@@ -2626,5 +2626,35 @@ describe("routine continuity", () => {
       expect(botRun).toBeDefined();
       expect(manager.finishOkxRun(botRun!.id)).toBeNull();
     });
+
+    it("keeps an okx-task's results room across runs and reloads, and stops it when the room goes", async () => {
+      const anchorAt = new Date(2026, 7, 17, 9, 0, 0).getTime();
+      const started: RoutineRun[] = [];
+      const h = harness(anchorAt);
+      h.options.okxTaskState = () => "ready";
+      h.options.startOkxTask = async (run) => {
+        started.push(run);
+      };
+      const manager = new RoutineManager(h.options);
+      const routine = manager.create({
+        name: "Launch monitor",
+        prompt: "okx-tool:{}",
+        botId: "maus-1",
+        target: "okx-task",
+        groupId: "room-1",
+        schedule: { type: "cron", expression: "* * * * *", timeZone: "UTC" },
+      });
+      expect(routine.groupId).toBe("room-1");
+
+      h.setNow(anchorAt + 61_000);
+      await manager.tick();
+      expect(started.map((run) => run.groupId)).toEqual(["room-1"]);
+      expect(new RoutineManager(h.options).listRoutines().find((r) => r.id === routine.id)?.groupId).toBe("room-1");
+
+      manager.disableForGroup("room-1");
+      const disabled = manager.listRoutines().find((r) => r.id === routine.id);
+      expect(disabled?.enabled).toBe(false);
+      expect(disabled?.nextRunAt).toBeNull();
+    });
   });
 });
