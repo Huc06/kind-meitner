@@ -168,7 +168,7 @@ createServer(async (req, res) => {
     console.log(`[${name}] rejected request: ${proofError}`);
     return send(res, 401, { error: proofError });
   }
-  if (req.method === "GET" && req.url === "/.well-known/agent.json") return send(res, 200, card);
+  if (req.method === "GET" && (req.url === "/.well-known/agent-card.json" || req.url === "/.well-known/agent.json")) return send(res, 200, card);
   if (req.method !== "POST") return send(res, 404, { error: "not found" });
   let raw = "";
   for await (const chunk of req) raw += chunk;
