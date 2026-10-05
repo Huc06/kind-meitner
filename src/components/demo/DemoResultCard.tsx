@@ -4,7 +4,7 @@ import { ReadinessRunCard } from "@/components/ReadinessRunCard";
 import { TrustCard } from "@/components/TrustCard";
 import { Tag } from "@/components/ui/tag";
 import { t } from "@/lib/i18n";
-import type { OkxDemoCheckResult } from "../../../shared/okx-demo-identity";
+import { OKX_DEMO_TOOLS, type OkxDemoCheckResult } from "../../../shared/okx-demo-identity";
 
 export function DemoResultCard({
   result,
@@ -52,7 +52,7 @@ export function DemoResultCard({
           )}
         </div>
         <div className="font-mono text-[11px] text-ink-secondary">
-          {result.latencyMs}ms · {result.tool}
+          {result.latencyMs}ms · {t(result.tool === OKX_DEMO_TOOLS.endpoint ? "okxGate.readiness.title" : "okxGate.trust.title")}
         </div>
       </div>
 

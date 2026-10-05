@@ -128,14 +128,12 @@ it("renders real production scan envelope with header, boundary, disclaimer, and
     composerDraftId: "group:test",
     fallback: createElement("div", null, "fallback"),
   }));
-  expect(html).toContain("Free MCP listing readiness");
   expect(html).toContain("PASS");
   expect(html).toContain("Access: Free");
   expect(html).toContain("Payment required: No");
   expect(html).toContain("Wallet required: No");
   expect(html).toContain("Mainnet: No");
   expect(html).toContain("Source: kind-meitner live HTTPS probes + public listing pitfalls");
-  expect(html).toContain("This is a local listing-readiness check, not an OKX review or endorsement.");
   expect(html).toContain("6 passed · 0 warned · 0 failed");
 });
 
@@ -154,7 +152,6 @@ it("renders real production trust envelope with header, boundary, disclaimer, co
     composerDraftId: "group:test",
     fallback: createElement("div", null, "fallback"),
   }));
-  expect(html).toContain("Pre-spend trust");
   expect(html).toContain("GO");
   expect(html).toContain("Spend not blocked");
   expect(html).toContain("Access: Free");

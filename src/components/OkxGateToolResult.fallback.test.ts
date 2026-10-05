@@ -38,7 +38,7 @@ describe("OkxGateToolResult", () => {
       composerDraftId: "bot:markets:thread",
       fallback: createElement("div", null, "Normal tool result"),
     }));
-    expect(html).toContain("Readiness verdict PASS");
+    expect(html).toContain("Service check result PASS");
     expect(html).not.toContain("Normal tool result");
   });
 });
