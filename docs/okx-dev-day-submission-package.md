@@ -48,7 +48,7 @@ The public [OKX Dev Day 2026 Builder Kit](https://www.okx.com/en-au/learn/okx-de
 
 **Core integration statement**
 
-> The project implements a free OKX.AI A2MCP-compatible JSON-RPC surface (`POST /api/okx/free-mcp`), an active OKX marketplace listing (ASP `#13851`), dynamic agent delegation routed through the OKX Onchain OS dispatcher, and a visual multichat console where audited agents become scheduled corporate teammates.
+> The project implements a free OKX.AI A2MCP-compatible JSON-RPC surface (`POST /api/okx/free-mcp`), a public OKX.AI listing page (ASP `#13851`; review state unverified), dynamic agent delegation routed through the OKX Onchain OS dispatcher, and a visual multichat console where audited agents become scheduled corporate teammates.
 
 ### 3. Links and evidence fields
 
@@ -58,7 +58,7 @@ The public [OKX Dev Day 2026 Builder Kit](https://www.okx.com/en-au/learn/okx-de
 | Judge-facing technical guide | `https://github.com/Huc06/kind-meitner/blob/main/docs/okx-dev-day-judge.md` | Live 5-minute judge verification instructions. |
 | Evidence register | `https://github.com/Huc06/kind-meitner/tree/main/docs/evidence/dev-day/` | Checked-in live Free-MCP JSON transcripts and screenshots. |
 | Product/deployment URL | `https://kind-meitner-production.up.railway.app/api/okx/free-mcp` | Verified live HTTPS host deployed on Railway. |
-| ASP/listing URL | `https://www.okx.ai/agents/13851` | Verified canonical listing on OKX.AI (HTTP 200 · trust GO with explicit `notChecked` limits). |
+| ASP/listing URL | `https://www.okx.ai/agents/13851` | Listing page reachable (HTTP 200, 2026-10-05); trust GO with explicit `notChecked` limits. Review/sandbox state needs the owner view. |
 | Demo-video URL | `[PUBLIC_OR_REVIEWER-ACCESSIBLE_2_TO_4_MIN_VIDEO_URL]` | Required 2–4 minute room-scroll demo video (pending recording). |
 | Technical references | `docs/okx-dev-day-positioning.md`; `docs/okx-dev-day-video-materials.md` | Complete positioning, competitive matrix, and video shot list. |
 
@@ -124,3 +124,5 @@ No automated workflow may clear these gates:
 | Publish video | Upload video to YouTube/Loom and verify link is accessible. | Accessible video URL with crisp 1080p display and clear audio. |
 | Submit form | Open `https://forms.gle/81S2gnFCzqSoeDEA7`, review all fields, and press submit manually. | Complete worksheet data copied into live form before deadline. |
 | Receipt | Retain confirmation screenshot/email and monitor response channels. | Saved confirmation receipt. |
+
+Listing Service Guide (prepared, not published): [`okx-service-guide.md`](okx-service-guide.md).

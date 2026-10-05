@@ -22,7 +22,7 @@ export function DemoCheckTab({
   const [endpointError, setEndpointError] = useState<string | null>(null);
 
   // Agent form state
-  const [agentId, setAgentId] = useState("13851");
+  const [agentId, setAgentId] = useState<string>(OKX_DEMO_IDENTITY.agentId);
   const [agentEndpointUrl, setAgentEndpointUrl] = useState("");
   const [agentError, setAgentError] = useState<string | null>(null);
 

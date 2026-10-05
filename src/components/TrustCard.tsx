@@ -47,7 +47,7 @@ export function TrustCard({
   const evidenceId = useId();
   const actionLocked = useRef(false);
   const continueEnabled = data.decision === "GO" && !busy && Boolean(onContinue);
-  const showBlockSpend = data.decision === "NO_GO" || data.decision === "CAUTION";
+  const showBlockSpend = !hideSpendControls && (data.decision === "NO_GO" || data.decision === "CAUTION");
   const lastRunSummary = formatGateLastRunSummary(
     data.lastRun,
     ranAt,

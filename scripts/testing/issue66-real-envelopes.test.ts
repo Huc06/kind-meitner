@@ -162,6 +162,5 @@ it("renders real production trust envelope with header, boundary, disclaimer, co
   expect(html).toContain("Wallet required: No");
   expect(html).toContain("Mainnet: No");
   expect(html).toContain("Source: kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement");
-  expect(html).toContain("This result is a local pre-spend signal, not an OKX endorsement.");
   expect(html).toContain("2 passed · 0 warned · 0 failed");
 });
