@@ -10,3 +10,5 @@ android/app/src/main/kotlin/com/kind-meitner/companion/ui/MausBodies.kt text eol
 # Vendor patch hashes and original notices must survive Windows checkout
 # byte-for-byte. Do not let core.autocrlf rewrite these reviewed inputs.
 third_party/browser/** text eol=lf
+# Served verbatim to laptops by /api/engine-relay/runner.mjs; keep LF everywhere.
+scripts/engine-relay-runner.mjs text eol=lf

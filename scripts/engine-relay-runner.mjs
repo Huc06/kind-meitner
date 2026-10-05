@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // kind-meitner Laptop Claude Relay Runner
 // Outbound long-poll connection to the kind-meitner server.
 // Runs Claude Code locally with tools disabled. Single dependency-free script.
