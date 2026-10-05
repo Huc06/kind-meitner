@@ -672,6 +672,12 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8%); }
 }
+
+/* event timeline: selected-session details swap (opacity only, no layout shift) */
+@keyframes timeline-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 /* streaming caret: a true typing blink (step, not fade) */
 @keyframes caret-blink {
   0%, 100% { opacity: 1; }

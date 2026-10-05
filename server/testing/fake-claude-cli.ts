@@ -368,6 +368,27 @@ const playTurn = (prompt: JsonValue) => {
     return;
   }
 
+  // A subscription that ran out of plan usage: same api-error frame shape,
+  // different reason. It must not read as something the bot said.
+  if (mode === "usage-limit") {
+    out({
+      type: "assistant",
+      message: { model: "<synthetic>", content: [{ type: "text", text: "You've hit your session limit \u00b7 resets 10am (UTC)" }] },
+      error: "rate_limit",
+      is_api_error_message: true,
+    });
+    out({
+      type: "result",
+      is_error: true,
+      stop_reason: "stop_sequence",
+      terminal_reason: "api_error",
+      result: "You've hit your session limit \u00b7 resets 10am (UTC)",
+    });
+    turnRunning = false;
+    finishIfDone();
+    return;
+  }
+
   if (mode === "stream") {
     const delta = (d: unknown) => out({ type: "stream_event", event: { type: "content_block_delta", delta: d } });
     delta({ type: "thinking_delta", thinking: "hmm" });

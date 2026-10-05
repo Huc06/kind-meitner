@@ -440,6 +440,12 @@ export async function launchVerificationServer(
   if (parentEnv.OKX_LEGACY_EIP3009_ENABLED === "true") {
     childEnv.OKX_LEGACY_EIP3009_ENABLED = "true";
   }
+  // External-agent fixtures: loopback A2A agents and a short timeout, both
+  // non-secret. No agent credential crosses this boundary.
+  if (parentEnv.KIND_MEITNER_ALLOW_LOOPBACK_AGENTS === "1") childEnv.KIND_MEITNER_ALLOW_LOOPBACK_AGENTS = "1";
+  if (/^\d{1,7}$/.test(parentEnv.KIND_MEITNER_EXTERNAL_AGENT_TIMEOUT_MS ?? "")) {
+    childEnv.KIND_MEITNER_EXTERNAL_AGENT_TIMEOUT_MS = parentEnv.KIND_MEITNER_EXTERNAL_AGENT_TIMEOUT_MS!;
+  }
   // Opt-in live Local VM fixture: keep the temporary home and fake engine,
   // granting only the explicitly selected machine connection and static UI.
   if (localVm) Object.assign(childEnv, {

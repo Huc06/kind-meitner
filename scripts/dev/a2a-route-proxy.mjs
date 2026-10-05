@@ -19,7 +19,7 @@ const send = (res, status, body) => {
 };
 
 async function upstreamCard() {
-  const res = await fetch(new URL("/.well-known/agent.json", upstream));
+  const res = await fetch(new URL("/.well-known/agent-card.json", upstream));
   if (!res.ok) throw new Error(`upstream card ${res.status}`);
   return res.json();
 }
@@ -28,7 +28,7 @@ createServer(async (req, res) => {
   try {
     const card = await upstreamCard();
     const identity = { agentId: card.metadata?.agentId ?? card.name, name: card.name, provider: card.provider?.organization };
-    if (req.method === "GET" && req.url === "/.well-known/agent.json") {
+    if (req.method === "GET" && (req.url === "/.well-known/agent-card.json" || req.url === "/.well-known/agent.json")) {
       return send(res, 200, {
         ...card,
         name: `zroute → ${card.name}`,
