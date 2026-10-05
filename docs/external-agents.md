@@ -1,8 +1,10 @@
 # External agents (A2A, direct or zroute)
 
 External agents are room participants reached over the A2A protocol
-(JSON-RPC 2.0: agent card at `/.well-known/agent.json`, chat via
-`message/send`, or `message/stream` when the card advertises streaming).
+(JSON-RPC 2.0 with the v0.2/v0.3 method names: agent card at
+`/.well-known/agent-card.json`, falling back to the v0.2 `agent.json` only on
+404; chat via `message/send`, or `message/stream` when the card advertises
+streaming). A2A 1.0 method names (`SendMessage`, …) are not supported yet.
 They are not models: the model menu still only picks the engine for local
 bots.
 

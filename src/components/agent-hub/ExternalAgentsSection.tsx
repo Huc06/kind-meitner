@@ -21,8 +21,9 @@ import type { Group } from "@/state/store";
 
 const inputClass = "h-8 w-full min-w-0 border border-hairline bg-inset px-2 font-mono text-[12px] text-ink outline-none focus:border-ink";
 
-/** Connected external A2A agents (direct and through zroute). Read-only:
- * no wallet, payment or signing controls exist in this milestone. */
+/** Connected external A2A agents (direct and through zroute). Read-only by
+ * default; a connection opted into X Layer testnet payments shows the
+ * approval-gated testnet labels instead and never gets mainnet. */
 export function ExternalAgentsSection({ currentRoom }: { currentRoom: Group | null }) {
   const agents = useExternalAgents().filter((agent) => agent.status !== "revoked");
   const [adding, setAdding] = useState(false);
