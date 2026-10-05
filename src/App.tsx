@@ -29,6 +29,7 @@ import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { TeamMapPage } from "@/components/TeamMapPage";
 import { LandingPage, type LandingTarget } from "@/components/LandingPage";
 import { DemoView } from "@/components/demo/DemoView";
+import { LaunchCheckView } from "@/components/launch-check/LaunchCheckView";
 import { useOpenDevDayGate } from "@/components/demo/useOpenDevDayGate";
 import { BloombergView, EvaluatorView, OkxSettingsModal } from "./okx";
 import { saveOkxSettings } from "./okx/okx-settings-api";
@@ -53,6 +54,7 @@ export function handleInitialNavigation(
     if (viewParam === "demo" || url.hash === "#demo") {
       dispatch({ type: "showDemo" });
     }
+    if (viewParam === "launch") dispatch({ type: "showLaunch" });
     if (viewParam === "team-map" || url.hash === "#team-map") {
       if (viewParam) {
         url.searchParams.delete("view");
@@ -123,7 +125,7 @@ function Shell() {
   // the panel hands off to this and back)
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const previousViewRef = useRef(state.activeView);
-  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "landing" | "demo">("chat");
+  const calendarOriginRef = useRef<"chat" | "team-map" | "okx-bloomberg" | "okx-evaluator" | "landing" | "demo" | "launch">("chat");
   const group = state.groups.find((g) => g.id === state.selectedId);
   const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
   const calendarFocus = state.activeView === "routines";
@@ -223,12 +225,12 @@ function Shell() {
     if (typeof window !== "undefined" && window.location) {
       try {
         const url = new URL(window.location.href);
-        if (state.activeView === "demo") {
-          if (url.searchParams.get("view") !== "demo") {
-            url.searchParams.set("view", "demo");
+        if (state.activeView === "demo" || state.activeView === "launch") {
+          if (url.searchParams.get("view") !== state.activeView) {
+            url.searchParams.set("view", state.activeView);
             window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
           }
-        } else if (url.searchParams.get("view") === "demo") {
+        } else if (url.searchParams.get("view") === "demo" || url.searchParams.get("view") === "launch") {
           url.searchParams.delete("view");
           window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
         }
@@ -334,6 +336,8 @@ function Shell() {
       >
       {state.activeView === "landing" ? (
         <LandingPage onNavigate={onLandingNavigate} />
+      ) : state.activeView === "launch" ? (
+        <LaunchCheckView onExit={() => dispatch({ type: "showChat" })} />
       ) : state.activeView === "demo" ? (
         <DemoView onExit={() => dispatch({ type: "showChat" })} onOpenChat={openDevDayGate} />
       ) : state.activeView === "team-map" ? (

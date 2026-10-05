@@ -27,6 +27,7 @@ import {
   Scale,
   Settings as SettingsIcon,
   Sparkles,
+  Radar,
   HelpCircle,
   MessageSquare,
   Trash2,
@@ -1527,6 +1528,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const isSettingsActive = Boolean(state.appSettingsOpen);
   const isHubActive = !isSettingsActive && state.pluginsOpen && state.pluginsSurface === "hub";
   const isDemoActive = !isSettingsActive && !state.pluginsOpen && state.activeView === "demo";
+  const isLaunchActive = !isSettingsActive && !state.pluginsOpen && state.activeView === "launch";
   const isActivityActive = !isSettingsActive && !state.pluginsOpen && Boolean(state.activityOpen) && state.activeView === "chat";
   const isMoreActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && (state.activeView === "routines" || state.activeView === "okx-evaluator");
   const isRoomsActive = !isSettingsActive && !state.pluginsOpen && !state.activityOpen && state.activeView === "chat";
@@ -1549,6 +1551,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     if (state.pluginsOpen) dispatch({ type: "togglePlugins", open: false });
     if (state.activityOpen) dispatch({ type: "toggleActivity", open: false });
     dispatch({ type: "showDemo" });
+  };
+  const handleLaunchClick = () => {
+    if (state.pluginsOpen) dispatch({ type: "togglePlugins", open: false });
+    if (state.activityOpen) dispatch({ type: "toggleActivity", open: false });
+    dispatch({ type: "showLaunch" });
   };
   const handleActivityClick = () => {
     if (state.activeView !== "chat") {
@@ -2120,6 +2127,28 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <Sparkles size={16} className={cn("shrink-0", isDemoActive ? "text-ink" : "text-ink-secondary")} />
           {density !== "icons" && (
             <span className="flex-1 truncate">{t("demo.nav.demo")}</span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleLaunchClick}
+          aria-label={t("launch.nav")}
+          title={t("launch.nav")}
+          aria-current={isLaunchActive ? "page" : undefined}
+          className={cn(
+            "relative flex items-center transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            density === "icons"
+              ? "size-9 w-full justify-center px-2"
+              : "h-8.5 w-full gap-2.5 px-3 text-left font-mono text-[13px]",
+            isLaunchActive
+              ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--color-ink)]"
+              : "text-ink hover:bg-raised-hover",
+          )}
+        >
+          <Radar size={16} className={cn("shrink-0", isLaunchActive ? "text-ink" : "text-ink-secondary")} />
+          {density !== "icons" && (
+            <span className="flex-1 truncate">{t("launch.nav")}</span>
           )}
         </button>
 

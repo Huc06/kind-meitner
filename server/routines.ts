@@ -401,7 +401,7 @@ function loadGoalStatus(value: unknown, target: RoutineTarget): RoutineGoalStatu
 }
 
 function loadGroupId(value: unknown, target: RoutineTarget): string | undefined {
-  if (target !== "room-goal" || typeof value !== "string") return undefined;
+  if ((target !== "room-goal" && target !== "okx-task") || typeof value !== "string") return undefined;
   return value.trim() || undefined;
 }
 
@@ -713,7 +713,7 @@ function sanitizeInput(input: RoutineInput, after: number): Omit<Routine, "id" |
     prompt,
     target,
     botId,
-    groupId: target === "room-goal" ? groupId : undefined,
+    groupId: target === "room-goal" || target === "okx-task" ? groupId || undefined : undefined,
     runOn,
     enabled: input.enabled !== false,
     schedule: cleanSchedule(input.schedule, after),
@@ -1096,7 +1096,7 @@ export class RoutineManager {
   disableForGroup(groupId: string) {
     let changed = false;
     for (const routine of this.routines) {
-      if (routine.target !== "room-goal" || routine.groupId !== groupId || !routine.enabled) continue;
+      if ((routine.target !== "room-goal" && routine.target !== "okx-task") || routine.groupId !== groupId || !routine.enabled) continue;
       routine.enabled = false;
       routine.nextRunAt = null;
       routine.updatedAt = Math.max(this.now(), routine.updatedAt + 1);
