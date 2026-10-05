@@ -1,9 +1,9 @@
 import { setComposerDraft } from "./drafts";
+import { OKX_DEMO_IDENTITY, OKX_DEMO_TOOLS } from "../../shared/okx-demo-identity";
 
 export const DEV_DAY_GATE_NAME = "#dev-day-gate";
 export const DEV_DAY_GATE_SECTION = "Dev Day";
 export const DEV_DAY_GATE_BULLETIN = "Gate before list. Gate before spend. Free MCP only.";
-export const DEV_DAY_GATE_FREE_MCP_URL = "https://kind-meitner-production.up.railway.app/api/okx/free-mcp";
 
 export interface DevDayGateStarter {
   id: string;
@@ -17,14 +17,14 @@ export const DEV_DAY_GATE_STARTERS: readonly DevDayGateStarter[] = [
   {
     id: "scan-asp",
     label: "Scan an ASP endpoint",
-    prompt: `@Markets run scan_free_mcp_readiness for ${DEV_DAY_GATE_FREE_MCP_URL}`,
+    prompt: `@Markets run ${OKX_DEMO_TOOLS.endpoint} for ${OKX_DEMO_IDENTITY.endpointUrl}`,
     action: "fill",
     capability: "readiness",
   },
   {
     id: "trust-spend",
     label: "Check trust before spend",
-    prompt: `@Markets run get_asp_trust_card for agentId 13851 with endpointUrl ${DEV_DAY_GATE_FREE_MCP_URL}`,
+    prompt: `@Markets run ${OKX_DEMO_TOOLS.agent} for agentId ${OKX_DEMO_IDENTITY.agentId} with endpointUrl ${OKX_DEMO_IDENTITY.endpointUrl}`,
     action: "fill",
     capability: "trust",
   },

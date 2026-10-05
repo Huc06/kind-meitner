@@ -25,7 +25,7 @@
   "okxGate.trust.recheck": "Re-check",
   "okxGate.trust.spendBlocked": "Spend blocked",
   "okxGate.trust.spendNotBlocked": "Spend not blocked",
-  "okxGate.trust.disclaimer": "This result is a local pre-spend signal, not an OKX endorsement.",
+  "okxGate.trust.disclaimer": "This result reports evidence for a pre-spend decision; it is not an OKX endorsement.",
   "okxGate.readiness.disclaimer": "This is a local listing-readiness check, not an OKX review or endorsement.",
   "okxGate.boundary.title": "Boundary",
   "okxGate.boundary.access": "Access: {access}",

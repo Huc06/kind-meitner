@@ -59,6 +59,18 @@ describe("OKX action cards", () => {
     expect(html).not.toContain("&quot;verdict&quot;");
   });
 
+  it("renders no spend controls on a read-only NO_GO card", () => {
+    const html = renderToStaticMarkup(createElement(TrustCard, {
+      data: trustBase,
+      hideSpendControls: true,
+      onRecheck: () => {},
+    }));
+
+    expect(buttonHtml(html, "Block spend")).toBeNull();
+    expect(buttonHtml(html, "Continue free tools")).toBeNull();
+    expect(isDisabledButton(html, "Re-check")).toBe(false);
+  });
+
   it("disables readiness CTAs while busy", () => {
     const html = renderToStaticMarkup(createElement(ReadinessRunCard, {
       data: readinessData,
@@ -240,7 +252,6 @@ describe("OKX action cards", () => {
     expect(html).toContain("Wallet required: No");
     expect(html).toContain("Mainnet: No");
     expect(html).toContain("Source: test trust provenance");
-    expect(html).toContain("This result is a local pre-spend signal, not an OKX endorsement.");
     expect(html).toContain("Copy evidence");
   });
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "@/state/store";
-import { OKX_DEMO_IDENTITY, type OkxDemoCheckResult, type OkxDemoStatus } from "../../../shared/okx-demo-identity";
+import { OKX_DEMO_IDENTITY, OKX_DEMO_TOOLS, type OkxDemoCheckResult, type OkxDemoStatus } from "../../../shared/okx-demo-identity";
 import { OKX_DEMO_RECORDED } from "../../../shared/okx-demo-recorded";
 import { t } from "@/lib/i18n";
 import { DemoHeader } from "./DemoHeader";
@@ -98,9 +98,9 @@ export function DemoView({ onExit, onOpenChat }: { onExit: () => void; onOpenCha
     setLastCheckTime(formatted);
 
     const inputDesc =
-      result.tool === "scan_free_mcp_readiness"
+      result.tool === OKX_DEMO_TOOLS.endpoint
         ? (result.arguments.endpointUrl ?? result.endpointUrl)
-        : (result.arguments.agentId ?? "13851");
+        : (result.arguments.agentId ?? OKX_DEMO_IDENTITY.agentId);
 
     const newEntry: DemoHistoryEntry = {
       id: result.requestId || `hist-${Date.now()}`,
@@ -167,7 +167,7 @@ export function DemoView({ onExit, onOpenChat }: { onExit: () => void; onOpenCha
               type="button"
               onClick={dismissIntro}
               aria-label={t("demo.intro.dismiss")}
-              className="rounded p-1 text-ink-secondary hover:bg-raised-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded text-ink-secondary hover:bg-raised-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
             >
               <X size={14} aria-hidden="true" />
             </button>
@@ -210,23 +210,22 @@ export function DemoView({ onExit, onOpenChat }: { onExit: () => void; onOpenCha
           </div>
         </div>
 
-        {/* Tab panels */}
-        <div
-          role="tabpanel"
-          id={`demo-panel-${activeTab}`}
-          aria-labelledby={`demo-tab-${activeTab}`}
-          className="min-w-0"
-        >
-          {activeTab === "demo" && (
-            <DemoCheckTab onCheckSuccess={handleCheckSuccess} />
-          )}
-
-          {activeTab === "service" && <DemoServiceTab status={status} />}
-
-          {activeTab === "history" && (
-            <DemoHistoryTab liveHistory={liveHistory} />
-          )}
-        </div>
+        {/* Tab panels stay mounted so typed input and a running check survive
+            switching tabs; inactive panels are hidden, not destroyed. */}
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            role="tabpanel"
+            id={`demo-panel-${tab.id}`}
+            aria-labelledby={`demo-tab-${tab.id}`}
+            hidden={activeTab !== tab.id}
+            className="min-w-0"
+          >
+            {tab.id === "demo" && <DemoCheckTab onCheckSuccess={handleCheckSuccess} />}
+            {tab.id === "service" && <DemoServiceTab status={status} />}
+            {tab.id === "history" && <DemoHistoryTab liveHistory={liveHistory} />}
+          </div>
+        ))}
       </main>
 
       <DemoFooter onOpenChat={onOpenChat} />
