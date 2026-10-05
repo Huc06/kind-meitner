@@ -32,6 +32,7 @@ const FINISHED_KEY = {
   unverified: "launch.chat.finished.unverified",
 } as const;
 const POLL_MS = 4_000;
+const STARTS_KEY = "kind-meitner:launch-check-starts";
 
 /** The okx-task routine prompt: the same live service check, repeated. */
 const MONITOR_PROMPT = `okx-tool:${JSON.stringify({
@@ -59,6 +60,15 @@ export function LaunchCheckView({ onExit }: { onExit: () => void }) {
   const [runs, setRuns] = useState<RoutineRun[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [chat, setChat] = useState<ChatEntry[]>(loadChat);
+  /** When this browser started each hand-run check (the click time). */
+  const [manualStarts, setManualStarts] = useState<number[]>(() => {
+    try {
+      const parsed: unknown = JSON.parse(sessionStorage.getItem(STARTS_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((value): value is number => typeof value === "number") : [];
+    } catch {
+      return [];
+    }
+  });
   const [draft, setDraft] = useState("");
   const [checking, setChecking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -146,6 +156,15 @@ export function LaunchCheckView({ onExit }: { onExit: () => void }) {
     if (!room || checking) return;
     setChecking(true);
     setActionError(null);
+    setManualStarts((current) => {
+      const next = [...current, Date.now()].slice(-40);
+      try {
+        sessionStorage.setItem(STARTS_KEY, JSON.stringify(next));
+      } catch {
+        // Start times are a convenience for the log; results live on the server.
+      }
+      return next;
+    });
     pendingPlan.current = plan ? { plan, afterCount: checks.length } : null;
     try {
       await api("/api/okx/execute-agent-tool", {
@@ -376,7 +395,7 @@ export function LaunchCheckView({ onExit }: { onExit: () => void }) {
             })()}
           </section>
 
-          <LaunchActivityLog checks={checks} runs={monitorRuns} monitor={activeMonitor} checking={checking} onDetails={setDetailsFor} />
+          <LaunchActivityLog checks={checks} runs={monitorRuns} manualStarts={manualStarts} monitor={activeMonitor} checking={checking} onDetails={setDetailsFor} />
           <LaunchWorkflow latest={latest ?? null} running={running} monitor={activeMonitor} hasMonitor={monitors.length > 0} coordinatorName={coordinator?.name ?? null} />
           <LaunchMonitors monitors={monitors} runs={monitorRuns} onChanged={refresh} onError={setActionError} />
         </div>

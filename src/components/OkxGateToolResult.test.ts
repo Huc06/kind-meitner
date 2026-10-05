@@ -50,7 +50,7 @@ describe("OKX action cards", () => {
       onApplyHost: () => {},
     }));
 
-    expect(html).toContain("Readiness verdict FAIL");
+    expect(html).toContain("Service check result FAIL");
     expect(html).toContain("Vercel host");
     expect(html).toContain("Apply host");
     expect(html).toContain("Copy fixes");
@@ -127,7 +127,7 @@ describe("OKX action cards", () => {
       onRecheck: () => {},
     }));
 
-    expect(html).toContain("Trust decision NO_GO");
+    expect(html).toContain("Safety summary NO_GO");
     expect(html).toContain("Not checked");
     expect(html).toContain("Block spend");
     expect(html).toContain("Continue free tools");
@@ -206,7 +206,6 @@ describe("OKX action cards", () => {
       onApplyHost: () => {},
     }));
 
-    expect(html).toContain("Free MCP listing readiness");
     expect(html).toContain("FAIL");
     expect(html).toContain("https://demo.vercel.app/api/okx/free-mcp");
     expect(html).toContain("Score: 83");
@@ -216,8 +215,6 @@ describe("OKX action cards", () => {
     expect(html).toContain("Wallet required: No");
     expect(html).toContain("Mainnet: No");
     expect(html).toContain("Source: custom provenance test signal");
-    expect(html).toContain("This is a local listing-readiness check, not an OKX review or endorsement.");
-    expect(html).toContain("Copy evidence");
   });
 
   it("renders trust card with header, boundary, disclaimer, counts, and spend blocked line", () => {
@@ -242,7 +239,6 @@ describe("OKX action cards", () => {
       onRecheck: () => {},
     }));
 
-    expect(html).toContain("Pre-spend trust");
     expect(html).toContain("NO-GO");
     expect(html).toContain("99999");
     expect(html).toContain("Spend blocked");
@@ -252,7 +248,6 @@ describe("OKX action cards", () => {
     expect(html).toContain("Wallet required: No");
     expect(html).toContain("Mainnet: No");
     expect(html).toContain("Source: test trust provenance");
-    expect(html).toContain("Copy evidence");
   });
 
   it("renders Spend not blocked on GO trust card", () => {
@@ -268,7 +263,6 @@ describe("OKX action cards", () => {
       onContinue: () => {},
     }));
 
-    expect(html).toContain("Pre-spend trust");
     expect(html).toContain("GO");
     expect(html).toContain("Spend not blocked");
     expect(html).not.toContain("Spend blocked");

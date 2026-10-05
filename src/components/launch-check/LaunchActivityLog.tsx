@@ -23,9 +23,10 @@ function countdown(ms: number): string {
 
 /** Real steps only: each line maps to a recorded check message or a persisted
  * monitor run, with its own timestamp. Nothing here is animated progress. */
-export function LaunchActivityLog({ checks, runs, monitor, checking, onDetails }: {
+export function LaunchActivityLog({ checks, runs, manualStarts, monitor, checking, onDetails }: {
   checks: ServiceCheck[];
   runs: RoutineRun[];
+  manualStarts: number[];
   monitor: Routine | null;
   checking: boolean;
   onDetails: (checkId: string) => void;
@@ -41,12 +42,20 @@ export function LaunchActivityLog({ checks, runs, monitor, checking, onDetails }
   const paired = new Set(checks.map((check) => check.monitorRun?.id).filter(Boolean));
   const entries: Entry[] = [];
 
+  let previousAt = 0;
   for (const check of checks) {
     const run = check.monitorRun;
     const n = run ? runNumber.get(run.id) ?? 0 : 0;
     if (run?.startedAt) {
       entries.push({ key: `${check.id}-start`, at: run.startedAt, text: t("launch.log.monitorStarted", { n }), tone: "neutral", alert: false });
     }
+    // A hand-run check started at the click this browser recorded just before
+    // its result; checks from other sessions simply have no start line.
+    const startedAt = run?.startedAt ?? manualStarts.filter((at) => at > previousAt && at <= check.at && check.at - at < 60_000).pop();
+    if (startedAt !== undefined) {
+      entries.push({ key: `${check.id}-checker`, at: startedAt + 1, text: t("launch.log.checkerStarted"), tone: "neutral", alert: false });
+    }
+    previousAt = check.at;
     const health = healthOf(check);
     entries.push({
       key: `${check.id}-result`,
