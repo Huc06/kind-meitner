@@ -52,6 +52,9 @@ const TERMINAL_PATTERNS: Array<{ pattern: RegExp; reason: TerminalReason }> = [
     reason: "auth",
   },
   { pattern: /\b402\b|\bquota\b|\bbilling\b|\bsubscription\b/i, reason: "quota" },
+  // Subscription plan caps ("You've hit your session limit · resets 10am",
+  // "usage limit reached"): waiting for a retry inside the turn cannot help.
+  { pattern: /\b(?:usage|session|weekly|daily|monthly) limit\b|\bhit your (?:\w+ )?limit\b/i, reason: "quota" },
   { pattern: /\bmodel not found\b|\bunknown model\b|\bdoes not exist for model\b|\bunsupported model\b/i, reason: "unknown_model" },
   { pattern: /\b400\b|\b422\b|\binvalid request\b|\bmalformed\b|\bunexpected status\b/i, reason: "invalid_request" },
   { pattern: /\b404\b|\bno such thread\b|\bthread gone\b/i, reason: "not_found" },
