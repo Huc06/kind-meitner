@@ -190,6 +190,7 @@ import {
 } from "./send-idempotency.ts";
 import { EventBus } from "./harness/bus.ts";
 import { ProviderRegistry } from "./harness/registry.ts";
+import { engineRelay, withRelayInstance } from "./engine-relay.ts";
 import { selectDefaultModelSelection } from "./default-model-selection.ts";
 import { cancelPeerApprovalsFor, cancelPeerApprovalsForThread, dismissStalePeerCards, requestPeerApproval, resolvePeerComms, type ApprovalBus } from "./peer-approval.ts";
 import { peerProvenanceNote, withPeerProvenance } from "./peer-provenance.ts";
@@ -507,7 +508,7 @@ function noteTurnTrigger(threadId: string, auth: RequestAuth): void {
   );
 }
 const providerAuthSessions = new ProviderAuthSessions();
-await registry.load(instanceConfigs(cfg));
+await registry.load(withRelayInstance(instanceConfigs(cfg)));
 const bundledSkills = loadBundledSkills();
 const availableSkills = () => mergeSkills(bundledSkills, loadUserSkills(join(DATA_DIR, "skills")));
 
@@ -9102,7 +9103,7 @@ function persistMcpServers(next: Record<string, unknown>): void {
 }
 
 async function describeInstances() {
-  const configs = instanceConfigs(cfg);
+  const configs = withRelayInstance(instanceConfigs(cfg));
   return (await registry.describe()).map((instance) => {
     const entry = configs[instance.instanceId];
     const isSim = ("simulated" in instance ? Boolean(instance.simulated) : false) || Boolean(entry?.simulated || entry?.testEngine);
@@ -9134,7 +9135,7 @@ async function persistProviderInstance(instanceId: string, instances: NonNullabl
   // No whole-fleet reload: other bots keep their live CLI processes, event
   // subscriptions and approval capabilities while this one is replaced.
   if (Object.hasOwn(instances, instanceId)) {
-    await registry.load({ [instanceId]: instanceConfigs(cfg)[instanceId] });
+    await registry.load({ [instanceId]: withRelayInstance(instanceConfigs(cfg))[instanceId] });
     const live = registry.get(instanceId);
     if (live) bus.attach([live]);
   } else {
@@ -9164,7 +9165,7 @@ async function reloadProviders() {
   bus.detachAll();
   try {
     await registry.disposeAll();
-    await registry.load(instanceConfigs(cfg));
+    await registry.load(withRelayInstance(instanceConfigs(cfg)));
     bus.attach(registry.instances());
   } finally {
     // Settle every exact conversation, not whichever one is selected now.
@@ -9827,6 +9828,67 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         });
       }
     }
+    // ── engine relay runner routes (pre-auth gate, bearer token) ──
+    if (path === "/api/engine-relay/runner.mjs" && method === "GET") {
+      res.setHeader("content-type", "application/javascript; charset=utf-8");
+      res.setHeader("cache-control", "no-cache");
+      return res.end(engineRelay.getRunnerScript());
+    }
+
+    if (path === "/api/engine-relay/poll" && method === "POST") {
+      const clientIp = requestSource(req);
+      const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
+      if (!authResult.ok) {
+        return json(res, authResult.status, { error: authResult.error });
+      }
+      const job = await engineRelay.poll(authResult.record.tokenHash, req);
+      if (!job) {
+        res.statusCode = 204;
+        return res.end();
+      }
+      return json(res, 200, job);
+    }
+
+    m = path.match(/^\/api\/engine-relay\/jobs\/([^/]+)\/events$/);
+    if (m && method === "POST") {
+      const clientIp = requestSource(req);
+      const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
+      if (!authResult.ok) return json(res, authResult.status, { error: authResult.error });
+      const body = await readBody(req, 1024 * 1024);
+      let lines: string[] | null = null;
+      if (body && typeof body === "object" && "lines" in body && Array.isArray(body.lines)) {
+        lines = body.lines.filter((item: unknown): item is string => typeof item === "string");
+      }
+      if (!lines) return json(res, 400, { error: "lines must be an array" });
+      const ok = engineRelay.handleEvents(m[1], lines);
+      return json(res, ok ? 200 : 404, ok ? { ok: true } : { error: "job not found or settled" });
+    }
+
+    m = path.match(/^\/api\/engine-relay\/jobs\/([^/]+)\/lease$/);
+    if (m && method === "POST") {
+      const clientIp = requestSource(req);
+      const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
+      if (!authResult.ok) return json(res, authResult.status, { error: authResult.error });
+      const result = engineRelay.lease(m[1], authResult.record.tokenHash);
+      return json(res, 200, result);
+    }
+
+    m = path.match(/^\/api\/engine-relay\/jobs\/([^/]+)\/done$/);
+    if (m && method === "POST") {
+      const clientIp = requestSource(req);
+      const authResult = engineRelay.verifyBearerToken(req.headers.authorization, clientIp);
+      if (!authResult.ok) return json(res, authResult.status, { error: authResult.error });
+      const body = await readBody(req, 16384);
+      let exitCode = 0;
+      let sessionId: string | undefined;
+      if (body && typeof body === "object") {
+        if ("exitCode" in body && typeof body.exitCode === "number") exitCode = body.exitCode;
+        if ("sessionId" in body && typeof body.sessionId === "string") sessionId = body.sessionId;
+      }
+      const ok = engineRelay.handleDone(m[1], exitCode, sessionId);
+      return json(res, ok ? 200 : 404, ok ? { ok: true } : { error: "job not found" });
+    }
+
 
     // Official x402 implementation: testnet-only and disabled by default.
     // This route cannot construct a facilitator client or issue a payment
@@ -15343,6 +15405,33 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         providerConfigBusy = false;
       }
     }
+    // ── engine relay admin routes (gated, session auth) ──
+    if (path === "/api/engine-relay/tokens") {
+      if (auth.kind !== "loopback" && !auth.scopes.includes("admin")) {
+        return json(res, 403, { error: "Admin access required" });
+      }
+      if (method === "GET") {
+        return json(res, 200, engineRelay.listTokens());
+      }
+      if (method === "POST") {
+        const body = await readBody(req, 4096);
+        let name = "Laptop";
+        if (body && typeof body === "object" && "name" in body && typeof body.name === "string") {
+          name = body.name.trim();
+        }
+        const result = engineRelay.createToken(name);
+        return json(res, 201, result);
+      }
+    }
+
+    m = path.match(/^\/api\/engine-relay\/tokens\/([^/]+)$/);
+    if (m && method === "DELETE") {
+      if (auth.kind !== "loopback" && !auth.scopes.includes("admin")) {
+        return json(res, 403, { error: "Admin access required" });
+      }
+      const ok = engineRelay.revokeToken(m[1]);
+      return json(res, ok ? 200 : 404, ok ? { ok: true } : { error: "Token not found" });
+    }
 
     // ── custom MCP servers (stdio, local, secrets write-only) ──
     if (method === "GET" && path === "/api/mcp/servers") {
@@ -16182,6 +16271,7 @@ const gracefulShutdown = createGracefulShutdown({
       tunnelListener?.close();
     },
     () => registry.disposeAll(),
+    () => engineRelay.close(),
     async () => {
       await Promise.all([...temporaryBrowserSessions.keys()].map((botId) => forgetTemporaryBrowser(botId)));
       await browserRuntime.closeAll();

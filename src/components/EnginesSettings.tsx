@@ -12,6 +12,7 @@ import { EngineCard, EngineSections, RefreshEngines, engineReady } from "./Engin
 import { t } from "@/lib/i18n";
 import { EngineSetup, EngineUpdateNotice } from "./EngineSetup";
 import { AddClaudeAccount, ClaudeAccountSettings } from "./ClaudeAccountSettings";
+import { LaptopClaudeRelaySettings } from "./LaptopClaudeRelaySettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 
@@ -250,6 +251,16 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
       .finally(() => setUpdating(false));
   };
 
+  // The relay engine runs the owner's laptop CLI: its card is the runner
+  // setup itself, with no local CLI path, update or sign-in controls.
+  if (instance.driverKind === "claudeRelay") {
+    return (
+      <EngineCard instance={instance}>
+        <LaptopClaudeRelaySettings />
+      </EngineCard>
+    );
+  }
+
   return (
     <EngineCard instance={instance}>
       {!engineReady(instance) && <EngineSetup instance={instance} intent={instance.access === "custom" ? "inject" : "cloud"} unframed />}
@@ -332,7 +343,7 @@ export function EnginesSettings() {
   // every KNOWN-driver instance has cliDefault; unknown-driver shadows have
   // neither unless an override was set. Including them keeps a Reset-able row
   // (and a Set CLI… path) for engines the running build doesn't recognize.
-  const rows = state.instances.filter((i) => i.cli !== undefined || i.cliDefault !== undefined || i.snapshot.state === "unavailable");
+  const rows = state.instances.filter((i) => i.cli !== undefined || i.cliDefault !== undefined || i.driverKind === "claudeRelay" || i.snapshot.state === "unavailable");
 
   return (
     <div className="flex min-w-0 flex-col gap-6 pb-2">
