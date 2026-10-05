@@ -1,17 +1,16 @@
-// Bot avatar — Libraries.dev bot-avatars, wrapped in the app's historical
-// MausAvatar API so call sites keep passing color, state, body, and motion.
-// ChartAvatar stays the OKX catalog mark. CursorAvatar is no longer rendered
-// here; one-shot motion beats still borrow a library state for a moment.
+// Bot avatar — the blob agent logos (src/lib/agent-blobs.ts), behind the
+// app's historical MausAvatar API so call sites keep passing color, state,
+// body, and motion. ChartAvatar stays the OKX catalog mark.
 import { forwardRef, memo, useEffect, useState } from "react";
-import { BotAvatar as LibBotAvatar } from "bot-avatars";
 import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
-import { mascotBodyToType, mausColorToHex, mausStateToBotState } from "@/lib/bot-avatar-bridge";
+import { AGENT_BLOB_BY_BODY, agentLogoBody } from "@/lib/agent-blobs";
+import { cn } from "@/lib/cn";
 import { botAvatarProfile, type BotAvatarCrop } from "../../shared/bot-avatar";
 import { MASCOT_BODY_IDS, type MascotBodyId } from "../../shared/mascot-bodies";
 
 /**
- * What a one-shot motion does while it plays. bot-avatars has no imperative
- * blink/spin, so a beat only borrows a state.
+ * What a one-shot motion does while it plays: a beat borrows a state for a
+ * moment (working-like states make the logo bob).
  */
 interface MotionFaces extends Partial<Record<Exclude<MausMotion, "none">, { state?: MausState }>> {}
 
@@ -81,12 +80,10 @@ export type MausAvatarProps = {
 
 function MausAvatarComponent(
   {
-    color,
     state = "idle",
     size = 44,
     label,
     animated = true,
-    interactive = false,
     bodyId,
     motion = "none",
     motionKey = 0,
@@ -110,23 +107,32 @@ function MausAvatarComponent(
     return () => window.clearTimeout(timer);
   }, [motion, motionKey, animated]);
 
-  const botState = mausStateToBotState(motionState ?? state);
-  const botType = mascotBodyToType(bodyId);
-  const hex = mausColorToHex(color);
+  const shown = motionState ?? state;
+  const working = shown === "working" || shown === "thinking" || shown === "loading";
+  const logoBody = agentLogoBody(bodyId);
 
+  // Agent logo: the blob face for this body. Fixed-colour artwork, so the
+  // bot's colour no longer tints it; "working" gets a gentle bob (off under
+  // reduced motion) in place of the old animated face.
   return (
-    // The library draws at 1.5x and pulls the overflow back with negative
-    // margins, so its own box is not the layout size callers asked for.
-    // Pin the wrapper to `size` and let the mark bleed outside it.
-    <span className="inline-flex shrink-0" style={{ width: size, height: size }}>
-      <LibBotAvatar
-        type={botType}
-        state={botState}
-        size={size}
-        color={hex}
-        interactive={interactive}
-        paused={!animated}
-        {...(label ? { "aria-label": label, title: label } : {})}
+    <span
+      className="inline-flex shrink-0"
+      style={{ width: size, height: size }}
+      data-agent-logo={logoBody}
+      data-state={working ? "working" : "resting"}
+      {...(label ? { role: "img", "aria-label": label, title: label } : { "aria-hidden": true })}
+    >
+      <img
+        src={AGENT_BLOB_BY_BODY[logoBody]}
+        alt=""
+        width={size}
+        height={size}
+        draggable={false}
+        className={cn(
+          "block select-none object-contain",
+          animated && working && "motion-safe:animate-[agent-bob_1.4s_ease-in-out_infinite]",
+        )}
+        style={{ width: size, height: size }}
       />
     </span>
   );
