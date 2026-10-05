@@ -146,7 +146,7 @@ test("the shipped installer replaces the AppImage and queues its original path f
 
   assert.equal(readFileSync(launched, "utf8"), "new", "the update must land on the launched path");
   assert.equal(existsSync(staged), false, "the staged download must be consumed");
-  assert.deepEqual(readdirSync(workspace).sort(), ["kind-meitner-0.1.43-x86_64.AppImage", "data", "pending"]);
+  assert.deepEqual(readdirSync(workspace).sort(), ["data", "kind-meitner-0.1.43-x86_64.AppImage", "pending"]);
   assert.deepEqual(relaunched, { execPath: launched, args: [] });
   assert.deepEqual(relaunchEnvironment, { appImage: launched, silent: "true" });
   assert.equal(process.env.APPIMAGE_SILENT_INSTALL, previousSilent, "the old process keeps its environment");

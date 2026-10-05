@@ -122,6 +122,16 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
     expect(invalidBody.result.content[0].text).toBe("endpointUrl is required");
   });
 
+  it("refuses arguments the tool does not declare instead of ignoring them", async () => {
+    const extra = await call(rpc("extra-arg", "tools/call", {
+      name: "scan_free_mcp_readiness",
+      arguments: { endpointUrl: "https://agent.example/mcp", apiKey: "sk-should-not-be-here" },
+    }));
+    const body = await extra.json();
+    expect(body.result.isError).toBe(true);
+    expect(body.result.content[0].text).toBe("Unsupported argument: apiKey. Accepted: endpointUrl, agentId.");
+  });
+
   it("completes the MCP Streamable HTTP session handshake", async () => {
     const init = await call(rpc("init-1", "initialize", {
       protocolVersion: "2024-11-05",

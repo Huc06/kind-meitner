@@ -244,7 +244,7 @@ test("a protected directory spelled in another case is still refused", async t =
   folder.write = true;
   await assert.rejects(run({ action: "read_file", path: "kind-meitner/credentials.bin" }), /Desktop credentials/);
   await assert.rejects(run({ action: "read_file", path: "kind-meitner/credentials.bin" }), /Desktop credentials/);
-  await assert.rejects(run({ action: "read_file", path: "KIND_MEITNER/credentials.bin" }), /Desktop credentials/);
+  await assert.rejects(run({ action: "read_file", path: "KIND-MEITNER/credentials.bin" }), /Desktop credentials/);
   await assert.rejects(run({ action: "list_files", path: "kind-meitner" }), /Desktop credentials/);
   await assert.rejects(run({ action: "write_file", path: "kind-meitner/computer-sharing.json", content: "{}" }), /sharing settings/);
 });
