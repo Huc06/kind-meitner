@@ -4156,10 +4156,13 @@ describe("harness HTTP API", () => {
       composio: true,
       computer: "off",
     });
-    // the single-Chief invariant survives the manifest's chiefOfStaff claim
-    expect(after.bots.filter((bot: { chiefOfStaff?: boolean }) => bot.chiefOfStaff).map((bot: { id: string }) => bot.id)).toEqual([
-      trusted.id,
-    ]);
+    // the single-Chief invariant survives the manifest's chiefOfStaff claim.
+    // Chiefs are per section and this harness is shared, so look only at the
+    // two records this import could have touched.
+    const chiefs = after.bots
+      .filter((bot: { id: string; chiefOfStaff?: boolean }) => (bot.id === trusted.id || bot.id === impostor.id) && bot.chiefOfStaff)
+      .map((bot: { id: string }) => bot.id);
+    expect(chiefs).toEqual([trusted.id]);
 
     // a legacy v1 file carries a room block; import ignores it entirely —
     // it neither creates a room nor touches the existing one sharing its name

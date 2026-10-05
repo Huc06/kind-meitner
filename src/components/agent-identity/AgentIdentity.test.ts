@@ -248,11 +248,11 @@ describe("AgentIdentity rendering", () => {
 });
 
 describe("AgentMark mascot", () => {
-  it("renders catalog agents with their distinct mascot bodies", () => {
+  it("renders catalog agents with their distinct logos", () => {
     const markets = renderToStaticMarkup(createElement(AgentMark, { bot: { id: "b1", name: "Markets", okxImport: { kind: "okx-catalog", externalAgentId: "okx-market-scout-v1" } } }));
     const spend = renderToStaticMarkup(createElement(AgentMark, { bot: { id: "b2", name: "Spend Scout", okxImport: { kind: "okx-catalog", externalAgentId: "okx-spend-scout" } } }));
-    expect(markets).toContain('data-bot-avatar="star"');
-    expect(spend).toContain('data-bot-avatar="droid"');
+    expect(markets).toContain('data-agent-logo="star"');
+    expect(spend).toContain('data-agent-logo="shield"');
   });
 });
 

@@ -169,11 +169,11 @@ function Preview() {
     <main className="preview-shell">
       <header className="preview-header">
         <div>
-          <p className="eyebrow">bot-avatars · 18 bodies · 3 states</p>
+          <p className="eyebrow">agent logos · 10 bodies · working bob</p>
           <h1>Maus motion library</h1>
           <p className="intro">
-            The app&rsquo;s bot color and state, drawn by the bot-avatars canvas.
-            A motion beat borrows a library state, then hands it back.
+            Each body&rsquo;s blob logo. A working state (or a motion beat that
+            borrows one) adds a small bob; reduced motion keeps it still.
           </p>
         </div>
         <button className="replay-all" type="button" onClick={() => setReplayAll((v) => v + 1)}>

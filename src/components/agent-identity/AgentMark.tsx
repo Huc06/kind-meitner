@@ -50,7 +50,7 @@ export const AgentMark = memo(function AgentMark({
     );
   }
 
-  // Every agent wears its mascot: the kind-meitner bot-avatars body picked
+  // Every agent without an uploaded photo wears its blob logo: the body picked
   // from its role (OKX catalog agents get their own distinct bodies).
   return (
     <span
