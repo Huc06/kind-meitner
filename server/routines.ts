@@ -555,8 +555,9 @@ function parseSchedule(schedule: RoutineScheduleInput, after: number): RoutineSc
   }
   if (schedule?.type === "interval") {
     const { everyMinutes, anchorAt } = schedule;
-    if (typeof everyMinutes !== "number" || !Number.isInteger(everyMinutes) || everyMinutes < 1 || everyMinutes > 1_440) {
-      throw new Error("Interval must be a whole number from 1 to 1440 minutes");
+    const minInterval = (schedule.maxRuns || (typeof schedule.maxRuns === "number" && schedule.maxRuns > 0)) ? 1 : 5;
+    if (typeof everyMinutes !== "number" || !Number.isInteger(everyMinutes) || everyMinutes < minInterval || everyMinutes > 1_440) {
+      throw new Error(`Interval must be a whole number from ${minInterval} to 1440 minutes`);
     }
     if (
       typeof anchorAt !== "number" ||

@@ -282,8 +282,9 @@ function normalizeScheduleInput(args: Json): NormalizedSchedule {
     }
     const rawMinutes = raw.every_minutes ?? raw.everyMinutes;
     const everyMinutes = Number(rawMinutes);
-    if (!Number.isInteger(everyMinutes) || everyMinutes < 1 || everyMinutes > 1_440) {
-      return { error: 'An interval schedule needs "every_minutes": a whole number from 1 to 1440.' };
+    const minMinutes = (raw.max_runs != null || raw.maxRuns != null) ? 1 : 5;
+    if (!Number.isInteger(everyMinutes) || everyMinutes < minMinutes || everyMinutes > 1_440) {
+      return { error: `An interval schedule needs "every_minutes": a whole number from ${minMinutes} to 1440.` };
     }
     const rawStart = raw.starts_at ?? raw.anchorAt;
     if (rawStart !== undefined && (typeof rawStart !== "string" || !rawStart.trim())) {

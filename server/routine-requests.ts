@@ -486,8 +486,9 @@ function normalizeSchedule(schedule: RoutineToolScheduleInput, now: number): Rou
     return { type: "once", at };
   }
   if (schedule.type === "interval") {
-    if (!Number.isInteger(schedule.everyMinutes) || schedule.everyMinutes < 1 || schedule.everyMinutes > 1_440) {
-      throw new RoutineRequestError("everyMinutes must be a whole number from 1 to 1440");
+    const minMinutes = schedule.maxRuns ? 1 : 5;
+    if (!Number.isInteger(schedule.everyMinutes) || schedule.everyMinutes < minMinutes || schedule.everyMinutes > 1_440) {
+      throw new RoutineRequestError(`everyMinutes must be a whole number from ${minMinutes} to 1440`);
     }
     let anchorAt: number | undefined;
     if (schedule.anchorAt !== undefined) {
@@ -909,6 +910,8 @@ function inputFromDefinition(definition: RoutineRequestDefinition, botId: string
     durationMinutes: definition.durationMinutes,
     ...(definition.timeoutMinutes === undefined ? {} : { timeoutMinutes: definition.timeoutMinutes }),
     ...(definition.continuity ? { continuity: true } : {}),
+    ...(definition.maxRuns !== undefined && definition.maxRuns !== null ? { maxRuns: definition.maxRuns } : {}),
+    ...(definition.alertOnly !== undefined && definition.alertOnly !== null ? { alertOnly: definition.alertOnly } : {}),
   };
 }
 
@@ -925,8 +928,11 @@ function updateFromChanges(
   if (changes.durationMinutes !== undefined) patch.durationMinutes = changes.durationMinutes;
   if (changes.timeoutMinutes !== undefined) patch.timeoutMinutes = changes.timeoutMinutes;
   if (changes.continuity !== undefined) patch.continuity = changes.continuity;
+  if (changes.maxRuns !== undefined) patch.maxRuns = changes.maxRuns === null ? undefined : changes.maxRuns;
+  if (changes.alertOnly !== undefined) patch.alertOnly = changes.alertOnly === null ? undefined : changes.alertOnly;
   return patch;
 }
+
 
 function canonicalValue(value: JsonValue): JsonValue {
   if (Array.isArray(value)) return value.map(canonicalValue);
