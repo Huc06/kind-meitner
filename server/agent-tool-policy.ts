@@ -17,6 +17,7 @@ export const READ_ONLY_AGENT_TOOL_NAMES: ReadonlySet<string> = new Set([
   "list_routines",
   "skills_list",
   "scan_free_mcp_readiness",
+  "check_agent_listing_and_connection",
   "get_asp_trust_card",
   "query_market_benchmarks",
   "get_market_intelligence_report",

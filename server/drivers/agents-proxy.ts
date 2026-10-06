@@ -840,8 +840,20 @@ const TOOLS = [
     },
   },
   {
+    name: "check_agent_listing_and_connection",
+    description: "View public listing information for an OKX agent by ID, and when a compatible service URL is available, check its connection. Does not assess service delivery, output quality, or payment outcomes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agentId: { type: "string", description: "The OKX numeric Agent ID (e.g. 13851) or okx.ai/agents/<id> URL." },
+        endpointUrl: { type: "string", description: "Optional candidate endpoint URL (leave blank to check listing only)." },
+      },
+      required: ["agentId"],
+    },
+  },
+  {
     name: "get_asp_trust_card",
-    description: "Check an OKX Agent Service Provider (ASP) by Agent ID, and optionally its endpoint, before payment, spend, or delegation. Returns a GO / CAUTION / NO_GO decision from listing-page and endpoint-readiness probes, with what was not checked; it is not a safety guarantee or an OKX endorsement.",
+    description: "[Deprecated: use check_agent_listing_and_connection] Checks an OKX agent's public listing information and optional service connection without safety endorsement or spending recommendations.",
     inputSchema: {
       type: "object",
       properties: {
@@ -897,7 +909,7 @@ const OWN_THREAD_CREATION = process.env.KIND_MEITNER_OWN_THREAD_CREATION === "1"
 // Past the comms depth cap the harness mounts only the read-only OKX
 // intelligence tools, so a teammate @mentioned to run a scan can still do it
 // without being able to message peers in turn.
-const OKX_READ_ONLY_TOOL_NAMES = new Set(["scan_free_mcp_readiness", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report"]);
+const OKX_READ_ONLY_TOOL_NAMES = new Set(["scan_free_mcp_readiness", "check_agent_listing_and_connection", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report"]);
 const OKX_READ_ONLY_SCOPE = process.env.KIND_MEITNER_TOOL_SCOPE === "okx-read-only";
 const SCOPED_TOOLS = OKX_READ_ONLY_SCOPE ? TOOLS.filter(tool => OKX_READ_ONLY_TOOL_NAMES.has(tool.name)) : null;
 const AVAILABLE_TOOLS = SCOPED_TOOLS ?? (COORDINATING
@@ -1041,6 +1053,18 @@ async function callTool(name: string, args: Json): Promise<{ text: string; isErr
     const r = await api("/api/internal/okx/scan-free-mcp-readiness", {
       method: "POST",
       body: JSON.stringify({ endpointUrl, agentId }),
+    });
+    return {
+      text: (r as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? JSON.stringify(r),
+      ...(r.error || (r as { isError?: boolean }).isError ? { isError: true } : {}),
+    };
+  }
+  if (name === "check_agent_listing_and_connection") {
+    const agentId = typeof args.agentId === "string" ? args.agentId : "";
+    const endpointUrl = typeof args.endpointUrl === "string" ? args.endpointUrl : undefined;
+    const r = await api("/api/internal/okx/check-agent-listing-and-connection", {
+      method: "POST",
+      body: JSON.stringify({ agentId, endpointUrl }),
     });
     return {
       text: (r as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? JSON.stringify(r),

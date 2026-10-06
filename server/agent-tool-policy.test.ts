@@ -16,6 +16,7 @@ describe("built-in agent tool read policy", () => {
       "list_routines",
       "skills_list",
       "scan_free_mcp_readiness",
+      "check_agent_listing_and_connection",
       "get_asp_trust_card",
       "query_market_benchmarks",
       "get_market_intelligence_report",
@@ -44,7 +45,7 @@ describe("built-in agent tool read policy", () => {
   });
 
   it("annotates OKX free intelligence tools as read-only", () => {
-    for (const name of ["scan_free_mcp_readiness", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report"]) {
+    for (const name of ["scan_free_mcp_readiness", "check_agent_listing_and_connection", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report"]) {
       expect(agentToolAnnotations(name)).toEqual({
         readOnlyHint: true,
         destructiveHint: false,

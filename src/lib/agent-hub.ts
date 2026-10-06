@@ -306,9 +306,9 @@ export function trustPrompt(agentId: string, endpoint?: string): string {
   const id = agentId.trim();
   const ep = endpoint?.trim();
   if (ep) {
-    return `@Markets run get_asp_trust_card for agentId ${id} with endpointUrl ${ep}`;
+    return `@Markets run check_agent_listing_and_connection for agentId ${id} with endpointUrl ${ep}`;
   }
-  return `@Markets run get_asp_trust_card for agentId ${id}`;
+  return `@Markets run check_agent_listing_and_connection for agentId ${id}`;
 }
 
 export interface AspScanEvidence {
@@ -381,7 +381,7 @@ export function findLatestAspResults(
 
         if (matches && (!latestTrust || at >= latestTrust.at)) {
           latestTrust = {
-            decision: card.decision,
+            decision: card.decision ?? (card.listingStatus === "found" ? "GO" : "CAUTION"),
             at,
             rawJson: card.rawJson,
             roomId,

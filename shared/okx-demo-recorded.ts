@@ -184,7 +184,7 @@ export const OKX_DEMO_RECORDED: {
     "agent": {
       "ok": true,
       "source": "live",
-      "tool": "get_asp_trust_card",
+      "tool": "check_agent_listing_and_connection",
       "requestId": "d2d152c2-bdf2-4028-b785-fff45ccdd811",
       "startedAt": "2026-10-04T08:36:49.025Z",
       "latencyMs": 1031,
@@ -199,13 +199,38 @@ export const OKX_DEMO_RECORDED: {
           "paymentRequired": false,
           "walletRequired": false,
           "mainnet": false,
-          "provenance": "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement"
+          "provenance": "okx.ai listing page; not an OKX endorsement"
         },
         "data": {
           "agentId": "13851",
           "agentName": "Kind Meitner Markets",
           "description": "Free read-only tools that verify if a public HTTPS endpoint is ready for listing and if an agent is safe to call before spending. No wallet, payment, or mainnet settlement required. Results come from local probes, not live marketplace prices or an OKX endorsement.",
           "avatarUrl": "https://static.okx.com/cdn/web3/wallet/marketplace/headimages/agent/avatar/8519bf07-9284-444a-90e4-653cb6531aac.png",
+          "listingStatus": "found",
+          "connectionStatus": "passed",
+          "endpointAssociation": "verified",
+          "endpointAssociationDetail": "Declared in listing",
+          "summary": "Listing found — Kind Meitner Markets. Public listing information was retrieved. Service connection check passed (declared in listing).",
+          "listing": {
+            "agentId": "13851",
+            "name": "Kind Meitner Markets",
+            "description": "Free read-only tools that verify if a public HTTPS endpoint is ready for listing and if an agent is safe to call before spending. No wallet, payment, or mainnet settlement required. Results come from local probes, not live marketplace prices or an OKX endorsement.",
+            "listingUrl": "https://www.okx.ai/agents/13851",
+            "avatarUrl": "https://static.okx.com/cdn/web3/wallet/marketplace/headimages/agent/avatar/8519bf07-9284-444a-90e4-653cb6531aac.png",
+            "services": [
+              {
+                "serviceId": 40840,
+                "name": "Free Readiness Trust",
+                "description": "Checks Free MCP listing readiness and pre-spend trust for OKX agents.",
+                "price": "0",
+                "symbol": "USDT",
+                "serviceType": "A2MCP",
+                "endpoint": "https://kind-meitner-production.up.railway.app/api/okx/free-mcp"
+              }
+            ],
+            "fetchTime": "2026-10-04T08:36:49.025Z",
+            "source": "okx.ai listing page"
+          },
           "services": [
             {
               "serviceId": 40840,
@@ -214,28 +239,49 @@ export const OKX_DEMO_RECORDED: {
               "price": "0"
             }
           ],
-          "decision": "GO",
-          "summary": "Verified Kind Meitner Markets on OKX.ai. Endpoint readiness PASS.",
+          "checksPerformed": [
+            {
+              "id": "listing_page",
+              "status": "pass",
+              "label": "Listing page",
+              "detail": "Public listing information was retrieved."
+            },
+            {
+              "id": "service_connection",
+              "status": "pass",
+              "label": "Service connection",
+              "detail": "Protocol check passed · 7 tool(s) discovered."
+            }
+          ],
+          "limitations": [
+            "Service delivery, output quality and payment outcomes were not assessed.",
+            "This check is free and read-only. The target service may have separate fees or access requirements."
+          ],
+          "nextActions": [
+            "Connection checks passed. Individual tool execution and delivery quality were not tested."
+          ],
           "signals": [
             {
               "id": "listing_page",
               "status": "pass",
-              "detail": "HTTP 200"
+              "label": "Listing page",
+              "detail": "Public listing information was retrieved."
             },
             {
-              "id": "endpoint_readiness",
+              "id": "service_connection",
               "status": "pass",
-              "detail": "verdict=PASS"
+              "label": "Service connection",
+              "detail": "Protocol check passed · 7 tool(s) discovered."
             }
           ],
           "notChecked": [
-            "on-chain credit score",
-            "historical settlement volume",
-            "OKX official endorsement",
-            "mainnet payment success"
+            "Service delivery, output quality and payment outcomes were not assessed.",
+            "Historical transaction and settlement volume",
+            "OKX official endorsement"
           ],
           "remediation": [],
-          "safeNextStep": "Caller may use free read-only tools on this endpoint. Do not treat this as payment approval."
+          "safeNextStep": "Connection checks passed. Individual tool execution and delivery quality were not tested.",
+          "decision": "GO"
         }
       }
     }

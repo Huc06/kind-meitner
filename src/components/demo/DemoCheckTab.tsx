@@ -37,13 +37,13 @@ export function DemoCheckTab({
   const [lastRequest, setLastRequest] = useState<OkxDemoCheckRequest | null>(null);
   const [showRecorded, setShowRecorded] = useState(false);
 
-  // Refs for abort and focus management
+  // Refs for abort, sequence token, and focus management
   const abortControllerRef = useRef<AbortController | null>(null);
+  const requestSequenceRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const endpointRunButtonRef = useRef<HTMLButtonElement>(null);
   const agentRunButtonRef = useRef<HTMLButtonElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
-
   // A result or in-flight status appears below the forms; bring it into view
   // so it is not missed on short viewports.
   useEffect(() => {
@@ -88,6 +88,7 @@ export function DemoCheckTab({
   };
 
   const executeCheck = async (req: OkxDemoCheckRequest, formType: "endpoint" | "agent") => {
+    const currentSeq = ++requestSequenceRef.current;
     setActiveForm(formType);
     setIsLoading(true);
     setCancelledMessage(null);
@@ -106,6 +107,8 @@ export function DemoCheckTab({
         signal: controller.signal,
       })) as OkxDemoCheckResult;
 
+      if (currentSeq !== requestSequenceRef.current) return;
+
       stopTimer();
       setIsLoading(false);
       abortControllerRef.current = null;
@@ -113,14 +116,14 @@ export function DemoCheckTab({
 
       if (data.ok) {
         const envData = (data.envelope?.data ?? {}) as Record<string, unknown>;
-        const verdict = String(envData.verdict ?? envData.decision ?? "");
+        const verdict = String(envData.listingStatus ?? envData.verdict ?? envData.decision ?? "");
         onCheckSuccess(data, verdict);
       }
     } catch (err: unknown) {
+      if (currentSeq !== requestSequenceRef.current) return;
       stopTimer();
       setIsLoading(false);
       abortControllerRef.current = null;
-
       if (err instanceof Error && err.name === "AbortError") {
         setCancelledMessage(t("demo.cancelled"));
         return;
@@ -154,15 +157,48 @@ export function DemoCheckTab({
     void executeCheck({ kind: "endpoint", endpointUrl: url }, "endpoint");
   };
 
+  const handleAgentIdChange = (value: string) => {
+    setAgentId(value);
+    if (agentError) setAgentError(null);
+    setCheckResult(null);
+    setLastRequest(null);
+    setCancelledMessage(null);
+    setShowRecorded(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    requestSequenceRef.current++;
+  };
+
+  const handleAgentEndpointUrlChange = (value: string) => {
+    setAgentEndpointUrl(value);
+    setCheckResult(null);
+    setLastRequest(null);
+    setCancelledMessage(null);
+    setShowRecorded(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    requestSequenceRef.current++;
+  };
+
   const handleRunAgent = () => {
-    const id = agentId.trim();
-    if (!id) {
+    const raw = agentId.trim();
+    if (!raw) {
       setAgentError(t("demo.agentForm.errorEmpty"));
+      return;
+    }
+    const urlMatch = raw.match(/(?:https?:\/\/)?(?:www\.)?okx\.ai\/agents\/(\d+)/i);
+    const cleaned = urlMatch ? urlMatch[1]! : raw.replace(/^#/, "");
+    if (!/^\d+$/.test(cleaned)) {
+      setAgentError(t("demo.agentForm.errorInvalid", { defaultValue: "Enter a numeric OKX agent ID (e.g. 13867) or okx.ai/agents/<id> URL." }));
       return;
     }
     setAgentError(null);
     const ep = agentEndpointUrl.trim() || undefined;
-    void executeCheck({ kind: "agent", agentId: id, endpointUrl: ep }, "agent");
+    void executeCheck({ kind: "agent", agentId: cleaned, endpointUrl: ep }, "agent");
   };
 
   const retryLastCheck = () => {
@@ -282,11 +318,8 @@ export function DemoCheckTab({
                 id="demo-agent-id-input"
                 type="text"
                 value={agentId}
-                onChange={(e) => {
-                  setAgentId(e.target.value);
-                  if (agentError) setAgentError(null);
-                }}
-                disabled={isLoading}
+                onChange={(e) => handleAgentIdChange(e.target.value)}
+                placeholder="13851"
                 className="w-full rounded border border-hairline bg-inset px-2.5 py-1.5 font-mono text-[12px] text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
               />
               {agentError && (
@@ -307,8 +340,8 @@ export function DemoCheckTab({
                 id="demo-agent-endpoint-input"
                 type="text"
                 value={agentEndpointUrl}
-                onChange={(e) => setAgentEndpointUrl(e.target.value)}
-                placeholder={OKX_DEMO_IDENTITY.endpointUrl}
+                onChange={(e) => handleAgentEndpointUrlChange(e.target.value)}
+                placeholder="https://example.com/mcp"
                 disabled={isLoading}
                 className="w-full rounded border border-hairline bg-inset px-2.5 py-1.5 font-mono text-[12px] text-ink placeholder:text-ink-secondary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
               />

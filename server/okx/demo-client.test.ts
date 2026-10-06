@@ -20,10 +20,12 @@ const envelope = { resource: { provenance: "live probes" }, data: { verdict: "FA
 describe("demo tool calls", () => {
   it("maps checks to the live tool schemas and refuses anything else", () => {
     expect(demoToolCall({ kind: "endpoint", endpointUrl: " https://a.example/mcp " })).toEqual({ tool: "scan_free_mcp_readiness", arguments: { endpointUrl: "https://a.example/mcp" } });
-    expect(demoToolCall({ kind: "agent", agentId: "13851" })).toEqual({ tool: "get_asp_trust_card", arguments: { agentId: "13851" } });
+    expect(demoToolCall({ kind: "agent", agentId: "13851" })).toEqual({ tool: "check_agent_listing_and_connection", arguments: { agentId: "13851" } });
+    expect(demoToolCall({ kind: "agent", agentId: "https://www.okx.ai/agents/13867" })).toEqual({ tool: "check_agent_listing_and_connection", arguments: { agentId: "13867" } });
     expect(demoToolCall({ kind: "agent", agentId: "13851", endpointUrl: "https://a.example/mcp" })).toMatchObject({ arguments: { endpointUrl: "https://a.example/mcp" } });
     expect(demoToolCall({ kind: "endpoint", endpointUrl: "x".repeat(501) })).toHaveProperty("error");
     expect(demoToolCall({ kind: "agent", agentId: "" })).toHaveProperty("error");
+    expect(demoToolCall({ kind: "agent", agentId: "abc" })).toHaveProperty("error");
     expect(demoToolCall({ kind: "trade", amount: 1 })).toHaveProperty("error");
   });
 
@@ -86,7 +88,7 @@ describe("demo status", () => {
     const tools = (names: string[]) => fakeFetch(({ body }) => body.method === "initialize"
       ? rpcResult({ protocolVersion: "2024-11-05", serverInfo: { name: "kind-meitner-free-okx-ai" } })
       : rpcResult({ tools: names.map((name) => ({ name })) }));
-    expect(await demoStatus({ fetch: tools(["scan_free_mcp_readiness", "get_asp_trust_card"]).fetch }))
+    expect(await demoStatus({ fetch: tools(["scan_free_mcp_readiness", "check_agent_listing_and_connection"]).fetch }))
       .toMatchObject({ ok: true, protocolVersion: "2024-11-05", demoToolsAvailable: true, safeMessage: "Connected · 2 tools" });
     expect(await demoStatus({ fetch: tools(["scan_free_mcp_readiness"]).fetch })).toMatchObject({ ok: false, demoToolsAvailable: false });
   });

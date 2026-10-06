@@ -3,7 +3,9 @@ import type { Message } from "@/state/store";
 export type GateStatus = "pass" | "warn" | "fail" | "skipped";
 export type ReadinessVerdict = "PASS" | "WARN" | "FAIL";
 export type TrustDecision = "GO" | "CAUTION" | "NO_GO";
-
+export type ListingStatus = "found" | "not_found" | "could_not_verify" | "request_failed";
+export type ConnectionStatus = "not_checked" | "passed" | "failed" | "could_not_verify" | "unsupported";
+export type EndpointAssociation = "none" | "verified" | "unverified" | "known_mismatch";
 export type GateSignal = {
   id: string;
   status: GateStatus;
@@ -47,8 +49,25 @@ export type TrustCardData = {
   description?: string;
   score?: string;
   avatarUrl?: string;
-  services?: Array<{ serviceId: number | string; name: string; description: string; price: string }>;
-  decision: TrustDecision;
+  services?: Array<{
+    serviceId: number | string;
+    name: string;
+    description: string;
+    price: string;
+    symbol?: string;
+    serviceType?: string;
+    endpoint?: string;
+  }>;
+  listingStatus?: ListingStatus;
+  connectionStatus?: ConnectionStatus;
+  endpointAssociation?: EndpointAssociation;
+  endpointAssociationDetail?: string;
+  listingUrl?: string;
+  marketplaceRating?: string;
+  reviewCount?: number;
+  checksPerformed?: GateSignal[];
+  nextActions?: string[];
+  decision?: TrustDecision;
   summary: string;
   signals: GateSignal[];
   notChecked: string[];
@@ -68,9 +87,13 @@ export const OKX_PRODUCTION_FREE_MCP_URL =
 
 const READINESS_TOOL = "scan_free_mcp_readiness";
 const TRUST_TOOL = "get_asp_trust_card";
+const CHECK_TOOL = "check_agent_listing_and_connection";
 const statuses = new Set<GateStatus>(["pass", "warn", "fail", "skipped"]);
 const readinessVerdicts = new Set<ReadinessVerdict>(["PASS", "WARN", "FAIL"]);
 const trustDecisions = new Set<TrustDecision>(["GO", "CAUTION", "NO_GO"]);
+const listingStatuses = new Set<ListingStatus>(["found", "not_found", "could_not_verify", "request_failed"]);
+const connectionStatuses = new Set<ConnectionStatus>(["not_checked", "passed", "failed", "could_not_verify", "unsupported"]);
+const endpointAssociations = new Set<EndpointAssociation>(["none", "verified", "unverified", "known_mismatch"]);
 const MAX_TEXT = 1_000;
 const MAX_ROWS = 20;
 const MAX_ITEMS = 12;
@@ -258,26 +281,49 @@ export function parseOkxActionCardEnvelope(
   const description = text(data.description, 2000);
   const score = text(data.score, 20);
   const avatarUrl = text(data.avatarUrl, 500);
-  const services = Array.isArray(data.services)
-    ? data.services.slice(0, 10).flatMap((s: unknown) => {
-        if (!isRecord(s)) return [];
-        const name = text(s.name, 100);
-        if (!name) return [];
-        return [{
-          serviceId: typeof s.serviceId === "number" || typeof s.serviceId === "string" ? s.serviceId : String(s.serviceId ?? ""),
-          name,
-          description: text(s.description, 500) ?? "",
-          price: text(s.price, 20) ?? "0",
-        }];
-      })
-    : undefined;
+  const rawListing = isRecord(data.listing) ? data.listing : undefined;
+  const rawServices = Array.isArray(data.services)
+    ? data.services
+    : Array.isArray(rawListing?.services)
+      ? rawListing.services
+      : [];
+
+  const services = rawServices.slice(0, 10).flatMap((s: unknown) => {
+    if (!isRecord(s)) return [];
+    const name = text(s.name, 100);
+    if (!name) return [];
+    return [{
+      serviceId: typeof s.serviceId === "number" || typeof s.serviceId === "string" ? s.serviceId : String(s.serviceId ?? ""),
+      name,
+      description: text(s.description, 500) ?? "",
+      price: text(s.price, 20) ?? "0",
+      ...(text(s.symbol, 20) ? { symbol: text(s.symbol, 20)! } : {}),
+      ...(text(s.serviceType, 20) ? { serviceType: text(s.serviceType, 20)! } : {}),
+      ...(text(s.endpoint, 500) ? { endpoint: text(s.endpoint, 500)! } : {}),
+    }];
+  });
+
+  const listingStatus = text(data.listingStatus, 30);
+  const connectionStatus = text(data.connectionStatus, 30);
+  const endpointAssociation = text(data.endpointAssociation, 30);
+  const endpointAssociationDetail = text(data.endpointAssociationDetail, 500);
+  const listingUrl = text(rawListing?.listingUrl, 500);
+  const marketplaceRating = text(data.marketplaceRating, 20) ?? text(rawListing?.marketplaceRating, 20) ?? score;
+  const reviewCount = typeof data.reviewCount === "number" ? data.reviewCount : typeof rawListing?.reviewCount === "number" ? rawListing.reviewCount : undefined;
+  const checksPerformed = signals(data.checksPerformed);
+  const nextActions = listOfText(data.nextActions);
+
   const decision = text(data.decision, 20);
   const summary = text(data.summary);
-  const signalsList = signals(data.signals);
-  const notChecked = listOfText(data.notChecked);
-  const remediation = listOfText(data.remediation);
-  const safeNextStep = text(data.safeNextStep);
-  if (!agentId || !decision || !trustDecisions.has(decision as TrustDecision) || !summary || !signalsList || !notChecked || !remediation || !safeNextStep) return null;
+  const signalsList = signals(data.signals) ?? checksPerformed;
+  const notChecked = listOfText(data.notChecked) ?? [];
+  const remediation = listOfText(data.remediation) ?? [];
+  const safeNextStep = text(data.safeNextStep) ?? (nextActions && nextActions.length > 0 ? nextActions[0]! : "");
+
+  const hasValidListingStatus = listingStatus && listingStatuses.has(listingStatus as ListingStatus);
+  const hasValidDecision = decision && trustDecisions.has(decision as TrustDecision);
+
+  if (!agentId || (!hasValidListingStatus && !hasValidDecision) || !summary || !signalsList || !safeNextStep) return null;
   const lastRun = extractGateLastRun(data, signalsList);
   const limitations = listOfText(data.limitations) ?? resource?.limitations;
   const lastChecked = (typeof data.lastChecked === "string" || typeof data.lastChecked === "number")
@@ -291,7 +337,16 @@ export function parseOkxActionCardEnvelope(
     ...(score ? { score } : {}),
     ...(avatarUrl ? { avatarUrl } : {}),
     ...(services && services.length > 0 ? { services } : {}),
-    decision: decision as TrustDecision,
+    ...(hasValidListingStatus ? { listingStatus: listingStatus as ListingStatus } : {}),
+    ...(connectionStatus && connectionStatuses.has(connectionStatus as ConnectionStatus) ? { connectionStatus: connectionStatus as ConnectionStatus } : {}),
+    ...(endpointAssociation && endpointAssociations.has(endpointAssociation as EndpointAssociation) ? { endpointAssociation: endpointAssociation as EndpointAssociation } : {}),
+    ...(endpointAssociationDetail ? { endpointAssociationDetail } : {}),
+    ...(listingUrl ? { listingUrl } : {}),
+    ...(marketplaceRating ? { marketplaceRating } : {}),
+    ...(reviewCount !== undefined ? { reviewCount } : {}),
+    ...(checksPerformed ? { checksPerformed } : {}),
+    ...(nextActions ? { nextActions } : {}),
+    ...(hasValidDecision ? { decision: decision as TrustDecision } : {}),
     summary,
     signals: signalsList,
     notChecked,
@@ -327,7 +382,12 @@ export function isReadinessTool(name: string): boolean {
 }
 
 export function isTrustTool(name: string): boolean {
-  return name === TRUST_TOOL || name.endsWith(`__${TRUST_TOOL}`);
+  return (
+    name === TRUST_TOOL ||
+    name.endsWith(`__${TRUST_TOOL}`) ||
+    name === CHECK_TOOL ||
+    name.endsWith(`__${CHECK_TOOL}`)
+  );
 }
 
 export function isOkxGateTool(name: string | undefined): boolean {
@@ -345,7 +405,7 @@ export function checkLabel(row: GateSignal): string {
     no_accidental_402: "Free discovery",
     initialize_soft: "Initialize check",
     listing_page: "Listing page",
-    endpoint_readiness: "Endpoint readiness",
+    service_connection: "Service connection",
   };
   return labels[row.id] ?? row.id.replace(/[_-]+/g, " ");
 }

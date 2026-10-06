@@ -85,13 +85,9 @@ describe("OKX action cards", () => {
   it("disables trust CTAs while busy", () => {
     const html = renderToStaticMarkup(createElement(TrustCard, {
       data: { ...trustBase, decision: "NO_GO" },
-      onBlockSpend: () => {},
-      onContinue: () => {},
       onRecheck: () => {},
       busy: true,
     }));
-    expect(isDisabledButton(html, "Block spend")).toBe(true);
-    expect(isDisabledButton(html, "Continue free tools")).toBe(true);
     expect(isDisabledButton(html, "Re-check")).toBe(true);
   });
 
@@ -119,69 +115,39 @@ describe("OKX action cards", () => {
     expect(html).not.toContain("Last run");
   });
 
-  it("renders a trust decision without a made-up score and always exposes not-checked evidence", () => {
+  it("renders a listing and connection card without a made-up score and always exposes scope and limitations", () => {
     const html = renderToStaticMarkup(createElement(TrustCard, {
-      data: { ...trustBase, decision: "NO_GO" },
-      onBlockSpend: () => {},
-      onContinue: () => {},
+      data: { ...trustBase, listingStatus: "not_found", connectionStatus: "not_checked" },
       onRecheck: () => {},
     }));
 
-    expect(html).toContain("Trust decision NO_GO");
-    expect(html).toContain("Not checked");
-    expect(html).toContain("Block spend");
-    expect(html).toContain("Continue free tools");
+    expect(html).toContain("Listing &amp; connection check");
+    expect(html).toContain("Listing not found");
+    expect(html).toContain("Connection: Not checked");
+    expect(html).toContain("Service delivery, output quality and payment outcomes were not assessed.");
     expect(html).toContain("Re-check");
-    expect(html).toContain("Copy next step");
-    expect(html).toContain("Do not call pay/x402 tools.");
-    expect(html).not.toContain("Trust score");
+    expect(html).toContain("Copy result");
+    expect(html).toContain("View listing");
   });
 
-  it("disables Continue on NO_GO and enables Continue on GO", () => {
-    const noGo = renderToStaticMarkup(createElement(TrustCard, {
-      data: { ...trustBase, decision: "NO_GO" },
-      onBlockSpend: () => {},
-      onContinue: () => {},
+  it("renders neutral styling for Not checked connection and failure for actual failures", () => {
+    const notCheckedHtml = renderToStaticMarkup(createElement(TrustCard, {
+      data: { ...trustBase, listingStatus: "found", connectionStatus: "not_checked" },
       onRecheck: () => {},
     }));
-    expect(isDisabledButton(noGo, "Continue free tools")).toBe(true);
-    expect(noGo).toContain("Block spend");
+    expect(notCheckedHtml).toContain("Listing found");
+    expect(notCheckedHtml).toContain("Connection: Not checked");
 
-    const go = renderToStaticMarkup(createElement(TrustCard, {
+    const failedHtml = renderToStaticMarkup(createElement(TrustCard, {
       data: {
         ...trustBase,
-        decision: "GO",
-        agentId: "13837",
-        summary: "Listing reachable and endpoint ready.",
-        signals: [{ id: "listing_page", status: "pass", detail: "HTTP 200" }],
-        safeNextStep: "Proceed with free tools only.",
-        rawJson: '{"data":{"decision":"GO"}}',
+        listingStatus: "found",
+        connectionStatus: "failed",
+        summary: "Connection failed.",
       },
-      onBlockSpend: () => {},
-      onContinue: () => {},
       onRecheck: () => {},
     }));
-    expect(go).toContain("Continue free tools");
-    expect(isDisabledButton(go, "Continue free tools")).toBe(false);
-    // Block spend is for NO_GO/CAUTION only
-    expect(go).not.toContain("Block spend");
-  });
-
-  it("disables Continue on CAUTION and keeps Block spend available", () => {
-    const html = renderToStaticMarkup(createElement(TrustCard, {
-      data: {
-        ...trustBase,
-        decision: "CAUTION",
-        summary: "Listing up but endpoint not fully probed.",
-        safeNextStep: "Re-check before spend.",
-        rawJson: '{"data":{"decision":"CAUTION"}}',
-      },
-      onBlockSpend: () => {},
-      onContinue: () => {},
-      onRecheck: () => {},
-    }));
-    expect(isDisabledButton(html, "Continue free tools")).toBe(true);
-    expect(html).toContain("Block spend");
+    expect(failedHtml).toContain("Connection: Failed");
   });
 
   it("renders readiness card with header, boundary, disclaimer, score, and counts", () => {
@@ -220,58 +186,44 @@ describe("OKX action cards", () => {
     expect(html).toContain("Copy evidence");
   });
 
-  it("renders trust card with header, boundary, disclaimer, counts, and spend blocked line", () => {
+  it("renders listing and connection card with header, disclaimer, counts, and run details", () => {
     const html = renderToStaticMarkup(createElement(TrustCard, {
       data: {
         ...trustBase,
-        decision: "NO_GO",
+        listingStatus: "not_found",
+        connectionStatus: "not_checked",
         signals: [
           { id: "listing_page", status: "fail" as const, detail: "HTTP 404" },
-          { id: "endpoint_readiness", status: "pass" as const, detail: "verdict=PASS" },
+          { id: "service_connection", status: "skipped" as const, detail: "Not checked" },
         ],
-        resource: {
-          access: "free",
-          paymentRequired: false,
-          walletRequired: false,
-          mainnet: false,
-          provenance: "test trust provenance",
-        },
       },
-      onBlockSpend: () => {},
-      onContinue: () => {},
       onRecheck: () => {},
     }));
 
-    expect(html).toContain("Pre-spend trust");
-    expect(html).toContain("NO-GO");
+    expect(html).toContain("Listing &amp; connection check");
     expect(html).toContain("99999");
-    expect(html).toContain("Spend blocked");
-    expect(html).toContain("1 passed · 0 warned · 1 failed");
-    expect(html).toContain("Access: Free");
-    expect(html).toContain("Payment required: No");
-    expect(html).toContain("Wallet required: No");
-    expect(html).toContain("Mainnet: No");
-    expect(html).toContain("Source: test trust provenance");
-    expect(html).toContain("Copy evidence");
+    expect(html).toContain("0 passed · 1 not checked · 1 failed");
+    expect(html).toContain("Service delivery, output quality and payment outcomes were not assessed.");
+    expect(html).toContain("Copy result");
   });
 
-  it("renders Spend not blocked on GO trust card", () => {
+  it("renders verified association when declared in listing", () => {
     const html = renderToStaticMarkup(createElement(TrustCard, {
       data: {
         ...trustBase,
-        decision: "GO",
         agentId: "13851",
+        listingStatus: "found",
+        connectionStatus: "passed",
+        endpointAssociation: "verified",
         signals: [
           { id: "listing_page", status: "pass" as const, detail: "HTTP 200" },
         ],
       },
-      onContinue: () => {},
     }));
 
-    expect(html).toContain("Pre-spend trust");
-    expect(html).toContain("GO");
-    expect(html).toContain("Spend not blocked");
-    expect(html).not.toContain("Spend blocked");
+    expect(html).toContain("Listing &amp; connection check");
+    expect(html).toContain("Listing found");
+    expect(html).toContain("Declared in listing");
   });
 
   it("renders Unknown and never No for undefined wallet, payment, and mainnet", () => {
@@ -298,14 +250,8 @@ describe("OKX action cards", () => {
         resource: undefined,
       },
     }));
-
-    expect(trustHtml).toContain("Access: Unknown");
-    expect(trustHtml).toContain("Payment required: Unknown");
-    expect(trustHtml).toContain("Wallet required: Unknown");
-    expect(trustHtml).toContain("Mainnet: Unknown");
-    expect(trustHtml).not.toContain("Payment required: No");
-    expect(trustHtml).not.toContain("Wallet required: No");
-    expect(trustHtml).not.toContain("Mainnet: No");
+    expect(trustHtml).toContain("Listing &amp; connection check");
+    expect(trustHtml).toContain("Service delivery, output quality and payment outcomes were not assessed.");
   });
 
   it("distinguishes Yes, No, and Unknown correctly in boundary values", () => {
@@ -359,8 +305,7 @@ describe("OKX action cards", () => {
         resource: undefined,
       },
     }));
-    expect(source(trustHtml)).toBeTruthy();
-    expect(source(trustHtml)).not.toBe(source(readinessHtml));
+    expect(trustHtml).toContain("okx.ai listing page; not an OKX endorsement");
   });
 
   it("renders limitations and last-checked when supplied", () => {
@@ -414,6 +359,7 @@ describe("OKX action cards", () => {
     }));
 
     expect(trustHtml).toContain("<details");
-    expect(trustHtml).toContain("Details &amp; metadata");
+    expect(trustHtml).toContain("Run details");
+    expect(trustHtml).toContain("Activity");
   });
 });

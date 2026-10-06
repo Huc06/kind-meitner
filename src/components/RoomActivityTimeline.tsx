@@ -125,9 +125,9 @@ export function deriveRoomTimelineEvents(
             statusTone = card.verdict === "PASS" ? "success" : card.verdict === "WARN" ? "warning" : "danger";
             action = `Scan Free MCP readiness: ${card.endpointUrl}`;
           } else {
-            statusText = card.decision;
-            statusTone = card.decision === "GO" ? "success" : card.decision === "CAUTION" ? "warning" : "danger";
-            action = `ASP Trust check: Agent ${card.agentId}`;
+            statusText = card.listingStatus === "found" ? "Found" : card.listingStatus === "not_found" ? "Not found" : card.decision ?? "Checked";
+            statusTone = card.listingStatus === "found" || card.decision === "GO" ? "success" : card.listingStatus === "not_found" || card.decision === "NO_GO" ? "danger" : "warning";
+            action = `Listing & connection check: Agent ${card.agentId}`;
           }
         } else if (msg.tool.ok === true) {
           statusText = "Completed";

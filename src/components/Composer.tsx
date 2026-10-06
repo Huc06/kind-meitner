@@ -499,8 +499,8 @@ export function Composer({
     else if (command.id === "setup") replacement = "/setup ";
     else if (command.id === "scan") replacement = `@Markets scan endpoint ${OKX_DEMO_IDENTITY.endpointUrl} agentId="${OKX_DEMO_IDENTITY.agentId}"`;
     else if (command.id === "scan-vercel") replacement = "@Markets scan endpoint https://demo.vercel.app/api/okx/free-mcp";
-    else if (command.id === "trust") replacement = '@Markets get_asp_trust_card agentId="3598"';
-    else if (command.id === "block") replacement = '@Spend Scout check trust agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
+    else if (command.id === "trust") replacement = '@Markets check_agent_listing_and_connection agentId="3598"';
+    else if (command.id === "block") replacement = '@Spend Scout check agentId="896" endpointUrl="https://charlie-server-production.up.railway.app/birth"';
     else if (command.id === "services") {
       replacement = clonedBot
         ? `@${clonedBot.name} What services do you provide on OKX.ai and how can you assist our team in this workspace?`

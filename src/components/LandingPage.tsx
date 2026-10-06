@@ -269,22 +269,22 @@ export function LandingPage({ onNavigate }: { onNavigate: (target: LandingTarget
             <div className="flex flex-col justify-between border border-hairline bg-inset p-4">
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="label-mono text-ink-secondary">02 · TRUST</span>
+                  <span className="label-mono text-ink-secondary">02 · CHECK</span>
                   <div className="flex items-center gap-1 font-mono text-xs">
-                    <Tag tone="danger" variant="solid" size="sm">
-                      NO_GO
+                    <Tag tone="neutral" variant="outline" size="sm">
+                      UNCHECKED
                     </Tag>
                     <span className="text-ink-secondary">→</span>
                     <Tag tone="success" variant="solid" size="sm">
-                      GO
+                      FOUND
                     </Tag>
                   </div>
                 </div>
                 <h3 className="mt-3 font-sans text-sm font-semibold text-ink">
-                  Gate before spend
+                  Listing & connection check
                 </h3>
                 <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
-                  get_asp_trust_card audits reachability. Dead endpoints yield NO_GO with Block Spend; canonical ASP #13851 yields GO.
+                  check_agent_listing_and_connection inspects public listing details and verifies compatible endpoint connections without safety guarantees.
                 </p>
               </div>
               <div className="mt-3 pt-2.5 frame-rule-above font-mono text-[10.5px] text-ink-secondary">

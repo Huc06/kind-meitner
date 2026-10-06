@@ -2365,6 +2365,7 @@ async function ensureCatalogOkxAgent(room: GroupRecord, agentId: string): Promis
         "get_market_intelligence_report",
         "query_market_benchmarks",
         "scan_free_mcp_readiness",
+        "check_agent_listing_and_connection",
         "get_asp_trust_card",
         "Read",
         "WebSearch",
@@ -9738,12 +9739,15 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         res.setHeader("retry-after", String(limit.retryAfter));
         return json(res, 429, { error: "Too many checks from this browser. Wait a minute and retry." });
       }
-      if (!isCheck) return json(res, 200, await demoStatus());
+      const localPort = req.socket.localPort;
+      const demoEndpoint = process.env.KIND_MEITNER_DEMO_ENDPOINT
+        || (process.env.NODE_ENV === "test" || process.env.FAKE_CLAUDE_MODE ? `http://127.0.0.1:${localPort}/api/okx/free-mcp` : undefined);
+      if (!isCheck) return json(res, 200, await demoStatus(demoEndpoint ? { endpointUrl: demoEndpoint } : {}));
       const body = await readBody(req).catch(() => undefined);
       if (!body || typeof body !== "object") return json(res, 400, { error: "Expected a JSON check request." });
       const aborted = new AbortController();
       req.once("close", () => { if (!res.writableEnded) aborted.abort(); });
-      return json(res, 200, await runDemoCheck(body, {}, aborted.signal));
+      return json(res, 200, await runDemoCheck(body, demoEndpoint ? { endpointUrl: demoEndpoint } : {}, aborted.signal));
     }
     // Pre-Auth Free A2MCP resource server. This is deliberately separate from
     // the legacy paid endpoint: no wallet, payment header, nonce, key, or
@@ -10294,6 +10298,17 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           ...(agentId ? { agentId } : {}),
         });
         return json(res, 200, scanned);
+      }
+      if (method === "POST" && path === "/api/internal/okx/check-agent-listing-and-connection") {
+        const body = await readInternalBody();
+        const agentId = typeof body?.agentId === "string" ? body.agentId.trim() : "";
+        const endpointUrl = typeof body?.endpointUrl === "string" ? body.endpointUrl.trim() : undefined;
+        if (!agentId) return json(res, 400, { error: "agentId is required" });
+        const card = await okxIntelligence.handleFreeMcpToolCall("check_agent_listing_and_connection", {
+          agentId,
+          ...(endpointUrl ? { endpointUrl } : {}),
+        });
+        return json(res, 200, card);
       }
       if (method === "POST" && path === "/api/internal/okx/get-asp-trust-card") {
         const body = await readInternalBody();
