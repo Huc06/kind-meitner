@@ -494,6 +494,7 @@ describe("agents-proxy MCP surface", () => {
       "skills_list",
       "skill_manage",
       "scan_free_mcp_readiness",
+      "check_agent_listing_and_connection",
       "get_asp_trust_card",
       "query_market_benchmarks",
       "get_market_intelligence_report",
@@ -518,7 +519,7 @@ describe("agents-proxy MCP surface", () => {
       "list_bots", "list_rooms", "check_delegation", "wait_delegation", "list_threads",
       "list_team_setup",
       "session_search", "session_read", "list_routines", "skills_list",
-      "scan_free_mcp_readiness", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report",
+      "scan_free_mcp_readiness", "check_agent_listing_and_connection", "get_asp_trust_card", "query_market_benchmarks", "get_market_intelligence_report",
     ];
     expect(list.result.tools.filter((tool: any) => tool.annotations?.readOnlyHint)
       .map((tool: any) => tool.name)).toEqual(readNames);
@@ -1742,7 +1743,7 @@ describe("past the comms depth cap (okx-read-only scope)", () => {
   it("keeps the read-only OKX tools for an @mentioned teammate but no peer comms", async () => {
     const list = await scopedRpc("tools/list");
     const names = (list.result?.tools ?? []).map((tool) => tool.name).sort();
-    expect(names).toEqual(["get_asp_trust_card", "get_market_intelligence_report", "query_market_benchmarks", "scan_free_mcp_readiness"]);
+    expect(names).toEqual(["check_agent_listing_and_connection", "get_asp_trust_card", "get_market_intelligence_report", "query_market_benchmarks", "scan_free_mcp_readiness"]);
     const refused = await scopedRpc("tools/call", { name: "coordinate_bots", arguments: {} });
     expect(refused.error?.message).toMatch(/unknown tool/i);
   });

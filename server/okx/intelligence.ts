@@ -66,6 +66,7 @@ export interface OkxRemoteAgentMetadata {
   score?: string;
   approvalRate?: string;
   usageCount?: number;
+  reviewCount?: number;
   avatarUrl?: string;
   categories?: string[];
   services?: Array<{
@@ -147,11 +148,124 @@ const remoteMetadataCache = new Map<string, OkxRemoteAgentMetadata>(
   Object.entries(KNOWN_OKX_AGENTS),
 );
 
+export function extractAgentId(input: string): string | null {
+  const trimmed = input.trim();
+  const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?okx\.ai\/agents\/(\d+)/i);
+  if (urlMatch) return urlMatch[1]!;
+  const cleaned = trimmed.replace(/^#/, "");
+  if (/^\d+$/.test(cleaned)) return cleaned;
+  return null;
+}
+
+export interface ParsedAgentListing {
+  agentId: string;
+  name: string;
+  description?: string;
+  score?: string;
+  marketplaceRating?: string;
+  reviewCount?: number;
+  avatarUrl?: string;
+  services: Array<{
+    serviceId: number | string;
+    name: string;
+    description: string;
+    price: string;
+    symbol?: string;
+    serviceType?: string;
+    endpoint?: string;
+  }>;
+}
+
+export function parseAgentListingHtml(html: string, expectedAgentId: string): {
+  listing: ParsedAgentListing | null;
+  status: "found" | "not_found" | "could_not_verify";
+  detail: string;
+} {
+  if (/(?:challenge-running|cf-browser-verification|Attention Required!|Just a moment\.\.\.|hcaptcha)/i.test(html)) {
+    return { listing: null, status: "could_not_verify", detail: "Listing page returned an access challenge." };
+  }
+
+  let data: any = null;
+  const appStateMatch = html.match(/<script[^>]*id=["']appState["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (appStateMatch) {
+    try { data = JSON.parse(appStateMatch[1]!); } catch {}
+  }
+  if (!data) {
+    const ssrMatch = html.match(/<script[^>]*data-id=["']__app_data_for_ssr__["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (ssrMatch) {
+      try { data = JSON.parse(ssrMatch[1]!); } catch {}
+    }
+  }
+  if (!data) {
+    const initMatch = html.match(/window\.__INIT_STATE__\s*=\s*(\{[\s\S]*?\});/);
+    if (initMatch) {
+      try { data = JSON.parse(initMatch[1]!); } catch {}
+    }
+  }
+
+  if (!data || typeof data !== "object") {
+    return { listing: null, status: "could_not_verify", detail: "HTTP 200 returned but listing data could not be extracted (app shell or unexpected format)." };
+  }
+
+  const detailPage = data.appContext?.initialProps?.AgentDetailPage
+    ?? data.initialProps?.AgentDetailPage
+    ?? data.AgentDetailPage;
+
+  if (!detailPage || typeof detailPage !== "object") {
+    return { listing: null, status: "could_not_verify", detail: "HTTP 200 returned without AgentDetailPage structure." };
+  }
+
+  const overview = detailPage.overview;
+  if (!overview || typeof overview !== "object") {
+    return { listing: null, status: "could_not_verify", detail: "AgentDetailPage is missing overview data." };
+  }
+
+  const returnedId = String(overview.agentId ?? "").trim();
+  if (returnedId && returnedId !== expectedAgentId) {
+    return { listing: null, status: "could_not_verify", detail: `Listing page identifies agent #${returnedId} instead of #${expectedAgentId}.` };
+  }
+
+  const name = typeof overview.name === "string" ? overview.name.trim() : "";
+  if (!name) {
+    return { listing: null, status: "could_not_verify", detail: "Listing data does not identify an agent name." };
+  }
+
+  const rawServices = Array.isArray(detailPage.services?.list) ? detailPage.services.list : [];
+  const services = rawServices.map((s: any) => ({
+    serviceId: s.serviceId ?? "",
+    name: typeof s.name === "string" ? s.name.trim() : "",
+    description: typeof s.description === "string" ? s.description.trim() : "",
+    price: typeof s.price === "string" || typeof s.price === "number" ? String(s.price).trim() : "0",
+    symbol: typeof s.symbol === "string" ? s.symbol.trim() : "USDT",
+    serviceType: typeof s.serviceType === "string" ? s.serviceType.trim() : undefined,
+    endpoint: typeof s.endpoint === "string" && s.endpoint.trim() ? s.endpoint.trim() : undefined,
+  }));
+
+  const reviews = detailPage.reviews;
+  const score = overview.score != null ? String(overview.score).trim() : reviews?.totalScore != null ? String(reviews.totalScore).trim() : undefined;
+  const reviewCount = typeof reviews?.totalCount === "number" ? reviews.totalCount : typeof reviews?.total === "number" ? reviews.total : undefined;
+
+  return {
+    status: "found",
+    detail: "Public listing information was retrieved.",
+    listing: {
+      agentId: expectedAgentId,
+      name,
+      description: typeof overview.description === "string" ? overview.description.trim() : undefined,
+      score,
+      marketplaceRating: score,
+      reviewCount,
+      avatarUrl: typeof overview.avatar === "string" && overview.avatar.trim() ? overview.avatar.trim() : undefined,
+      services,
+    },
+  };
+}
+
 export async function fetchOkxAgentMetadata(
   agentId: string,
   dependencies: ReadinessProbeDependencies = {},
 ): Promise<OkxRemoteAgentMetadata | null> {
-  const cleanId = agentId.trim().replace(/^#/, "");
+  const cleanId = extractAgentId(agentId) ?? agentId.trim().replace(/^#/, "");
   const probeFetch = dependencies.fetch ?? fetch;
   try {
     const res = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(cleanId)}`, {
@@ -160,32 +274,19 @@ export async function fetchOkxAgentMetadata(
     });
     if (res.ok) {
       const html = await res.text();
-      const match = html.match(/<script data-id="__app_data_for_ssr__"[^>]*>([\s\S]*?)<\/script>/);
-      if (match) {
-        const data = JSON.parse(match[1]);
-        const overview = data.appContext?.initialProps?.AgentDetailPage?.overview;
-        const services = data.appContext?.initialProps?.AgentDetailPage?.services?.list || [];
-        if (overview && overview.name) {
-          const meta: OkxRemoteAgentMetadata = {
-            agentId: cleanId,
-            name: String(overview.name).trim(),
-            description: String(overview.description ?? "").trim(),
-            score: overview.score != null ? String(overview.score).trim() : undefined,
-            approvalRate: overview.approvalRate != null ? String(overview.approvalRate).trim() : undefined,
-            usageCount: typeof overview.usageCount === "number" ? overview.usageCount : undefined,
-            avatarUrl: typeof overview.avatar === "string" ? overview.avatar.trim() : undefined,
-            categories: Array.isArray(overview.categories) ? overview.categories.map(String) : [],
-            services: services.map((s: any) => ({
-              serviceId: s.serviceId,
-              name: String(s.name ?? "").trim(),
-              description: String(s.description ?? "").trim(),
-              price: String(s.price ?? "0").trim(),
-              endpoint: typeof s.endpoint === "string" ? s.endpoint.trim() : undefined,
-            })),
-          };
-          remoteMetadataCache.set(cleanId, meta);
-          return meta;
-        }
+      const parsed = parseAgentListingHtml(html, cleanId);
+      if (parsed.status === "found" && parsed.listing) {
+        const meta: OkxRemoteAgentMetadata = {
+          agentId: cleanId,
+          name: parsed.listing.name,
+          description: parsed.listing.description ?? "",
+          score: parsed.listing.score,
+          reviewCount: parsed.listing.reviewCount,
+          avatarUrl: parsed.listing.avatarUrl,
+          services: parsed.listing.services,
+        };
+        remoteMetadataCache.set(cleanId, meta);
+        return meta;
       }
     }
   } catch {
@@ -194,116 +295,391 @@ export async function fetchOkxAgentMetadata(
   return remoteMetadataCache.get(cleanId) ?? null;
 }
 
-export interface AspTrustCardData {
+export type ListingStatus = "found" | "not_found" | "could_not_verify" | "request_failed";
+export type ConnectionStatus = "not_checked" | "passed" | "failed" | "could_not_verify" | "unsupported";
+export type EndpointAssociation = "none" | "verified" | "unverified" | "known_mismatch";
+
+export interface ListedService {
+  serviceId: number | string;
+  name: string;
+  description: string;
+  price: string;
+  symbol?: string;
+  serviceType?: string;
+  endpoint?: string;
+}
+
+export interface ListingInfo {
   agentId: string;
+  name?: string;
+  description?: string;
+  listingUrl: string;
+  avatarUrl?: string;
+  services?: ListedService[];
+  marketplaceRating?: string;
+  reviewCount?: number;
+  fetchTime: string;
+  source: string;
+}
+
+export interface CheckPerformed {
+  id: string;
+  status: "pass" | "warn" | "fail" | "skipped";
+  label?: string;
+  detail: string;
+}
+
+export interface AgentListingAndConnectionData {
+  agentId: string;
+  endpointUrl?: string;
+  listingStatus: ListingStatus;
+  connectionStatus: ConnectionStatus;
+  endpointAssociation: EndpointAssociation;
+  endpointAssociationDetail?: string;
+  summary: string;
+  listing?: ListingInfo;
+  checksPerformed: CheckPerformed[];
+  limitations: string[];
+  nextActions: string[];
+  remediation: string[];
+  // Compatibility fields for legacy callers:
   agentName?: string;
   description?: string;
   score?: string;
   avatarUrl?: string;
   services?: Array<{ serviceId: number | string; name: string; description: string; price: string }>;
-  decision: "GO" | "CAUTION" | "NO_GO";
-  summary: string;
-  signals: Array<{ id: "listing_page" | "endpoint_readiness"; status: "pass" | "warn" | "fail" | "skipped"; detail: string }>;
+  signals: CheckPerformed[];
   notChecked: string[];
-  remediation: string[];
   safeNextStep: string;
+  decision?: "GO" | "CAUTION" | "NO_GO";
 }
 
-export async function getAspTrustCard(agentId: string, endpointUrl?: string, dependencies: ReadinessProbeDependencies = {}): Promise<{ resource: typeof readinessResource; data: AspTrustCardData }> {
-  const probeFetch = dependencies.fetch ?? fetch;
-  const signals: AspTrustCardData["signals"] = [];
-  const remediation: string[] = [];
-  let metadata: OkxRemoteAgentMetadata | null = null;
+export type AspTrustCardData = AgentListingAndConnectionData;
 
-  const cleanId = agentId.trim().replace(/^#/, "");
+export async function checkAgentListingAndConnection(
+  agentId: string,
+  endpointUrl?: string,
+  dependencies: ReadinessProbeDependencies = {},
+): Promise<{ resource: typeof readinessResource; data: AgentListingAndConnectionData }> {
+  const probeFetch = dependencies.fetch ?? fetch;
+  const cleanId = extractAgentId(agentId) ?? agentId.trim().replace(/^#/, "");
+  const checksPerformed: CheckPerformed[] = [];
+  const remediation: string[] = [];
+  const limitations: string[] = [
+    "Service delivery, output quality and payment outcomes were not assessed.",
+    "This check is free and read-only. The target service may have separate fees or access requirements.",
+  ];
+
+  let listingStatus: ListingStatus = "could_not_verify";
+  let listingDetail = "";
+  let listingInfo: ListingInfo | undefined;
+  let fetchSource = "okx.ai listing page";
+  const fetchTime = new Date().toISOString();
+
   try {
-    const response = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(cleanId)}`, { signal: AbortSignal.timeout(8_000) });
+    const response = await probeFetch(`https://www.okx.ai/agents/${encodeURIComponent(cleanId)}`, {
+      signal: AbortSignal.timeout(8_000),
+      headers: { "user-agent": "KindMeitner/1.0" },
+    });
     if (response.status === 200) {
-      signals.push({ id: "listing_page", status: "pass", detail: `HTTP 200` });
-      try {
-        const html = await response.text();
-        const match = html.match(/<script data-id="__app_data_for_ssr__"[^>]*>([\s\S]*?)<\/script>/);
-        if (match) {
-          const data = JSON.parse(match[1]);
-          const overview = data.appContext?.initialProps?.AgentDetailPage?.overview;
-          const services = data.appContext?.initialProps?.AgentDetailPage?.services?.list || [];
-          if (overview && overview.name) {
-            metadata = {
-              agentId: cleanId,
-              name: String(overview.name).trim(),
-              description: String(overview.description ?? "").trim(),
-              score: overview.score != null ? String(overview.score).trim() : undefined,
-              approvalRate: overview.approvalRate != null ? String(overview.approvalRate).trim() : undefined,
-              usageCount: typeof overview.usageCount === "number" ? overview.usageCount : undefined,
-              avatarUrl: typeof overview.avatar === "string" ? overview.avatar.trim() : undefined,
-              categories: Array.isArray(overview.categories) ? overview.categories.map(String) : [],
-              services: services.map((s: any) => ({
-                serviceId: s.serviceId,
-                name: String(s.name ?? "").trim(),
-                description: String(s.description ?? "").trim(),
-                price: String(s.price ?? "0").trim(),
-                endpoint: typeof s.endpoint === "string" ? s.endpoint.trim() : undefined,
-              })),
-            };
-            remoteMetadataCache.set(cleanId, metadata);
-          }
-        }
-      } catch {
-        // SSR parsing is best effort
-      }
-    } else {
-      const cached = remoteMetadataCache.get(cleanId);
-      if (cached) {
-        metadata = cached;
-        signals.push({ id: "listing_page", status: "pass", detail: "HTTP 200 (verified listing)" });
+      const html = await response.text();
+      const parsed = parseAgentListingHtml(html, cleanId);
+      if (parsed.status === "found" && parsed.listing) {
+        listingStatus = "found";
+        listingDetail = "Public listing information was retrieved.";
+        listingInfo = {
+          agentId: cleanId,
+          name: parsed.listing.name,
+          description: parsed.listing.description,
+          listingUrl: `https://www.okx.ai/agents/${cleanId}`,
+          avatarUrl: parsed.listing.avatarUrl,
+          services: parsed.listing.services,
+          marketplaceRating: parsed.listing.marketplaceRating,
+          reviewCount: parsed.listing.reviewCount,
+          fetchTime,
+          source: fetchSource,
+        };
+        remoteMetadataCache.set(cleanId, {
+          agentId: cleanId,
+          name: parsed.listing.name,
+          description: parsed.listing.description ?? "",
+          score: parsed.listing.score,
+          reviewCount: parsed.listing.reviewCount,
+          avatarUrl: parsed.listing.avatarUrl,
+          services: parsed.listing.services,
+        });
       } else {
-        signals.push({ id: "listing_page", status: response.status === 404 ? "fail" : "warn", detail: `HTTP ${response.status}` });
+        listingStatus = parsed.status;
+        listingDetail = parsed.detail;
       }
-    }
-  } catch {
-    const cached = remoteMetadataCache.get(cleanId);
-    if (cached) {
-      metadata = cached;
-      signals.push({ id: "listing_page", status: "pass", detail: "HTTP 200 (verified listing)" });
+    } else if (response.status === 404) {
+      listingStatus = "not_found";
+      listingDetail = "Listing page returned HTTP 404 (not found).";
+    } else if (response.status === 403) {
+      listingStatus = "could_not_verify";
+      listingDetail = "Access to listing page was restricted (HTTP 403).";
     } else {
-      signals.push({ id: "listing_page", status: "warn", detail: "listing probe unavailable" });
+      listingStatus = "could_not_verify";
+      listingDetail = `Listing page returned HTTP ${response.status}.`;
+    }
+  } catch (err: any) {
+    const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError";
+    // Fallback to cache only when no custom probeFetch dependency is supplied
+    const cached = !dependencies.fetch ? remoteMetadataCache.get(cleanId) : null;
+    if (cached) {
+      listingStatus = "found";
+      listingDetail = "Public listing information retrieved from local catalog (cached).";
+      fetchSource = "kind-meitner local catalog (cached)";
+      listingInfo = {
+        agentId: cleanId,
+        name: cached.name,
+        description: cached.description,
+        listingUrl: `https://www.okx.ai/agents/${cleanId}`,
+        avatarUrl: cached.avatarUrl,
+        services: cached.services,
+        marketplaceRating: cached.score,
+        reviewCount: cached.reviewCount,
+        fetchTime,
+        source: fetchSource,
+      };
+    } else {
+      listingStatus = "request_failed";
+      listingDetail = isTimeout ? "Listing request timed out." : "Listing request failed.";
     }
   }
 
-  if (endpointUrl) {
-    const readiness = await scanFreeMcpReadiness(endpointUrl, agentId, dependencies);
-    const status = readiness.data.verdict === "PASS" ? "pass" : readiness.data.verdict === "FAIL" ? "fail" : "warn";
-    signals.push({ id: "endpoint_readiness", status, detail: `verdict=${readiness.data.verdict}` });
-    remediation.push(...readiness.data.remediation);
-  } else signals.push({ id: "endpoint_readiness", status: "skipped", detail: "no endpointUrl provided" });
+  checksPerformed.push({
+    id: "listing_page",
+    status: listingStatus === "found" ? "pass" : listingStatus === "not_found" ? "fail" : "warn",
+    label: "Listing page",
+    detail: listingDetail,
+  });
 
-  const failed = signals.some((signal) => signal.status === "fail");
-  const passed = signals.every((signal) => signal.status === "pass");
-  const decision: AspTrustCardData["decision"] = failed ? "NO_GO" : passed ? "GO" : "CAUTION";
-  const safeNextStep = decision === "GO" ? "Caller may use free read-only tools on this endpoint. Do not treat this as payment approval." : decision === "NO_GO" ? "Do not call pay/x402 tools. Fix listing or endpoint first." : "Probe or fix endpoint before paying. Free tools only if readiness is known.";
+  // Endpoint association
+  let endpointAssociation: EndpointAssociation = "none";
+  let endpointAssociationDetail: string | undefined;
 
-  const displayName = metadata?.name;
+  const rawEp = endpointUrl?.trim();
+  if (rawEp) {
+    const suppliedNorm = rawEp.toLowerCase().replace(/\/+$/, "");
+    const declaredList = listingInfo?.services
+      ?.map((s) => s.endpoint?.trim())
+      .filter((ep): ep is string => Boolean(ep)) ?? [];
+
+    if (declaredList.length > 0) {
+      const match = declaredList.find((ep) => ep.toLowerCase().replace(/\/+$/, "") === suppliedNorm);
+      if (match) {
+        endpointAssociation = "verified";
+        endpointAssociationDetail = "Declared in listing";
+      } else {
+        endpointAssociation = "known_mismatch";
+        endpointAssociationDetail = `The listing declares a different endpoint (${declaredList[0]}).`;
+      }
+    } else {
+      endpointAssociation = "unverified";
+      endpointAssociationDetail = `Connection checked separately. This URL has not been verified as belonging to agent #${cleanId}.`;
+    }
+  }
+
+  // Connection check
+  let connectionStatus: ConnectionStatus = "not_checked";
+  let connectionDetail = "Not checked — no service URL supplied";
+  const nextActions: string[] = [];
+
+  if (!rawEp) {
+    connectionStatus = "not_checked";
+    connectionDetail = "Not checked — no service URL supplied";
+    checksPerformed.push({
+      id: "service_connection",
+      status: "skipped",
+      label: "Service connection",
+      detail: connectionDetail,
+    });
+    nextActions.push("Add a compatible service URL to check its connection.");
+  } else {
+    let parsedEp: URL | null = null;
+    try {
+      parsedEp = new URL(rawEp);
+    } catch {
+      connectionStatus = "failed";
+      connectionDetail = "Invalid service URL format.";
+      remediation.push("Provide a valid HTTPS service URL.");
+    }
+
+    if (parsedEp) {
+      const isLoopbackOrLocal = parsedEp.hostname === "127.0.0.1" || parsedEp.hostname === "localhost";
+      if (parsedEp.protocol !== "https:" && !isLoopbackOrLocal) {
+        connectionStatus = "failed";
+        connectionDetail = `Insecure protocol (${parsedEp.protocol}). HTTPS is required.`;
+        remediation.push("Serve the service endpoint on HTTPS only.");
+      } else if (isPrivateIpAddress(parsedEp.hostname) && !dependencies.resolveHostname && !dependencies.fetch) {
+        connectionStatus = "failed";
+        connectionDetail = "Private or loopback target blocked.";
+        remediation.push("Use a public HTTPS endpoint; private, loopback, and link-local targets cannot be scanned.");
+      } else if (parsedEp.hostname === "vercel.app" || parsedEp.hostname.endsWith(".vercel.app")) {
+        connectionStatus = "failed";
+        connectionDetail = `Host pitfall (${parsedEp.hostname}).`;
+        remediation.push("Replace *.vercel.app with a custom domain or Railway/Fly HTTPS host. OKX listing test env rejects vercel.app.");
+      } else {
+        // Protocol probes: POST tools/list
+        try {
+          const started = Date.now();
+          const probeRes = await probeFetch(parsedEp, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: "km-check", method: "tools/list" }),
+            redirect: "manual",
+            signal: AbortSignal.timeout(8_000),
+          });
+          const latencyMs = Date.now() - started;
+
+          if (probeRes.status === 401 || probeRes.status === 403) {
+            connectionStatus = "could_not_verify";
+            connectionDetail = `The endpoint requires authentication (HTTP ${probeRes.status}).`;
+            nextActions.push("The endpoint requires authentication; authenticated access was not tested.");
+          } else if (probeRes.status === 402) {
+            connectionStatus = "could_not_verify";
+            connectionDetail = "The endpoint requires payment (HTTP 402).";
+            nextActions.push("The endpoint requires payment for this request; this free check did not proceed.");
+          } else if (!probeRes.ok) {
+            connectionStatus = "failed";
+            connectionDetail = `The endpoint returned HTTP ${probeRes.status}.`;
+            nextActions.push(`The endpoint answered HTTP ${probeRes.status}. Check service availability.`);
+          } else {
+            const contentType = probeRes.headers.get("content-type") ?? "";
+            const bodyText = await probeRes.text();
+            let jsonRpc: Record<string, unknown> | null = null;
+            try {
+              jsonRpc = JSON.parse(bodyText);
+            } catch {}
+
+            const rpcErr = jsonRpc && typeof jsonRpc === "object" && "error" in jsonRpc && jsonRpc.error && typeof jsonRpc.error === "object" ? jsonRpc.error as { code?: unknown; message?: unknown } : null;
+            const rpcRes = jsonRpc && typeof jsonRpc === "object" && "result" in jsonRpc && jsonRpc.result && typeof jsonRpc.result === "object" ? jsonRpc.result as { tools?: unknown } : null;
+
+            if (!jsonRpc || typeof jsonRpc !== "object" || jsonRpc.jsonrpc !== "2.0" || contentType.includes("text/html")) {
+              connectionStatus = "unsupported";
+              connectionDetail = "The endpoint returned a non-MCP response (not JSON-RPC 2.0).";
+              nextActions.push("This checker supports A2MCP (MCP over JSON-RPC 2.0). This service requires a different integration.");
+            } else if (rpcErr) {
+              const errMsg = typeof rpcErr.message === "string" ? rpcErr.message : "protocol error";
+              const errCode = typeof rpcErr.code === "number" || typeof rpcErr.code === "string" ? String(rpcErr.code) : "";
+              connectionStatus = "failed";
+              connectionDetail = `JSON-RPC error ${errCode}: ${errMsg}`.trim();
+              nextActions.push(`The protocol check returned an error: ${errMsg}.`);
+            } else if (rpcRes && Array.isArray(rpcRes.tools)) {
+              connectionStatus = "passed";
+              const toolCount = rpcRes.tools.length;
+              connectionDetail = `Protocol check passed · ${toolCount} tool(s) discovered (${latencyMs}ms).`;
+              nextActions.push("Connection checks passed. Individual tool execution and delivery quality were not tested.");
+            } else {
+              connectionStatus = "failed";
+              connectionDetail = "tools/list response missing result.tools array.";
+              nextActions.push("tools/list did not return a standard tools list.");
+            }
+          }
+        } catch (err: any) {
+          const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError";
+          if (isTimeout) {
+            connectionStatus = "could_not_verify";
+            connectionDetail = "The connection timed out after 8s.";
+            nextActions.push("The connection timed out. Retry or check service availability.");
+          } else {
+            connectionStatus = "failed";
+            connectionDetail = "Connection failed or network probe refused.";
+            nextActions.push("The connection failed. Retry or check service availability.");
+          }
+        }
+      }
+    }
+
+    checksPerformed.push({
+      id: "service_connection",
+      status: connectionStatus === "passed" ? "pass" : connectionStatus === "failed" ? "fail" : connectionStatus === "not_checked" ? "skipped" : "warn",
+      label: "Service connection",
+      detail: connectionDetail,
+    });
+  }
+
+  const displayName = listingInfo?.name;
+  let summary = "";
+  if (listingStatus === "found") {
+    const namePrefix = displayName ? `${displayName}` : `agent #${cleanId}`;
+    if (connectionStatus === "not_checked") {
+      summary = `Listing found — ${namePrefix}. Public listing information was retrieved. No service URL was supplied, so the service connection was not checked.`;
+    } else if (connectionStatus === "passed") {
+      summary = `Listing found — ${namePrefix}. Public listing information was retrieved. Service connection check passed${endpointAssociation === "verified" ? " (declared in listing)" : ""}.`;
+    } else if (connectionStatus === "unsupported") {
+      summary = `Listing found — ${namePrefix}. Public listing information was retrieved. The service URL uses an unsupported protocol.`;
+    } else if (connectionStatus === "could_not_verify") {
+      summary = `Listing found — ${namePrefix}. Public listing information was retrieved. The service connection could not be verified.`;
+    } else {
+      summary = `Listing found — ${namePrefix}. Public listing information was retrieved. Service connection check failed.`;
+    }
+  } else if (listingStatus === "not_found") {
+    summary = `Agent #${cleanId} was not found on OKX.ai (HTTP 404).`;
+    nextActions.unshift("Confirm the agent ID or URL on okx.ai/agents.");
+  } else if (listingStatus === "could_not_verify") {
+    summary = `Public listing information for agent #${cleanId} could not be verified.`;
+    nextActions.unshift("Retry or check the listing page directly.");
+  } else {
+    summary = `The listing request failed or timed out for agent #${cleanId}.`;
+    nextActions.unshift("Retry or check service availability.");
+  }
+
+  const finalNextActions = [...new Set(nextActions)];
+
   return {
-    resource: { ...readinessResource, provenance: "kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement" },
+    resource: {
+      ...readinessResource,
+      provenance: `${fetchSource}; not an OKX endorsement`,
+    },
     data: {
-      agentId,
-      agentName: displayName,
-      description: metadata?.description,
-      score: metadata?.score,
-      avatarUrl: metadata?.avatarUrl,
-      services: metadata?.services?.map(s => ({ serviceId: s.serviceId, name: s.name, description: s.description, price: s.price })),
-      decision,
-      summary: decision === "GO"
-        ? (displayName ? `Found ${displayName} on OKX.ai; listing page reachable and endpoint readiness PASS.` : "Listing page reachable and endpoint readiness PASS.")
-        : decision === "NO_GO"
-          ? "Listing or endpoint checks failed."
-          : (displayName ? `Found ${displayName} on OKX.ai. Signals are incomplete; use caution before spending.` : "Signals are incomplete; use caution before spending."),
-      signals,
-      notChecked: ["on-chain credit score", "historical settlement volume", "OKX official endorsement", "mainnet payment success"],
+      agentId: cleanId,
+      endpointUrl: rawEp || undefined,
+      listingStatus,
+      connectionStatus,
+      endpointAssociation,
+      endpointAssociationDetail,
+      summary,
+      listing: listingInfo,
+      checksPerformed,
+      limitations,
+      nextActions: finalNextActions,
       remediation: [...new Set(remediation)],
-      safeNextStep,
+      // Legacy compatibility fields:
+      agentName: displayName,
+      description: listingInfo?.description,
+      score: listingInfo?.marketplaceRating,
+      avatarUrl: listingInfo?.avatarUrl,
+      services: listingInfo?.services?.map((s) => ({
+        serviceId: s.serviceId,
+        name: s.name,
+        description: s.description,
+        price: s.price,
+      })),
+      signals: checksPerformed,
+      notChecked: [
+        "Service delivery, output quality and payment outcomes were not assessed.",
+        "Historical transaction and settlement volume",
+        "OKX official endorsement",
+      ],
+      safeNextStep: finalNextActions[0] ?? "",
+      // Optional legacy decision field for backwards compatibility without safety claims:
+      decision: connectionStatus === "failed" || listingStatus === "not_found"
+        ? "NO_GO"
+        : connectionStatus === "passed" && listingStatus === "found"
+          ? "GO"
+          : "CAUTION",
     },
   };
+}
+
+export async function getAspTrustCard(
+  agentId: string,
+  endpointUrl?: string,
+  dependencies: ReadinessProbeDependencies = {},
+): Promise<{ resource: typeof readinessResource; data: AspTrustCardData }> {
+  return checkAgentListingAndConnection(agentId, endpointUrl, dependencies);
 }
 
 export type TrustTier = "elite" | "verified" | "neutral" | "high_risk";
@@ -334,7 +710,14 @@ export interface ReadinessProbeDependencies {
   resolveHostname?: (hostname: string) => Promise<string[]>;
 }
 
-const readinessResource = {
+const readinessResource: {
+  access: string;
+  paymentRequired: boolean;
+  walletRequired: boolean;
+  mainnet: boolean;
+  provenance: string;
+  limitations?: string[];
+} = {
   access: "free",
   paymentRequired: false,
   walletRequired: false,
@@ -884,8 +1267,22 @@ export class OkxMarketplaceIntelligence {
         annotations: readOnly,
       },
       {
+        name: "check_agent_listing_and_connection",
+        description: "Free resource: view public listing information for an OKX agent by ID, and when a compatible service URL is available, check its connection. Does not assess service delivery, output quality, or payment outcomes.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            agentId: { type: "string", minLength: 1, maxLength: 64, description: "The OKX numeric Agent ID (e.g. 13851) or okx.ai/agents/<id> URL." },
+            endpointUrl: { type: "string", maxLength: 500, description: "Optional service endpoint URL (leave blank to check listing only)." },
+          },
+          required: ["agentId"],
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+      },
+      {
         name: "get_asp_trust_card",
-        description: "Free resource: assess listing reachability and optional endpoint readiness before spend, with explicit limits.",
+        description: "[Deprecated: use check_agent_listing_and_connection] Free resource: inspect public listing information and optional service connection without safety endorsement or spending recommendations.",
         inputSchema: { type: "object", properties: { agentId: { type: "string", minLength: 1, maxLength: 64 }, endpointUrl: { type: "string", maxLength: 500 } }, required: ["agentId"], additionalProperties: false },
         annotations: readOnly,
       },
@@ -965,12 +1362,24 @@ export class OkxMarketplaceIntelligence {
       return { content: [{ type: "text", text: JSON.stringify(scanned, null, 2) }] };
     }
 
+    if (toolName === "check_agent_listing_and_connection") {
+      const agentId = args.agentId;
+      const endpointUrl = args.endpointUrl;
+      if (typeof agentId !== "string" || agentId.trim().length === 0 || agentId.trim().length > 64) return invalid("agentId is required");
+      const cleanId = extractAgentId(agentId);
+      if (!cleanId) return invalid("agentId must be a numeric OKX agent ID (e.g. 13851) or okx.ai/agents/<id> URL");
+      if (endpointUrl !== undefined && (typeof endpointUrl !== "string" || endpointUrl.trim().length === 0 || endpointUrl.trim().length > 500)) return invalid("endpointUrl must be a string of at most 500 characters when provided");
+      const card = await checkAgentListingAndConnection(cleanId, typeof endpointUrl === "string" ? endpointUrl.trim() : undefined);
+      return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
+    }
+
     if (toolName === "get_asp_trust_card") {
       const agentId = args.agentId;
       const endpointUrl = args.endpointUrl;
       if (typeof agentId !== "string" || agentId.trim().length === 0 || agentId.trim().length > 64) return invalid("agentId is required");
+      const cleanId = extractAgentId(agentId) ?? agentId.trim();
       if (endpointUrl !== undefined && (typeof endpointUrl !== "string" || endpointUrl.trim().length === 0 || endpointUrl.trim().length > 500)) return invalid("endpointUrl must be a string of at most 500 characters when provided");
-      const card = await getAspTrustCard(agentId.trim(), typeof endpointUrl === "string" ? endpointUrl.trim() : undefined);
+      const card = await getAspTrustCard(cleanId, typeof endpointUrl === "string" ? endpointUrl.trim() : undefined);
       return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     }
 

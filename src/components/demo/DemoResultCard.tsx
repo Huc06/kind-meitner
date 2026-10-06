@@ -72,44 +72,46 @@ export function DemoResultCard({
         </div>
       )}
 
-      <details
-        id={detailsId}
-        className="mt-3.5 rounded border border-hairline bg-inset p-3 font-mono text-[11px] text-ink"
-      >
-        <summary className="cursor-pointer font-medium text-ink-secondary transition-colors hover:text-ink select-none">
-          {t("demo.technicalDetails.title")}
-        </summary>
-        <div className="mt-2.5 space-y-2 border-t border-hairline pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
-            <span className="text-ink-secondary">{t("demo.technicalDetails.tool")}:</span>
-            <span className="break-all text-ink">{result.tool}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
-            <span className="text-ink-secondary">{t("demo.technicalDetails.arguments")}:</span>
-            <span className="break-all text-ink">{JSON.stringify(result.arguments)}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
-            <span className="text-ink-secondary">{t("demo.technicalDetails.requestId")}:</span>
-            <span className="break-all text-ink">{result.requestId}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
-            <span className="text-ink-secondary">{t("demo.technicalDetails.latency")}:</span>
-            <span className="text-ink">{result.latencyMs}ms</span>
-          </div>
-          {provenance && (
+      {cardData?.kind !== "trust" && (
+        <details
+          id={detailsId}
+          className="mt-3.5 rounded border border-hairline bg-inset p-3 font-mono text-[11px] text-ink"
+        >
+          <summary className="cursor-pointer font-medium text-ink-secondary transition-colors hover:text-ink select-none">
+            {t("demo.technicalDetails.title")}
+          </summary>
+          <div className="mt-2.5 space-y-2 border-t border-hairline pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
-              <span className="text-ink-secondary">{t("demo.technicalDetails.provenance")}:</span>
-              <span className="break-all text-ink">{provenance}</span>
+              <span className="text-ink-secondary">{t("demo.technicalDetails.tool")}:</span>
+              <span className="break-all text-ink">{result.tool}</span>
             </div>
-          )}
-          <div className="pt-1">
-            <div className="mb-1 text-ink-secondary">{t("demo.technicalDetails.rawJson")}:</div>
-            <pre className="max-h-60 overflow-auto rounded border border-hairline bg-surface p-2 font-mono text-[10.5px] leading-tight text-ink break-all whitespace-pre-wrap">
-              {rawJsonString}
-            </pre>
+            <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
+              <span className="text-ink-secondary">{t("demo.technicalDetails.arguments")}:</span>
+              <span className="break-all text-ink">{JSON.stringify(result.arguments)}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
+              <span className="text-ink-secondary">{t("demo.technicalDetails.requestId")}:</span>
+              <span className="break-all text-ink">{result.requestId}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
+              <span className="text-ink-secondary">{t("demo.technicalDetails.latency")}:</span>
+              <span className="text-ink">{result.latencyMs}ms</span>
+            </div>
+            {provenance && (
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-1">
+                <span className="text-ink-secondary">{t("demo.technicalDetails.provenance")}:</span>
+                <span className="break-all text-ink">{provenance}</span>
+              </div>
+            )}
+            <div className="pt-1">
+              <div className="mb-1 text-ink-secondary">{t("demo.technicalDetails.rawJson")}:</div>
+              <pre className="max-h-60 overflow-auto rounded border border-hairline bg-surface p-2 font-mono text-[10.5px] leading-tight text-ink break-all whitespace-pre-wrap">
+                {rawJsonString}
+              </pre>
+            </div>
           </div>
-        </div>
-      </details>
+        </details>
+      )}
     </div>
   );
 }

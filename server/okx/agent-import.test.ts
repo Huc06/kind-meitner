@@ -12,7 +12,7 @@ describe("OKX agent catalog", () => {
       expect.objectContaining({
         id: "okx-market-scout-v1",
         name: "Markets",
-        description: "Runs free, read-only readiness and trust checks for OKX.ai agents.",
+        description: "Runs free, read-only listing and connection checks for OKX.ai agents.",
         avatar: "chart",
         provider: "OKX.ai",
         capabilities: ["chat", "market-intelligence"],
@@ -27,7 +27,7 @@ describe("OKX agent catalog", () => {
       expect.objectContaining({
         id: "okx-spend-scout",
         name: "Spend Scout",
-        description: "Buyer-side gate: trust-checks ASPs before spend recommendations.",
+        description: "Buyer-side advocate: reviews listing information and connection facts before spend.",
         avatar: "chart",
       }),
     ]);

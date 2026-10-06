@@ -20,7 +20,7 @@ export const OKX_LOCAL_REGISTRY_PROVENANCE =
 /** The two tools the demo calls; both are read-only on the live service. */
 export const OKX_DEMO_TOOLS = {
   endpoint: "scan_free_mcp_readiness",
-  agent: "get_asp_trust_card",
+  agent: "check_agent_listing_and_connection",
 } as const;
 
 /** A target the live service refuses before any network probe (private /

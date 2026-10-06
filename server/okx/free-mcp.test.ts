@@ -206,16 +206,17 @@ describe("Free A2MCP resources (/api/okx/free-mcp)", () => {
     expect(scan1.data.receipt?.id.startsWith("rcpt-")).toBe(true);
   });
 
-it("returns an honest GO trust card with always-visible limits", async () => {
+it("returns an honest listing and connection check with always-visible limits", async () => {
   const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {
     fetch: async (input) => String(input).includes("okx.ai/agents/")
       ? new Response("<title>Kind Meitner</title>", { status: 200 })
-      : new Response(JSON.stringify({ result: { tools: [{ name: "read_only" }] } }), { status: 200 }),
+      : new Response(JSON.stringify({ jsonrpc: "2.0", id: "1", result: { tools: [{ name: "read_only" }] } }), { status: 200, headers: { "content-type": "application/json" } }),
     resolveHostname: async () => ["203.0.113.10"],
   });
-  expect(card.data.decision).toBe("GO");
-  expect(card.data.notChecked.length).toBeGreaterThanOrEqual(3);
-  expect(card.data.safeNextStep).toContain("free read-only tools");
+  expect(card.data.listingStatus).toBe("could_not_verify");
+  expect(card.data.connectionStatus).toBe("passed");
+  expect(card.data.limitations).toContain("Service delivery, output quality and payment outcomes were not assessed.");
+  expect(card.data.nextActions).toContain("Connection checks passed. Individual tool execution and delivery quality were not tested.");
 });
 
 it("blocks a hostname that resolves to loopback before fetching", async () => {
@@ -227,26 +228,26 @@ it("blocks a hostname that resolves to loopback before fetching", async () => {
   expect(scanned.data.checks).toContainEqual(expect.objectContaining({ id: "tools_list_http", status: "fail", detail: expect.stringContaining("resolves") }));
 });
 
-it("returns CAUTION when listing evidence is unavailable but endpoint readiness passes", async () => {
+it("reports unverified listing when listing evidence is unavailable but endpoint connection passes", async () => {
   const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {
     fetch: async (input) => String(input).includes("okx.ai/agents/")
       ? new Response("temporarily unavailable", { status: 503 })
-      : new Response(JSON.stringify({ result: { tools: [{ name: "read_only" }] } }), { status: 200 }),
+      : new Response(JSON.stringify({ jsonrpc: "2.0", id: "1", result: { tools: [{ name: "read_only" }] } }), { status: 200, headers: { "content-type": "application/json" } }),
     resolveHostname: async () => ["203.0.113.10"],
   });
-  expect(card.data.decision).toBe("CAUTION");
-  expect(card.data.safeNextStep).toContain("Free tools only");
-  expect(card.data.notChecked).toContain("OKX official endorsement");
+  expect(card.data.listingStatus).toBe("could_not_verify");
+  expect(card.data.connectionStatus).toBe("passed");
+  expect(card.data.limitations).toContain("Service delivery, output quality and payment outcomes were not assessed.");
 });
 
-it("returns NO_GO when the endpoint readiness probe fails", async () => {
+it("reports payment required when endpoint requires payment for free discovery", async () => {
   const card = await getAspTrustCard("13837", "https://scanner.example/free-mcp", {
     fetch: async (input) => String(input).includes("okx.ai/agents/")
       ? new Response("<title>Kind Meitner</title>", { status: 200 })
       : new Response(JSON.stringify({ error: "payment required" }), { status: 402 }),
     resolveHostname: async () => ["203.0.113.10"],
   });
-  expect(card.data.decision).toBe("NO_GO");
-  expect(card.data.safeNextStep).toContain("Do not call pay/x402 tools");
-  expect(card.data.notChecked.length).toBeGreaterThanOrEqual(3);
+  expect(card.data.connectionStatus).toBe("could_not_verify");
+  expect(card.data.nextActions).toContain("The endpoint requires payment for this request; this free check did not proceed.");
+  expect(card.data.limitations).toContain("Service delivery, output quality and payment outcomes were not assessed.");
 });

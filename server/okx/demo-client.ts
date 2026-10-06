@@ -10,6 +10,7 @@ import {
   type OkxDemoCheckResult,
   type OkxDemoStatus,
 } from "../../shared/okx-demo-identity.ts";
+import { extractAgentId } from "./intelligence.ts";
 
 const TIMEOUT_MS = 20_000;
 const MAX_RESPONSE_BYTES = 256 * 1024;
@@ -100,8 +101,12 @@ export function demoToolCall(input: unknown): { tool: string; arguments: Record<
     return { tool: OKX_DEMO_TOOLS.endpoint, arguments: { endpointUrl } };
   }
   if (body.kind === "agent") {
-    const agentId = text(body.agentId, 64);
-    if (!agentId || agentId.length > 64) return { error: "Enter an OKX agent ID (1–64 characters)." };
+    const rawAgentId = text(body.agentId, 200);
+    if (!rawAgentId) return { error: "Enter a numeric OKX agent ID (e.g. 13851) or okx.ai/agents/<id> URL." };
+    const agentId = extractAgentId(rawAgentId);
+    if (!agentId || agentId.length > 64) {
+      return { error: "Enter a numeric OKX agent ID (e.g. 13851) or okx.ai/agents/<id> URL." };
+    }
     const endpointUrl = text(body.endpointUrl, 500);
     if (endpointUrl.length > 500) return { error: "The endpoint URL is longer than 500 characters." };
     return { tool: OKX_DEMO_TOOLS.agent, arguments: endpointUrl ? { agentId, endpointUrl } : { agentId } };
@@ -118,7 +123,29 @@ export async function runDemoCheck(input: unknown, deps: DemoClientDeps = {}, si
   const base = { source: "live" as const, tool: call.tool, requestId, startedAt, latencyMs: res.latencyMs };
   if (!res.ok) return { ok: false, ...base, status: res.status, safeMessage: res.safeMessage };
   const error = res.body.error as { message?: unknown } | undefined;
-  if (error) return { ok: false, ...base, status: "tool_error", safeMessage: `The service refused the call: ${text(error.message, 300) || "JSON-RPC error"}` };
+  if (error) {
+    // If target server is not yet upgraded to check_agent_listing_and_connection, fall back to get_asp_trust_card
+    if (call.tool === "check_agent_listing_and_connection" && String(error.message).includes("Unknown free resource")) {
+      const fallbackRes = await rpc("tools/call", { name: "get_asp_trust_card", arguments: call.arguments }, deps, signal);
+      if (fallbackRes.ok && !fallbackRes.body.error) {
+        const fallbackResult = fallbackRes.body.result as { isError?: boolean; content?: Array<{ text?: unknown }> } | undefined;
+        const fallbackContent = typeof fallbackResult?.content?.[0]?.text === "string" ? fallbackResult.content[0].text : "";
+        let shapedFallback: unknown;
+        try { shapedFallback = JSON.parse(fallbackContent); } catch {}
+        if (shapedFallback && typeof shapedFallback === "object") {
+          return {
+            ok: true,
+            ...base,
+            tool: "get_asp_trust_card",
+            arguments: call.arguments,
+            endpointUrl: deps.endpointUrl ?? OKX_DEMO_IDENTITY.endpointUrl,
+            envelope: shapedFallback as { resource: Record<string, unknown>; data: Record<string, unknown> },
+          };
+        }
+      }
+    }
+    return { ok: false, ...base, status: "tool_error", safeMessage: `The service refused the call: ${text(error.message, 300) || "JSON-RPC error"}` };
+  }
   const result = res.body.result as { isError?: boolean; content?: Array<{ text?: unknown }> } | undefined;
   const content = typeof result?.content?.[0]?.text === "string" ? result.content[0].text : "";
   if (result?.isError) return { ok: false, ...base, status: "tool_error", safeMessage: `The service refused the call: ${content.slice(0, 300) || "tool error"}` };
@@ -152,7 +179,7 @@ export async function demoStatus(deps: DemoClientDeps = {}): Promise<OkxDemoStat
   const latencyMs = init.latencyMs + list.latencyMs;
   const raw = list.ok ? ((list.body.result as { tools?: Array<{ name?: unknown }> } | undefined)?.tools ?? []) : [];
   const tools = raw.map((tool) => tool.name).filter((name): name is string => typeof name === "string").slice(0, 50);
-  const demoToolsAvailable = tools.includes(OKX_DEMO_TOOLS.endpoint) && tools.includes(OKX_DEMO_TOOLS.agent);
+  const demoToolsAvailable = tools.includes(OKX_DEMO_TOOLS.endpoint) && (tools.includes(OKX_DEMO_TOOLS.agent) || tools.includes("get_asp_trust_card"));
   return {
     ok: list.ok && demoToolsAvailable,
     source: "live",

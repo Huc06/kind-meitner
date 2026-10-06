@@ -339,20 +339,20 @@ describe("agent-hub", () => {
       );
     });
 
-    it("creates get_asp_trust_card prompt without endpointUrl", () => {
+    it("creates check_agent_listing_and_connection prompt without endpointUrl", () => {
       expect(trustPrompt("99999")).toBe(
-        "@Markets run get_asp_trust_card for agentId 99999",
+        "@Markets run check_agent_listing_and_connection for agentId 99999",
       );
     });
 
-    it("creates get_asp_trust_card prompt with endpointUrl", () => {
+    it("creates check_agent_listing_and_connection prompt with endpointUrl", () => {
       expect(
         trustPrompt(
           "13851",
           "https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
         ),
       ).toBe(
-        "@Markets run get_asp_trust_card for agentId 13851 with endpointUrl https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
+        "@Markets run check_agent_listing_and_connection for agentId 13851 with endpointUrl https://kind-meitner-production.up.railway.app/api/okx/free-mcp",
       );
     });
   });

@@ -41,7 +41,7 @@ describe("Dev Day Gate starters", () => {
     const fillPrompts = DEV_DAY_GATE_STARTERS.filter((s) => s.action === "fill").map((s) => s.prompt);
     expect(fillPrompts).toHaveLength(4);
     expect(fillPrompts.join("\n")).toContain("scan_free_mcp_readiness");
-    expect(fillPrompts.join("\n")).toContain("get_asp_trust_card");
+    expect(fillPrompts.join("\n")).toContain("check_agent_listing_and_connection");
     expect(fillPrompts.join("\n")).toContain("get_trending_asps");
     expect(fillPrompts.join("\n")).toContain("get_free_a2mcp_launch_checklist");
     for (const prompt of fillPrompts) {

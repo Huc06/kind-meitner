@@ -142,8 +142,8 @@ describe("DemoView", () => {
 
   it("renders DemoView shell with header, tabs, and footer", () => {
     const html = renderWithStore(createElement(DemoView, { onExit: () => {}, onOpenChat: () => {} }));
-    expect(html).toContain("Kind Meitner Markets");
-    expect(html).toContain("Check before listing. Review evidence before calling.");
+    expect(html).toContain("Listing &amp; connection check");
+    expect(html).toContain("View public listing information and, when a compatible service URL is available, check its connection.");
     expect(html).toContain('role="tablist"');
     expect(html).toContain("Demo");
     expect(html).toContain("Service details");

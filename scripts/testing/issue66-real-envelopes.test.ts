@@ -17,11 +17,6 @@ function message(toolName: string, file: string) {
     tool: { name: toolName, ok: true, output: envelope(file) },
   };
 }
-/** The rendered Continue button's own opening tag, so a `disabled:` utility
- * class elsewhere in the markup cannot pass for the attribute. */
-function continueButton(html: string) {
-  return html.match(/<button[^>]*aria-label="Continue free tools"[^>]*>/)?.[0] ?? "";
-}
 
 it("parses real production vercel FAIL envelope and exposes Apply host", () => {
   const msg = message("scan_free_mcp_readiness", "scan-vercel-envelope.json");
@@ -43,7 +38,7 @@ it("parses real production self PASS envelope", () => {
   expect(data).toMatchObject({ kind: "readiness", verdict: "PASS" });
 });
 
-it("parses real production 99999 NO_GO with Block spend and Continue disabled", () => {
+it("parses real production 99999 NO_GO listing check result", () => {
   const text = JSON.parse(envelope("trust-99999.json")).result.content[0].text;
   const msg = {
     id: "t",
@@ -60,12 +55,13 @@ it("parses real production 99999 NO_GO with Block spend and Continue disabled", 
     composerDraftId: "group:test",
     fallback: createElement("div", null, "fallback"),
   }));
-  expect(html).toContain("Block spend");
-  expect(html).toContain("Continue free tools");
-  expect(continueButton(html)).toMatch(/\sdisabled=""/);
+  expect(html).toContain("Listing not found");
+  expect(html).toContain("Connection: Not checked");
+  expect(html).toContain("View listing");
+  expect(html).toContain("HTTP 404");
 });
 
-it("parses real production GO envelope for live listing agent 11167 and enables Continue", () => {
+it("parses real production GO envelope for live listing agent 11167", () => {
   const text = JSON.parse(envelope("trust-go-11167.json")).result.content[0].text;
   const msg = {
     id: "g",
@@ -82,9 +78,10 @@ it("parses real production GO envelope for live listing agent 11167 and enables 
     composerDraftId: "group:test",
     fallback: createElement("div", null, "fallback"),
   }));
-  expect(html).toContain("Continue free tools");
-  expect(html).not.toContain("Block spend");
-  expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
+  expect(html).toContain("Listing found");
+  expect(html).toContain("Connection: Passed");
+  expect(html).toContain("View listing");
+  expect(html).toContain("verdict=PASS");
 });
 
 it("parses real production 13837+endpoint as NO_GO due to listing_page HTTP 404", () => {
@@ -116,8 +113,9 @@ it("parses real production GO envelope for Kind Meitner Markets #13851", () => {
     composerDraftId: "group:test",
     fallback: createElement("div", null, "fallback"),
   }));
-  expect(html).toContain("Continue free tools");
-  expect(continueButton(html)).not.toMatch(/\sdisabled=""/);
+  expect(html).toContain("Listing found");
+  expect(html).toContain("Connection: Passed");
+  expect(html).toContain("View listing");
 });
 
 it("renders real production scan envelope with header, boundary, disclaimer, and counts", () => {
@@ -139,7 +137,7 @@ it("renders real production scan envelope with header, boundary, disclaimer, and
   expect(html).toContain("6 passed · 0 warned · 0 failed");
 });
 
-it("renders real production trust envelope with header, boundary, disclaimer, counts, and spend status", () => {
+it("renders real production listing check envelope with header, disclaimer, and counts", () => {
   const text = JSON.parse(envelope("trust-go-13851.json")).result.content[0].text;
   const msg = {
     id: "g13851",
@@ -154,13 +152,10 @@ it("renders real production trust envelope with header, boundary, disclaimer, co
     composerDraftId: "group:test",
     fallback: createElement("div", null, "fallback"),
   }));
-  expect(html).toContain("Pre-spend trust");
-  expect(html).toContain("GO");
-  expect(html).toContain("Spend not blocked");
-  expect(html).toContain("Access: Free");
-  expect(html).toContain("Payment required: No");
-  expect(html).toContain("Wallet required: No");
-  expect(html).toContain("Mainnet: No");
-  expect(html).toContain("Source: kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement");
-  expect(html).toContain("2 passed · 0 warned · 0 failed");
+  expect(html).toContain("Listing &amp; connection check");
+  expect(html).toContain("Listing found");
+  expect(html).toContain("Connection: Passed");
+  expect(html).toContain("Service delivery, output quality and payment outcomes were not assessed.");
+  expect(html).toContain("kind-meitner HTTPS probes + optional okx.ai agent page status; not an OKX endorsement");
+  expect(html).toContain("2 passed · 0 not checked");
 });
