@@ -142,11 +142,10 @@ describe("GroupView Header and Body", () => {
       createElement(StoreProvider, null, createElement(GroupView, { group: emptyGroup })),
     );
 
-    expect(markup).toContain("Scan an ASP endpoint");
-    expect(markup).toContain("Check trust before spend");
-    expect(markup).toContain("Discover trending ASPs");
-    expect(markup).toContain("Invite an OKX agent");
-    expect(markup).toContain("View the Free A2MCP checklist");
+    expect(markup).toContain("What would you like to get done?");
+    expect(markup).toContain("Best 45-minute run window in Singapore");
+    expect(markup).toContain("Check outdoor safety conditions right now");
+    expect(markup).toContain("Render a social card from text");
   });
 
   it("header line 1 does not contain All threads control", () => {

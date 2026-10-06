@@ -744,7 +744,7 @@
   "composer.responding.mentioned": "Responding: mentioned agents",
   "composer.responding.agent": "Responding agent: {name}",
   "composer.responding.everyone": "Responding: everyone",
-  "composer.placeholder.room": "Ask an agent to inspect an ASP, check readiness, or coordinate a task…",
+  "composer.placeholder.room": "What would you like to get done?",
   "composer.queued.steering": "Steering…",
   "composer.queued.steerAll": "Steer all",
   "composer.queued.steerNext": "Steer next",

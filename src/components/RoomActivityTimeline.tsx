@@ -107,12 +107,47 @@ export function deriveRoomTimelineEvents(
       continue;
     }
 
-    // 3. Tool calls (with OKX action cards status or standard execution status)
+    // 3. Outcome Cards (Kind Meitner Coordinator)
+    if (msg.outcome) {
+      const outcome = msg.outcome;
+      rawEvents.push({
+        id: `outcome-${msg.id}`,
+        messageId: msg.id,
+        kind: "tool",
+        at: msg.at,
+        actor: outcome.serviceName || outcome.serviceId || "Kind Meitner",
+        action: outcome.kind === "proposal"
+          ? `Proposed ${outcome.toolName}`
+          : outcome.kind === "clarification"
+          ? `Requested location for ${outcome.serviceName}`
+          : outcome.kind === "no_match"
+          ? "Unmatched capability"
+          : `${outcome.toolName} execution`,
+        statusText: outcome.status === "completed" ? "Completed" : outcome.status === "failed" ? "Failed" : outcome.status === "cancelled" ? "Cancelled" : "Proposed",
+        statusTone: outcome.status === "completed" ? "success" : outcome.status === "failed" ? "danger" : outcome.status === "cancelled" ? "neutral" : "accent",
+        technicalDetails: JSON.stringify({
+          service: outcome.serviceName,
+          agentId: outcome.agentId,
+          tool: outcome.toolName,
+          endpointUrl: outcome.endpointUrl,
+          price: outcome.price,
+          inputs: outcome.inputs,
+        }, null, 2),
+        hasEvidence: true,
+        orderIndex: i,
+        parentId: msg.parentId,
+        turnId: msg.turnId,
+        turnTerminal: msg.turnTerminal,
+      });
+      continue;
+    }
+
+    // 4. Tool calls (with OKX action cards status or standard execution status)
     if (msg.tool) {
       const toolName = msg.tool.name;
       const bot = msg.from?.botId ? bots.find((b) => b.id === msg.from?.botId) : undefined;
-      const actorName = msg.from?.name ?? bot?.name ?? "Agent";
-
+      const parsedActor = msg.tool.summary?.includes(" · ") ? msg.tool.summary.split(" · ")[0] : undefined;
+      const actorName = parsedActor ?? msg.from?.name ?? bot?.name ?? "Agent";
       if (isOkxGateTool(toolName)) {
         const card = parseOkxActionCard(msg.tool);
         let statusText = "Running";

@@ -304,6 +304,9 @@ import { OkxDisputeEvaluator } from "./okx/evaluator.ts";
 import { findCatalogOkxAgent, listCatalogOkxAgents, okxImportDescriptor, type OkxCatalogAgent } from "./okx/agent-import.ts";
 import { resolveOkxAgent, executeOkxAgentTool } from "./okx/agent-mcp-resolver.ts";
 import { X402_TESTNET_RESOURCE_PATH, X402TestnetResource, x402PublicFailure } from "./okx/x402-testnet.ts";
+import { ConnectedServiceRegistry } from "./okx/connected-services.ts";
+import { OutcomeScheduler } from "./okx/outcome-scheduler.ts";
+import { matchTaskToService } from "../shared/connected-services.ts";
 import { CalendarCallManager, type CalendarCall } from "./calendar-calls.ts";
 import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
 import { BrowserRuntime } from "./browser-runtime.ts";
@@ -5916,6 +5919,9 @@ const okxX402Testnet = new X402TestnetResource({
 const okxEvaluator = new OkxDisputeEvaluator({
   storageFile: join(DATA_DIR, "okx-evaluator.json"),
 });
+const connectedServices = new ConnectedServiceRegistry(DATA_DIR);
+const outcomeScheduler = new OutcomeScheduler(connectedServices, store);
+outcomeScheduler.start();
 const okxMcpRateLimits = new Map<string, number[]>();
 // MCP Streamable HTTP sessions for the free A2MCP endpoint. Strict MCP clients
 // (Claude Code's HTTP transport) require an `Mcp-Session-Id` handshake back on
@@ -7968,6 +7974,29 @@ function startGroupTurn(
     via: options.via,
   });
   if (!group.dm) store.titleGroupTaskFromFirstMessage(group.id, text, threadId);
+  const outcomeMatch = matchTaskToService(text, connectedServices.listServices());
+  if (outcomeMatch.matched) {
+    const outcomeKind = outcomeMatch.parsed.missingInputs.length > 0 ? "clarification" : "proposal";
+    store.appendMessage(threadId, {
+      role: "bot",
+      kind: "text",
+      text: outcomeMatch.matchReason,
+      outcome: {
+        kind: outcomeKind,
+        serviceId: outcomeMatch.serviceId!,
+        serviceName: outcomeMatch.serviceName!,
+        agentId: outcomeMatch.agentId!,
+        toolName: outcomeMatch.toolName!,
+        endpointUrl: outcomeMatch.endpointUrl!,
+        price: outcomeMatch.price!,
+        matchReason: outcomeMatch.matchReason,
+        inputs: outcomeMatch.parsed.inputs,
+        missingInputs: outcomeMatch.parsed.missingInputs,
+        status: "proposed",
+      },
+    });
+    return message;
+  }
 
   const archived = members.filter((member) => member.hidden);
   const mentionedArchived = mentionedBots(text, archived.map(({ name }) => ({ name })))[0];
@@ -7997,6 +8026,27 @@ function startGroupTurn(
   if (!responders.length && !goalCoordinator) {
     const defaultArchivedId = group.defaultResponder.kind === "member" ? group.defaultResponder.botId : undefined;
     const defaultArchived = archived.find((member) => member.id === defaultArchivedId);
+    if (!mentionedArchived && !availableMembers.length && members.length === 0) {
+      store.appendMessage(threadId, {
+        role: "bot",
+        kind: "text",
+        text: "No model engine is configured on this host. Kind Meitner connects to OutdoorWindow (#6706) and Plate (#6708) directly via MCP without requiring a model engine.",
+        outcome: {
+          kind: "no_match",
+          serviceId: "",
+          serviceName: "",
+          agentId: "",
+          toolName: "",
+          endpointUrl: "",
+          price: "0 USDT",
+          matchReason: "No model engine is configured on this host for open conversation. External services (OutdoorWindow, Plate) execute directly via MCP without requiring a model engine.",
+          inputs: {},
+          missingInputs: [],
+          status: "proposed",
+        },
+      });
+      return message;
+    }
     let unavailableMessage: string | undefined;
     if (!mentionedArchived && !availableMembers.length) {
       unavailableMessage = "No active room members can respond — restore an archived bot or add an active member.";
@@ -12673,6 +12723,97 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       }
 
       return json(res, execResult.ok ? 200 : 400, execResult);
+    }
+    if (method === "GET" && path === "/api/okx/connected-services") {
+      return json(res, 200, { services: connectedServices.listServices() });
+    }
+    m = path.match(/^\/api\/okx\/connected-services\/([\w-]+)$/);
+    if (m && method === "PATCH") {
+      const body = await readBody(req);
+      const enabled = typeof body?.enabled === "boolean" ? body.enabled : true;
+      try {
+        const updated = connectedServices.setServiceEnabled(m[1], enabled);
+        return json(res, 200, { service: updated });
+      } catch (err) {
+        return json(res, 404, { error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    if (method === "POST" && path === "/api/okx/outcome/execute") {
+      const body = await readBody(req);
+      const { serviceId, toolName, arguments: args, targetThreadId } = body ?? {};
+      if (!serviceId || typeof serviceId !== "string") return json(res, 400, { error: "serviceId is required" });
+      if (!toolName || typeof toolName !== "string") return json(res, 400, { error: "toolName is required" });
+
+      const execResult = await connectedServices.executePinnedTool({
+        serviceId: serviceId.trim(),
+        toolName: toolName.trim(),
+        arguments: (args && typeof args === "object" && !Array.isArray(args)) ? args : {},
+      });
+
+      if (targetThreadId && typeof targetThreadId === "string") {
+        const output = typeof execResult.result === "string"
+          ? execResult.result
+          : JSON.stringify(execResult.result ?? { error: execResult.error }, null, 2);
+        store.appendMessage(targetThreadId, {
+          role: "bot",
+          kind: "activity",
+          text: execResult.ok ? `${execResult.service.name} completed ${toolName}` : `${execResult.service.name} failed ${toolName}`,
+          tool: {
+            name: toolName,
+            ok: execResult.ok,
+            summary: `${execResult.service.name} · ${toolName}`,
+            input: JSON.stringify(args ?? {}),
+            output,
+          },
+        });
+      }
+
+      return json(res, execResult.ok ? 200 : 400, execResult);
+    }
+    if (method === "POST" && path === "/api/okx/outcome/schedule") {
+      const body = await readBody(req);
+      const place = typeof body?.place === "string" ? body.place.trim() : "";
+      if (!place) return json(res, 400, { error: "place is required for schedule" });
+      const schedule = outcomeScheduler.createSchedule({
+        place,
+        activity: typeof body?.activity === "string" ? body.activity : "run",
+        duration_minutes: typeof body?.duration_minutes === "number" ? body.duration_minutes : 45,
+        intervalMinutes: typeof body?.intervalMinutes === "number" ? body.intervalMinutes : 1,
+        maxRuns: typeof body?.maxRuns === "number" ? body.maxRuns : 3,
+        threadId: typeof body?.threadId === "string" ? body.threadId : undefined,
+      });
+      const firstRun = await outcomeScheduler.executeRun(schedule.id);
+      return json(res, 201, { schedule, firstRun });
+    }
+    if (method === "GET" && path === "/api/okx/outcome/schedules") {
+      return json(res, 200, { schedules: outcomeScheduler.listSchedules() });
+    }
+    m = path.match(/^\/api\/okx\/outcome\/schedules\/([\w-]+)\/pause$/);
+    if (m && method === "POST") {
+      try {
+        const updated = outcomeScheduler.pause(m[1]);
+        return json(res, 200, { schedule: updated });
+      } catch (err) {
+        return json(res, 404, { error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    m = path.match(/^\/api\/okx\/outcome\/schedules\/([\w-]+)\/resume$/);
+    if (m && method === "POST") {
+      try {
+        const updated = outcomeScheduler.resume(m[1]);
+        return json(res, 200, { schedule: updated });
+      } catch (err) {
+        return json(res, 404, { error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    m = path.match(/^\/api\/okx\/outcome\/schedules\/([\w-]+)\/cancel$/);
+    if (m && method === "POST") {
+      try {
+        const updated = outcomeScheduler.cancel(m[1]);
+        return json(res, 200, { schedule: updated });
+      } catch (err) {
+        return json(res, 404, { error: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     // ── channels (persisted internally as groups) ───────────────────────

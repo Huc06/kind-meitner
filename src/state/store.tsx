@@ -144,6 +144,20 @@ export interface Message {
   routineRun?: RoutineRunCardData;
   /** Durable lifecycle receipt for a goal-driven channel run. */
   goalRun?: GroupGoalRunCardData;
+  /** Connected external agent outcome workflow card. */
+  outcome?: {
+    kind: "proposal" | "clarification" | "deliverable" | "cancelled" | "no_match";
+    serviceId: string;
+    agentId: string;
+    serviceName: string;
+    toolName: string;
+    endpointUrl: string;
+    price: string;
+    matchReason?: string;
+    inputs: Record<string, unknown>;
+    missingInputs?: Array<{ name: string; label: string; placeholder: string }>;
+    status: string;
+  };
   /** How a channel user message should be handled. Absent means ordinary chat. */
   channelMode?: "chat" | "goal";
   /** activity messages: tool name + outcome. `spoken` is the server's
