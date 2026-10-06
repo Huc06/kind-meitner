@@ -76,7 +76,7 @@ describe("Composer in a Room", () => {
     );
 
     // Placeholder
-    expect(markup).toContain("Ask an agent to inspect an ASP, check readiness, or coordinate a task…");
+    expect(markup).toContain("What would you like to get done?");
 
     // Responding agent
     expect(markup).toContain("Responding agent: Markets");
