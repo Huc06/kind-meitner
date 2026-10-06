@@ -1000,6 +1000,8 @@
   "onboarding.skipIntro": "Skip introduction",
   "onboarding.replayIntro": "Replay introduction",
   "onboarding.illustrativePreview": "Illustrative preview",
+  "diagnostics.title": "Diagnostics",
+  "diagnostics.subtitle": "Run technical connectivity, Free MCP readiness scans, and trust checks across connected agents.",
   "onboarding.phone.title": "Your phone",
   "onboarding.reel.scenes": "Scenes",
   "onboarding.reel.room.title": "Room collaboration",

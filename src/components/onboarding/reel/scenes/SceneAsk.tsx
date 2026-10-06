@@ -58,7 +58,7 @@ export function SceneAsk({ playing, onCue, onEnded, label }: SceneProps) {
         {/* User Turn */}
         <div className="flex justify-end">
           <div className="max-w-[85%] border border-hairline bg-card px-3 py-2 text-[12px] sm:text-[12.5px] leading-relaxed text-ink shadow-sm">
-            Check market readiness for our connected agents and summarize changes.
+            When's the best time for a 45-minute run in Singapore this week?
           </div>
         </div>
 
@@ -66,7 +66,7 @@ export function SceneAsk({ playing, onCue, onEnded, label }: SceneProps) {
         {phase === "thinking" && (
           <div className="flex items-center gap-2 text-ink-secondary text-[12px]">
             <AgentMark bot={{ id: "coordinator", name: "Coordinator" }} size={20} />
-            <span className="animate-pulse">Thinking · coordinating agents…</span>
+            <span className="animate-pulse">Thinking · consulting OutdoorWindow…</span>
           </div>
         )}
 
@@ -75,7 +75,7 @@ export function SceneAsk({ playing, onCue, onEnded, label }: SceneProps) {
             <AgentMark bot={{ id: "coordinator", name: "Coordinator" }} size={24} className="mt-0.5 shrink-0" />
             <div className="border border-hairline bg-card px-3 py-2 text-[12px] sm:text-[12.5px] leading-relaxed text-ink shadow-sm">
               <div className="font-medium text-[11px] sm:text-[11.5px] text-accent mb-0.5">Coordinator</div>
-              Starting inspection across OutdoorWindow (#6706) and Plate (#6708). I will verify endpoints and deliver the report.
+              Analyzing weather windows via OutdoorWindow (#6706). Thursday morning at 6:30 AM has low precipitation (5%), 26°C temperature, and optimal air quality.
             </div>
           </div>
         )}

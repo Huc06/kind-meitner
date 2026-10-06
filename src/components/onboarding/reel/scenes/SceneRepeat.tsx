@@ -49,8 +49,8 @@ export function SceneRepeat({ playing, onCue, onEnded, label }: SceneProps) {
         <div className="flex items-center justify-between border border-hairline bg-card px-3 py-2 text-[12px] shadow-sm">
           <div className="flex items-center gap-2">
             <Clock size={14} className="text-accent" />
-            <span className="font-semibold text-ink">Repeat Task</span>
-            <span className="font-mono text-[10px] text-ink-secondary">Every 1 hour</span>
+            <span className="font-semibold text-ink">Weekly Run Planner</span>
+            <span className="font-mono text-[10px] text-ink-secondary">Every Sunday 6:00 PM</span>
           </div>
           <span className="bg-accent/10 text-accent border border-accent/20 px-1.5 py-0.5 font-mono text-[9.5px] uppercase">
             Active
@@ -67,19 +67,19 @@ export function SceneRepeat({ playing, onCue, onEnded, label }: SceneProps) {
           </div>
           <div className="grid grid-cols-2 gap-2 text-[11px] mb-1.5">
             <div className="border border-hairline bg-panel p-1.5 font-mono">
-              <div className="text-[10px] text-ink-secondary">Previous (1h ago)</div>
-              <div className="text-ink font-semibold">2 services online</div>
-              <div className="text-[9.5px] text-ink-secondary">Latency: 46ms</div>
+              <div className="text-[10px] text-ink-secondary">Last Week</div>
+              <div className="text-ink font-semibold">3 run windows found</div>
+              <div className="text-[9.5px] text-ink-secondary">Avg Temp: 28°C</div>
             </div>
             <div className="border border-hairline bg-panel p-1.5 font-mono">
-              <div className="text-[10px] text-ink-secondary">Current (Automated)</div>
-              <div className="text-ink font-semibold">2 services online</div>
-              <div className="text-[9.5px] text-success">Latency: 42ms (-4ms)</div>
+              <div className="text-[10px] text-ink-secondary">This Week (Automated)</div>
+              <div className="text-ink font-semibold">4 run windows (+1 slot)</div>
+              <div className="text-[9.5px] text-success">Avg Temp: 26°C (-2°C cooler)</div>
             </div>
           </div>
           <div className="flex items-center justify-between text-[10px] font-mono text-success pt-0.5">
             <span className="flex items-center gap-1">
-              <CheckCircle2 size={11} /> Δ No regression detected
+              <CheckCircle2 size={11} /> Δ Thursday morning window recommended
             </span>
             <span className="text-ink-secondary">Scheduler: workspace timer (not an agent)</span>
           </div>

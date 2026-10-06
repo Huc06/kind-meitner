@@ -49,22 +49,22 @@ export function SceneResult({ playing, onCue, onEnded, label }: SceneProps) {
         <div className="border border-hairline bg-card p-2.5 text-[12px] shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="font-semibold text-ink text-[12px] truncate">Service Check Deliverable</span>
+              <span className="font-semibold text-ink text-[12px] truncate">Best Run Window Deliverable</span>
               <span className="bg-success/10 text-success border border-success/30 px-1 py-0.5 font-mono text-[9px] uppercase">
-                PASS
+                READY
               </span>
             </div>
             <p className="text-[11px] leading-relaxed text-ink-secondary mb-2">
-              Both connected services are verified and operational.
+              Optimal 45-min run window identified: Thursday 6:30 AM – 7:15 AM.
             </p>
             <div className="flex flex-col gap-1 font-mono text-[10px]">
               <div className="flex justify-between border-t border-hairline/60 pt-0.5">
                 <span className="text-ink-secondary">OutdoorWindow #6706</span>
-                <span className="text-success">Ready (42ms)</span>
+                <span className="text-success">26°C · AQI 32 · Rain 5%</span>
               </div>
               <div className="flex justify-between border-t border-hairline/60 pt-0.5">
                 <span className="text-ink-secondary">Plate #6708</span>
-                <span className="text-success">Ready</span>
+                <span className="text-success">Calendar slot confirmed</span>
               </div>
             </div>
           </div>
@@ -83,15 +83,15 @@ export function SceneResult({ playing, onCue, onEnded, label }: SceneProps) {
             <div className="flex flex-col gap-1 font-mono text-[9.5px] text-ink-secondary">
               <div className="flex items-center gap-1">
                 <span className="text-accent">12:00:01</span>
-                <span className="truncate">Dispatched check request</span>
+                <span className="truncate">Dispatched query to OutdoorWindow</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-accent">12:00:02</span>
-                <span className="truncate">OutdoorWindow probe returned 200</span>
+                <span className="truncate">OutdoorWindow retrieved Singapore forecast</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-accent">12:00:03</span>
-                <span className="truncate">Plate validated listing metadata</span>
+                <span className="truncate">Plate formatted schedule card</span>
               </div>
             </div>
           </div>

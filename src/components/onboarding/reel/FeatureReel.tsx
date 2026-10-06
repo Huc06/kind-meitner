@@ -85,7 +85,7 @@ export function FeatureReel({
           ))}
         </div>
 
-        <PrimaryButton onClick={last ? onNext : advance}>
+        <PrimaryButton onClick={last ? onNext : advance} className="w-auto shrink-0 px-4">
           {last ? (actionLabel ?? t("onboarding.continue")) : t("onboarding.reel.next")}
         </PrimaryButton>
       </div>

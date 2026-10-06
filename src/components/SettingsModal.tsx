@@ -3,7 +3,7 @@
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
 import { useEffect, useRef, useState } from "react";
-import { KeyRound, Palette, Search, Terminal, User, X } from "lucide-react";
+import { Activity, KeyRound, Palette, Search, ShieldCheck, Terminal, User, X } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
 import { analyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { showToolCallsEnabled } from "@/lib/feature-flags";
@@ -578,6 +578,41 @@ export function SettingsModal() {
                     <p className="-mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
                     <ApiKeyRow section="anthropic" testProvider="anthropic" />
                     <ApiKeyRow section="xai" testProvider="xai" />
+                  </div>
+                </Card>
+
+                <Card
+                  title={t("diagnostics.title")}
+                  subtitle={t("diagnostics.subtitle")}
+                >
+                  <div className="flex flex-col gap-3">
+                    <p className="text-[12.5px] leading-relaxed text-ink-secondary">
+                      Run technical connectivity, Free MCP readiness scans, and trust checks across connected agents.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          dispatch({ type: "toggleAppSettings", open: false });
+                          dispatch({ type: "showDiagnostics" });
+                        }}
+                        className="inline-flex items-center gap-2 border border-hairline bg-surface px-3 py-1.5 font-mono text-[12px] font-medium text-ink hover:bg-raised-hover transition-colors"
+                      >
+                        <Activity size={14} className="text-accent" />
+                        <span>Run Diagnostics</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          dispatch({ type: "toggleAppSettings", open: false });
+                          dispatch({ type: "showLaunch" });
+                        }}
+                        className="inline-flex items-center gap-2 border border-hairline bg-surface px-3 py-1.5 font-mono text-[12px] font-medium text-ink hover:bg-raised-hover transition-colors"
+                      >
+                        <ShieldCheck size={14} className="text-ink-secondary" />
+                        <span>Launch Check Team</span>
+                      </button>
+                    </div>
                   </div>
                 </Card>
               </>

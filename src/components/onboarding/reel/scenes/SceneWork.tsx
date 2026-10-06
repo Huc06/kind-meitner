@@ -60,7 +60,7 @@ export function SceneWork({ playing, onCue, onEnded, label }: SceneProps) {
               <span className="font-semibold text-ink truncate">Coordinator</span>
               <span className="font-mono text-[10px] text-accent">Dispatched</span>
             </div>
-            <div className="text-[11px] text-ink-secondary truncate">Delegated endpoint scan to OutdoorWindow</div>
+            <div className="text-[11px] text-ink-secondary truncate">Delegated weather window scan to OutdoorWindow</div>
           </div>
           <CheckCircle2 size={13} className="text-success shrink-0" />
         </div>
@@ -75,7 +75,7 @@ export function SceneWork({ playing, onCue, onEnded, label }: SceneProps) {
                 Handoff <ArrowRight size={10} />
               </span>
             </div>
-            <div className="text-[11px] text-ink-secondary truncate">Endpoint verified 200 OK (42ms) · Passed payload to Plate</div>
+            <div className="text-[11px] text-ink-secondary truncate">Identified Thursday 6:30 AM (26°C, AQI 32) · Passed to Plate</div>
           </div>
           {step >= 2 ? <CheckCircle2 size={13} className="text-success shrink-0" /> : <Clock size={13} className="text-ink-secondary shrink-0" />}
         </div>
@@ -88,7 +88,7 @@ export function SceneWork({ playing, onCue, onEnded, label }: SceneProps) {
               <span className="font-semibold text-ink truncate">Plate #6708</span>
               <span className="font-mono text-[10px] text-success">Verified</span>
             </div>
-            <div className="text-[11px] text-ink-secondary truncate">Validated schema & service capabilities · 0 issues</div>
+            <div className="text-[11px] text-ink-secondary truncate">Formatted calendar schedule card · 0 conflicts</div>
           </div>
           {step >= 3 ? <CheckCircle2 size={13} className="text-success shrink-0" /> : <Clock size={13} className="text-ink-secondary shrink-0" />}
         </div>
