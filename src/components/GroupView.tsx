@@ -26,7 +26,7 @@ import { devDayGateCardsEnabled, showToolCallsEnabled } from "@/lib/feature-flag
 import { isOkxGateTool } from "@/lib/okx-action-cards";
 import { roomActivityVisible } from "@/lib/room-activity";
 import { normalizeState } from "@/lib/mascot";
-import { effectiveDefaultResponder, groupResponseHint } from "@/lib/group-routing";
+import { effectiveDefaultResponder } from "@/lib/group-routing";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { Composer, DefaultResponderSelect } from "./Composer";
 import { AgentIdentity } from "@/components/agent-identity/AgentIdentity";
@@ -35,6 +35,8 @@ import { ExternalAgentLabel, ExternalPaymentCard } from "./ExternalAgentLabel";
 import { useExternalAgents } from "@/lib/external-agents";
 import { Tag } from "@/components/ui/tag";
 import { RoomActivityTimeline } from "./RoomActivityTimeline";
+import { OutcomeCard } from "./outcome/OutcomeCard";
+import { OutcomeTaskStarters } from "./OutcomeTaskStarters";
 import { ModelPicker } from "./ModelPicker";
 import { usageDetail } from "@/lib/usage";
 import { ChatFindBar } from "./ChatFindBar";
@@ -73,8 +75,7 @@ import {
 } from "@/lib/transcript-window";
 import { OkxGateToolResult } from "./OkxGateToolResult";
 import { useReplyDraft } from "@/lib/drafts";
-import { isDevDayGate } from "@/lib/dev-day-gate";
-import { DevDayGateStarters } from "./DevDayGateStarters";
+
 
 function dayLabel(at: number): string {
   const d = new Date(at);
@@ -333,6 +334,21 @@ const Transcript = memo(function Transcript({
                   fallback={<RoomToolChip message={m} roomId={group.id} />}
                 />
             ) : null
+          ) : m.outcome ? (
+            <div className="flex justify-start">
+              <OutcomeCard
+                serviceId={m.outcome.serviceId}
+                agentId={m.outcome.agentId}
+                serviceName={m.outcome.serviceName}
+                toolName={m.outcome.toolName}
+                price={m.outcome.price}
+                matchReason={m.outcome.matchReason}
+                inputs={m.outcome.inputs}
+                missingInputs={m.outcome.missingInputs}
+                initialState={m.outcome.kind}
+                targetThreadId={group.threadId}
+              />
+            </div>
           ) : m.kind === "text" && (m.text || m.attachments?.length) ? (
             <div className={cn("group flex w-full flex-col", user ? "items-end" : "items-start")}>
               <div className={cn("flex w-full items-end gap-1.5", user ? "justify-end" : "justify-start")}>
@@ -979,10 +995,6 @@ export function GroupView({ group }: { group: Group }) {
     [members],
   );
   const setupPending = !remoteClient && roomNeedsSetup(group);
-  const devDayGate = isDevDayGate(group);
-  // Catalog join receipts establish provenance but are not a conversation.
-  // The starter hero vanishes after the first person or real tool/agent turn.
-  const hasDevDayConversation = group.messages.some((message) => message.kind !== "activity" || message.tool?.system !== true);
 
   // Mascot stays while a member works; the finished reply pops in above it.
   const lastGroupMessage = group.messages.at(-1);
@@ -1497,33 +1509,10 @@ export function GroupView({ group }: { group: Group }) {
               ))}
             </div>
           )}
-          {group.messages.length === 0 || (devDayGate && !hasDevDayConversation) ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-center">
-              <div className="flex -space-x-2">
-                {members.slice(0, 3).map((b) => (
-                  <BotAvatar
-                    key={b.id}
-                    bot={b}
-                    state="happy"
-                    size={44}
-                    motion="none"
-                    motionKey={0}
-                    animated={false}
-                  />
-                ))}
-              </div>
-              <div className="font-mono text-[16px] font-medium tracking-tight text-ink">{group.name}</div>
-              <div className="max-w-[420px] font-mono text-[12px] leading-relaxed text-ink-secondary">
-                {devDayGate && members.length > 0
-                  ? `${members.map((m) => m.name).join(", ")} gate every listing and spend.`
-                  : devDayGate
-                    ? "Markets, Listing Coach, and Spend Scout gate every listing and spend."
-                    : groupResponseHint(group, members)}
-              </div>
-              <DevDayGateStarters
+          {group.messages.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center py-12">
+              <OutcomeTaskStarters
                 composerDraftId={`group:${group.id}:${group.threadId}`}
-                members={members}
-                agentCount={members.length}
               />
             </div>
           ) : null}

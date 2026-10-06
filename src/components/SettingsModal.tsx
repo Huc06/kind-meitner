@@ -19,6 +19,7 @@ import { shortcutLabel } from "./ShortcutHint";
 import { SkinPicker } from "./SkinPicker";
 import { RoomTurnTimeoutSettings } from "./RoomTurnTimeoutSettings";
 import { ThreadConcurrencySettings } from "./ThreadConcurrencySettings";
+import { ConnectedServicesSettings } from "./ConnectedServicesSettings";
 import { cn } from "@/lib/cn";
 import { setShowThreads, useShowThreads } from "@/lib/thread-preferences";
 import { DialogBackdrop, DialogPanel } from "@/components/ui/dialog";
@@ -566,17 +567,20 @@ export function SettingsModal() {
             )}
 
             {section === "connections" && (
-              <Card
-                title={t("settings.connections.title")}
-                subtitle={t("settings.connections.subtitle")}
-              >
-                <div className="flex flex-col gap-4">
-                  <div className="label-mono text-ink-secondary">{t("keys.providers.title")}</div>
-                  <p className="-mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
-                  <ApiKeyRow section="anthropic" testProvider="anthropic" />
-                  <ApiKeyRow section="xai" testProvider="xai" />
-                </div>
-              </Card>
+              <>
+                <ConnectedServicesSettings />
+                <Card
+                  title={t("settings.connections.title")}
+                  subtitle={t("settings.connections.subtitle")}
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="label-mono text-ink-secondary">{t("keys.providers.title")}</div>
+                    <p className="-mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
+                    <ApiKeyRow section="anthropic" testProvider="anthropic" />
+                    <ApiKeyRow section="xai" testProvider="xai" />
+                  </div>
+                </Card>
+              </>
             )}
 
             {section === "engines" && (

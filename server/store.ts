@@ -188,6 +188,20 @@ export interface Message {
   routineRun?: RoutineRunCardData;
   /** Terminal receipt for a bounded multi-bot channel goal. */
   goalRun?: GroupGoalRunCardData;
+  /** Connected external agent outcome workflow card. */
+  outcome?: {
+    kind: "proposal" | "clarification" | "deliverable" | "cancelled" | "no_match";
+    serviceId: string;
+    agentId: string;
+    serviceName: string;
+    toolName: string;
+    endpointUrl: string;
+    price: string;
+    matchReason?: string;
+    inputs: Record<string, unknown>;
+    missingInputs?: Array<{ name: string; label: string; placeholder: string }>;
+    status: string;
+  };
   /** activity messages: tool name + outcome. `spoken` is the same chip as
    * a phrase a voice can read ("reading a file") — computed once here so
    * call mode never has to re-derive it from the raw tool name, and absent
