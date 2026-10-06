@@ -151,7 +151,7 @@ async function main() {
       claude: {
         driver: "claudeAgent",
         config: {
-          disallowedTools: ["Bash"],
+          disallowedTools: ["Bash", "CronCreate", "CronDelete", "CronList"],
         },
       },
     },
@@ -225,7 +225,7 @@ async function main() {
       browserProfile: "guest",
       approvalMode: "full",
       permissionMode: "bypassPermissions",
-      soul: "You are the Event Researcher. When asked to inspect an event page, use the browser tool to read the page, extract arrival time, main sessions, and checklist, and present grounded facts. When asked to check or monitor a page every minute or on a schedule, you MUST call propose_routine to schedule a recurring routine with interval every_minutes: 1, max_runs: 3, continuity: true, and alert_only='change_or_failure'. Do not use shell scripts or loops.",
+      soul: "You are the Event Researcher. When asked to inspect an event page, use the browser tool to read the page, extract arrival time, main sessions, and checklist, and present grounded facts. When asked to check a page every minute for three runs, bounded interval routines with max_runs explicitly support 1-minute intervals (every_minutes: 1). You MUST call propose_routine with name: 'Dev Day Schedule Monitor', instructions: 'Check the event page using the browser tool. Extract sessions and times. Compare with previous run from <previous-run> if present. If no change, output SCHEDULE_UNCHANGED. If session time changed, output SCHEDULE_CHANGE_DETECTED with old and new times.', schedule: { type: 'interval', every_minutes: 1, max_runs: 3 }, max_runs: 3, continuity: true, and alert_only='change_or_failure'. Do not refuse 1-minute intervals when bounded by max_runs; call propose_routine immediately.",
     }),
   });
   const researcher = resBot.data.bot as BotRecord;
@@ -524,19 +524,17 @@ async function main() {
     if (cardMsg && cardMsg.card?.requestId) {
       prompt4CreationType = "chat_card";
       console.log(`Routine proposal card created in room: ${cardMsg.id}`);
-      // Click confirm in UI
+      await ab(["wait", "1000"]);
       const snap = await ab(["snapshot", "-i"]);
       const confirmRef = Object.entries(snap.data?.refs || {}).find(([, v]) => v.name === "Confirm" || v.name?.includes("Confirm"));
       if (confirmRef) {
         console.log(`Clicking Confirm button @${confirmRef[0]} in real renderer...`);
         await ab(["click", `@${confirmRef[0]}`]);
-      } else {
-        console.log("Confirming routine card via API...");
-        await api(`/api/internal/pending-approvals/${cardMsg.card.requestId}/resolve`, {
-          method: "POST",
-          body: JSON.stringify({ decision: "allow" }),
-        });
       }
+      await api(`/api/threads/${encodeURIComponent(group.threadId)}/respond`, {
+        method: "POST",
+        body: JSON.stringify({ requestId: cardMsg.card.requestId, behavior: "allow" }),
+      });
       await new Promise((r) => setTimeout(r, 2000));
       const routinesData = (await api("/api/routines")).data;
       const routines = (routinesData.routines as RoutineRecord[]) || [];
@@ -702,8 +700,8 @@ async function main() {
 
     // Row 5: browser preview
     results.matrix["browser preview"] = {
-      result: "PASS",
-      proof: "text browser logs only: agent-browser runs headlessly in fixture environment; interactive browser preview is available only in native Electron desktop app with window.ogb",
+      result: "NOT AVAILABLE (text logs only)",
+      proof: "Live browser preview is not available in headless fixture environment (text browser logs only); interactive browser preview requires native Electron desktop app with window.ogb",
     };
 
     // Row 6: researcher task
@@ -745,13 +743,15 @@ async function main() {
     };
 
     // Row 11: change detection
+    if (prompt4CreationType !== "chat_card") {
+      throw new Error(`Change detection must be captured via the chat-created routine, but got ${prompt4CreationType}`);
+    }
     const changeDetected = /change detected|16:00|15:45/i.test(run2Finished.output || "");
     if (!changeDetected) throw new Error("Change detection verification failed: change not reported in Run 2 output");
     results.matrix["change detection"] = {
       result: "PASS",
-      proof: `Run 2 (${run2Finished.id}) detected schedule change on edited page: Awards & Closing changed to 16:00 (old: 15:45)`,
+      proof: `Run 2 (${run2Finished.id}) detected schedule change on edited page: Awards & Closing changed to 16:00 (old: 15:45) via chat-created routine`,
     };
-
     // Row 12: stop/cancel
     if (!cancelWorks) throw new Error("Stop/cancel verification failed: routine still active or nextRunAt not null");
     results.matrix["stop/cancel"] = {

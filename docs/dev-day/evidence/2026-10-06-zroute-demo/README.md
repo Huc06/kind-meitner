@@ -5,17 +5,17 @@
 | Capability | Result | Proof | Remaining Issue |
 |---|---|---|---|
 | **zroute text response** | **PENDING_KEY** | Key file ~/.config/kind-meitner/zroute.key not present; local Claude CLI (2.1.287) verified working with claudeAgent driver | Supply valid key at ~/.config/kind-meitner/zroute.key (mode 600) to activate live ZRoute gateway calls |
-| **streaming** | **PASS** | SSE event streaming verified across room messages and provider instance turns (27 messages received) | None |
-| **tool invocation** | **PASS** | Browser tools (mcp__browser__agent_browser_open, mcp__browser__agent_browser_read, Handoff to Reviewer, ToolSearch, mcp__browser__agent_browser_get_text, Handoff to Researcher, mcp__agents__list_threads, CronCreate) executed and settled cleanly during turns | None |
-| **browser page reading** | **PASS** | Researcher read http://127.0.0.1:22078/event.html via agent-browser and grounded arrival 10:30 and sessions from dev-day-event.html | None |
-| **browser preview** | **PASS** | text browser logs only: agent-browser runs headlessly in fixture environment; interactive browser preview is available only in native Electron desktop app with window.ogb | None |
-| **researcher task** | **PASS** | Researcher (msg 95c751db-a677-4325-8cb7-3bc802d5956b) extracted arrival 10:30, 8 main sessions, and attendee checklist from controlled event page | None |
-| **reviewer handoff** | **PASS** | Prompt 2 routed to Reviewer; handoff recorded in room (msg 5848fddf-faac-4072-af35-a4ee5a2efae9) and Reviewer independently verified schedule (msg 023f3085-095c-4c1d-8728-ac7a25f1286c) | None |
+| **streaming** | **PASS** | SSE event streaming verified across room messages and provider instance turns (25 messages received) | None |
+| **tool invocation** | **PASS** | Browser tools (mcp__browser__agent_browser_open, mcp__browser__agent_browser_get_text, mcp__browser__agent_browser_read, Handoff to Reviewer, ToolSearch, mcp__browser__agent_browser_get_title, mcp__agents__propose_routine) executed and settled cleanly during turns | None |
+| **browser page reading** | **PASS** | Researcher read http://127.0.0.1:21185/event.html via agent-browser and grounded arrival 10:30 and sessions from dev-day-event.html | None |
+| **browser preview** | **NOT AVAILABLE (text logs only)** | Live browser preview is not available in headless fixture environment (text browser logs only); interactive browser preview requires native Electron desktop app with window.ogb | None |
+| **researcher task** | **PASS** | Researcher (msg a51bb722-ff63-42c7-ba50-861ae8ff2400) extracted arrival 10:30, 8 main sessions, and attendee checklist from controlled event page | None |
+| **reviewer handoff** | **PASS** | Prompt 2 routed to Reviewer; handoff recorded in room (msg 21a3a1a9-173e-4ac7-9de7-a9e77efda120) and Reviewer independently verified schedule (msg 292acbd8-eb61-4136-b23a-bf838dfa5a73) | None |
 | **team activity** | **PASS** | RoomActivityTimeline derived distinct sequential steps with actor attribution (You, Researcher, Reviewer) | None |
-| **persisted schedule** | **PASS** | Routine 00706474-d20d-41ed-9a23-d957c6350df7 created (server_api) with maxRuns: 3, interval: 1m, alertOnly: "change_or_failure", persisted in routines.json with remainingRuns tracked | None |
-| **automatic second run** | **PASS** | Run 1 (d4c80957-3642-4b0e-b1a7-f96c009eeb90) and Run 2 (f0934a49-a076-40b3-907c-b491dd8776a1) executed server-side via scheduler tick without manual trigger; Run 2 received Run 1 context via <previous-run> | None |
-| **change detection** | **PASS** | Run 2 (f0934a49-a076-40b3-907c-b491dd8776a1) detected schedule change on edited page: Awards & Closing changed to 16:00 (old: 15:45) | None |
-| **stop/cancel** | **PASS** | Routine 00706474-d20d-41ed-9a23-d957c6350df7 cancelled (enabled=false, nextRunAt=null) | None |
+| **persisted schedule** | **PASS** | Routine 7ca76fc1-c8cf-4f1d-b5c3-dd5e159214b7 created (chat_card) with maxRuns: 3, interval: 1m, alertOnly: "change_or_failure", persisted in routines.json with remainingRuns tracked | None |
+| **automatic second run** | **PASS** | Run 1 (bf0b11a0-4b98-484b-a271-86cb1fb84167) and Run 2 (a2530cb9-8d21-40d0-a815-7037c929c8df) executed server-side via scheduler tick without manual trigger; Run 2 received Run 1 context via <previous-run> | None |
+| **change detection** | **PASS** | Run 2 (a2530cb9-8d21-40d0-a815-7037c929c8df) detected schedule change on edited page: Awards & Closing changed to 16:00 (old: 15:45) via chat-created routine | None |
+| **stop/cancel** | **PASS** | Routine 7ca76fc1-c8cf-4f1d-b5c3-dd5e159214b7 cancelled (enabled=false, nextRunAt=null) | None |
 | **secret redaction** | **PASS** | Transcripts, room messages, and server logs scanned; no credentials or API tokens leaked | None |
 
 ## Summary of Completed Journey
