@@ -147,7 +147,7 @@ describe("DemoView", () => {
     expect(html).toContain('role="tablist"');
     expect(html).toContain("Demo");
     expect(html).toContain("Service details");
-    expect(html).toContain("Evidence &amp; history");
+    expect(html).toContain("Activity log");
     expect(html).toContain("Exit demo");
     expect(html).toContain("Prefer to ask in chat?");
   });

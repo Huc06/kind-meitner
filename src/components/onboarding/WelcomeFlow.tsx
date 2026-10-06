@@ -258,6 +258,7 @@ export function WelcomeFlow({
               : `[ ${formatIndex(current)} / ${formatIndex(beats.length)} · ${beatTag(beat)} ]`}
           </span>
           <QuietButton onClick={() => void finish("skipped")}>
+            {t("onboarding.skipTour")}
           </QuietButton>
         </div>
 

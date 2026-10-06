@@ -52,6 +52,20 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
   const connected = session?.kind === "loopback" || session?.kind === "session";
   const emailOffered = environment?.capabilities.emailSignIn === true;
 
+  function destinationUrl(): string {
+    try {
+      const params = new URLSearchParams(location.search);
+      const returnTo = params.get("return_to");
+      if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+        return returnTo;
+      }
+      if (location.pathname !== "/pair" && location.pathname.startsWith("/")) {
+        return `${location.pathname}${location.search}${location.hash}`;
+      }
+    } catch {}
+    return "/";
+  }
+
   async function submitCode(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -59,7 +73,7 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
     const result = await pairWithCode({ code, label, attemptId });
     setBusy(false);
     if (result.ok) {
-      location.replace("/");
+      location.replace(destinationUrl());
       return;
     }
     setError(result.error);
@@ -76,7 +90,7 @@ export function PairPage({ initialCode, initialEmail = null, reason }: { initial
       return;
     }
     if (sent) {
-      location.replace("/");
+      location.replace(destinationUrl());
       return;
     }
     setSent(true);
