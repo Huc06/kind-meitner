@@ -275,7 +275,13 @@ export function matchTaskToService(
   const lower = text.toLowerCase();
 
   // 1. Check for OutdoorWindow match
-  const outdoorMatches = /\b(?:outdoor|window|windows|run|running|walk|walking|cycle|cycling|bike|jog|jogging|air quality|aqi|heat index|uv index|safe outside|outside)\b/i.test(lower);
+  const outdoorMatches =
+    /\b(?:air quality|aqi|heat index|uv index|safe (?:to go )?outside|outdoor (?:window|windows|time|conditions?|safety|weather)|outside conditions?)\b/i.test(lower) ||
+    /\b(?:best|safe(?:st)?|good|ideal|when(?:'s|\s+is)?)\s+(?:time|window|hours?)\s+(?:for|to)\s+(?:a\s+)?(?:\d+[\s-]*(?:minute|min|hour|hr)\s+)?(?:run|walk|cycle|bike|jog|outdoor)/i.test(lower) ||
+    /\b(?:is it|check if it'?s)\s+safe\s+(?:to (?:go|be)\s+)?(?:outside|outdoors?)\b/i.test(lower) ||
+    /\b(?:check|how is|what is)\s+(?:the\s+)?(?:outdoor|weather|air quality|aqi)\b/i.test(lower) ||
+    /\b(?:safe|conditions?)\s+(?:outside|outdoors?)\s+(?:right now|today|tomorrow|now)\b/i.test(lower) ||
+    (/\b(?:run|walk|cycle|bike|jog)\b/i.test(lower) && /\b(?:outdoor|outdoors?|weather|singapore|london|tokyo|outside)\b/i.test(lower) && /\b(?:best time|when|window|safe)\b/i.test(lower));
   if (outdoorMatches) {
     const outdoorService = services.find((s) => s.id === "outdoorwindow" && s.enabled);
     if (outdoorService) {

@@ -70,6 +70,9 @@ export class OutcomeScheduler {
     this.timer = setInterval(() => {
       void this.tick();
     }, tickIntervalMs);
+    if (this.timer && typeof this.timer.unref === "function") {
+      this.timer.unref();
+    }
   }
 
   stop(): void {

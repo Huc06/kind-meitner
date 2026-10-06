@@ -1511,6 +1511,21 @@ export function GroupView({ group }: { group: Group }) {
           )}
           {group.messages.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center py-12">
+              {members.length > 0 && (
+                <div className="flex -space-x-2 mb-4">
+                  {members.slice(0, 3).map((b) => (
+                    <BotAvatar
+                      key={b.id}
+                      bot={b}
+                      state="happy"
+                      size={44}
+                      motion="none"
+                      motionKey={0}
+                      animated={false}
+                    />
+                  ))}
+                </div>
+              )}
               <OutcomeTaskStarters
                 composerDraftId={`group:${group.id}:${group.threadId}`}
               />

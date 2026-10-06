@@ -8026,7 +8026,7 @@ function startGroupTurn(
   if (!responders.length && !goalCoordinator) {
     const defaultArchivedId = group.defaultResponder.kind === "member" ? group.defaultResponder.botId : undefined;
     const defaultArchived = archived.find((member) => member.id === defaultArchivedId);
-    if (!availableMembers.length) {
+    if (!mentionedArchived && !availableMembers.length && members.length === 0) {
       store.appendMessage(threadId, {
         role: "bot",
         kind: "text",
