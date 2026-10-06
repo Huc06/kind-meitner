@@ -31,6 +31,8 @@ export type RoutineRequestSchedule =
     window?: RoutineRequestIntervalWindow;
     /** Inclusive epoch-millisecond cutoff. Missing means never. */
     endsAt?: number;
+    /** Maximum number of scheduled runs before auto-pausing. */
+    maxRuns?: number;
   };
 
 export type RoutineRequestScheduleChanges =
@@ -45,6 +47,8 @@ export type RoutineRequestScheduleChanges =
     window?: RoutineRequestIntervalWindow | null;
     /** `null` explicitly removes an existing end date. */
     endsAt?: number | null;
+    /** `null` explicitly removes an existing run limit. */
+    maxRuns?: number | null;
   };
 
 export interface RoutineRequestDefinition {
@@ -58,14 +62,20 @@ export interface RoutineRequestDefinition {
   timeoutMinutes?: number;
   /** Carry the previous run's report into the next run. */
   continuity?: boolean;
+  /** Bound execution to at most this many runs. */
+  maxRuns?: number;
+  /** Only alert/post when output detects a schedule change or failure. */
+  alertOnly?: "change_or_failure" | "all";
 }
 
 export type RoutineRequestChanges =
-  & Omit<Partial<RoutineRequestDefinition>, "schedule" | "timeoutMinutes">
+  & Omit<Partial<RoutineRequestDefinition>, "schedule" | "timeoutMinutes" | "maxRuns" | "alertOnly">
   & {
     schedule?: RoutineRequestScheduleChanges;
     /** `null` removes an existing safety cap. */
     timeoutMinutes?: number | null;
+    maxRuns?: number | null;
+    alertOnly?: "change_or_failure" | "all" | null;
   };
 
 /** Another bot in the proposer's section that the routine is scheduled for.

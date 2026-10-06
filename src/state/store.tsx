@@ -515,7 +515,7 @@ export function messageVersions(bot: Bot, message: Message): Message[] {
 /** GET /api/config — configured flags only; secrets are never echoed. */
 export interface ConfigStatus {
   xai?: { configured: boolean };
-  anthropic?: { configured: boolean };
+  anthropic?: { configured: boolean; url?: string };
   openaiCompat?: { configured: boolean; url?: string };
   /** what this server is entitled to; Settings shows only what works here */
   edition?: { edition: "oss" | "enterprise"; features: string[] };

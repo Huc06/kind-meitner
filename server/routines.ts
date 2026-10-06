@@ -26,15 +26,17 @@ export interface RoutineIntervalSchedule {
   window?: RoutineIntervalWindow;
   /** Inclusive epoch-millisecond cutoff. Missing means the series never ends. */
   endsAt?: number;
+  maxRuns?: number;
 }
 
 /** Input-only nullable restrictions let current clients deliberately clear a
  * restriction while an omitted field remains distinguishable for legacy
  * clients that know only the interval cadence and anchor. */
-export type RoutineIntervalScheduleInput = Omit<RoutineIntervalSchedule, "weekdays" | "window" | "endsAt"> & {
+export type RoutineIntervalScheduleInput = Omit<RoutineIntervalSchedule, "weekdays" | "window" | "endsAt" | "maxRuns"> & {
   weekdays?: number[] | null;
   window?: RoutineIntervalWindow | null;
   endsAt?: number | null;
+  maxRuns?: number | null;
 };
 
 export type RoutineSchedule =
@@ -95,6 +97,10 @@ export interface Routine {
    * work builds on itself instead of restarting cold. Optional so existing
    * files migrate in place. */
   continuity?: boolean;
+  maxRuns?: number;
+  completedRuns?: number;
+  remainingRuns?: number;
+  alertOnly?: "change_or_failure" | "all";
   /** Conversation that created this routine in chat. Calendar/import-created
    * routines intentionally have no source, and older files migrate in place. */
   sourceThreadId?: string;
@@ -199,6 +205,8 @@ export interface RoutineInput {
   timeoutMinutes?: number | null;
   attachments?: RoutineContextAttachment[];
   continuity?: boolean;
+  maxRuns?: number;
+  alertOnly?: "change_or_failure" | "all";
   /** Omission preserves routing; null creates a new dedicated results task. */
   resultsThreadId?: string | null;
 }
@@ -370,6 +378,7 @@ function cloneSchedule(schedule: RoutineSchedule): RoutineSchedule {
       ...(schedule.weekdays ? { weekdays: [...schedule.weekdays] } : {}),
       ...(schedule.window ? { window: { ...schedule.window } } : {}),
       ...(schedule.endsAt === undefined ? {} : { endsAt: schedule.endsAt }),
+      ...(schedule.maxRuns === undefined ? {} : { maxRuns: schedule.maxRuns }),
     };
   }
   return { type: "daily", time: schedule.time, weekdays: [...schedule.weekdays] };
@@ -410,6 +419,7 @@ function cloneRoutine(routine: Routine): Routine {
     ...routine,
     schedule: cloneSchedule(routine.schedule),
     attachments: cloneAttachments(routine.attachments),
+    remainingRuns: routine.maxRuns !== undefined ? Math.max(0, routine.maxRuns - (routine.completedRuns ?? 0)) : undefined,
   };
 }
 
@@ -545,8 +555,8 @@ function parseSchedule(schedule: RoutineScheduleInput, after: number): RoutineSc
   }
   if (schedule?.type === "interval") {
     const { everyMinutes, anchorAt } = schedule;
-    if (typeof everyMinutes !== "number" || !Number.isInteger(everyMinutes) || everyMinutes < 5 || everyMinutes > 1_440) {
-      throw new Error("Interval must be a whole number from 5 to 1440 minutes");
+    if (typeof everyMinutes !== "number" || !Number.isInteger(everyMinutes) || everyMinutes < 1 || everyMinutes > 1_440) {
+      throw new Error("Interval must be a whole number from 1 to 1440 minutes");
     }
     if (
       typeof anchorAt !== "number" ||
@@ -566,6 +576,7 @@ function parseSchedule(schedule: RoutineScheduleInput, after: number): RoutineSc
       ...(weekdays ? { weekdays } : {}),
       ...(window ? { window } : {}),
       ...(endsAt === undefined ? {} : { endsAt }),
+      ...(typeof schedule.maxRuns === "number" && schedule.maxRuns > 0 ? { maxRuns: Math.floor(schedule.maxRuns) } : {}),
     };
   }
   throw new Error("Choose a supported schedule");
@@ -677,6 +688,9 @@ function mergeScheduleUpdate(
   if (!Object.hasOwn(incoming, "endsAt") && current.endsAt !== undefined) {
     merged.endsAt = current.endsAt;
   }
+  if (!Object.hasOwn(incoming, "maxRuns") && current.maxRuns !== undefined) {
+    merged.maxRuns = current.maxRuns;
+  }
   return merged;
 }
 
@@ -721,6 +735,8 @@ function sanitizeInput(input: RoutineInput, after: number): Omit<Routine, "id" |
     ...(timeoutMinutes === undefined ? {} : { timeoutMinutes }),
     attachments,
     ...(continuity ? { continuity: true } : {}),
+    ...(input.maxRuns ? { maxRuns: input.maxRuns, completedRuns: 0 } : input.schedule.type === "interval" && input.schedule.maxRuns ? { maxRuns: input.schedule.maxRuns, completedRuns: 0 } : {}),
+    ...(input.alertOnly ? { alertOnly: input.alertOnly } : {}),
   };
 }
 
@@ -1017,6 +1033,11 @@ export class RoutineManager {
       // `Object.assign` cannot remove a key, and a cleared flag is absent
       // rather than false, so switching continuity off has to delete it.
       if (!clean.continuity) delete routine.continuity;
+      if (clean.maxRuns !== undefined) routine.maxRuns = clean.maxRuns;
+      if (clean.alertOnly !== undefined) routine.alertOnly = clean.alertOnly;
+      if (clean.schedule.type === "interval" && clean.schedule.maxRuns !== undefined) {
+        routine.maxRuns = clean.schedule.maxRuns;
+      }
       if (Object.hasOwn(patch, "timeoutMinutes") && patch.timeoutMinutes == null) {
         delete routine.timeoutMinutes;
       }
@@ -1366,7 +1387,9 @@ export class RoutineManager {
               scheduledRuns.push(run);
             }
             routine.nextRunAt =
-              routine.schedule.type === "once" ? null : nextOccurrence(routine.schedule, Math.max(now, scheduledFor));
+              routine.schedule.type === "once" || (routine.maxRuns !== undefined && (routine.completedRuns ?? 0) >= routine.maxRuns)
+                ? null
+                : nextOccurrence(routine.schedule, Math.max(now, scheduledFor));
             // `updatedAt` is the optimistic definition revision carried by
             // routine confirmation cards. Moving the scheduler cursor is runtime
             // progress, not a definition edit, so recurring ticks must not make a
@@ -1543,7 +1566,10 @@ export class RoutineManager {
       const pending = this.options.hasPendingDelegations?.(event.threadId) === true;
       run.status = pending ? "waiting" : "completed";
       run.attention = pending ? "Waiting for delegated work to finish" : undefined;
-      if (!pending) run.finishedAt = this.now();
+      if (!pending) {
+        run.finishedAt = this.now();
+        this.recordRunCompletion(run.routineId);
+      }
       run.error = undefined;
     } else {
       return null;
@@ -1591,7 +1617,10 @@ export class RoutineManager {
       run.attention = undefined;
       run.finishedAt = this.now();
       run.error = undefined;
-      if (status !== "stopped") run.output = safeDetail.slice(0, 2_000) || undefined;
+      if (status !== "stopped") {
+        run.output = safeDetail.slice(0, 2_000) || undefined;
+        this.recordRunCompletion(run.routineId);
+      }
       this.save();
       this.emitRun(run);
     }
@@ -1608,6 +1637,7 @@ export class RoutineManager {
     run.attention = undefined;
     run.error = undefined;
     run.finishedAt = this.now();
+    this.recordRunCompletion(run.routineId);
     if (output !== undefined) {
       run.output = redactSecretsInText(output).trim().slice(0, 2_000) || undefined;
     }
@@ -1615,6 +1645,17 @@ export class RoutineManager {
     this.emitRun(run);
     queueMicrotask(() => void this.tick());
     return cloneRun(run);
+  }
+
+  private recordRunCompletion(routineId: string) {
+    const routine = this.routines.find((r) => r.id === routineId);
+    if (!routine) return;
+    routine.completedRuns = (routine.completedRuns ?? 0) + 1;
+    if (routine.maxRuns !== undefined && routine.completedRuns >= routine.maxRuns) {
+      routine.enabled = false;
+      routine.nextRunAt = null;
+      this.emitRoutine(routine);
+    }
   }
 
   private failRun(run: RoutineRun, message: string) {

@@ -11,7 +11,7 @@ import { localeChoices, type LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
 import { withTourReset } from "@/lib/guided-tour";
 import { completionPatch } from "@/lib/onboarding";
-import { ApiKeyRow } from "./ApiKeys";
+import { ApiKeyRow, AnthropicUrl } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
 import { EnginesSettings } from "./EnginesSettings";
 import { Card, SettingRow, Switch } from "./SettingsPrimitives";
@@ -577,6 +577,7 @@ export function SettingsModal() {
                     <div className="label-mono text-ink-secondary">{t("keys.providers.title")}</div>
                     <p className="-mt-2 text-[12px] leading-relaxed text-ink-secondary">{t("keys.providers.subtitle")}</p>
                     <ApiKeyRow section="anthropic" testProvider="anthropic" />
+                    <AnthropicUrl />
                     <ApiKeyRow section="xai" testProvider="xai" />
                   </div>
                 </Card>

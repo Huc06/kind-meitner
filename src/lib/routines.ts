@@ -19,6 +19,7 @@ export type RoutineSchedule =
     window?: RoutineIntervalWindow;
     /** Inclusive epoch-millisecond cutoff. Missing means never. */
     endsAt?: number;
+    maxRuns?: number;
   };
 
 export type RoutineScheduleInput =
@@ -33,6 +34,7 @@ export type RoutineScheduleInput =
     window?: RoutineIntervalWindow | null;
     /** `null` explicitly removes an existing end date on updates. */
     endsAt?: number | null;
+    maxRuns?: number | null;
   };
 
 export type RoutineRunOn = "maus" | "cloud";
@@ -80,6 +82,10 @@ export interface Routine {
   /** Optional wall-clock safety limit. Missing means the run is unlimited. */
   timeoutMinutes?: number;
   attachments?: RoutineContextAttachment[];
+  maxRuns?: number;
+  completedRuns?: number;
+  remainingRuns?: number;
+  alertOnly?: "change_or_failure" | "all";
   sourceThreadId?: string;
   resultsThreadId?: string;
   nextRunAt: number | null;

@@ -368,3 +368,53 @@ export function OpenAiCompatUrl() {
     </div>
   );
 }
+
+/** Anthropic or custom gateway (ZRoute) base URL. */
+export function AnthropicUrl() {
+  const { state, dispatch } = useStore();
+  const saved = state.config?.anthropic?.url ?? "";
+  const [value, setValue] = useState(saved);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setValue(saved); }, [saved]);
+  const dirty = value.trim() !== saved;
+
+  const save = () => {
+    if (saving || !dirty) return;
+    setSaving(true);
+    setError(null);
+    api("/api/config", { method: "PUT", body: JSON.stringify({ anthropic: { url: value.trim() } }) })
+      .then((status: ConfigStatus) => dispatch({ type: "configStatus", config: status }))
+      .catch((e) => setError(e.message))
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[13px] text-ink-secondary">{t("keys.anthropic.url")}</div>
+      <div className="flex gap-2">
+        <Input
+          type="url"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          placeholder="https://api-dev.zroute.ai/anthropic"
+          aria-label={t("keys.anthropic.url")}
+          spellCheck={false}
+          className="font-mono text-[12px]"
+        />
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={save}
+          disabled={saving || !dirty}
+          className="w-[84px] shrink-0"
+        >
+          {saving ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} />{t("common.save")}</>}
+        </Button>
+      </div>
+      <p className="mt-1 text-[11.5px] leading-relaxed text-ink-secondary">{t("keys.anthropic.urlHint")}</p>
+      {error && <div className="mt-1 text-[12px] text-danger">{error}</div>}
+    </div>
+  );
+}

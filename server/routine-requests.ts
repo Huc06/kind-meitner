@@ -72,6 +72,7 @@ const routineToolScheduleSchema = z.discriminatedUnion("type", [
     weekdays: z.array(z.string().max(9)).min(1).max(7).nullable().optional(),
     window: toolIntervalWindowSchema.nullable().optional(),
     endsAt: z.string().max(64).nullable().optional(),
+    maxRuns: z.number().int().positive().nullable().optional(),
   }).strict(),
 ]);
 
@@ -83,6 +84,8 @@ const routineToolDefinitionSchema = z.object({
   durationMinutes: z.number().optional(),
   timeoutMinutes: z.number().nullable().optional(),
   continuity: z.boolean().optional(),
+  maxRuns: z.number().int().positive().nullable().optional(),
+  alertOnly: z.enum(["change_or_failure", "all"]).nullable().optional(),
 }).strict();
 
 const routineToolChangesSchema = routineToolDefinitionSchema
@@ -140,11 +143,12 @@ const storedScheduleSchema = z.discriminatedUnion("type", [
   }).strict(),
   z.object({
     type: z.literal("interval"),
-    everyMinutes: z.number().int().min(5).max(1_440),
+    everyMinutes: z.number().int().min(1).max(1_440),
     anchorAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
     weekdays: storedWeekdaysSchema.optional(),
     window: storedIntervalWindowSchema.optional(),
     endsAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
+    maxRuns: z.number().int().positive().optional(),
   }).strict(),
 ]).superRefine((schedule, context) => {
   if (schedule.type !== "interval") return;
@@ -173,11 +177,12 @@ const storedScheduleChangesSchema = z.discriminatedUnion("type", [
   }).strict(),
   z.object({
     type: z.literal("interval"),
-    everyMinutes: z.number().int().min(5).max(1_440),
+    everyMinutes: z.number().int().min(1).max(1_440),
     anchorAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
     weekdays: storedWeekdaysSchema.nullable().optional(),
     window: storedIntervalWindowSchema.nullable().optional(),
     endsAt: z.number().int().nonnegative().max(MAX_DATE_MS).nullable().optional(),
+    maxRuns: z.number().int().positive().nullable().optional(),
   }).strict(),
 ]).superRefine((schedule, context) => {
   if (schedule.type !== "interval") return;
@@ -209,6 +214,8 @@ const storedDefinitionSchema = z.object({
   durationMinutes: z.number().int().min(5).max(240),
   timeoutMinutes: z.number().int().min(5).max(240).optional(),
   continuity: z.boolean().optional(),
+  maxRuns: z.number().int().positive().optional(),
+  alertOnly: z.enum(["change_or_failure", "all"]).optional(),
 }).strict();
 const storedChangesSchema = storedDefinitionSchema
   .omit({ schedule: true, timeoutMinutes: true })
@@ -216,6 +223,8 @@ const storedChangesSchema = storedDefinitionSchema
   .extend({
     schedule: storedScheduleChangesSchema.optional(),
     timeoutMinutes: z.number().int().min(5).max(240).nullable().optional(),
+    maxRuns: z.number().int().positive().nullable().optional(),
+    alertOnly: z.enum(["change_or_failure", "all"]).nullable().optional(),
   })
   .strict()
   .refine(
@@ -477,8 +486,8 @@ function normalizeSchedule(schedule: RoutineToolScheduleInput, now: number): Rou
     return { type: "once", at };
   }
   if (schedule.type === "interval") {
-    if (!Number.isInteger(schedule.everyMinutes) || schedule.everyMinutes < 5 || schedule.everyMinutes > 1_440) {
-      throw new RoutineRequestError("everyMinutes must be a whole number from 5 to 1440");
+    if (!Number.isInteger(schedule.everyMinutes) || schedule.everyMinutes < 1 || schedule.everyMinutes > 1_440) {
+      throw new RoutineRequestError("everyMinutes must be a whole number from 1 to 1440");
     }
     let anchorAt: number | undefined;
     if (schedule.anchorAt !== undefined) {
@@ -510,6 +519,7 @@ function normalizeSchedule(schedule: RoutineToolScheduleInput, now: number): Rou
       ...(schedule.weekdays == null ? {} : { weekdays: intervalWeekdays(schedule.weekdays) }),
       ...(schedule.window == null ? {} : { window: intervalWindow(schedule.window, schedule.everyMinutes) }),
       ...(endsAt === undefined ? {} : { endsAt }),
+      ...(schedule.maxRuns == null ? {} : { maxRuns: schedule.maxRuns }),
     };
   }
   if (!TIME.test(schedule.time)) {
@@ -550,6 +560,8 @@ function normalizeDefinition(input: RoutineToolDefinitionInput, now: number): Ro
     durationMinutes: duration(input.durationMinutes),
     ...(timeoutMinutes == null ? {} : { timeoutMinutes }),
     ...(input.continuity === true ? { continuity: true } : {}),
+    ...(input.maxRuns != null ? { maxRuns: input.maxRuns } : input.schedule.type === "interval" && input.schedule.maxRuns != null ? { maxRuns: input.schedule.maxRuns } : {}),
+    ...(input.alertOnly != null ? { alertOnly: input.alertOnly } : {}),
   };
 }
 
@@ -562,6 +574,8 @@ function normalizeChanges(input: RoutineToolChangesInput, now: number): RoutineR
   if (input.durationMinutes !== undefined) changes.durationMinutes = duration(input.durationMinutes);
   if (input.timeoutMinutes !== undefined) changes.timeoutMinutes = timeout(input.timeoutMinutes);
   if (input.continuity !== undefined) changes.continuity = input.continuity === true;
+  if (input.maxRuns !== undefined) changes.maxRuns = input.maxRuns;
+  if (input.alertOnly !== undefined) changes.alertOnly = input.alertOnly;
   return changes;
 }
 
@@ -626,6 +640,7 @@ function asSchedule(schedule: RoutineRequestSchedule, now: number): RoutineSched
       ...(schedule.weekdays === undefined ? {} : { weekdays: [...schedule.weekdays] }),
       ...(schedule.window === undefined ? {} : { window: { ...schedule.window } }),
       ...(schedule.endsAt === undefined ? {} : { endsAt: schedule.endsAt }),
+      ...(schedule.maxRuns === undefined ? {} : { maxRuns: schedule.maxRuns }),
     };
   }
   return { type: "daily", time: schedule.time, weekdays: [...schedule.weekdays] };
@@ -784,7 +799,7 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
     ...(existing.continuity ? { continuity: true } : {}),
   };
   if (operation.action !== "update") return base;
-  const { schedule, timeoutMinutes, ...changes } = operation.changes;
+  const { schedule, timeoutMinutes, maxRuns, alertOnly, ...changes } = operation.changes;
   const merged: RoutineRequestDefinition = {
     ...base,
     ...changes,
@@ -792,6 +807,10 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
   };
   if (timeoutMinutes === null) delete merged.timeoutMinutes;
   else if (timeoutMinutes !== undefined) merged.timeoutMinutes = timeoutMinutes;
+  if (maxRuns === null) delete merged.maxRuns;
+  else if (maxRuns !== undefined) merged.maxRuns = maxRuns;
+  if (alertOnly === null) delete merged.alertOnly;
+  else if (alertOnly !== undefined) merged.alertOnly = alertOnly;
   return merged;
 }
 
