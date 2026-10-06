@@ -99,15 +99,16 @@ assert.equal((await config()).profile.email, "onboarding@example.test");
 console.log("PASS profile failure preserves input; retry persists before advancing");
 
 // Reduced motion must hold every scene. Scene navigation is driven by the real Next button.
+await textVisible(t("onboarding.reel.ask.title"));
 await click(t("onboarding.reel.next"));
-await textVisible(t("onboarding.reel.agents.title"));
+await textVisible(t("onboarding.reel.work.title"));
 await screenshot("reel");
 await delay(5500);
-await textVisible(t("onboarding.reel.agents.title"));
+await textVisible(t("onboarding.reel.work.title"));
 await click(t("onboarding.reel.next"));
-await textVisible(t("onboarding.reel.readiness.title"));
+await textVisible(t("onboarding.reel.result.title"));
 await click(t("onboarding.reel.next"));
-await textVisible(t("onboarding.reel.trust.title"));
+await textVisible(t("onboarding.reel.repeat.title"));
 await click(t("onboarding.continue"));
 await textVisible(t("common.checkAgain"));
 await screenshot("engines");
