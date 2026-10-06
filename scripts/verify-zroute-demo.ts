@@ -359,6 +359,7 @@ async function main() {
   const shotPrompt2 = join(EVIDENCE_DIR, "prompt-2-reviewer-handoff.png");
   const shotPrompt3 = join(EVIDENCE_DIR, "prompt-3-activity-timeline.png");
   const shotTeamMap = join(EVIDENCE_DIR, "team-map.png");
+  const shotPrompt4Card = join(EVIDENCE_DIR, "prompt-4-proposal-card.png");
   const shotPrompt4Panel = join(EVIDENCE_DIR, "prompt-4-schedule-panel.png");
   const shotPrompt4Alert = join(EVIDENCE_DIR, "prompt-4-schedule-change-alert.png");
   const shotPrompt4Cancelled = join(EVIDENCE_DIR, "prompt-4-schedule-cancelled.png");
@@ -373,6 +374,7 @@ async function main() {
   let routine: RoutineRecord | undefined;
   let run1Finished: RoutineRunRecord | undefined;
   let run2Finished: RoutineRunRecord | undefined;
+  let run3Finished: RoutineRunRecord | undefined;
   let cancelWorks = false;
   let prompt4CreationType: "chat_card" | "server_api" = "server_api";
 
@@ -524,7 +526,12 @@ async function main() {
     if (cardMsg && cardMsg.card?.requestId) {
       prompt4CreationType = "chat_card";
       console.log(`Routine proposal card created in room: ${cardMsg.id}`);
+      // Capture genuine screenshot of proposal card in chat showing Run limit: 3 runs
       await ab(["wait", "1000"]);
+      await ab(["screenshot", shotPrompt4Card]);
+      results.evidenceFiles.push(shotPrompt4Card);
+
+      // Click confirm in UI
       const snap = await ab(["snapshot", "-i"]);
       const confirmRef = Object.entries(snap.data?.refs || {}).find(([, v]) => v.name === "Confirm" || v.name?.includes("Confirm"));
       if (confirmRef) {
@@ -631,22 +638,32 @@ async function main() {
     await ab(["screenshot", shotPrompt4Alert]);
     results.evidenceFiles.push(shotPrompt4Alert);
 
-    // --- PAUSE / CANCEL ROUTINE ---
-    console.log("\nTesting schedule cancellation / pause...");
-    const pauseRes = await api(`/api/routines/${routine.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ enabled: false }),
-    });
-    const pausedRoutine = pauseRes.data.routine as RoutineRecord;
-    cancelWorks = pausedRoutine.enabled === false && pausedRoutine.nextRunAt === null;
-    console.log(`Cancel verified: enabled=${pausedRoutine.enabled}, nextRunAt=${pausedRoutine.nextRunAt}`);
+    // --- REAL SCHEDULED RUN 3 (Auto-stop verification) ---
+    console.log("Waiting for Server-Side Scheduled Run 3 (auto-stop after 3 runs)...");
+    for (let i = 0; i < 110; i++) {
+      const data = (await api("/api/routines")).data;
+      const runs = (data.runs as RoutineRunRecord[]) || [];
+      const targetRun = runs.find((r) => r.routineId === routine?.id && r.id !== run1Finished?.id && r.id !== run2Finished?.id && (r.status === "completed" || r.status === "failed"));
+      if (targetRun) {
+        run3Finished = targetRun;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (!run3Finished) throw new Error("Server-side scheduled Run 3 did not complete");
+    console.log(`Run 3 completed: ID ${run3Finished.id}, triggerSource=${run3Finished.triggerSource}, status=${run3Finished.status}`);
 
-    // Navigate to routines panel to capture paused state screenshot in real renderer
+    // Verify auto-stop after Run 3
+    const routinesDataAfterRun3 = (await api("/api/routines")).data;
+    const routineAfterRun3 = ((routinesDataAfterRun3.routines as RoutineRecord[]) || []).find((r) => r.id === routine?.id);
+    cancelWorks = Boolean(routineAfterRun3 && routineAfterRun3.enabled === false && routineAfterRun3.nextRunAt === null && (routineAfterRun3.completedRuns ?? 0) >= 3);
+    console.log(`Auto-stop after 3 runs verified: enabled=${routineAfterRun3?.enabled}, nextRunAt=${routineAfterRun3?.nextRunAt}, completedRuns=${routineAfterRun3?.completedRuns}, remainingRuns=${routineAfterRun3?.remainingRuns}`);
+
+    // Navigate to routines panel to capture auto-stopped state screenshot in real renderer
     await ab(["open", `${preview.previewUrl}&view=routines`]);
     await ab(["wait", "2000"]);
     await ab(["screenshot", shotPrompt4Cancelled]);
     results.evidenceFiles.push(shotPrompt4Cancelled);
-
     // Stop video recording
     console.log("Stopping video recording...");
     await ab(["record", "stop"]);
@@ -750,13 +767,14 @@ async function main() {
     if (!changeDetected) throw new Error("Change detection verification failed: change not reported in Run 2 output");
     results.matrix["change detection"] = {
       result: "PASS",
-      proof: `Run 2 (${run2Finished.id}) detected schedule change on edited page: Awards & Closing changed to 16:00 (old: 15:45) via chat-created routine`,
+      proof: `Run 2 (${run2Finished.id}) detected schedule change on edited page: Awards & Closing changed to 16:00 (old: 15:45) via chat-created routine (${cardMsg?.id})`,
     };
+
     // Row 12: stop/cancel
-    if (!cancelWorks) throw new Error("Stop/cancel verification failed: routine still active or nextRunAt not null");
+    if (!cancelWorks) throw new Error("Stop/cancel verification failed: routine did not auto-stop after 3 runs");
     results.matrix["stop/cancel"] = {
       result: "PASS",
-      proof: `Routine ${routine.id} cancelled (enabled=false, nextRunAt=null)`,
+      proof: `Routine ${routine.id} auto-stopped after 3 runs (run 1: ${run1Finished.id}, run 2: ${run2Finished.id}, run 3: ${run3Finished.id}; completedRuns=3, remainingRuns=0, enabled=false, nextRunAt=null)`,
     };
 
     // Row 13: secret redaction
@@ -816,9 +834,10 @@ ${tableRows}
 - \`prompt-2-reviewer-handoff.png\` — Kind Meitner React renderer: Reviewer handoff activity and verified reply
 - \`prompt-3-activity-timeline.png\` — Kind Meitner React renderer: RoomActivityTimeline drawer with actor steps
 - \`team-map.png\` — Kind Meitner React renderer: Team Map canvas
+- \`prompt-4-proposal-card.png\` — Kind Meitner React renderer: Chat routine proposal card showing Run limit: 3 runs and bounded frequency note
 - \`prompt-4-schedule-panel.png\` — Kind Meitner React renderer: Automations panel showing 3 bounded runs
 - \`prompt-4-schedule-change-alert.png\` — Kind Meitner React renderer: Scheduled Run 2 change detection alert
-- \`prompt-4-schedule-cancelled.png\` — Kind Meitner React renderer: Automations panel showing paused schedule
+- \`prompt-4-schedule-cancelled.png\` — Kind Meitner React renderer: Automations panel showing auto-stopped schedule after 3 runs
 - \`transcript-evidence.txt\` — Complete conversation transcript dumped from room thread
 - \`zroute-demo-run.webm\` — Live video recording of the headless browser session
 `;

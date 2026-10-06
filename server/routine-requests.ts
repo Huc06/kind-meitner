@@ -553,15 +553,21 @@ function normalizeScheduleChanges(
 
 function normalizeDefinition(input: RoutineToolDefinitionInput, now: number): RoutineRequestDefinition {
   const timeoutMinutes = timeout(input.timeoutMinutes);
+  const maxRuns = input.maxRuns ?? (input.schedule.type === "interval" ? (input.schedule.maxRuns ?? undefined) : undefined);
+  const scheduleInput = { ...input.schedule };
+  if (scheduleInput.type === "interval" && maxRuns !== undefined && scheduleInput.maxRuns === undefined) {
+    scheduleInput.maxRuns = maxRuns;
+  }
+  const schedule = normalizeSchedule(scheduleInput, now);
   return {
     name: text(input.name, "name", 80),
     instructions: text(input.instructions, "instructions", 20_000),
-    schedule: normalizeSchedule(input.schedule, now),
+    schedule,
     runOn: runOn(input.runOn),
     durationMinutes: duration(input.durationMinutes),
     ...(timeoutMinutes == null ? {} : { timeoutMinutes }),
     ...(input.continuity === true ? { continuity: true } : {}),
-    ...(input.maxRuns != null ? { maxRuns: input.maxRuns } : input.schedule.type === "interval" && input.schedule.maxRuns != null ? { maxRuns: input.schedule.maxRuns } : {}),
+    ...(maxRuns != null ? { maxRuns } : {}),
     ...(input.alertOnly != null ? { alertOnly: input.alertOnly } : {}),
   };
 }
@@ -769,6 +775,11 @@ export function consequenceLine(schedule: RoutineRequestSchedule, continuity = f
     if (intervalHasRestrictions(schedule)) {
       return `Will run every ${schedule.everyMinutes} minutes when its day, time, and end restrictions allow; ${session}.`;
     }
+    if (schedule.maxRuns !== undefined && schedule.maxRuns > 0) {
+      const unit = schedule.everyMinutes === 1 ? "minute" : `${schedule.everyMinutes} minutes`;
+      const runs = schedule.maxRuns === 1 ? "1 run" : `${schedule.maxRuns} runs`;
+      return `Will run every ${unit} for ${runs}, then stop; ${session}.`;
+    }
     const runsPerDay = Math.round(1440 / schedule.everyMinutes);
     const cadence = runsPerDay <= 1 ? "about once a day" : `about ${runsPerDay} times a day`;
     return `Will run ${cadence}; ${session}.`;
@@ -790,6 +801,7 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
           ...existing.schedule,
           ...(existing.schedule.weekdays ? { weekdays: [...existing.schedule.weekdays] } : {}),
           ...(existing.schedule.window ? { window: { ...existing.schedule.window } } : {}),
+          ...(existing.schedule.maxRuns !== undefined ? { maxRuns: existing.schedule.maxRuns } : {}),
         }
       : existing.schedule.type === "daily"
         ? { ...existing.schedule, weekdays: [...existing.schedule.weekdays] }
@@ -798,6 +810,8 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
     durationMinutes: existing.durationMinutes,
     ...(existing.timeoutMinutes === undefined ? {} : { timeoutMinutes: existing.timeoutMinutes }),
     ...(existing.continuity ? { continuity: true } : {}),
+    ...(existing.maxRuns !== undefined ? { maxRuns: existing.maxRuns } : {}),
+    ...(existing.alertOnly !== undefined ? { alertOnly: existing.alertOnly } : {}),
   };
   if (operation.action !== "update") return base;
   const { schedule, timeoutMinutes, maxRuns, alertOnly, ...changes } = operation.changes;
@@ -867,9 +881,15 @@ function cardCopy(
   // shows every instruction, but credential-shaped values never travel back
   // through the bot's MCP response or into the transcript.
   const visibleInstructions = redactSecretsInText(definition.instructions);
-  const runLimit = definition.timeoutMinutes === undefined
+  const maxRuns = definition.maxRuns ?? (definition.schedule.type === "interval" ? definition.schedule.maxRuns : undefined);
+  const runLimit = maxRuns !== undefined
+    ? `${maxRuns} ${maxRuns === 1 ? "run" : "runs"}`
+    : definition.timeoutMinutes === undefined
     ? "no run limit"
     : `${definition.timeoutMinutes} min limit`;
+  const runLimitDetail = maxRuns !== undefined
+    ? `${maxRuns} ${maxRuns === 1 ? "run" : "runs"}${definition.timeoutMinutes !== undefined ? ` · ${definition.timeoutMinutes} min limit per run` : ""}`
+    : definition.timeoutMinutes === undefined ? "No limit" : `${definition.timeoutMinutes} minutes`;
   return {
     title,
     summary: `${actionLabel} “${name}”${forSuffix} · ${when} · ${destination} · ${runLimit}${status}`,
@@ -883,7 +903,8 @@ function cardCopy(
         ? [`Next 3 runs (${scheduleTimeZone}): ${nextCronRuns(definition.schedule, now, 3).map((at) => formatInstant(at, scheduleTimeZone)).join(" · ")}`]
         : []),
       `Runs on: ${destination}`,
-      `Run limit: ${definition.timeoutMinutes === undefined ? "No limit" : `${definition.timeoutMinutes} minutes`}`,
+      `Run limit: ${runLimitDetail}`,
+      ...(maxRuns !== undefined ? [`Remaining runs: ${maxRuns} of ${maxRuns}`] : []),
       `Continuity: ${definition.continuity ? "Carries the previous run's report into the next run" : "Each run starts fresh"}`,
       // Last before the instructions: the one sentence that says what
       // confirming actually does, in the reader's terms.
