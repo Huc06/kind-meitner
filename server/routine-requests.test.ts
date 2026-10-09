@@ -746,6 +746,28 @@ describe("RoutineRequestService", () => {
       }),
     })).rejects.toThrow(/valid interval start time/);
   });
+  it("renders proposal card with maxRuns, bounded consequence line, and remaining runs", async () => {
+    const now = Date.parse("2026-10-06T10:00:00Z");
+    const { service } = harness(now);
+    const proposed = await service.propose({
+      botId: "bot-a",
+      threadId: "thread-bounded",
+      proposal: createProposal({
+        name: "Bounded monitor",
+        instructions: "Check the page every minute for 3 runs.",
+        schedule: { type: "interval", everyMinutes: 1, maxRuns: 3 },
+        maxRuns: 3,
+        continuity: true,
+        alertOnly: "change_or_failure",
+      }),
+    });
+    expect(proposed.summary).toContain("3 runs");
+    expect(proposed.summary).not.toContain("no run limit");
+    expect(proposed.detail).toContain("Run limit: 3 runs");
+    expect(proposed.detail).toContain("Remaining runs: 3 of 3");
+    expect(proposed.detail).toContain("Will run every minute for 3 runs, then stop");
+    expect(proposed.detail).not.toContain("about 1440 times a day");
+  });
 
   it("rejects a cadence-only update when preserved restrictions make the merged interval invalid", async () => {
     const now = Date.parse("2026-08-28T10:00:00Z");

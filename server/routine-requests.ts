@@ -72,6 +72,7 @@ const routineToolScheduleSchema = z.discriminatedUnion("type", [
     weekdays: z.array(z.string().max(9)).min(1).max(7).nullable().optional(),
     window: toolIntervalWindowSchema.nullable().optional(),
     endsAt: z.string().max(64).nullable().optional(),
+    maxRuns: z.number().int().positive().nullable().optional(),
   }).strict(),
 ]);
 
@@ -83,6 +84,8 @@ const routineToolDefinitionSchema = z.object({
   durationMinutes: z.number().optional(),
   timeoutMinutes: z.number().nullable().optional(),
   continuity: z.boolean().optional(),
+  maxRuns: z.number().int().positive().nullable().optional(),
+  alertOnly: z.enum(["change_or_failure", "all"]).nullable().optional(),
 }).strict();
 
 const routineToolChangesSchema = routineToolDefinitionSchema
@@ -140,11 +143,12 @@ const storedScheduleSchema = z.discriminatedUnion("type", [
   }).strict(),
   z.object({
     type: z.literal("interval"),
-    everyMinutes: z.number().int().min(5).max(1_440),
+    everyMinutes: z.number().int().min(1).max(1_440),
     anchorAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
     weekdays: storedWeekdaysSchema.optional(),
     window: storedIntervalWindowSchema.optional(),
     endsAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
+    maxRuns: z.number().int().positive().optional(),
   }).strict(),
 ]).superRefine((schedule, context) => {
   if (schedule.type !== "interval") return;
@@ -173,11 +177,12 @@ const storedScheduleChangesSchema = z.discriminatedUnion("type", [
   }).strict(),
   z.object({
     type: z.literal("interval"),
-    everyMinutes: z.number().int().min(5).max(1_440),
+    everyMinutes: z.number().int().min(1).max(1_440),
     anchorAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
     weekdays: storedWeekdaysSchema.nullable().optional(),
     window: storedIntervalWindowSchema.nullable().optional(),
     endsAt: z.number().int().nonnegative().max(MAX_DATE_MS).nullable().optional(),
+    maxRuns: z.number().int().positive().nullable().optional(),
   }).strict(),
 ]).superRefine((schedule, context) => {
   if (schedule.type !== "interval") return;
@@ -209,6 +214,8 @@ const storedDefinitionSchema = z.object({
   durationMinutes: z.number().int().min(5).max(240),
   timeoutMinutes: z.number().int().min(5).max(240).optional(),
   continuity: z.boolean().optional(),
+  maxRuns: z.number().int().positive().optional(),
+  alertOnly: z.enum(["change_or_failure", "all"]).optional(),
 }).strict();
 const storedChangesSchema = storedDefinitionSchema
   .omit({ schedule: true, timeoutMinutes: true })
@@ -216,6 +223,8 @@ const storedChangesSchema = storedDefinitionSchema
   .extend({
     schedule: storedScheduleChangesSchema.optional(),
     timeoutMinutes: z.number().int().min(5).max(240).nullable().optional(),
+    maxRuns: z.number().int().positive().nullable().optional(),
+    alertOnly: z.enum(["change_or_failure", "all"]).nullable().optional(),
   })
   .strict()
   .refine(
@@ -477,8 +486,9 @@ function normalizeSchedule(schedule: RoutineToolScheduleInput, now: number): Rou
     return { type: "once", at };
   }
   if (schedule.type === "interval") {
-    if (!Number.isInteger(schedule.everyMinutes) || schedule.everyMinutes < 5 || schedule.everyMinutes > 1_440) {
-      throw new RoutineRequestError("everyMinutes must be a whole number from 5 to 1440");
+    const minMinutes = schedule.maxRuns ? 1 : 5;
+    if (!Number.isInteger(schedule.everyMinutes) || schedule.everyMinutes < minMinutes || schedule.everyMinutes > 1_440) {
+      throw new RoutineRequestError(`everyMinutes must be a whole number from ${minMinutes} to 1440`);
     }
     let anchorAt: number | undefined;
     if (schedule.anchorAt !== undefined) {
@@ -510,6 +520,7 @@ function normalizeSchedule(schedule: RoutineToolScheduleInput, now: number): Rou
       ...(schedule.weekdays == null ? {} : { weekdays: intervalWeekdays(schedule.weekdays) }),
       ...(schedule.window == null ? {} : { window: intervalWindow(schedule.window, schedule.everyMinutes) }),
       ...(endsAt === undefined ? {} : { endsAt }),
+      ...(schedule.maxRuns == null ? {} : { maxRuns: schedule.maxRuns }),
     };
   }
   if (!TIME.test(schedule.time)) {
@@ -542,14 +553,22 @@ function normalizeScheduleChanges(
 
 function normalizeDefinition(input: RoutineToolDefinitionInput, now: number): RoutineRequestDefinition {
   const timeoutMinutes = timeout(input.timeoutMinutes);
+  const maxRuns = input.maxRuns ?? (input.schedule.type === "interval" ? (input.schedule.maxRuns ?? undefined) : undefined);
+  const scheduleInput = { ...input.schedule };
+  if (scheduleInput.type === "interval" && maxRuns !== undefined && scheduleInput.maxRuns === undefined) {
+    scheduleInput.maxRuns = maxRuns;
+  }
+  const schedule = normalizeSchedule(scheduleInput, now);
   return {
     name: text(input.name, "name", 80),
     instructions: text(input.instructions, "instructions", 20_000),
-    schedule: normalizeSchedule(input.schedule, now),
+    schedule,
     runOn: runOn(input.runOn),
     durationMinutes: duration(input.durationMinutes),
     ...(timeoutMinutes == null ? {} : { timeoutMinutes }),
     ...(input.continuity === true ? { continuity: true } : {}),
+    ...(maxRuns != null ? { maxRuns } : {}),
+    ...(input.alertOnly != null ? { alertOnly: input.alertOnly } : {}),
   };
 }
 
@@ -562,6 +581,8 @@ function normalizeChanges(input: RoutineToolChangesInput, now: number): RoutineR
   if (input.durationMinutes !== undefined) changes.durationMinutes = duration(input.durationMinutes);
   if (input.timeoutMinutes !== undefined) changes.timeoutMinutes = timeout(input.timeoutMinutes);
   if (input.continuity !== undefined) changes.continuity = input.continuity === true;
+  if (input.maxRuns !== undefined) changes.maxRuns = input.maxRuns;
+  if (input.alertOnly !== undefined) changes.alertOnly = input.alertOnly;
   return changes;
 }
 
@@ -626,6 +647,7 @@ function asSchedule(schedule: RoutineRequestSchedule, now: number): RoutineSched
       ...(schedule.weekdays === undefined ? {} : { weekdays: [...schedule.weekdays] }),
       ...(schedule.window === undefined ? {} : { window: { ...schedule.window } }),
       ...(schedule.endsAt === undefined ? {} : { endsAt: schedule.endsAt }),
+      ...(schedule.maxRuns === undefined ? {} : { maxRuns: schedule.maxRuns }),
     };
   }
   return { type: "daily", time: schedule.time, weekdays: [...schedule.weekdays] };
@@ -753,6 +775,11 @@ export function consequenceLine(schedule: RoutineRequestSchedule, continuity = f
     if (intervalHasRestrictions(schedule)) {
       return `Will run every ${schedule.everyMinutes} minutes when its day, time, and end restrictions allow; ${session}.`;
     }
+    if (schedule.maxRuns !== undefined && schedule.maxRuns > 0) {
+      const unit = schedule.everyMinutes === 1 ? "minute" : `${schedule.everyMinutes} minutes`;
+      const runs = schedule.maxRuns === 1 ? "1 run" : `${schedule.maxRuns} runs`;
+      return `Will run every ${unit} for ${runs}, then stop; ${session}.`;
+    }
     const runsPerDay = Math.round(1440 / schedule.everyMinutes);
     const cadence = runsPerDay <= 1 ? "about once a day" : `about ${runsPerDay} times a day`;
     return `Will run ${cadence}; ${session}.`;
@@ -774,6 +801,7 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
           ...existing.schedule,
           ...(existing.schedule.weekdays ? { weekdays: [...existing.schedule.weekdays] } : {}),
           ...(existing.schedule.window ? { window: { ...existing.schedule.window } } : {}),
+          ...(existing.schedule.maxRuns !== undefined ? { maxRuns: existing.schedule.maxRuns } : {}),
         }
       : existing.schedule.type === "daily"
         ? { ...existing.schedule, weekdays: [...existing.schedule.weekdays] }
@@ -782,9 +810,11 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
     durationMinutes: existing.durationMinutes,
     ...(existing.timeoutMinutes === undefined ? {} : { timeoutMinutes: existing.timeoutMinutes }),
     ...(existing.continuity ? { continuity: true } : {}),
+    ...(existing.maxRuns !== undefined ? { maxRuns: existing.maxRuns } : {}),
+    ...(existing.alertOnly !== undefined ? { alertOnly: existing.alertOnly } : {}),
   };
   if (operation.action !== "update") return base;
-  const { schedule, timeoutMinutes, ...changes } = operation.changes;
+  const { schedule, timeoutMinutes, maxRuns, alertOnly, ...changes } = operation.changes;
   const merged: RoutineRequestDefinition = {
     ...base,
     ...changes,
@@ -792,6 +822,10 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
   };
   if (timeoutMinutes === null) delete merged.timeoutMinutes;
   else if (timeoutMinutes !== undefined) merged.timeoutMinutes = timeoutMinutes;
+  if (maxRuns === null) delete merged.maxRuns;
+  else if (maxRuns !== undefined) merged.maxRuns = maxRuns;
+  if (alertOnly === null) delete merged.alertOnly;
+  else if (alertOnly !== undefined) merged.alertOnly = alertOnly;
   return merged;
 }
 
@@ -847,9 +881,15 @@ function cardCopy(
   // shows every instruction, but credential-shaped values never travel back
   // through the bot's MCP response or into the transcript.
   const visibleInstructions = redactSecretsInText(definition.instructions);
-  const runLimit = definition.timeoutMinutes === undefined
+  const maxRuns = definition.maxRuns ?? (definition.schedule.type === "interval" ? definition.schedule.maxRuns : undefined);
+  const runLimit = maxRuns !== undefined
+    ? `${maxRuns} ${maxRuns === 1 ? "run" : "runs"}`
+    : definition.timeoutMinutes === undefined
     ? "no run limit"
     : `${definition.timeoutMinutes} min limit`;
+  const runLimitDetail = maxRuns !== undefined
+    ? `${maxRuns} ${maxRuns === 1 ? "run" : "runs"}${definition.timeoutMinutes !== undefined ? ` · ${definition.timeoutMinutes} min limit per run` : ""}`
+    : definition.timeoutMinutes === undefined ? "No limit" : `${definition.timeoutMinutes} minutes`;
   return {
     title,
     summary: `${actionLabel} “${name}”${forSuffix} · ${when} · ${destination} · ${runLimit}${status}`,
@@ -863,7 +903,8 @@ function cardCopy(
         ? [`Next 3 runs (${scheduleTimeZone}): ${nextCronRuns(definition.schedule, now, 3).map((at) => formatInstant(at, scheduleTimeZone)).join(" · ")}`]
         : []),
       `Runs on: ${destination}`,
-      `Run limit: ${definition.timeoutMinutes === undefined ? "No limit" : `${definition.timeoutMinutes} minutes`}`,
+      `Run limit: ${runLimitDetail}`,
+      ...(maxRuns !== undefined ? [`Remaining runs: ${maxRuns} of ${maxRuns}`] : []),
       `Continuity: ${definition.continuity ? "Carries the previous run's report into the next run" : "Each run starts fresh"}`,
       // Last before the instructions: the one sentence that says what
       // confirming actually does, in the reader's terms.
@@ -890,6 +931,8 @@ function inputFromDefinition(definition: RoutineRequestDefinition, botId: string
     durationMinutes: definition.durationMinutes,
     ...(definition.timeoutMinutes === undefined ? {} : { timeoutMinutes: definition.timeoutMinutes }),
     ...(definition.continuity ? { continuity: true } : {}),
+    ...(definition.maxRuns !== undefined && definition.maxRuns !== null ? { maxRuns: definition.maxRuns } : {}),
+    ...(definition.alertOnly !== undefined && definition.alertOnly !== null ? { alertOnly: definition.alertOnly } : {}),
   };
 }
 
@@ -906,8 +949,11 @@ function updateFromChanges(
   if (changes.durationMinutes !== undefined) patch.durationMinutes = changes.durationMinutes;
   if (changes.timeoutMinutes !== undefined) patch.timeoutMinutes = changes.timeoutMinutes;
   if (changes.continuity !== undefined) patch.continuity = changes.continuity;
+  if (changes.maxRuns !== undefined) patch.maxRuns = changes.maxRuns === null ? undefined : changes.maxRuns;
+  if (changes.alertOnly !== undefined) patch.alertOnly = changes.alertOnly === null ? undefined : changes.alertOnly;
   return patch;
 }
+
 
 function canonicalValue(value: JsonValue): JsonValue {
   if (Array.isArray(value)) return value.map(canonicalValue);

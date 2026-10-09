@@ -1,7 +1,7 @@
 // Config + data dirs. One file, ~/.kind-meitner/config.json, env fallbacks:
 //   { "xai": {"key":"xai-…"}, "composio": {"apiKey":"ak_…"}, "box": {"token":"…"},
 //     "instances": { "<instanceId>": {"driver":"grok", …} } }
-import { readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
+import { readFileSync, mkdirSync, existsSync, renameSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -902,14 +902,42 @@ interface InstanceCliUpdate {
  * OpenCode reads OPENCODE_API_KEY. Every other engine brings its own
  * login, so handing it a key it never uses would only put that key in the
  * environment of an unrelated child process. */
+/**
+ * Load the ZRoute API key from ~/.config/kind-meitner/zroute.key if present (mode 600).
+ * Never echoes, logs, or exposes the key.
+ */
+export function loadZrouteKeyFromFile(): string | undefined {
+  try {
+    const home = process.env.HOME || homedir();
+    const keyFile = join(home, ".config", "kind-meitner", "zroute.key");
+    if (existsSync(keyFile) && statSync(keyFile).size > 0) {
+      const content = readFileSync(keyFile, "utf8").trim();
+      if (content) return content;
+    }
+  } catch {
+    // Safe fallback if key cannot be read
+  }
+  return undefined;
+}
+
 function injectedEnvironment(cfg: AppConfig, driver: string): Map<string, string> {
   const environment = new Map<string, string>();
   if (driver === "grok" && cfg.xai?.key) environment.set("XAI_API_KEY", cfg.xai.key);
   // The workspace Anthropic key reaches Claude Code as the variable it
   // reads, carried in the instance environment so the driver can tell a
   // deliberate workspace key from one riding along in the parent's env.
-  if (driver === "claudeAgent" && cfg.anthropic?.key) environment.set("ANTHROPIC_API_KEY", cfg.anthropic.key);
-  if (driver === "claudeAgent" && cfg.anthropic?.key && cfg.anthropic.url) environment.set("ANTHROPIC_BASE_URL", cfg.anthropic.url);
+  const zrouteKey = loadZrouteKeyFromFile();
+  const anthropicKey = cfg.anthropic?.key || zrouteKey;
+  const anthropicUrl = cfg.anthropic?.url || (zrouteKey ? "https://api-dev.zroute.ai/anthropic" : undefined);
+  if (driver === "claudeAgent" && anthropicKey) {
+    if (anthropicUrl) {
+      environment.set("ANTHROPIC_BASE_URL", anthropicUrl);
+      environment.set("ANTHROPIC_AUTH_TOKEN", anthropicKey);
+      environment.set("CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY", "1");
+    } else {
+      environment.set("ANTHROPIC_API_KEY", anthropicKey);
+    }
+  }
   if (driver === "openai-compat" && cfg.openaiCompat?.key)
     environment.set("OPENAI_COMPAT_API_KEY", cfg.openaiCompat.key);
   if (driver === "openai-compat" && cfg.openaiCompat?.url)

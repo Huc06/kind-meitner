@@ -900,6 +900,19 @@ export function mentionedBots<T extends { name: string; hidden?: boolean }>(text
   return found;
 }
 
+/** Resolve conversational addressing such as "Ask the Reviewer", "Tell Researcher", "Reviewer: check this". */
+export function addressedBots<T extends { name: string; hidden?: boolean }>(text: string, peers: T[]): T[] {
+  const candidates = peers
+    .filter((p) => !p.hidden && p.name.trim())
+    .sort((a, b) => b.name.length - a.name.length);
+  for (const candidate of candidates) {
+    const escaped = candidate.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`(?:^|[\\s.,!?])(?:ask|tell|have|get)\\s+(?:the\\s+)?${escaped}\\b`, "i");
+    if (pattern.test(text)) return [candidate];
+  }
+  return [];
+}
+
 /** Normalize persisted or API-provided routing. Old rooms did not have this
  * field; giving them their first member as lead fixes the old silent-send
  * behavior without making every prompt fan out to every model. */
@@ -936,6 +949,8 @@ export function roomResponders<T extends { id: string; name: string; hidden?: bo
   if (/(?:^|\s)@everyone\b/i.test(text)) return available;
   const mentioned = mentionedBots(text, available);
   if (mentioned.length) return mentioned;
+  const addressed = addressedBots(text, available);
+  if (addressed.length) return addressed;
   if (defaultResponder.kind === "everyone") return available;
   if (defaultResponder.kind === "member") {
     const lead = available.find((member) => member.id === defaultResponder.botId);

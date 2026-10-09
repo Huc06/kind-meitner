@@ -28,7 +28,14 @@ export function RoutineList({ routines, runs, bots, loading, error, onOpen, onLo
         <div className="flex items-start gap-2">
           <button type="button" onClick={() => onOpen(routine)} className="min-w-0 flex-1 text-left">
             <span className="block truncate text-[13px] font-semibold text-ink hover:underline">{routine.name}</span>
-            <span className="mt-1 block font-mono text-[11px] leading-relaxed text-ink-secondary">{bot && `${bot.name} · `}{scheduleLabel(routine.schedule)}</span>
+            <span className="mt-1 block font-mono text-[11px] leading-relaxed text-ink-secondary">
+              {bot && `${bot.name} · `}{scheduleLabel(routine.schedule)}
+              {routine.maxRuns !== undefined && (
+                <span className="ml-2 font-mono text-[10.5px] text-accent">
+                  · {Math.max(0, routine.maxRuns - (routine.completedRuns ?? 0))} of {routine.maxRuns} runs remaining
+                </span>
+              )}
+            </span>
           </button>
           <Tag tone={routine.enabled && routine.nextRunAt != null ? "accent" : "neutral"} variant="soft" size="sm">{routineScheduleState(routine)}</Tag>
         </div>

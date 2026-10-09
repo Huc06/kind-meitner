@@ -127,9 +127,14 @@ const ROUTINE_SCHEDULE_SCHEMA = {
     },
     every_minutes: {
       type: "integer",
-      minimum: 5,
+      minimum: 1,
       maximum: 1_440,
-      description: "Only for type interval: whole minutes between runs, from 5 to 1440.",
+      description: "Only for type interval: whole minutes between runs, from 1 to 1440.",
+    },
+    max_runs: {
+      type: "integer",
+      minimum: 1,
+      description: "Optional for type interval: maximum number of scheduled runs before auto-pausing.",
     },
     starts_at: {
       type: "string",
@@ -214,7 +219,7 @@ function normalizeScheduleInput(args: Json): NormalizedSchedule {
     : type === "weekly" || type === "daily"
       ? ["type", "time", "weekdays"]
       : type === "interval"
-        ? ["type", "every_minutes", "everyMinutes", "starts_at", "anchorAt", "weekdays", "every_day", "window_start", "window_end", "window", "all_day", "ends_at", "endsAt", "never_ends"]
+        ? ["type", "every_minutes", "everyMinutes", "starts_at", "anchorAt", "weekdays", "every_day", "window_start", "window_end", "window", "all_day", "ends_at", "endsAt", "never_ends", "max_runs", "maxRuns"]
         : type === "cron"
           ? ["type", "expression", "timeZone"]
           : null;
@@ -277,8 +282,9 @@ function normalizeScheduleInput(args: Json): NormalizedSchedule {
     }
     const rawMinutes = raw.every_minutes ?? raw.everyMinutes;
     const everyMinutes = Number(rawMinutes);
-    if (!Number.isInteger(everyMinutes) || everyMinutes < 5 || everyMinutes > 1_440) {
-      return { error: 'An interval schedule needs "every_minutes": a whole number from 5 to 1440.' };
+    const minMinutes = (raw.max_runs != null || raw.maxRuns != null) ? 1 : 5;
+    if (!Number.isInteger(everyMinutes) || everyMinutes < minMinutes || everyMinutes > 1_440) {
+      return { error: `An interval schedule needs "every_minutes": a whole number from ${minMinutes} to 1440.` };
     }
     const rawStart = raw.starts_at ?? raw.anchorAt;
     if (rawStart !== undefined && (typeof rawStart !== "string" || !rawStart.trim())) {
@@ -341,6 +347,7 @@ function normalizeScheduleInput(args: Json): NormalizedSchedule {
         ...(intervalWeekdays !== undefined ? { weekdays: intervalWeekdays } : {}),
         ...(window !== undefined ? { window } : {}),
         ...(endsAt !== undefined ? { endsAt } : {}),
+        ...(raw.max_runs ?? raw.maxRuns != null ? { maxRuns: Number(raw.max_runs ?? raw.maxRuns) } : {}),
       },
     };
   }
@@ -378,6 +385,16 @@ const ROUTINE_FIELDS_SCHEMA = {
   continuity: {
     type: "boolean",
     description: "Opt in to using the latest completed run's bounded report as historical context. Defaults to false; set false in an update to start fresh again. Included in the applied result or pending confirmation.",
+  },
+  max_runs: {
+    type: "integer",
+    minimum: 1,
+    description: "Maximum number of scheduled runs before auto-pausing.",
+  },
+  alert_only: {
+    type: "string",
+    enum: ["change_or_failure", "all"],
+    description: "Only post an alert when a schedule change or failure occurs.",
   },
 } as const;
 
@@ -1007,6 +1024,10 @@ function routineFields(args: Json): { fields: Json; error?: string } {
   if (args.clear_timeout === true) fields.timeoutMinutes = null;
   else if (timeoutMinutes != null) fields.timeoutMinutes = timeoutMinutes;
   if (typeof args.continuity === "boolean") fields.continuity = args.continuity;
+  const maxRuns = args.max_runs ?? args.maxRuns;
+  if (maxRuns != null) fields.maxRuns = Number(maxRuns);
+  const alertOnly = args.alert_only ?? args.alertOnly;
+  if (alertOnly != null) fields.alertOnly = alertOnly;
   return { fields };
 }
 

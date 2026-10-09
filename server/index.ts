@@ -111,6 +111,7 @@ import {
   EVENTS_DIR,
   NATIVE_DIR,
   customMcpServers,
+  loadZrouteKeyFromFile,
 } from "./config.ts";
 import { ComputerControl } from "./computer-control.ts";
 import { augmentedPath, findCliCandidates, resetPathCache } from "./env-path.ts";
@@ -8011,6 +8012,40 @@ function startGroupTurn(
     });
   }
   let responders = roomResponders(text, members, group.defaultResponder);
+  const lastSpeakerId = [...store.messagesFor(threadId)]
+    .reverse()
+    .find((msg) => msg.kind === "text" && msg.from)?.from?.botId;
+  const previousBot = lastSpeakerId ? store.bot(lastSpeakerId) : undefined;
+  if (previousBot && responders.length === 1 && responders[0].id !== previousBot.id) {
+    const nextBot = responders[0];
+    try {
+      const node = {
+        id: randomUUID(),
+        rootId: randomUUID(),
+        groupId: group.id,
+        threadId,
+        botId: nextBot.id,
+        key: `handoff:${Date.now()}:${nextBot.id}`,
+        text,
+        createdAt: Date.now(),
+        status: "completed" as const,
+        result: `Handoff from ${previousBot.name} to ${nextBot.name}`,
+        reported: true,
+        executions: 1,
+        approvalGranted: true,
+        kind: "assignment" as const,
+      };
+      roomHandoffs.nodes.set(node.id, node);
+    } catch {
+      // safe fallback
+    }
+    store.appendMessage(threadId, {
+      role: "bot",
+      kind: "activity",
+      from: { botId: previousBot.id, name: previousBot.name, color: previousBot.color },
+      tool: { name: `Handoff to ${nextBot.name}`, ok: true },
+    });
+  }
   const explicitlyMentionedLead = roomResponders(text, availableMembers, { kind: "mentions" })[0];
   const goalCoordinator = channelMode === "goal"
     ? requestedGoalCoordinator ?? explicitlyMentionedLead ?? selectGroupGoalCoordinator(availableMembers, group.defaultResponder)
@@ -9088,7 +9123,7 @@ function stderrOf(err: unknown): string {
 function configStatus() {
   return {
     xai: { configured: Boolean(cfg.xai?.key) },
-    anthropic: { configured: Boolean(cfg.anthropic?.key) },
+    anthropic: { configured: Boolean(cfg.anthropic?.key || loadZrouteKeyFromFile()), url: cfg.anthropic?.url ?? "" },
     // a fleet agent on this server means Settings → Workspaces has something to drive
     fleet: { available: fleetAvailable(fleetSocketPath()) },
     // what this build is entitled to, so Settings shows only what works here
