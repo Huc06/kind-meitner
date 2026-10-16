@@ -447,7 +447,9 @@ export function SettingsModal() {
         tabIndex={-1}
         className={cn(
           "flex-row max-h-[calc(100dvh-24px)] w-full overflow-hidden p-0 outline-none",
-          section === "engines" ? "h-[740px] max-w-[1080px]" : "h-[620px] max-w-[920px]",
+          // DialogPanel caps itself at sm:max-w-lg; the sm: override keeps the
+          // wider desktop cap from being silently reset to 512px.
+          section === "engines" ? "h-[740px] sm:max-w-[1080px]" : "h-[620px] sm:max-w-[920px]",
         )}
       >
         {/* section nav */}

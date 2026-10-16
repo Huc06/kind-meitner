@@ -12,7 +12,7 @@ describe("settings primitives", () => {
       message: createElement("p", { role: "alert" }, "Could not save"),
     }));
     expect(html).toMatch(/role="group" aria-labelledby="[^"]+"/);
-    expect(html).toContain("sm:grid-cols-[minmax(0,1fr)_auto]");
+    expect(html).toContain("md:grid-cols-[minmax(0,1fr)_auto]");
     expect(html).toContain('aria-label="App language"');
     expect(html).toContain('<p role="alert">Could not save</p>');
     expect(html).not.toContain("bg-card");
