@@ -74,12 +74,14 @@ export function SettingRow({
   const titleId = useId();
   return (
     <div role="group" aria-labelledby={titleId} className="setting-row frame-rule-below py-3.5 last:after:hidden">
-      <div className="grid min-w-0 grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6">
+      {/* Side-by-side only once the dialog body has room for both columns; at sm
+       * the body is still ~270px, and the capped control would crush the text. */}
+      <div className="grid min-w-0 grid-cols-1 items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:gap-6">
         <div className="min-w-0">
           <div id={titleId} className="text-[13px] font-medium text-ink">{title}</div>
           {subtitle && <div className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">{subtitle}</div>}
         </div>
-        <div className="min-w-0 sm:max-w-[280px]">{children}</div>
+        <div className="min-w-0 md:max-w-[280px]">{children}</div>
       </div>
       {message && <div className="mt-2 text-[12px]">{message}</div>}
     </div>
